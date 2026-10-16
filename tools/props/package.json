@@ -1,9 +1,0 @@
-{
-  "name": "tinkertown-props",
-  "private": true,
-  "type": "module",
-  "description": "Propsgenerator för Tinkertown (stenar, svampar, stubbar, lövhögar, krypväxter)",
-  "dependencies": {
-    "@gltf-transform/core": "4.1.4"
-  }
-}

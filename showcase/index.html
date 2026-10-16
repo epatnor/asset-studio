@@ -41,6 +41,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
 
@@ -191,7 +192,7 @@ function makeSign(text, tint, scale = 1) {
   return sign;
 }
 
-const loader = shareTextures(new GLTFLoader());
+const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)) // geometrin är meshopt-komprimerad;
 const placed = [];
 const status = document.getElementById('status');
 

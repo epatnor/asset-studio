@@ -2,6 +2,7 @@
 // modell-laddning, skyltar och förstapersonskamera. Ren klientkod (ingen Node).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
 
@@ -102,7 +103,7 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
     material.needsUpdate = true;
   };
 
-  const loader = shareTextures(new GLTFLoader());
+  const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)) // geometrin är meshopt-komprimerad;
   const models = [];
   async function loadModel(url) {
     const root = (await loader.loadAsync(url)).scene;

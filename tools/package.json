@@ -1,0 +1,12 @@
+{
+  "name": "tinkertown-tools",
+  "private": true,
+  "type": "module",
+  "description": "Gemensamma beroenden för generatorerna i tools/ (träd, props, växter): glTF-skrivning och meshopt-komprimering",
+  "dependencies": {
+    "@gltf-transform/core": "4.1.4",
+    "@gltf-transform/extensions": "4.1.4",
+    "@gltf-transform/functions": "4.1.4",
+    "meshoptimizer": "0.22.0"
+  }
+}

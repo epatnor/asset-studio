@@ -12,7 +12,7 @@ const FALLBACK = { grass: '#6fa046', meadow: '#8ab24f', forestfloor: '#6e5a3a', 
 export async function loadSurfaces(W, names, { normal = false } = {}) {
   const { THREE } = W;
   const tl = new THREE.TextureLoader();
-  const one = (name) => new Promise((res) => tl.load(`../assets/textures/surface_${name}${normal ? '_normal' : ''}.png`, (t) => {
+  const one = (name) => new Promise((res) => tl.load(`../assets/textures/surface_${name}${normal ? '_normal' : ''}.webp`, (t) => {
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = normal ? THREE.NoColorSpace : THREE.SRGBColorSpace; t.anisotropy = 8; res(t);
   }, undefined, () => { // saknas texturen än: en enfärgad ersättare
     const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'); x.fillStyle = normal ? '#8080ff' : FALLBACK[name] ?? '#808080'; x.fillRect(0, 0, 4, 4);
