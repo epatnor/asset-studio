@@ -14,6 +14,10 @@
   .panel p { margin: 0 0 8px; font-size: 13px; opacity: 0.85; }
   .panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
   .panel select, .panel input[type=range] { flex: 1; }
+  .panel details { font-size: 13px; margin: 6px 0; }
+  .panel summary { cursor: pointer; font-weight: 600; }
+  .panel details label span { width: 118px; flex: none; }
+  .panel input[type=color] { width: 36px; height: 22px; border: 0; padding: 0; background: none; }
   .panel a { color: #2f6b2a; }
   #status { font-size: 12px; opacity: 0.7; }
 </style>
@@ -33,6 +37,17 @@
   <label>Detaljnivå <select id="lod"><option value="0">LOD0 (nära)</option><option value="1">LOD1</option><option value="2">LOD2 (långt bort)</option></select></label>
   <label>Vind <input id="wind" type="range" min="0" max="2" step="0.05" value="0.6"></label>
   <label><input id="labels" type="checkbox"> Visa skyltar</label>
+  <details id="grassPanel"><summary>Gräs</summary>
+    <label><span>Toppfärger</span><input id="gTipA" type="color" value="#5e9e34"><input id="gTipB" type="color" value="#8db43e"></label>
+    <label><span>Markfärg i toppen</span><input id="gGroundMix" type="range" min="0" max="1" step="0.02" value="0.3"></label>
+    <label><span>Ljushet</span><input id="gBright" type="range" min="0.5" max="1.4" step="0.02" value="0.9"></label>
+    <label><span>Höjd</span><input id="gHeight" type="range" min="0.3" max="2" step="0.05" value="1"></label>
+    <label><span>Täthet</span><input id="gDensity" type="range" min="0" max="1" step="0.02" value="0.8"></label>
+    <label><span>Räckvidd (m)</span><input id="gRange" type="range" min="15" max="90" step="1" value="46"></label>
+    <label><span>Vindriktning</span><input id="gDir" type="range" min="0" max="360" step="1" value="37"></label>
+    <label><span>Byarnas längd (m)</span><input id="gGustLen" type="range" min="4" max="40" step="0.5" value="14"></label>
+    <label><span>Byarnas fart</span><input id="gGustSpeed" type="range" min="0" max="4" step="0.05" value="1.6"></label>
+  </details>
   <div id="status">Laddar…</div>
 </div>
 <script type="module">
@@ -231,7 +246,7 @@ const field = createGrassField(W, {
   },
   heightScaleAt: (x, z, s) => {
     const d = pathDist(x, z), edge = smooth(1.4, 2.2, d) * (1 - smooth(2.6, 4.5, d)); // högre gräs längs stigkanten
-    return (0.24 + s[1] * 0.22) * (0.75 + 0.5 * noise2(x * 2.3, z * 2.3)) * (1 + 0.6 * edge) * (1 - 0.45 * shadeAt(x, z));
+    return (0.24 + s[1] * 0.22) * (0.85 + 0.3 * noise2(x * 2.3, z * 2.3)) * (1 + 0.6 * edge) * (1 - 0.45 * shadeAt(x, z));
   },
 });
 
@@ -295,6 +310,19 @@ status.textContent = `${W.signs.length} växter och props, ${plantCount} instans
 document.getElementById('lod').onchange = (e) => W.setLod(Number(e.target.value));
 document.getElementById('wind').oninput = (e) => (W.wind.uWind.value = Number(e.target.value));
 document.getElementById('labels').onchange = (e) => W.signs.forEach((s) => (s.visible = e.target.checked));
+// Gräsreglagen ändrar shaderns uniforms direkt
+const U = field.uniforms, $ = (id) => document.getElementById(id), num = (id) => Number($(id).value);
+const bind = (id, fn) => { $(id).oninput = fn; fn(); };
+bind('gTipA', () => U.uTipA.value.set($('gTipA').value));
+bind('gTipB', () => U.uTipB.value.set($('gTipB').value));
+bind('gGroundMix', () => (U.uGroundMix.value = num('gGroundMix')));
+bind('gBright', () => (U.uBright.value = num('gBright')));
+bind('gHeight', () => (U.uHeight.value = num('gHeight')));
+bind('gDensity', () => (U.uDensity.value = num('gDensity')));
+bind('gRange', () => U.uFade.value.set(num('gRange') * 0.57, num('gRange')));
+bind('gDir', () => { const a = (num('gDir') * Math.PI) / 180; U.uWindDir.value.set(Math.cos(a), Math.sin(a)); });
+bind('gGustLen', () => (U.uGust.value.x = (2 * Math.PI) / num('gGustLen')));
+bind('gGustSpeed', () => (U.uGust.value.y = num('gGustSpeed') * U.uGust.value.x / 0.45));
 </script>
 </body>
 </html>

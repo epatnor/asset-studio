@@ -20,21 +20,22 @@ vec3 groundAt(vec2 xz, vec4 s) {
   return GT(tGround0, 1.0) * s.x + GT(tGround1, 0.9) * s.y + GT(tGround2, 1.1) * s.z + GT(tGround3, 1.3) * s.w;
 }
 uniform float uTime, uWind;
-uniform vec2 uWindDir;
+uniform vec2 uWindDir, uGust; // byarnas vågtal (rad/m) och fart
 // Vindbyar: breda vågor som vandrar längs vindriktningen, uppbrutna på tvären så att de inte blir raka linjer
 float gustAt(vec2 xz) {
   vec2 side = vec2(-uWindDir.y, uWindDir.x);
-  float ph = dot(xz, uWindDir) * 0.45 - uTime * 1.6;
+  float ph = dot(xz, uWindDir) * uGust.x - uTime * uGust.y;
   float a = sin(ph + sin(dot(xz, side) * 0.12) * 1.8);
   float b = sin(ph * 0.53 + dot(xz, side) * 0.09 + 1.3);
   return smoothstep(0.25, 1.0, 0.5 + 0.35 * a + 0.25 * b);
 }`;
 
+// Delas av gräsfältet och alla växter, så att vindbyarna går genom allt på samma sätt
 function sharedUniforms(W, textures) {
-  return {
+  return (W.grassUniforms ??= {
     tGround0: { value: textures[0] }, tGround1: { value: textures[1] }, tGround2: { value: textures[2] }, tGround3: { value: textures[3] },
-    uTime: W.wind.uTime, uWind: W.wind.uWind, uWindDir: { value: new W.THREE.Vector2(0.8, 0.6) },
-  };
+    uTime: W.wind.uTime, uWind: W.wind.uWind, uWindDir: { value: new W.THREE.Vector2(0.8, 0.6) }, uGust: { value: new W.THREE.Vector2(0.45, 1.6) },
+  });
 }
 
 // Seedad slump
@@ -51,8 +52,8 @@ function rng(seed) {
  */
 export function createGrassField(W, opts) {
   const { THREE, scene, camera } = W;
-  const { size, heightAt, splatAt, densityAt, heightScaleAt, textures, seed = 7, cell = 0.34, chunk = 10, fade = [26, 46] } = opts;
-  const tips = (opts.tips ?? ['#6DB33F', '#A7C94A']).map((c) => new THREE.Color(c));
+  const { size, heightAt, splatAt, densityAt, heightScaleAt, textures, seed = 7, cell = 0.3, chunk = 10, fade = [26, 46] } = opts;
+  const tips = (opts.tips ?? ['#5E9E34', '#8DB43E']).map((c) => new THREE.Color(c));
   const r = rng(seed);
   const patch = (x, z) => 0.5 + 0.3 * Math.sin(x * 0.21 + Math.sin(z * 0.17) * 2.1) + 0.2 * Math.sin(z * 0.29 - x * 0.13 + 0.7);
 
@@ -63,7 +64,12 @@ export function createGrassField(W, opts) {
   for (let i = 0; i < rows.length - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 3, a, a + 3, a + 2); }
   idx.push((rows.length - 1) * 2, (rows.length - 1) * 2 + 1, rows.length * 2);
 
-  const uniforms = { ...sharedUniforms(W, textures), uTipA: { value: tips[0] }, uTipB: { value: tips[1] }, uFade: { value: new THREE.Vector2(...fade) } };
+  // Reglagen i klienten ändrar de här direkt (som en Material Instance). Fältet genereras med full täthet;
+  // uDensity väljer hur stor andel av tuvorna som ritas.
+  const uniforms = {
+    ...sharedUniforms(W, textures), uTipA: { value: tips[0] }, uTipB: { value: tips[1] }, uFade: { value: new THREE.Vector2(...fade) },
+    uGroundMix: { value: 0.3 }, uBright: { value: 0.9 }, uHeight: { value: 1 }, uDensity: { value: 0.8 },
+  };
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);
@@ -71,6 +77,7 @@ export function createGrassField(W, opts) {
       .replace('#include <common>', `#include <common>
         ${GROUND_GLSL}
         uniform vec2 uFade;
+        uniform float uHeight, uDensity;
         attribute vec4 iPos;   // x, y, z, riktning (rad)
         attribute vec4 iShape; // höjd, bredd, lutning, färgvariation 0..1
         attribute vec4 iSplat;
@@ -82,8 +89,8 @@ export function createGrassField(W, opts) {
         // Glesare och kortare på avstånd, sedan inget alls (marktexturen är redan gräs där)
         float dist = distance(cameraPosition.xz, iPos.xz);
         float hsh = fract(sin(dot(iPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
-        float keep = mix(1.0, 0.3, smoothstep(uFade.x * 0.45, uFade.y, dist));
-        float h = iShape.x * (1.0 - smoothstep(uFade.x, uFade.y, dist)) * clamp((keep - hsh) * 8.0, 0.0, 1.0);
+        float keep = mix(1.0, 0.3, smoothstep(uFade.x * 0.45, uFade.y, dist)) * uDensity;
+        float h = iShape.x * uHeight * (1.0 - smoothstep(uFade.x, uFade.y, dist)) * clamp((keep - hsh) * 8.0, 0.0, 1.0);
         float gust = gustAt(iPos.xz);
         float flutter = sin(uTime * 3.3 + iShape.w * 37.0 + iPos.x * 1.7) * 0.07;
         vec2 off = dir * iShape.z + uWindDir * (uWind * (0.18 + gust * 0.75) + flutter);
@@ -93,12 +100,12 @@ export function createGrassField(W, opts) {
           + vec3(off.x * t * t * h, t * h * drop, off.y * t * t * h);
         vGround = groundAt(iPos.xz, iSplat); vT = t; vWave = gust * t * uWind; vVar = iShape.w;`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTipA, uTipB;\nvarying vec3 vGround; varying float vT, vWave, vVar;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTipA, uTipB;\nuniform float uGroundMix, uBright;\nvarying vec3 vGround; varying float vT, vWave, vVar;')
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz); // båda sidor skuggas som marken')
       .replace('#include <color_fragment>', `#include <color_fragment>
-        vec3 tip = mix(mix(uTipA, uTipB, vVar), vGround * 1.25, 0.2);
+        vec3 tip = mix(mix(uTipA, uTipB, vVar), vGround * 1.25, uGroundMix);
         vec3 col = mix(vGround * 0.92, tip, smoothstep(0.0, 0.8, vT));
-        diffuseColor.rgb = col * (1.0 + vWave * 0.55);`);
+        diffuseColor.rgb = col * uBright * (1.0 + vWave * 0.55);`);
   };
 
   const group = new THREE.Group();
@@ -113,12 +120,12 @@ export function createGrassField(W, opts) {
       const s = splatAt(x, z), d = densityAt(x, z, s), roll = r();
       if (roll >= d) continue;
       // En tuva: några strån kring en punkt, lutande utåt, med gemensam höjd och färg
-      const blades = 5 + Math.floor(r() * 7 * (0.5 + d * 0.6)), rad = 0.05 + r() * 0.09;
-      const hb = heightScaleAt(x, z, s) * (0.75 + r() * 0.5), v = Math.min(1, Math.max(0, patch(x, z) + (r() - 0.5) * 0.25));
+      const blades = 6 + Math.floor(r() * 7 * (0.5 + d * 0.6)), rad = 0.05 + r() * 0.09;
+      const hb = heightScaleAt(x, z, s) * (0.85 + r() * 0.3), v = Math.min(1, Math.max(0, patch(x, z) + (r() - 0.5) * 0.25));
       for (let b = 0; b < blades; b++) {
         const a = r() * Math.PI * 2, rr = Math.sqrt(r()) * rad, bx = x + Math.cos(a) * rr, bz = z + Math.sin(a) * rr;
         P.push(bx, heightAt(bx, bz) - 0.02, bz, a + (r() - 0.5) * 0.9);
-        S.push(hb * (0.6 + r() * 0.45), 0.055 + r() * 0.03, 0.12 + r() * 0.35, v);
+        S.push(hb * (0.7 + r() * 0.35), 0.055 + r() * 0.03, 0.12 + r() * 0.35, v);
         SP.push(...s);
       }
     }
@@ -141,7 +148,7 @@ export function createGrassField(W, opts) {
   }
   scene.add(group);
   // Rutor bortom fade-avståndet ritas inte alls
-  W.onFrame(() => { for (const ch of chunks) ch.mesh.visible = Math.hypot(ch.c.x - camera.position.x, ch.c.z - camera.position.z) < fade[1] + chunk; });
+  W.onFrame(() => { for (const ch of chunks) ch.mesh.visible = Math.hypot(ch.c.x - camera.position.x, ch.c.z - camera.position.z) < uniforms.uFade.value.y + chunk; });
   return { group, blades: total, uniforms };
 }
 
