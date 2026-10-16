@@ -1,5 +1,5 @@
 {
-  "_doc": "Arter för gen_plant.mjs. layers: knippen av 'blades' (strån/blad från marken) eller 'stalks' (stjälkar som kan ha leaves och ett head). Längder i meter, vinklar i grader från lodlinjen. head.type: tuft (tofs/vippa), spike (ax: säd, lavendel, lupin), cattail (kolv), flower (kronblad + mitt, valfri knopp). colors: färgnyckel -> palettnamn i style.json eller #RRGGBB. groundTint: färgnycklar vars rot tar markens färg. Vanligt gräs i stora mängder är inte en modell utan klientens gräsfält (showcase/grass.js).",
+  "_doc": "Arter för gen_plant.mjs. layers: knippen av 'blades' (strån/blad från marken) eller 'stalks' (stjälkar som kan ha leaves och ett head). Längder i meter, vinklar i grader från lodlinjen. 'pads' = flytblad (näckros) vid y = 0, som klienten lägger på vattenytan. head.type: tuft (tofs/vippa), spike (ax: säd, lavendel, lupin), cattail (kolv), flower (kronblad + mitt, valfri knopp). colors: färgnyckel -> palettnamn i style.json eller #RRGGBB. groundTint: färgnycklar vars rot tar markens färg. Vanligt gräs i stora mängder är inte en modell utan klientens gräsfält (showcase/grass.js).",
   "grass_tuft": {
     "colors": {
       "blade": "grass_tip"
@@ -1056,6 +1056,113 @@
           "angle": 65,
           "taper": 0.6
         }
+      }
+    ]
+  },
+  "water_lily": {
+    "colors": {
+      "pad": "#4E8F3A",
+      "stalk": "#6E9A3E",
+      "petal": "#F4D9E6",
+      "center": "flower_center"
+    },
+    "float": true,
+    "layers": [
+      {
+        "type": "pads",
+        "color": "pad",
+        "count": [
+          4,
+          7
+        ],
+        "radius": [
+          0.14,
+          0.24
+        ],
+        "spread": 0.45,
+        "lean": [
+          0,
+          0
+        ],
+        "length": [
+          0,
+          0
+        ],
+        "notch": 28,
+        "segments": 14
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          1,
+          2
+        ],
+        "length": [
+          0.07,
+          0.1
+        ],
+        "radius": 0.006,
+        "spread": 0.15,
+        "lean": [
+          0,
+          8
+        ],
+        "bend": [
+          0,
+          0.05
+        ],
+        "segments": 2,
+        "head": {
+          "type": "flower",
+          "petals": 12,
+          "rings": 2,
+          "length": 0.1,
+          "width": 0.04,
+          "cup": 32,
+          "curl": 8,
+          "center": [
+            0.022,
+            0.02
+          ],
+          "faceUp": 0.95
+        }
+      }
+    ]
+  },
+  "pondweed": {
+    "colors": {
+      "blade": "#2F6B3F"
+    },
+    "groundTint": [],
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          14,
+          20
+        ],
+        "length": [
+          0.45,
+          0.9
+        ],
+        "width": [
+          0.03,
+          0.05
+        ],
+        "spread": 0.12,
+        "lean": [
+          2,
+          18
+        ],
+        "bend": [
+          0.05,
+          0.25
+        ],
+        "twist": 2.0,
+        "shape": "strap",
+        "fold": 0.3,
+        "segments": 6
       }
     ]
   }

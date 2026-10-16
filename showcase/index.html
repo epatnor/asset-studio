@@ -203,7 +203,7 @@ function setLod(n) {
 }
 
 async function main() {
-  const catalog = await (await fetch('catalog.json')).json();
+  const catalog = await (await fetch('catalog.json', { cache: 'no-cache' })).json();
   // Små växter längst fram, höga träd längst bak
   const rows = [...catalog.rows].reverse();
   let z = 0, total = 0, loaded = 0;

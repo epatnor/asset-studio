@@ -87,7 +87,7 @@ const field = createGrassField(W, {
   densityAt: (x, z, s) => (Math.hypot(x, z) > SIZE / 2 - 12 ? 0 : (s[0] + s[1]) * (1 - smooth(0.02, 0.5, terrain.wetAt(x, z)))),
   heightScaleAt: (x, z, s) => (0.24 + s[1] * 0.2) * (0.85 + 0.3 * noise(x * 2.3, z * 2.3)),
 });
-const catalog = await (await fetch('catalog.json')).json();
+const catalog = await (await fetch('catalog.json', { cache: 'no-cache' })).json();
 const plantItems = catalog.rows.flatMap((r) => r.items).filter((i) => ['reed', 'cattail'].includes(i.species));
 const places = { reed: [], cattail: [] };
 const tryPlant = (x, z, scale = 1) => {

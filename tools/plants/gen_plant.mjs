@@ -155,6 +155,17 @@ function petal(key, base, axis, o, L, W, cup, curl, segs) {
   }
 }
 
+// Flytblad (näckros): en platt, rund skiva med ett snitt in mot mitten och en lätt uppvikt kant.
+// Ligger vid y = 0, som klienten placerar på vattenytan.
+function pad(key, c, r, rot, notch, segs) {
+  const g = part(key), center = vtx(g, [c[0], 0.012, c[2]], UP, [0.5, 0.5], 0.85), rim = [];
+  for (let i = 0; i <= segs; i++) {
+    const a = rot + notch / 2 + (i / segs) * (Math.PI * 2 - notch), wob = 1 + 0.05 * Math.sin(a * 5 + rot);
+    rim.push(vtx(g, [c[0] + Math.cos(a) * r * wob, 0.012 + r * 0.06, c[2] + Math.sin(a) * r * wob], UP, [0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5], 1));
+  }
+  for (let i = 0; i < segs; i++) tri2(g, center, rim[i], rim[i + 1]);
+}
+
 // ---------- Fästen: varje blad och huvud på en stjälk måste nå stjälken (kontrolleras efteråt) ----------
 let attachments = [];
 function attached(key, startVertex, stalkPts, tol) { attachments.push({ key, startVertex, stalkPts, tol }); }
@@ -253,6 +264,11 @@ function build(lod) {
       const lean = layer.lean[0] + (layer.lean[1] - layer.lean[0]) * (layer.type === 'blades' ? Math.min(1, out01 ** 0.7 * 0.7 + r() * 0.4) : r());
       const L = range(layer.length, r), bend = range(layer.bend ?? 0, r), w = range(layer.width ?? 0, r), twist = (r() - 0.5) * (layer.twist ?? 0);
       const keep = i % lod.step === 0, segs = Math.max(2, Math.round((layer.segments ?? 5) * lod.seg));
+      if (layer.type === 'pads') { // flytblad: ingen kurva, ligger platt på ytan
+        const pr = range(layer.radius, r), rot = r() * Math.PI * 2;
+        if (keep) pad(key, o, pr, rot, (layer.notch ?? 30) * DEG, Math.max(6, Math.round((layer.segments ?? 12) * lod.seg)));
+        continue;
+      }
       const pts = curve(o, lean * DEG, phi, L + SINK, bend, segs);
       if (layer.type === 'blades') {
         if (keep) { blade(key, pts, w * Math.sqrt(lod.step), { shape: layer.shape, fold: lod.step >= 4 ? 0 : layer.fold ?? 0.4, twist }); bases.push(o); }

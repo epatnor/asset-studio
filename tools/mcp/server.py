@@ -181,7 +181,7 @@ def create_plant(name: str, preset: str = "grass_tuft", seed: int = 0, params: d
     """Skapa en växt för mark och äng som glTF (3 LOD) i assets/plants/<name>/: gräsknippen, vass, säd och blommor.
 
     preset: grass_tuft, grass_tall, grass_seeded, feather_grass, reed, cattail, wheat, barley, daisy, poppy,
-      buttercup, tulip, cornflower, lavender, lupine (se tools/plants/plants.json).
+      buttercup, tulip, cornflower, lavender, lupine, water_lily, pondweed (se tools/plants/plants.json).
     params: överstyr arten, t.ex. {"scale": 1.3} eller {"colors": {"petal": "#F08CB0"}}.
     Vanligt gräs i stora mängder är klientens gräsfält, inte en modell.
     Svaret har "checks" (rötter i marken, delar fästa vid stjälken, vind hel, budget).

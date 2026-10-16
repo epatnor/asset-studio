@@ -19,6 +19,7 @@ ROWS = [
     ("Svampar, stubbar och marktäcke", ["fly_agaric", "porcini", "chanterelle", "stump", "mossy_stump", "leafpile", "creeper", "ivy"]),
     ("Gräs, vass och säd", ["grass_tuft", "grass_tall", "grass_seeded", "feather_grass", "reed", "cattail", "wheat", "barley"]),
     ("Blommor", ["daisy", "poppy", "buttercup", "tulip", "cornflower", "lavender", "lupine"]),
+    ("Vattenväxter", ["water_lily", "pondweed"]),
 ]
 
 items = []

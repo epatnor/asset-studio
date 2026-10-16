@@ -4,7 +4,7 @@
 
 Receptfält (alla utom name är valfria):
   preset   en nyckel i tools/plants/plants.json: grass_tuft, grass_tall, grass_seeded, feather_grass,
-           reed, cattail, wheat, barley, daisy, poppy, buttercup, tulip, cornflower, lavender, lupine
+           reed, cattail, wheat, barley, daisy, poppy, buttercup, tulip, cornflower, lavender, lupine, water_lily, pondweed
   seed     samma recept ger samma växt
   params   överstyr artens fält, t.ex. {"scale": 1.3} eller {"colors": {"petal": "#F08CB0"}}
 

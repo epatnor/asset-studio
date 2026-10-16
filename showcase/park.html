@@ -130,7 +130,7 @@ const noise2 = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.09 + Math.sin(z * 0.07) * 2
 W.setShadowArea(new THREE.Vector3(0, 0, 0), 70);
 
 // --- Placering med regler ---
-const catalog = await (await fetch('catalog.json')).json();
+const catalog = await (await fetch('catalog.json', { cache: 'no-cache' })).json();
 const items = catalog.rows.flatMap((r) => r.items);
 const bySpecies = (list) => items.filter((i) => list.includes(i.species));
 const groups = {
@@ -280,10 +280,12 @@ for (const it of plantItems) plantModels.set(it.species, await W.loadModel(it.mo
 const plantPlaces = new Map();
 const addPlant = (species, x, z, scale = 1) => {
   if (!plantModels.has(species) || blocked(x, z)) return;
-  const w = terrain.waterAt(x, z), wetPlant = species === 'reed' || species === 'cattail';
-  if (wetPlant ? !w || w.wet < 0.05 || w.depth > 0.45 : !dry(x, z)) return; // vass och kaveldun i strandkanten, inget annat i vattnet
+  const w = terrain.waterAt(x, z), wetPlant = species === 'reed' || species === 'cattail', aquatic = species === 'water_lily' || species === 'pondweed';
+  if (aquatic) { if (!w?.inside || w.depth < 0.35) return; } // näckros och nate i öppet vatten
+  else if (wetPlant ? !w || w.wet < 0.05 || w.depth > 0.45 : !dry(x, z)) return; // vass och kaveldun i strandkanten, inget annat i vattnet
+  const y = species === 'water_lily' ? w.level : heightAt(x, z); // näckrosen flyter på ytan
   if (!plantPlaces.has(species)) plantPlaces.set(species, []);
-  plantPlaces.get(species).push({ x, y: heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z) });
+  plantPlaces.get(species).push({ x, y, z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z) });
 };
 for (const d of drifts) {
   const ca = Math.cos(d.angle), sa = Math.sin(d.angle), cell = 0.55;
@@ -316,6 +318,10 @@ for (let c = 0; c < 9; c++) {
     const [x, z] = pond.shoreAt(a0 + (rnd() - 0.5) * 0.45, 0.84 + rnd() * 0.32);
     addPlant(species, x, z);
   }
+}
+for (let i = 0; i < 40; i++) { // näckrosor i små grupper, nate under ytan
+  const [x, z] = pond.shoreAt(rnd() * Math.PI * 2, 0.2 + rnd() * 0.65);
+  addPlant(i % 3 ? 'water_lily' : 'pondweed', x, z);
 }
 for (const s of terrain.bodies[1].S) if (rnd() < 0.18) { // tuvor av vass längs bäcken
   const side = rnd() < 0.5 ? -1 : 1, o = s.w * (0.8 + rnd() * 0.5) * side;

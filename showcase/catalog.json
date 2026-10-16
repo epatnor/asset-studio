@@ -540,6 +540,27 @@
           "model": "../assets/plants/lupine1/lupine1.gltf"
         }
       ]
+    },
+    {
+      "title": "Vattenväxter",
+      "items": [
+        {
+          "name": "water_lily1",
+          "species": "water_lily",
+          "label": "water_lily1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/water_lily1/water_lily1.gltf"
+        },
+        {
+          "name": "pondweed1",
+          "species": "pondweed",
+          "label": "pondweed1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/pondweed1/pondweed1.gltf"
+        }
+      ]
     }
   ]
 }
