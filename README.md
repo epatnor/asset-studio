@@ -1,3 +1,5 @@
+![Tinkertown](docs/banner.jpg)
+
 # Tinkertown
 
 En speleditor där man spelar hela tiden. WASD, mouselook, spring, flyg, interagera och attack finns från start, och varje del av världen kan genereras inifrån editorn.
