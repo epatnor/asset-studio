@@ -1,0 +1,309 @@
+{
+  "rows": [
+    {
+      "title": "Lövträd",
+      "items": [
+        {
+          "name": "oak_autumn",
+          "species": "oak",
+          "label": "oak_autumn",
+          "tint": "#E08A2E",
+          "height": 9,
+          "glb": "../assets/trees/oak_autumn/oak_autumn.glb"
+        },
+        {
+          "name": "oak_spring",
+          "species": "oak",
+          "label": "oak_spring",
+          "tint": "#A6D85E",
+          "height": 9,
+          "glb": "../assets/trees/oak_spring/oak_spring.glb"
+        },
+        {
+          "name": "oak_v2",
+          "species": "oak",
+          "label": "oak_v2",
+          "tint": null,
+          "height": 9,
+          "glb": "../assets/trees/oak_v2/oak_v2.glb"
+        },
+        {
+          "name": "maple_v2",
+          "species": "maple",
+          "label": "maple_v2",
+          "tint": null,
+          "height": 9,
+          "glb": "../assets/trees/maple_v2/maple_v2.glb"
+        },
+        {
+          "name": "ash_v2",
+          "species": "ash",
+          "label": "ash_v2",
+          "tint": null,
+          "height": 10,
+          "glb": "../assets/trees/ash_v2/ash_v2.glb"
+        },
+        {
+          "name": "aspen_v2",
+          "species": "aspen",
+          "label": "aspen_v2",
+          "tint": null,
+          "height": 11,
+          "glb": "../assets/trees/aspen_v2/aspen_v2.glb"
+        },
+        {
+          "name": "birch_v2",
+          "species": "birch",
+          "label": "birch_v2",
+          "tint": null,
+          "height": 11,
+          "glb": "../assets/trees/birch_v2/birch_v2.glb"
+        },
+        {
+          "name": "cherry_v2",
+          "species": "cherry",
+          "label": "cherry_v2",
+          "tint": null,
+          "height": 7,
+          "glb": "../assets/trees/cherry_v2/cherry_v2.glb"
+        }
+      ]
+    },
+    {
+      "title": "Speciella träd",
+      "items": [
+        {
+          "name": "willow_v2",
+          "species": "willow",
+          "label": "willow_v2",
+          "tint": null,
+          "height": 9,
+          "glb": "../assets/trees/willow_v2/willow_v2.glb"
+        },
+        {
+          "name": "acacia_v2",
+          "species": "acacia",
+          "label": "acacia_v2",
+          "tint": null,
+          "height": 8,
+          "glb": "../assets/trees/acacia_v2/acacia_v2.glb"
+        },
+        {
+          "name": "cypress_v2",
+          "species": "cypress",
+          "label": "cypress_v2",
+          "tint": null,
+          "height": 10,
+          "glb": "../assets/trees/cypress_v2/cypress_v2.glb"
+        },
+        {
+          "name": "jpine_v2",
+          "species": "jpine",
+          "label": "jpine_v2",
+          "tint": null,
+          "height": 7,
+          "glb": "../assets/trees/jpine_v2/jpine_v2.glb"
+        },
+        {
+          "name": "palm_v2",
+          "species": "palm",
+          "label": "palm_v2",
+          "tint": null,
+          "height": 10,
+          "glb": "../assets/trees/palm_v2/palm_v2.glb"
+        },
+        {
+          "name": "deadtree_v2",
+          "species": "deadtree",
+          "label": "deadtree_v2",
+          "tint": null,
+          "height": 8,
+          "glb": "../assets/trees/deadtree_v2/deadtree_v2.glb"
+        }
+      ]
+    },
+    {
+      "title": "Barrträd",
+      "items": [
+        {
+          "name": "fir_small",
+          "species": "pine",
+          "label": "fir_small",
+          "tint": null,
+          "height": 6,
+          "glb": "../assets/trees/fir_small/fir_small.glb"
+        },
+        {
+          "name": "pine_solid",
+          "species": "pine",
+          "label": "pine_solid",
+          "tint": null,
+          "height": 12,
+          "glb": "../assets/trees/pine_solid/pine_solid.glb"
+        },
+        {
+          "name": "pine_v2",
+          "species": "pine",
+          "label": "pine_v2",
+          "tint": null,
+          "height": 12,
+          "glb": "../assets/trees/pine_v2/pine_v2.glb"
+        }
+      ]
+    },
+    {
+      "title": "Buskar",
+      "items": [
+        {
+          "name": "bush1_v2",
+          "species": "bush",
+          "label": "bush1_v2",
+          "tint": null,
+          "height": 1.3,
+          "glb": "../assets/trees/bush1_v2/bush1_v2.glb"
+        },
+        {
+          "name": "bush2_v2",
+          "species": "bush",
+          "label": "bush2_v2",
+          "tint": null,
+          "height": 1.0,
+          "glb": "../assets/trees/bush2_v2/bush2_v2.glb"
+        },
+        {
+          "name": "shrub_v2",
+          "species": "shrub",
+          "label": "shrub_v2",
+          "tint": null,
+          "height": 2.4,
+          "glb": "../assets/trees/shrub_v2/shrub_v2.glb"
+        },
+        {
+          "name": "ballbush_small",
+          "species": "ballbush",
+          "label": "ballbush_small",
+          "tint": null,
+          "height": 0.7,
+          "glb": "../assets/trees/ballbush_small/ballbush_small.glb"
+        },
+        {
+          "name": "ballbush_v2",
+          "species": "ballbush",
+          "label": "ballbush_v2",
+          "tint": null,
+          "height": 1.2,
+          "glb": "../assets/trees/ballbush_v2/ballbush_v2.glb"
+        },
+        {
+          "name": "moundbush_v2",
+          "species": "moundbush",
+          "label": "moundbush_v2",
+          "tint": null,
+          "height": 1.0,
+          "glb": "../assets/trees/moundbush_v2/moundbush_v2.glb"
+        }
+      ]
+    },
+    {
+      "title": "Bladkupoler",
+      "items": [
+        {
+          "name": "grid_1",
+          "species": "leafbush",
+          "label": "grid_1",
+          "tint": "#7CC24A",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_1/grid_1.glb"
+        },
+        {
+          "name": "grid_4",
+          "species": "leafbush",
+          "label": "grid_4",
+          "tint": "#B6D86A",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_4/grid_4.glb"
+        },
+        {
+          "name": "grid_7",
+          "species": "leafbush",
+          "label": "grid_7",
+          "tint": "#3F9E47",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_7/grid_7.glb"
+        },
+        {
+          "name": "leafbush_v2",
+          "species": "leafbush",
+          "label": "leafbush_v2",
+          "tint": null,
+          "height": 0.9,
+          "glb": "../assets/trees/leafbush_v2/leafbush_v2.glb"
+        },
+        {
+          "name": "grid_2",
+          "species": "petalbush",
+          "label": "grid_2",
+          "tint": "#9BD45E",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_2/grid_2.glb"
+        },
+        {
+          "name": "grid_5",
+          "species": "petalbush",
+          "label": "grid_5",
+          "tint": "#58B03C",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_5/grid_5.glb"
+        },
+        {
+          "name": "grid_8",
+          "species": "petalbush",
+          "label": "grid_8",
+          "tint": "#6DBE4E",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_8/grid_8.glb"
+        },
+        {
+          "name": "petalbush_v2",
+          "species": "petalbush",
+          "label": "petalbush_v2",
+          "tint": null,
+          "height": 0.8,
+          "glb": "../assets/trees/petalbush_v2/petalbush_v2.glb"
+        },
+        {
+          "name": "grid_3",
+          "species": "serratebush",
+          "label": "grid_3",
+          "tint": "#4FA845",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_3/grid_3.glb"
+        },
+        {
+          "name": "grid_6",
+          "species": "serratebush",
+          "label": "grid_6",
+          "tint": "#8FC85A",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_6/grid_6.glb"
+        },
+        {
+          "name": "grid_9",
+          "species": "serratebush",
+          "label": "grid_9",
+          "tint": "#A9D25C",
+          "height": 0.9,
+          "glb": "../assets/trees/grid_9/grid_9.glb"
+        },
+        {
+          "name": "serratebush_v2",
+          "species": "serratebush",
+          "label": "serratebush_v2",
+          "tint": null,
+          "height": 1.0,
+          "glb": "../assets/trees/serratebush_v2/serratebush_v2.glb"
+        }
+      ]
+    }
+  ]
+}

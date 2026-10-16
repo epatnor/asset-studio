@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – växtgeneratorn</title>
+<style>
+  :root { --ink: #1f2a1c; --panel: rgba(255, 255, 255, 0.82); --accent: #4e8a2f; }
+  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  .panel { position: fixed; top: 16px; left: 16px; max-width: min(360px, calc(100vw - 32px)); background: var(--panel);
+           backdrop-filter: blur(6px); border-radius: 12px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); }
+  .panel h1 { margin: 0 0 4px; font-size: 18px; }
+  .panel p { margin: 0 0 10px; font-size: 13px; opacity: 0.8; }
+  .panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+  .panel select, .panel input[type=range] { flex: 1; }
+  #status { font-size: 12px; opacity: 0.7; }
+  .tag { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.85); color: var(--ink);
+         white-space: nowrap; pointer-events: none; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15); }
+  .row-title { font-size: 15px; font-weight: 700; padding: 4px 10px; border-radius: 8px; background: var(--accent); color: #fff;
+               white-space: nowrap; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Tinkertown · växtgeneratorn</h1>
+  <p>Allt nedan är genererat från recept. Dra för att rotera, scrolla för att zooma.</p>
+  <label>Detaljnivå <select id="lod"><option value="0">LOD0 (nära)</option><option value="1">LOD1</option><option value="2">LOD2 (långt bort)</option></select></label>
+  <label>Vind <input id="wind" type="range" min="0" max="2" step="0.05" value="0.6"></label>
+  <label><input id="labels" type="checkbox" checked> Visa namn</label>
+  <div id="status">Laddar…</div>
+  <p id="hint" style="margin:8px 0 0">Klicka på scenen för att gå runt: <b>WASD</b> gå, <b>Shift</b> spring, <b>Space</b> hopp, <b>mus</b> titta, <b>scroll</b> zoom. <b>Esc</b> släpper musen, <b>Tab</b> växlar till översikt.</p>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.AgXToneMapping; // stilguiden: AgX
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+Object.assign(labelRenderer.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none' });
+app.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+const SKY = new THREE.Color('#8fbdf0'), HORIZON = new THREE.Color('#d9ecff');
+scene.fog = new THREE.Fog(HORIZON, 60, 220);
+
+// Himmel: gradient från horisont till zenit på en stor sfär
+const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: SKY }, bottom: { value: HORIZON } },
+  vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(normalize(vP).y * 1.6, 0., 1.); gl_FragColor = vec4(mix(bottom, top, h), 1.); }',
+}));
+scene.add(sky);
+
+// Ljus enligt stilguiden: varm sol ~45°, kall himmel som fyllning
+scene.add(new THREE.HemisphereLight('#cfe6ff', '#5d7a3a', 1.1));
+const sun = new THREE.DirectionalLight('#ffe9c7', 3.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64), new THREE.MeshStandardMaterial({ color: '#6fa046', roughness: 1 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+// Enkel vind: läser generatorns _WIND-attribut (0 vid stammen, 1 i spetsarna)
+const windUniforms = { uTime: { value: 0 }, uWind: { value: 0.6 } };
+function addWind(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = windUniforms.uTime;
+    shader.uniforms.uWind = windUniforms.uWind;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float _wind;\nuniform float uTime;\nuniform float uWind;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        float ph = wp.x * 0.35 + wp.z * 0.25;
+        float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
+        transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;`);
+  };
+  material.needsUpdate = true;
+}
+
+// --- RPG-läge: spelarfigur i tredje person, kamera bakom med mouselook ---
+const colliders = [];
+const player = new THREE.Group();
+{
+  const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.7, 6, 14), mat('#3d6fb6'));
+  body.position.y = 0.65;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 14), mat('#f1c9a5'));
+  head.position.y = 1.38;
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.35, 16), mat('#c0533a'));
+  hat.position.y = 1.66;
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), mat('#e3a987'));
+  nose.position.set(0, 1.38, -0.21); // framåt = -z
+  for (const o of [body, head, hat, nose]) { o.castShadow = true; player.add(o); }
+  player.visible = false;
+  scene.add(player);
+}
+const rpg = { active: false, yaw: 0, pitch: 0.28, dist: 5, vel: new THREE.Vector3(), onGround: true, keys: new Set() };
+const HEAD = new THREE.Vector3(0, 1.45, 0);
+window.__tinker = { player, rpg, setMode }; // för felsökning och automatiska tester
+
+function setMode(active) {
+  rpg.active = active;
+  player.visible = active;
+  controls.enabled = !active;
+  if (!active && document.pointerLockElement) document.exitPointerLock();
+}
+renderer.domElement.addEventListener('click', () => {
+  if (!rpg.active) setMode(true);
+  renderer.domElement.requestPointerLock();
+});
+addEventListener('mousemove', (e) => {
+  if (!rpg.active || document.pointerLockElement !== renderer.domElement) return;
+  rpg.yaw -= e.movementX * 0.0025;
+  rpg.pitch = THREE.MathUtils.clamp(rpg.pitch + e.movementY * 0.0022, -0.35, 1.25);
+});
+addEventListener('wheel', (e) => { if (rpg.active) rpg.dist = THREE.MathUtils.clamp(rpg.dist + e.deltaY * 0.004, 2, 14); }, { passive: true });
+addEventListener('keydown', (e) => {
+  if (e.code === 'Tab') { e.preventDefault(); setMode(!rpg.active); return; }
+  rpg.keys.add(e.code);
+  if (e.code === 'Space' && rpg.active && rpg.onGround) { rpg.vel.y = 5.2; rpg.onGround = false; }
+});
+addEventListener('keyup', (e) => rpg.keys.delete(e.code));
+
+const tmp = new THREE.Vector3();
+function updateRpg(dt) {
+  const k = rpg.keys;
+  // Rörelse relativt kamerans riktning (yaw); Shift springer
+  const fwd = new THREE.Vector3(-Math.sin(rpg.yaw), 0, -Math.cos(rpg.yaw));
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const move = new THREE.Vector3();
+  if (k.has('KeyW')) move.add(fwd);
+  if (k.has('KeyS')) move.sub(fwd);
+  if (k.has('KeyD')) move.add(right);
+  if (k.has('KeyA')) move.sub(right);
+  const speed = k.has('ShiftLeft') || k.has('ShiftRight') ? 7.5 : 3.2;
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed * dt);
+    player.position.add(move);
+    // Figuren vänder sig mjukt mot rörelseriktningen
+    const target = Math.atan2(-move.x, -move.z);
+    let d = target - player.rotation.y;
+    d = Math.atan2(Math.sin(d), Math.cos(d));
+    player.rotation.y += d * Math.min(1, dt * 12);
+  }
+  // Hopp och gravitation
+  rpg.vel.y -= 14 * dt;
+  player.position.y += rpg.vel.y * dt;
+  if (player.position.y <= 0) { player.position.y = 0; rpg.vel.y = 0; rpg.onGround = true; }
+  // Kollision mot stammar och buskar: knuffa ut ur cirklarna (spelarens radie 0,35 m)
+  for (const c of colliders) {
+    const dx = player.position.x - c.x, dz = player.position.z - c.z;
+    const min = c.r + 0.35, d2 = dx * dx + dz * dz;
+    if (d2 < min * min && d2 > 1e-8) { const d = Math.sqrt(d2); player.position.x = c.x + (dx / d) * min; player.position.z = c.z + (dz / d) * min; }
+  }
+  // Kamera bakom och ovanför, efter yaw/pitch; aldrig under marken
+  const head = tmp.copy(player.position).add(HEAD);
+  camera.position.set(
+    head.x + Math.sin(rpg.yaw) * Math.cos(rpg.pitch) * rpg.dist,
+    Math.max(0.4, head.y + Math.sin(rpg.pitch) * rpg.dist),
+    head.z + Math.cos(rpg.yaw) * Math.cos(rpg.pitch) * rpg.dist,
+  );
+  camera.lookAt(head);
+}
+
+const loader = new GLTFLoader();
+const placed = [];
+const status = document.getElementById('status');
+
+function setLod(n) {
+  for (const { root } of placed) root.traverse((o) => {
+    const m = o.name.match(/_LOD(\d)$/);
+    if (m) o.visible = Number(m[1]) === n;
+  });
+}
+
+function label(text, cls, pos, parent, tint) {
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  if (tint) { // tintade varianter: en färgprick i stället för hex-koden
+    const dot = document.createElement('span');
+    Object.assign(dot.style, { display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: tint, marginLeft: '5px' });
+    div.appendChild(dot);
+  }
+  const obj = new CSS2DObject(div);
+  obj.position.copy(pos);
+  parent.add(obj);
+  return obj;
+}
+
+async function main() {
+  const catalog = await (await fetch('catalog.json')).json();
+  // Små växter längst fram, höga träd längst bak
+  const rows = [...catalog.rows].reverse();
+  let z = 0, total = 0, loaded = 0;
+  rows.forEach((r) => (total += r.items.length));
+  const bounds = new THREE.Box3();
+  for (const row of rows) {
+    const models = await Promise.all(row.items.map(async (it) => {
+      const gltf = await loader.loadAsync(it.glb);
+      status.textContent = `Laddar ${++loaded} / ${total}`;
+      return { it, root: gltf.scene };
+    }));
+    // Mät LOD0 för varje modell och ställ dem på rad med luft emellan
+    let x = 0, depth = 0;
+    const row3d = new THREE.Group();
+    for (const m of models) {
+      m.root.traverse((o) => {
+        if (o.isMesh) {
+          o.castShadow = o.receiveShadow = true;
+          addWind(o.material);
+        }
+        const lod = o.name.match(/_LOD(\d)$/);
+        if (lod) o.visible = lod[1] === '0';
+      });
+      const box = new THREE.Box3().setFromObject(m.root, true);
+      const size = box.getSize(new THREE.Vector3());
+      const w = Math.max(size.x, 0.8);
+      m.root.position.set(x + w / 2 - (box.min.x + box.max.x) / 2, 0, -(box.min.z + box.max.z) / 2);
+      row3d.add(m.root);
+      m.labelObj = label(m.it.label, 'tag', new THREE.Vector3(m.root.position.x, 0.05, size.z / 2 + 0.6), row3d, m.it.tint);
+      x += w + Math.max(1.8, w * 0.25); // små växter får mer luft så att etiketterna inte krockar
+      depth = Math.max(depth, size.z);
+      // Kollision: stammen för träd (ungefär), större delen av formen för stamlösa buskar
+      let hasTrunk = false;
+      m.root.traverse((o) => { if (o.isMesh && /_trunk_LOD0$/.test(o.name)) hasTrunk = true; });
+      m.radius = hasTrunk ? THREE.MathUtils.clamp(size.y * 0.035, 0.25, 0.7) : Math.min(size.x, size.z) * 0.42;
+      placed.push(m);
+    }
+    row3d.position.set(-x / 2, 0, z - depth / 2);
+    scene.add(row3d);
+    row3d.updateMatrixWorld(true);
+    for (const m of models) { const p = new THREE.Vector3(); m.root.getWorldPosition(p); colliders.push({ x: p.x, z: p.z, r: m.radius }); }
+    row3d.userData.title = label(row.title, 'row-title', new THREE.Vector3(-4, 0.2, 0), row3d);
+    bounds.expandByObject(row3d);
+    z -= depth + 6;
+  }
+
+  // Kamera och skuggkamera anpassade till hela utställningen
+  const c = bounds.getCenter(new THREE.Vector3()), s = bounds.getSize(new THREE.Vector3());
+  controls.target.set(c.x, s.y * 0.25, c.z);
+  camera.position.set(c.x + s.x * 0.15, Math.max(s.x, s.z) * 0.45, bounds.max.z + Math.max(s.x, s.z) * 0.55);
+  const r = Math.max(s.x, s.z) * 0.6;
+  sun.position.set(c.x + r * 0.6, r * 1.1, c.z + r * 0.8);
+  sun.target.position.copy(c);
+  Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: r * 4 });
+  sun.shadow.camera.updateProjectionMatrix();
+  status.textContent = `${placed.length} växter i ${rows.length} rader`;
+  player.position.set(c.x, 0, bounds.max.z + 6); // startar framför utställningen, tittar in mot raderna
+}
+
+document.getElementById('lod').onchange = (e) => setLod(Number(e.target.value));
+document.getElementById('wind').oninput = (e) => (windUniforms.uWind.value = Number(e.target.value));
+document.getElementById('labels').onchange = (e) => (labelRenderer.domElement.style.display = e.target.checked ? '' : 'none');
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  windUniforms.uTime.value = clock.elapsedTime;
+  if (rpg.active) updateRpg(dt); else controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+});
+main().catch((e) => { status.textContent = 'Fel: ' + e.message; console.error(e); });
+</script>
+</body>
+</html>

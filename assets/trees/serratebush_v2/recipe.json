@@ -4,6 +4,6 @@
   "seed": 3,
   "height": 1.0,
   "bark": "bark_painted",
-  "leaves": "solid",
+  "leaves": "leaf_surface",
   "leaf_mass": "leaf_mass"
 }

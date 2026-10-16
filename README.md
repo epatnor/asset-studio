@@ -54,6 +54,20 @@ docs/concept/     konceptbilder
 build/            mellanfiler (OBJ m.m.), ignoreras av git
 ```
 
+## Visningssida
+
+`showcase/index.html` visar allt generatorerna har gjort, på rader i en Three.js-scen med skuggor, vind (från `_WIND`) och LOD-växling. Bygg katalogen och starta en lokal server:
+
+```bash
+python3 -I tools/showcase/build_catalog.py
+```
+
+```bash
+python3 -m http.server 8765 --bind 127.0.0.1
+```
+
+Öppna sedan http://localhost:8765/showcase/index.html.
+
 ## Kom igång
 
 Krav: Node 18+, Blender 5.2 (Flatpak räcker), uv, och ComfyUI på `127.0.0.1:8188` för texturer.
