@@ -21,9 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "texture"))
 import post_textures  # noqa: E402
 
-# Gemensam stil så att alla texturer hör ihop visuellt
-HOUSE_STYLE = ("stylized hand-painted fantasy game texture, painterly brush strokes, "
-               "bold clean shapes, saturated warm and cool color contrast")
+STYLE_FILE = ROOT / "tools" / "style.json"  # se docs/style-guide.md
 TREE_PRESETS = [f"{t}_{s}" for t in ("oak", "pine", "aspen", "ash") for s in ("small", "medium", "large")] + \
                ["bush_1", "bush_2", "bush_3"]
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -80,7 +78,8 @@ def generate_texture(name: str, prompt: str, kind: str = "tile", size: int = 102
     kind: "tile" = sömlös yta (bark, sten, mark), beskriv den som platt, uppifrån, fyller bilden.
           "cutout" = sprite med alfa (löv, blommor), beskriv den som isolerad på vit bakgrund.
           "raw" = bilden som den är.
-    house_style: lägg till husets stil så att texturen matchar resten av världen.
+    house_style: lägg till husets stil (tools/style.json) så att texturen matchar resten av världen.
+    Beskriv bara materialet i prompt; stilen sköts av house_style. Negativa prompter har ingen effekt.
     Originalet sparas i assets/textures/raw/<name>_raw.png.
     """
     _check_name(name)
@@ -88,11 +87,10 @@ def generate_texture(name: str, prompt: str, kind: str = "tile", size: int = 102
         raise ValueError('kind måste vara "tile", "cutout" eller "raw"')
     if not 256 <= size <= 2048:
         raise ValueError("size: 256–2048")
-    full = f"{prompt}, {HOUSE_STYLE}" if house_style else prompt
-    if kind == "tile":
-        full += ", flat orthographic view filling the entire frame, even diffuse lighting, no shadows, no perspective"
-    elif kind == "cutout":
-        full += ", isolated on a pure flat white background, no shadow, no ground"
+    # Läses vid varje anrop så att ändringar i style.json slår igenom utan omstart
+    style = json.loads(STYLE_FILE.read_text())["prompt"]
+    parts = [prompt, style["house_style"] if house_style else "", style["kinds"][kind]]
+    full = ", ".join(p for p in parts if p)
     raw = ROOT / "assets" / "textures" / "raw" / f"{name}_raw.png"
     raw.parent.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, "-I", "tools/texture/krea2.py", full, str(size), str(size), str(raw)]

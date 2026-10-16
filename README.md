@@ -9,7 +9,7 @@ Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna e
 1. **Världen är data.** Allt sparas som recept (parametrar + seed), inte som färdiga meshar. Små filer, reproducerbart, och AI:n kan ändra "gör träden högre" genom att ändra en siffra.
 2. **Verktyg med höga verb.** `place_forest`, `carve_river`, `create_tree`, inte `create_vertex`.
 3. **Korta svar till AI:n.** Verktyg svarar med en rad JSON (id, antal, sökväg), aldrig med geometri. Bilder bara när det behövs.
-4. **Enhetlig stil.** Gemensamma texturer och stilpresets som alla generatorer läser.
+4. **Enhetlig stil.** Stiliserad, halvrealistisk mid-poly i stil med Overwatch och Fortnite. Se [stilguiden](docs/style-guide.md); värden som verktygen läser finns i [`tools/style.json`](tools/style.json).
 5. **Bygg själv bara när inget bra gratis verktyg finns.**
 
 ## Status

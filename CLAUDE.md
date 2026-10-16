@@ -2,6 +2,10 @@
 
 Läs README.md för visionen. Det viktigaste här är tokenekonomin: **låt verktygen göra jobbet.**
 
+## Stil
+
+Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stiliserad PBR (inte cel-shading), chunky former med bevel + weighted normals, låg-frekventa målade texturer, klumpiga trädkronor med canopy-normaler. Verktyg läser stilvärden ur `tools/style.json` i stället för att hårdkoda dem. Läs guiden innan ett nytt verktyg byggs; läs den inte vid varje vanligt verktygsanrop.
+
 ## Regler
 
 - Skapa aldrig geometri eller texturer "för hand" i tokens. Använd eller bygg ett verktyg.
