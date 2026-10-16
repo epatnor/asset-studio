@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tinkertown": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "--script", "tools/mcp/server.py"]
+    }
+  }
+}
