@@ -55,6 +55,7 @@
 <script type="module">
 import { createWorld } from './world.js';
 import { createGrassField, instancePlants } from './grass.js';
+import { createPond } from './water.js';
 const W = createWorld(document.getElementById('app'), { fog: [80, 280] });
 const { THREE, scene, camera, controls, fp } = W;
 window.__tinker = W; // för felsökning och automatiska tester
@@ -66,12 +67,11 @@ const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
 
 // --- Terräng: mjuka kullar, något plattare i mitten ---
 const SIZE = 120, SEG = 240;
-function heightAt(x, z) {
+function baseHeight(x, z) {
   const r = Math.hypot(x, z) / (SIZE / 2);
   const hills = 1.3 * Math.sin(x * 0.05 + 1.1) * Math.cos(z * 0.045 - 0.4) + 0.6 * Math.sin(x * 0.11 + z * 0.07) + 0.25 * Math.sin(x * 0.23 - z * 0.19);
   return hills * (0.35 + 0.65 * Math.min(1, r * 1.4)) + Math.max(0, r - 0.8) * 6; // höjs mot kanten, som en skål
 }
-fp.heightAt = heightAt;
 
 // --- Stigar: slingrande splines, plana mot terrängen ---
 const pathDefs = [
@@ -86,16 +86,44 @@ for (const def of pathDefs) {
 }
 const pathDist = (x, z) => { let m = Infinity; for (const p of pathPts) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < m) m = d; } return Math.sqrt(m); };
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// --- Damm: en oregelbunden skål på en plan, öppen plats en bit från stigarna ---
+const pond = (() => {
+  let best = null;
+  for (let x = -36; x <= 36; x += 4) for (let z = -36; z <= 36; z += 4) {
+    if (Math.hypot(x, z) > 38) continue;
+    const pd = pathDist(x, z);
+    if (pd < 11) continue;
+    const slope = Math.abs(baseHeight(x + 4, z) - baseHeight(x - 4, z)) + Math.abs(baseHeight(x, z + 4) - baseHeight(x, z - 4));
+    const score = Math.min(pd, 16) - slope * 6;
+    if (!best || score > best.score) best = { x, z, score };
+  }
+  const rim = baseHeight(best.x, best.z);
+  return { x: best.x, z: best.z, R: 7, depth: 1.4, rim, level: rim - 0.18 };
+})();
+// 0 i dammens mitt, 1 vid den (ungefärliga) strandlinjen; kanten slingrar sig
+function pondE(x, z) {
+  const dx = x - pond.x, dz = z - pond.z, a = Math.atan2(dz, dx);
+  return Math.hypot(dx, dz) / (pond.R * (1 + 0.16 * Math.sin(3 * a + 0.7) + 0.09 * Math.sin(5 * a + 2.1)));
+}
+function heightAt(x, z) {
+  const h0 = baseHeight(x, z), e = pondE(x, z);
+  if (e > 1.7) return h0;
+  const flat = 1 - smooth(1.0, 1.7, e), bowl = e < 1 ? (1 - e * e) ** 0.8 : 0; // plant kring dammen, skål i mitten
+  return h0 + (pond.rim - h0) * flat - pond.depth * bowl;
+}
+fp.heightAt = (x, z) => Math.max(heightAt(x, z), pond.level - 0.55); // man vadar, men går inte under ytan
+
 const noise2 = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.09 + Math.sin(z * 0.07) * 2) + 0.25 * Math.sin(z * 0.08 - x * 0.03 + 1.7);
 
 const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
 geo.rotateX(-Math.PI / 2);
 const P = geo.attributes.position, N = P.count;
-const splat = new Float32Array(N * 4), pathW = new Float32Array(N);
+const splat = new Float32Array(N * 4), pathW = new Float32Array(N), pondW = new Float32Array(N);
 const uv = geo.attributes.uv;
 for (let i = 0; i < N; i++) {
   const x = P.getX(i), z = P.getZ(i);
   pathW[i] = 1 - smooth(1.0, 2.0, pathDist(x, z));
+  pondW[i] = 1 - smooth(0.92, 1.2, pondE(x, z)); // dammbotten och våt strand
   P.setY(i, heightAt(x, z) - pathW[i] * 0.06); // stigen ligger en aning nedtrampad
   uv.setXY(i, x / 3, z / 3);                    // en texturupprepning per 3 m
 }
@@ -110,20 +138,36 @@ const tex = (name) => new Promise((res) => tl.load(`../assets/textures/surface_$
   const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'); x.fillStyle = fallback[name]; x.fillRect(0, 0, 4, 4);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; res(t);
 }));
-const [tGrass, tMeadow, tForest, tPath] = await Promise.all(['grass', 'meadow', 'forestfloor', 'path'].map(tex));
+const [tGrass, tMeadow, tForest, tPath, tRiver] = await Promise.all(['grass', 'meadow', 'forestfloor', 'path', 'riverbed'].map(tex));
 const groundMat = new THREE.MeshStandardMaterial({ map: tGrass, roughness: 1 });
 groundMat.onBeforeCompile = (sh) => {
-  Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath } });
-  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;')
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;');
-  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tMeadow, tForest, tPath;\nvarying vec4 vSplat;')
+  Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath }, tRiver: { value: tRiver },
+    uWater: { value: pond.level }, uTime: W.wind.uTime });
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 splat;\nattribute float pond;\nvarying vec4 vSplat;\nvarying float vPond, vWY;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vPond = pond; vWY = position.y;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+      uniform sampler2D tMeadow, tForest, tPath, tRiver;
+      uniform float uWater, uTime;
+      varying vec4 vSplat;
+      varying float vPond, vWY;
+      // Kaustik: ljusa, slingrande nät som rör sig över dammbotten
+      float caustic(vec2 p, float t) {
+        vec2 q = p + vec2(sin(p.y * 0.8 + t * 0.7), cos(p.x * 0.9 - t * 0.6)) * 0.6;
+        float a = abs(sin(q.x * 2.2 + t) * sin(q.y * 2.0 - t * 0.8)), b = abs(sin((q.x + q.y) * 1.6 - t * 1.1));
+        return pow(1.0 - min(a, b), 6.0);
+      }`)
     .replace('#include <map_fragment>', `
       // Mot synlig upprepning: blanda varje textur med sig själv i en annan skala och vridning
       vec2 uvB = mat2(0.8, -0.6, 0.6, 0.8) * vMapUv * 0.37 + 0.31;
       float k = 0.5 + 0.5 * sin(vMapUv.x * 0.7 + sin(vMapUv.y * 0.53) * 1.7);
       #define TEX2(t, s) mix(texture2D(t, vMapUv * s).rgb, texture2D(t, uvB * s).rgb, k * 0.55)
       vec3 cG = TEX2(map, 1.0), cM = TEX2(tMeadow, 0.9), cF = TEX2(tForest, 1.1), cP = TEX2(tPath, 1.3);
-      diffuseColor.rgb *= cG * vSplat.x + cM * vSplat.y + cF * vSplat.z + cP * vSplat.w;`);
+      diffuseColor.rgb *= cG * vSplat.x + cM * vSplat.y + cF * vSplat.z + cP * vSplat.w;
+      // Damm: flodbotten under vattnet, mörkare våt mark i kanten, kaustik och kall ton under ytan
+      float wet = smoothstep(0.0, 1.0, vPond), under = clamp((uWater - vWY) / 0.35, 0.0, 1.0) * wet; // bara i dammen, inte i andra sänkor
+      diffuseColor.rgb = mix(diffuseColor.rgb, TEX2(tRiver, 0.8), wet * smoothstep(-0.15, 0.05, uWater - vWY));
+      diffuseColor.rgb *= mix(1.0, 0.68, wet * (1.0 - under));
+      diffuseColor.rgb = diffuseColor.rgb * mix(vec3(1.0), vec3(0.72, 0.9, 0.95), under) + caustic(vMapUv * 3.0 * 1.2, uTime) * under * vec3(0.32, 0.38, 0.36);`);
 };
 const ground = new THREE.Mesh(geo, groundMat);
 ground.receiveShadow = true;
@@ -151,7 +195,7 @@ for (const g of Object.values(groups)) for (const it of g) {
 }
 
 const placedTrees = [], occupied = [];
-const free = (x, z, r) => occupied.every((o) => (o.x - x) ** 2 + (o.z - z) ** 2 > (o.r + r) ** 2);
+const free = (x, z, r) => pondE(x, z) > 1.25 + r / pond.R && occupied.every((o) => (o.x - x) ** 2 + (o.z - z) ** 2 > (o.r + r) ** 2);
 // Platta modeller utan stam (krypväxter, lövhögar, låga buskar) följer marken: varje vertex flyttas
 // vertikalt lika mycket som marken skiljer sig från höjden vid modellens fot. Stammar står kvar lodrätt.
 const _v = new THREE.Vector3(), _inv = new THREE.Matrix4();
@@ -234,6 +278,8 @@ function splatAt(x, z, p = 1 - smooth(1.0, 2.0, pathDist(x, z))) {
 }
 for (let i = 0; i < N; i++) splat.set(splatAt(P.getX(i), P.getZ(i), pathW[i]), i * 4);
 geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
+geo.setAttribute('pond', new THREE.BufferAttribute(pondW, 1));
+createPond(W, { heightAt, level: pond.level, center: new THREE.Vector3(pond.x, 0, pond.z), radius: pond.R * 1.3, inside: (x, z) => pondE(x, z) < 1.15 });
 
 const randomPoint = () => { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * (SIZE / 2 - 10); return [Math.cos(a) * d, Math.sin(a) * d]; };
 const flowers = ['daisy', 'poppy', 'buttercup', 'tulip', 'cornflower', 'lavender', 'lupine'];
@@ -261,7 +307,9 @@ const field = createGrassField(W, {
   size: SIZE - 10, heightAt, splatAt, textures: groundTex,
   densityAt: (x, z, s) => {
     if (Math.hypot(x, z) > SIZE / 2 - 6 || blocked(x, z)) return 0;
-    return (s[0] + s[1] * 0.95 + s[2] * 0.3) * (0.35 + 0.65 * bald(x, z)) * (1 - 0.8 * shadeAt(x, z)) * (1 - 0.35 * driftAt(x, z));
+    const shore = smooth(1.02, 1.3, pondE(x, z)); // inget gräs i vattnet, glest i den våta kanten
+    if (shore <= 0) return 0;
+    return (s[0] + s[1] * 0.95 + s[2] * 0.3) * (0.35 + 0.65 * bald(x, z)) * (1 - 0.8 * shadeAt(x, z)) * (1 - 0.35 * driftAt(x, z)) * shore;
   },
   heightScaleAt: (x, z, s) => {
     const d = pathDist(x, z), edge = smooth(1.4, 2.2, d) * (1 - smooth(2.6, 4.5, d)); // högre gräs längs stigkanten
@@ -276,6 +324,8 @@ for (const it of plantItems) plantModels.set(it.species, await W.loadModel(it.mo
 const plantPlaces = new Map();
 const addPlant = (species, x, z, scale = 1) => {
   if (!plantModels.has(species) || blocked(x, z)) return;
+  const e = pondE(x, z), wetPlant = species === 'reed' || species === 'cattail';
+  if (wetPlant ? e < 0.8 || e > 1.25 : e < 1.25) return; // vass och kaveldun i strandkanten, inget annat i dammen
   if (!plantPlaces.has(species)) plantPlaces.set(species, []);
   plantPlaces.get(species).push({ x, y: heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z) });
 };
@@ -303,13 +353,13 @@ for (let i = 0, tries = 0; i < 260 && tries < 20000; tries++) { // högt gräs l
   if (!edge || rnd() > 0.5) continue;
   addPlant(tall[Math.floor(rnd() * tall.length)], x, z); i++;
 }
-const hollows = [];
-for (let tries = 0; tries < 4000 && hollows.length < 5; tries++) { // vass och kaveldun i de lägsta sänkorna
-  const [x, z] = randomPoint();
-  if (heightAt(x, z) < -0.9 && pathDist(x, z) > 4 && hollows.every((h) => Math.hypot(h[0] - x, h[1] - z) > 12)) hollows.push([x, z]);
-}
-for (const [hx, hz] of hollows) for (let i = 0; i < 16; i++) {
-  const a = rnd() * 6.28, d = Math.sqrt(rnd()) * 3; addPlant(rnd() < 0.6 ? 'reed' : 'cattail', hx + Math.cos(a) * d, hz + Math.sin(a) * d);
+// Vass och kaveldun i klungor längs dammens kant, med luckor så att man ser vattnet
+for (let c = 0; c < 9; c++) {
+  const a0 = (c / 9) * Math.PI * 2 + rnd() * 0.5, species = rnd() < 0.55 ? 'reed' : 'cattail';
+  for (let i = 0; i < 9; i++) {
+    const a = a0 + (rnd() - 0.5) * 0.45, e = 0.84 + rnd() * 0.32, rr = pond.R * (1 + 0.16 * Math.sin(3 * a + 0.7) + 0.09 * Math.sin(5 * a + 2.1)) * e;
+    addPlant(species, pond.x + Math.cos(a) * rr, pond.z + Math.sin(a) * rr);
+  }
 }
 let fieldAt = null; // ett litet sädesfält på en öppen plats
 for (let tries = 0; tries < 4000 && !fieldAt; tries++) {
