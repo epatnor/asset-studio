@@ -31,6 +31,8 @@ Klienten pratar bara med servern via ett eget API. Den anropar aldrig verktyg di
 
 ## Status
 
+Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem och GUI, finns i [roadmap](docs/roadmap.md).
+
 | Område | Verktyg | Status |
 |---|---|---|
 | Träd | [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT) + Blender | Fungerar: recept → GLB |
