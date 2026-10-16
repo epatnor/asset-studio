@@ -1,0 +1,10 @@
+{
+  "name": "oak_autumn",
+  "preset": "oak_medium",
+  "seed": 42,
+  "height": 9,
+  "leaf_tint": "#E08A2E",
+  "bark": "bark_stylized_color",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "leaf_mass"
+}

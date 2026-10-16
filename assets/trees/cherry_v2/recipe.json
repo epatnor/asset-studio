@@ -1,0 +1,9 @@
+{
+  "name": "cherry_v2",
+  "preset": "cherry_medium",
+  "seed": 5,
+  "height": 7,
+  "bark": "bark_stylized_color",
+  "leaves": "blossom_atlas",
+  "leaf_mass": "blossom_mass"
+}

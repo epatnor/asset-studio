@@ -1,0 +1,9 @@
+{
+  "name": "aspen_v2",
+  "preset": "aspen_medium",
+  "seed": 7,
+  "height": 11,
+  "bark": "bark_stylized_color",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "leaf_mass"
+}

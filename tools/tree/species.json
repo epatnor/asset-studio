@@ -1,0 +1,484 @@
+{
+  "_doc": "Arter för trädgeneratorn (skeleton.mjs). Längder är relativa (stammen ~1) och hela trädet skalas till receptets höjd efteråt. Vinklar i grader från föräldergrenens riktning. count = [min, max]. photo = dragning uppåt (ljus), gravity = dragning nedåt, gnarl = slumpmässig krokighet per sektion. lenFalloff: grenar högre upp på föräldern blir kortare (1 = linjärt mot noll i toppen). Stilen (färger, texturer) styrs av style.json och receptet, inte här. leaf_tint: standardfärg för löven (\"palette:<namn>\" pekar på style.json, eller \"#RRGGBB\"); receptets leaf_tint vinner.",
+  "oak": {
+    "trunk": {
+      "length": 0.42,
+      "radius": 0.07,
+      "sections": 8,
+      "segments": 14,
+      "gnarl": 0.12,
+      "photo": 0.05,
+      "flare": 0.55,
+      "roots": 5,
+      "bend": 0.12,
+      "bendFreq": 1.4,
+      "rootAmp": 0.45,
+      "flareHeight": 0.08
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          7
+        ],
+        "start": 0.45,
+        "angle": [
+          48,
+          12
+        ],
+        "length": 1.05,
+        "lenFalloff": 0.35,
+        "radius": 0.62,
+        "gnarl": 0.22,
+        "photo": 0.18,
+        "gravity": 0.05,
+        "sections": 7,
+        "segments": 7
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          42,
+          12
+        ],
+        "length": 0.55,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.28,
+        "photo": 0.25,
+        "gravity": 0.03,
+        "sections": 5,
+        "segments": 5
+      },
+      {
+        "count": [
+          3,
+          4
+        ],
+        "start": 0.35,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.45,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.3,
+        "photo": 0.25,
+        "gravity": 0.02,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 10,
+      "fill": 1.7,
+      "union": 0.08,
+      "cell": 0.035,
+      "cards": 3800,
+      "cardSize": 0.05,
+      "bottom": 0.7,
+      "lump": 0.15,
+      "flattenY": 1.1
+    },
+    "leaves": "leaflet_atlas",
+    "bark": "bark_stylized_color",
+    "leaf_tint": "palette:foliage_light"
+  },
+  "aspen": {
+    "trunk": {
+      "length": 0.92,
+      "radius": 0.032,
+      "sections": 10,
+      "segments": 14,
+      "gnarl": 0.04,
+      "photo": 0.15,
+      "flare": 0.55,
+      "roots": 4,
+      "bend": 0.05,
+      "rootAmp": 0.45
+    },
+    "levels": [
+      {
+        "count": [
+          9,
+          12
+        ],
+        "start": 0.42,
+        "angle": [
+          52,
+          10
+        ],
+        "length": 0.32,
+        "lenFalloff": 0.65,
+        "radius": 0.55,
+        "gnarl": 0.2,
+        "photo": 0.35,
+        "gravity": 0.02,
+        "sections": 5,
+        "segments": 6
+      },
+      {
+        "count": [
+          3,
+          4
+        ],
+        "start": 0.3,
+        "angle": [
+          40,
+          12
+        ],
+        "length": 0.55,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.25,
+        "photo": 0.3,
+        "gravity": 0.02,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 9,
+      "fill": 1.55,
+      "union": 0.08,
+      "cell": 0.035,
+      "cards": 3400,
+      "cardSize": 0.05,
+      "bottom": 0.7,
+      "lump": 0.15,
+      "flattenY": 1.15
+    },
+    "leaves": "leaflet_atlas",
+    "bark": "bark_stylized_color",
+    "leaf_tint": "palette:foliage_light"
+  },
+  "ash": {
+    "trunk": {
+      "length": 0.62,
+      "radius": 0.05,
+      "sections": 9,
+      "segments": 14,
+      "gnarl": 0.08,
+      "photo": 0.1,
+      "flare": 0.55,
+      "roots": 5,
+      "bend": 0.08,
+      "rootAmp": 0.45
+    },
+    "levels": [
+      {
+        "count": [
+          6,
+          8
+        ],
+        "start": 0.4,
+        "angle": [
+          38,
+          10
+        ],
+        "length": 0.72,
+        "lenFalloff": 0.45,
+        "radius": 0.58,
+        "gnarl": 0.2,
+        "photo": 0.32,
+        "gravity": 0.02,
+        "sections": 6,
+        "segments": 6
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          40,
+          12
+        ],
+        "length": 0.5,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.25,
+        "photo": 0.3,
+        "gravity": 0.02,
+        "sections": 4,
+        "segments": 5
+      },
+      {
+        "count": [
+          2,
+          3
+        ],
+        "start": 0.4,
+        "angle": [
+          42,
+          15
+        ],
+        "length": 0.4,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.3,
+        "photo": 0.25,
+        "gravity": 0.02,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 10,
+      "fill": 1.7,
+      "union": 0.08,
+      "cell": 0.035,
+      "cards": 3800,
+      "cardSize": 0.05,
+      "bottom": 0.7,
+      "lump": 0.15,
+      "flattenY": 1.1
+    },
+    "leaves": "leaflet_atlas",
+    "bark": "bark_stylized_color",
+    "leaf_tint": "palette:foliage_light"
+  },
+  "cherry": {
+    "trunk": {
+      "length": 0.38,
+      "radius": 0.07,
+      "sections": 7,
+      "segments": 14,
+      "gnarl": 0.22,
+      "photo": 0.02,
+      "flare": 0.55,
+      "roots": 5,
+      "bend": 0.2,
+      "bendFreq": 1.2,
+      "rootAmp": 0.45,
+      "flareHeight": 0.09
+    },
+    "levels": [
+      {
+        "count": [
+          4,
+          6
+        ],
+        "start": 0.55,
+        "angle": [
+          52,
+          12
+        ],
+        "length": 0.78,
+        "lenFalloff": 0.25,
+        "radius": 0.65,
+        "gnarl": 0.25,
+        "photo": 0.12,
+        "gravity": 0.06,
+        "sections": 7,
+        "segments": 7
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.55,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.3,
+        "photo": 0.2,
+        "gravity": 0.04,
+        "sections": 5,
+        "segments": 5
+      },
+      {
+        "count": [
+          2,
+          4
+        ],
+        "start": 0.3,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.45,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.32,
+        "photo": 0.2,
+        "gravity": 0.03,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 10,
+      "fill": 1.7,
+      "union": 0.08,
+      "cell": 0.035,
+      "cards": 3800,
+      "cardSize": 0.05,
+      "bottom": 0.65,
+      "lump": 0.15,
+      "flattenY": 1.1
+    },
+    "leaves": "blossom_atlas",
+    "bark": "bark_stylized_color",
+    "leaf_tint": "#F06AA8"
+  },
+  "fir": {
+    "trunk": {
+      "length": 1.0,
+      "radius": 0.04,
+      "sections": 14,
+      "segments": 10,
+      "gnarl": 0.025,
+      "photo": 0.3,
+      "flare": 0.4,
+      "roots": 5
+    },
+    "levels": [
+      {
+        "whorls": 12,
+        "count": [
+          6,
+          8
+        ],
+        "countTop": [
+          4,
+          5
+        ],
+        "start": 0.2,
+        "end": 0.95,
+        "angle": [
+          74,
+          6
+        ],
+        "length": 0.5,
+        "lenFalloff": 1.0,
+        "minLength": 0.12,
+        "radius": 0.45,
+        "gnarl": 0.05,
+        "photo": 0.0,
+        "gravity": 0.24,
+        "sections": 6,
+        "segments": 5
+      }
+    ],
+    "foliage": {
+      "type": "fronds",
+      "droop": 0.0,
+      "width": 1.35,
+      "lobes": 3,
+      "lobeDepth": 0.3,
+      "chunk": 1.3,
+      "asymmetry": 0.12,
+      "dryShare": 0.12
+    },
+    "leaves": "frond_atlas",
+    "bark": "bark_stylized_color"
+  },
+  "bush": {
+    "trunk": {
+      "length": 0.12,
+      "radius": 0.03,
+      "sections": 2,
+      "segments": 7,
+      "gnarl": 0.1,
+      "photo": 0.0,
+      "flare": 0.2,
+      "roots": 0
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          7
+        ],
+        "start": 0.0,
+        "angle": [
+          38,
+          14
+        ],
+        "length": 4.5,
+        "lenFalloff": 0.0,
+        "radius": 0.75,
+        "gnarl": 0.22,
+        "photo": 0.15,
+        "gravity": 0.04,
+        "sections": 5,
+        "segments": 5
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.5,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.3,
+        "photo": 0.2,
+        "gravity": 0.03,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 6,
+      "fill": 1.5,
+      "union": 0.12,
+      "cell": 0.05,
+      "cards": 1600,
+      "cardSize": 0.09,
+      "bottom": 0.85,
+      "lump": 0.12,
+      "flattenY": 0.85,
+      "undersideWeight": 0.5
+    },
+    "leaves": "leaflet_atlas",
+    "bark": "bark_stylized_color",
+    "minTwigRadius": 0.3,
+    "leaf_tint": "palette:foliage_light"
+  },
+  "_sizes": {
+    "small": {
+      "count": 0.8,
+      "cards": 0.7
+    },
+    "medium": {
+      "count": 1.0,
+      "cards": 1.0
+    },
+    "large": {
+      "count": 1.2,
+      "cards": 1.25
+    }
+  },
+  "_presets": {
+    "oak": "oak",
+    "aspen": "aspen",
+    "ash": "ash",
+    "cherry": "cherry",
+    "pine": "fir",
+    "fir": "fir",
+    "bush": "bush"
+  }
+}

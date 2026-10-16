@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "tools" / "texture"))
 import post_textures  # noqa: E402
 
 STYLE_FILE = ROOT / "tools" / "style.json"  # se docs/style-guide.md
-TREE_PRESETS = [f"{t}_{s}" for t in ("oak", "pine", "aspen", "ash") for s in ("small", "medium", "large")] + \
+TREE_PRESETS = [f"{t}_{s}" for t in ("oak", "aspen", "ash", "cherry", "pine") for s in ("small", "medium", "large")] + \
                ["bush_1", "bush_2", "bush_3"]
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
@@ -43,28 +43,43 @@ def _run(cmd: list[str], timeout: int) -> str:
 
 @mcp.tool()
 def create_tree(name: str, preset: str = "oak_medium", seed: int = 0, height: float = 9.0,
-                options: dict | None = None, bark: str | None = None, leaves: str | None = None,
-                bark_scale: list[float] | None = None, preview: bool = False) -> dict:
-    """Skapa ett stiliserat träd som GLB i assets/trees/<name>/.
+                species: dict | None = None, bark: str | None = None, leaves: str | None = None,
+                bark_scale: list[float] | None = None, canopy: dict | None = None,
+                conifer: dict | None = None, leaf_tint: str | None = None, preview: bool = False) -> dict:
+    """Skapa ett stiliserat träd som GLB (3 LOD) i assets/trees/<name>/.
 
-    preset: oak_*, pine_*, aspen_*, ash_* (small/medium/large) eller bush_1..3.
-    seed: samma seed + preset ger samma träd. height: meter.
-    options: ez-tree-överstyrningar, t.ex. {"branch": {"segments": {"0": 6, "1": 4}}} för färre polygoner.
-    bark/leaves: texturnamn från assets/textures (utan .png), standard är husets bark och löv.
-    preview: rendera även en förhandsbild (långsammare; behövs sällan).
+    preset: oak_*, aspen_*, ash_*, cherry_*, pine_* (small/medium/large) eller bush_1..3.
+      bush_* ger buske, pine_* gran av solida barrgrenar i våningar, övriga lövträd.
+    seed: samma seed + preset ger samma träd. height: meter (buskar 0,8–1,6).
+    species: överstyr artens skelett (tools/tree/species.json), t.ex. {"levels": [{"count": [8, 10]}]}.
+    Svaret har "checks": ok=true betyder att alla grenar är anslutna, inget är under marken och lövverket sitter fast.
+    canopy: lövkronan, t.ex. {"clusters": 12, "cards": 1300, "fill": 1.2, "flattenY": 0.8, "union": 0.6}.
+    conifer: granen, t.ex. {"tiers": 10, "frondsBase": 10, "droop": 0.65, "lobes": 3, "lobeDepth": 0.45,
+      "chunk": 1.3, "crownBase": 0.24, "crownWidth": 0.7}.
+    leaf_tint: "#RRGGBB" tintar löven i materialet, t.ex. höst "#E08A2E" eller vår "#9AD15A", utan nya texturer.
+    bark: sömlös textur; leaves: 2x2-atlas (leaf_atlas, blossom_atlas, needle_atlas eller egen från generate_leaf_atlas).
+    preview: rendera även en förhandsbild via Blender (långsammare; behövs sällan).
     """
     _check_name(name)
     if preset not in TREE_PRESETS:
         raise ValueError(f"okänt preset, välj bland: {', '.join(TREE_PRESETS)}")
     recipe = {"name": name, "preset": preset, "seed": seed, "height": height, "preview": preview}
-    if options:
-        recipe["options"] = options
+    if species:
+        recipe["species"] = species
+    if canopy:
+        recipe["canopy"] = canopy
+    if conifer:
+        recipe["conifer"] = conifer
+    if leaf_tint:
+        if not re.fullmatch(r"#[0-9A-Fa-f]{6}", leaf_tint):
+            raise ValueError('leaf_tint ska vara "#RRGGBB"')
+        recipe["leaf_tint"] = leaf_tint
     for key, tex in (("bark", bark), ("leaves", leaves)):
         if tex:
             _check_name(tex)
             if not (ROOT / "assets" / "textures" / f"{tex}.png").exists():
-                raise ValueError(f"texturen {tex} finns inte; skapa den med generate_texture")
-            recipe[key] = f"assets/textures/{tex}.png"
+                raise ValueError(f"texturen {tex} finns inte; skapa den med generate_texture eller generate_leaf_atlas")
+            recipe[key] = tex
     if bark_scale:
         recipe["bark_scale"] = bark_scale
     return json.loads(_run([sys.executable, "-I", "tools/tree/make_tree.py", json.dumps(recipe)], 600))
@@ -103,6 +118,18 @@ def generate_texture(name: str, prompt: str, kind: str = "tile", size: int = 102
     else:
         getattr(post_textures, kind)(str(raw), str(out))
     return {"texture": name, "path": str(out.relative_to(ROOT)), "kind": kind, "seed": gen["seed"]}
+
+
+@mcp.tool()
+def generate_leaf_atlas(name: str, prompt: str, seed: int = 1000) -> dict:
+    """Generera en 2x2-lövatlas (fyra varianter) för create_tree: assets/textures/<name>.png.
+
+    prompt: beskriv ETT kluster, t.ex. "a dense cluster of autumn orange maple leaves on a short twig".
+    Husets stil, vit bakgrund och placering av stjälken nere i mitten läggs till automatiskt.
+    Tar ungefär 4 bildgenereringar.
+    """
+    _check_name(name)
+    return json.loads(_run([sys.executable, "-I", "tools/texture/make_atlas.py", name, prompt, str(seed)], 1800))
 
 
 @mcp.tool()

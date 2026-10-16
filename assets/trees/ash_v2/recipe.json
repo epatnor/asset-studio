@@ -1,0 +1,9 @@
+{
+  "name": "ash_v2",
+  "preset": "ash_medium",
+  "seed": 21,
+  "height": 10,
+  "bark": "bark_stylized_color",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "leaf_mass"
+}

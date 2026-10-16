@@ -99,5 +99,5 @@ Varje generator ska uppfylla detta innan den räknas som klar:
 
 | Verktyg | Följer guiden | Saknas |
 |---|---|---|
-| `create_tree` | Delvis | Canopy-normaler, gradient i kronan, translucens, barr-kluster för tall, AgX i förhandsvisningen |
+| `create_tree` | Till stor del (v2) | Tydligare skuggkontrast, translucens och vind (i klienten), LOD för grenar. Se roadmapen. |
 | `generate_texture` | Ja (via `style.json`) | Normal- och roughness-kartor. `tile` blandar med en förskjuten kopia, vilket ger genomskinliga "spökformer" på oregelbundna mönster (kullersten); fungerar bra på bark och fibrösa ytor. Behöver en bättre sömlös metod (t.ex. sömlös generering i ComfyUI eller graph-cut-sömmar). |

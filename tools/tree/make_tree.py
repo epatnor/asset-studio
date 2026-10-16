@@ -1,15 +1,22 @@
-"""Ett träd från ett recept: ez-tree-geometri -> Blender-montering -> GLB i assets/trees/<name>/.
+"""Ett träd från ett recept -> assets/trees/<name>/<name>.glb (v3: skelett, bark och lövverk som sitter ihop, 3 LOD).
 
   python3 -I tools/tree/make_tree.py '{"name":"oak42","preset":"oak_medium","seed":42,"height":9}'
 
 Receptfält (alla utom name är valfria):
-  preset, seed, options   skickas till ez-tree (se gen_tree.mjs)
-  height                  målhöjd i meter (standard 9)
-  bark, leaves            texturer, relativt projektroten
-  bark_scale              [u, v] upprepning av barktexturen
-  preview                 rendera förhandsbild (standard true)
+  preset                  <art>_<storlek>: oak, aspen, ash, cherry, pine (gran), bush; small/medium/large
+                          (bush_1, bush_2 ... är olika varianter)
+  seed, height            samma recept ger samma träd; höjd i meter (buskar 0,8–1,6)
+  species                 överstyr artens parametrar i species.json, t.ex. {"levels": [{"count": [8, 10]}]}
+  bark, leaves            texturnamn i assets/textures (leaves är en 2x2-atlas; standard enligt arten)
+  leaf_mass               sömlös lövmassa för kronans volymer (standard: <atlas>_mass, annars leaf_mass)
+  leaf_tint               "#RRGGBB": tinta löven i materialet (t.ex. höstfärg) med gråskaleatlas
+  bark_repeat             meter per upprepning av barktexturen (standard 1,2)
+  canopy                  överstyr lövkronan: clusters, cards, flattenY, fill, union, normalBlend
+  conifer                 överstyr granens barr: width, lobes, lobeDepth, chunk, asymmetry, dryShare
+  frond_texture           för granar: målad barratlas (standard enligt arten), false = solida grenar utan alfa
+  preview                 rendera förhandsbild via Blender (standard false)
 
-Skriver ut en enda rad JSON, avsedd att läsas av en AI-agent.
+Svarar med en rad JSON inklusive "checks" (anslutna grenar, inget under marken, fäst lövverk).
 """
 import json
 import os
@@ -20,16 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = Path(__file__).resolve().parent
-
-DEFAULTS = {
-    "preset": "oak_medium",
-    "seed": 0,
-    "height": 9.0,
-    "bark": "assets/textures/bark_stylized_color.png",
-    "leaves": "assets/textures/leaf_cluster_stylized.png",
-    "bark_scale": [2.0, 1.0],
-    "preview": True,
-}
+TEX = ROOT / "assets" / "textures"
 
 
 def blender_cmd():
@@ -42,35 +40,78 @@ def blender_cmd():
     return (["host-spawn"] if shutil.which("host-spawn") else []) + flatpak
 
 
-def main():
-    recipe = {**DEFAULTS, **json.loads(sys.argv[1])}
-    name = recipe["name"]
-    out_dir = ROOT / "assets" / "trees" / name
-    work = ROOT / "build" / "trees" / name
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    ez = {k: recipe[k] for k in ("preset", "seed") } | {"out": str(work), "options": recipe.get("options", {})}
-    gen = subprocess.run(["node", str(TOOL / "gen_tree.mjs"), json.dumps(ez)],
-                         cwd=TOOL, capture_output=True, text=True, check=True)
-    geo = json.loads(gen.stdout.strip().splitlines()[-1])
-
-    asm = {
-        "src": str(work), "out_dir": str(out_dir), "name": name,
-        "bark": str(ROOT / recipe["bark"]), "leaves": str(ROOT / recipe["leaves"]),
-        "height": recipe["height"], "bark_scale": recipe["bark_scale"], "preview": recipe["preview"],
-    }
+def preview(glbs, out, lod=0, size=(1024, 512)):
+    # Blender körs i en annan arbetskatalog, så alla sökvägar måste vara absoluta
+    absolute = lambda p: str((ROOT / p).resolve())
+    items = [{**g, "glb": absolute(g["glb"])} if isinstance(g, dict) else absolute(g) for g in glbs]
+    args = {"glbs": items, "out": absolute(out), "style": str(ROOT / "tools" / "style.json"),
+            "lod": lod, "size": list(size)}
     run = subprocess.run(blender_cmd() + ["--background", "--factory-startup", "--python-exit-code", "1",
-                                          "--python", str(TOOL / "assemble_tree.py"), "--", json.dumps(asm)],
+                                          "--python", str(ROOT / "tools" / "preview" / "preview_glb.py"), "--", json.dumps(args)],
                          capture_output=True, text=True)
-    line = next((l for l in run.stdout.splitlines() if l.startswith("TINKER_RESULT ")), None)
-    if run.returncode or not line:
-        (work / "blender.log").write_text(run.stdout + run.stderr)
-        sys.exit(json.dumps({"error": "blender failed", "log": str(work / "blender.log")}))
+    if run.returncode or "TINKER_RESULT" not in run.stdout:
+        log = Path(out).with_suffix(".log")
+        log.write_text(run.stdout + run.stderr)
+        raise RuntimeError(f"blender preview failed, see {log}")
 
-    shutil.copy(work / "recipe.json", out_dir / "recipe.json")
-    result = json.loads(line.split(" ", 1)[1])
-    result["glb"] = os.path.relpath(result["glb"], ROOT)
-    result["source_height_m"] = geo["heightM"]
+
+def gray_version(src):
+    # Cachad gråskaleversion i build/gray/, görs om bara när källan är nyare
+    dst = ROOT / "build" / "gray" / f"{src.stem}_gray.png"
+    if not dst.exists() or dst.stat().st_mtime < src.stat().st_mtime:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["uv", "run", "--quiet", "--no-project", "--python", "3.12", "--with", "pillow==11.1.0",
+                        "--with", "numpy==2.2.3", "python", "-I", str(ROOT / "tools" / "texture" / "post_textures.py"),
+                        "gray", str(src), str(dst)], check=True, capture_output=True)
+    return dst
+
+
+def main():
+    recipe = json.loads(sys.argv[1])
+    name = recipe["name"]
+    preset = recipe.get("preset", "oak_medium")
+    species = json.loads((TOOL / "species.json").read_text())
+    sp = species[species["_presets"].get(preset.split("_")[0], "oak")]
+    conifer = sp["foliage"]["type"] == "fronds"
+    bark = recipe.get("bark", sp.get("bark", "bark_stylized_color"))
+    leaves = recipe.get("leaves", sp.get("leaves", "leaf_atlas"))
+    out_dir = ROOT / "assets" / "trees" / name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    glb = out_dir / f"{name}.glb"
+
+    gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "species", "canopy", "conifer")}
+    # Lövmassan till kronans volymer: <atlas utan _atlas>_mass om den finns, annars leaf_mass
+    mass = recipe.get("leaf_mass") or next((m for m in (leaves.replace("_atlas", "") + "_mass", "leaf_mass") if (TEX / f"{m}.png").exists()), None)
+    if mass:
+        gen["leafMass"] = str(TEX / f"{mass}.png")
+    gen |= {"name": name, "out": str(glb), "bark": str(TEX / f"{bark}.png"), "leaves": str(TEX / f"{leaves}.png"),
+            "barkRepeat": recipe.get("bark_repeat", 1.2)}
+    # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.
+    # Atlas och lövmassa används i gråskala och tintas via baseColorFactor.
+    # Granar: målad barratlas med alfakant om den finns (frond_texture: false ger solida grenar)
+    if conifer:
+        ft = recipe.get("frond_texture", leaves)
+        if ft and (TEX / f"{ft}.png").exists():
+            # Gråskala: texturen ger penseldrag och alfakant, färgen kommer från paletten (vertexfärg)
+            gen["frondTexture"] = str(gray_version(TEX / f"{ft}.png"))
+    tint = recipe.get("leaf_tint", sp.get("leaf_tint"))
+    if tint and tint.startswith("palette:"):
+        tint = json.loads((ROOT / "tools" / "style.json").read_text())["palette"][tint.split(":", 1)[1]]
+    if tint:
+        gen["leafTint"] = tint
+        for key in ("leaves", "leafMass"):
+            if key in gen:
+                gen[key] = str(gray_version(Path(gen[key])))
+    run = subprocess.run(["node", str(TOOL / "gen_tree.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
+    if run.returncode:
+        sys.exit(json.dumps({"error": run.stderr.strip()[-500:]}))
+    result = json.loads(run.stdout.strip().splitlines()[-1])
+
+    (out_dir / "recipe.json").write_text(json.dumps({**recipe, "bark": bark, "leaves": leaves, "leaf_mass": mass}, indent=2))
+    if recipe.get("preview"):
+        preview([glb], out_dir / f"{name}_preview.png")
+        result["preview"] = str((out_dir / f"{name}_preview.png").relative_to(ROOT))
+    result["glb"] = str(glb.relative_to(ROOT))
     print(json.dumps(result))
 
 

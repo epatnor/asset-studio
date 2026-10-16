@@ -46,15 +46,49 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [ ] Vegetationsspridning räknas om lokalt i det område som ändrats.
 
 ### Träd (påbörjat)
+- [x] **v3: egen generator där allt växer ur ett skelett** (`skeleton.mjs`): stam och grennivåer, där varje gren startar på förälderns axel och är smalare än den (da Vincis regel). Placering enligt gyllene vinkeln, plus ljus, gravitation och krokighet. Kransar för gran. Arter som data i `species.json` (ek, asp, ask, körsbär, gran, buske).
+- [x] Bark som sammanhängande rör (parallellförflyttade ramar), UV i meter, rotutsvängning, och LOD även för grenar (LOD1 utan yngsta nivån, LOD2 bara stam och första nivån).
+- [x] Lövkluster placeras vid och förankras i kvistarna; granens barrgrenar följer exakt de riktiga grenarna; toppskott.
+- [x] Kontroller i svaret (`checks`): frånkopplade grenar, barn tjockare än förälder, delar under marken, svävande kluster. `ok: true` när allt hänger ihop.
+- [x] ez-tree och three borttagna ur trädverktyget.
+- [x] **v4-krona för lövträd** (`crown.mjs`): underklumpar vid kvistarna, en kärnklump som binder ihop dem, polynomisk smooth min till ett molnlikt fält, en ogenomskinlig kronmesh via surface nets, och tusentals små lövkort (`leaflet_atlas`) med normaler från fältet. Inspirerat av målbilderna och "Stylized Tree Generator" (Superhive).
+- [x] Stammen: mjuk S-böj, kraftigare rotutsvängning. Lövfärg per art via `leaf_tint` i `species.json` (pekar på paletten). Klarare förhandsljus (AgX Punchy).
+- [ ] Jämfört med målbilderna saknas fortfarande: genomlysning, vind och färgvariation per klump (shader i klienten), finare blad i silhuetten, och en mer målad bark.
+- [ ] Granens övre kransar: tätare, så att stammen inte syns mellan dem. Granen behöver också samma ljusa, mättade färgskala som lövträden.
 - [x] ez-tree-geometri med UV, recept → GLB.
 - [x] Stiliserade bark- och lövtexturer via Krea-2.
 - [x] MCP-verktyget `create_tree`.
-- [ ] Canopy-normaler (sfärisk normalöverföring), så kronan skuggas som mjuka bollar.
-- [ ] Gradient i kronan: mörkt inåt och nedåt, ljust utåt och uppåt (vertexfärg).
-- [ ] Translucens i löven.
-- [ ] Barr-kluster för barrträd.
-- [ ] LOD och impostor (billboard) på långt avstånd.
-- [ ] Vind i shadern.
+- [x] v2 enligt [vegetationsguiden](Stiliserad_vegetation_ThreeJS_med_bildreferenser.pdf): lövpunkter → 8–20 kluster, böjda lövkort på klustrens skal, glesare inre löv, utstickande kvistar.
+- [x] Klusternormaler: `n = normalize(vertex − klustercentrum)`, blandat 80 % med kortets normal.
+- [x] Gradient i kronan via vertexfärg: mörkt och kallt inåt och nedåt, ljust och varmt utåt och uppåt.
+- [x] 2×2-lövatlaser (löv, körsbärsblom, barr) via `generate_leaf_atlas`, utan vit halo (verifierat med `check_alpha.py`).
+- [x] Barrträd byggs i våningar (höjdband → platta skivor) med smala, hängande barrkort.
+- [x] Tre LOD-nivåer för kronan (100 / 50 / 20 % av korten, större kort).
+- [x] Vindvikt (`_WIND`) och kluster-id (`_CLUSTER`) som vertexattribut, för vindshadern i klienten.
+- [x] GLB skrivs direkt från Node (gltf-transform); Blender används bara för förhandsbilder.
+- [x] Klustervolymer: ojämna, ogenomskinliga ikosfärer med målad lövmassa (`leaf_mass`, `blossom_mass`, `needle_mass`) fyller kronan. Korten ligger på ytan och har samma normaler och gradient, så de smälter in. Ungefär hälften så många alfatestade trianglar (mindre overdraw), samma totala antal.
+- [x] "Fluffy"-skuggning: normaler från en mjuk sammanslagning (smooth union) av alla klusterellipsoider, så att kronan skuggas som en form.
+- [ ] Helt sammanslagen kronmesh (marching cubes över samma fält), så att silhuetten också blir en mjuk form i stället för separata klumpar.
+- [x] `leaf_tint`: lövfärgen är en materialparameter (gråskaleatlas × baseColorFactor), som Material Instances i referensvideon. Höst- eller vårvariant utan nya texturer.
+- [ ] Jämför mot ArtStation-referensen g2vxrL (sidan går inte att läsa automatiskt, så en skärmdump behövs).
+
+**Lövmaterial i klienten** (från "Stylized Fluffy Trees Tutorial", akbutea; det mesta av looken sitter i shadern):
+- [ ] Färgvariation per kluster: hasha `_CLUSTER` till en liten nyans- och ljushetsförskjutning.
+- [ ] Genomlysning (subsurface/translucency): ljusare löv i motljus, på `onBeforeCompile` i `MeshStandardMaterial`.
+- [ ] Vind i vertexshadern via `_WIND` (0 vid fästen, mer vid spetsar), med fas per kluster och instans, som "Simple Grass Wind".
+- [ ] Materialparametrar i editorn som reglage: tint, vindstyrka, lövstorlek, genomlysning (motsvarar Material Instances).
+- [x] Gran (`pine_*`): egen generator (`conifer.mjs`) med tjock stam och ringar av solida, nedåthängande barrgrenar med flikiga spetsar. Inga alfakort och ingen textur, och färger ur `style.json` (`conifer_*`). Cirka 30 000 / 12 000 / 4 000 trianglar för LOD0–2.
+- [x] Granen enligt "Stylized 3D Pine Tree" (ZugZug Art): asymmetri per våning, enstaka saknade grenar, varma torra toner på cirka 12 % av grenarna, och en målad 2×2-barratlas (`frond_atlas`) med alfa bara i kanten, så att silhuetten blir spretig. `frond_texture: false` ger helt solida grenar utan alfa (för LOD eller svag hårdvara).
+- [ ] Granen: rötter vid stamfoten, och en tydligare toppskott.
+- [ ] Ta bort eller slå ihop små, ensamma kluster långt från resten av kronan (körsbärets lösa nedre klump, tallens skivor vid grenändar).
+- [ ] Tydligare skuggkontrast i kronorna (granskningen tycker fortfarande att den är svag).
+- [ ] Tallen: tätare och tjockare våningar, och kapa lösa, kala grenar och den tunna toppspetsen.
+- [ ] Buskar: tät mitt även för `bush_2`, och grenar inom buskbudgeten (`bush_1` har cirka 8 000 grentrianglar).
+- [ ] LOD för grenar och stam (nu delar alla LOD samma grenmesh, så LOD2 sparar för lite).
+- [ ] Impostor (billboard) på långt avstånd, som LOD3.
+- [ ] Translucens i löven (görs i klientens shader).
+- [ ] Vind i shadern och debugvyer (wireframe, kort, normaler, kluster, LOD), enligt guidens acceptanstest. Görs när klienten finns.
+- [ ] Ek och körsbär har liknande runda kronor. Mer variation i klustrens form och placering.
 - [ ] Ersätt den nuvarande `tile`-metoden, som ger spökformer på oregelbundna mönster.
 
 ### Bibliotek (första version)
@@ -75,7 +109,25 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 
 ### Naturliga objekt
 - [ ] Stenar och block: procedurell form (brus på deformerad kub eller sfär), bevel och weighted normals, mossa ovanpå.
-- [ ] Buskar och gräs: gräs som instansierade kort eller shader-gräs, blommor, svamp.
+- [ ] Blommor och svamp.
+
+### Gräs
+Referens: "Stylized Grass Tutorial" (akbutea), med en Genshin Impact-liknande stil. Det mesta av looken sitter i shadern och i att gräset tar färg från marken.
+
+Generator (tillgång):
+- [ ] Gräsknippe (`create_grass_patch`): strån från lätt böjda plan, duplicerade, skalade och roterade till ett oregelbundet, fylligt knippe. Recept: antal strån, höjd, bredd, böj, spridning.
+- [ ] Pivot vid basen, och **alla normaler pekar rakt upp**, så att knippet inte får svarta skuggor.
+- [ ] UV med strånas bas längst ner (v=0 vid marken), plus `_WIND` 0 vid basen och 1 i toppen.
+- [ ] Varianter: kort, medel och högt gräs (högt i övergångar och kanter), och några med blommor.
+
+Klient (shader och placering):
+- [ ] Gräset tar sin basfärg från markens färg under sig. Motsvarigheten till Unreals Runtime Virtual Texture: sampla terrängens färg- och splatkarta på världens xz. Målar man marken rosa blir gräset rosa där.
+- [ ] Gradient från mörk bas till ljus topp, i shadern i stället för per strå.
+- [ ] Vind i vertexshadern via `_WIND` (förankrad bas, rörlig topp).
+- [ ] "Rullande vind": en panorerande brustextur som tillfälligt gör stråk av gräset ljusare, som vindvågor över fältet.
+- [ ] **Inga kastade skuggor från gräs** (för dyrt). Djupet kommer från färgskiftningarna. Gräset tar däremot emot skuggor från träd och byggnader.
+- [ ] Instansiering (`InstancedMesh`) och utmålning med spridningsborsten. Densitet och längd styrs av markens material.
+- [ ] Målade stråk av ljusare och mörkare mark som gräset plockar upp.
 - [ ] Stockar, stubbar, rötter.
 - [ ] Biomer: regeluppsättningar som väljer vilka naturobjekt som sprids var.
 

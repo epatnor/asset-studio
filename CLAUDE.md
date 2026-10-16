@@ -14,9 +14,17 @@ Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stilisera
 
 - Skapa aldrig geometri eller texturer "för hand" i tokens. Använd eller bygg ett verktyg.
 - Anropa befintliga verktyg med recept och läs bara deras en-rads JSON-svar. Läs inte deras källkod om de fungerar.
-- Titta på bilder (förhandsrenderingar) sparsamt: bara när ett nytt verktyg testas eller användaren ber om det.
 - Filtrera stora utskrifter (modellistor, workflow-JSON) innan de hamnar i kontexten.
 - Nya verktyg ska följa samma mönster: JSON-recept in, en rad JSON ut, resultat under `assets/`, mellanfiler under `build/`.
+
+## Bilder
+
+En bild kostar ungefär bredd × höjd / 750 tokens (1024×1024 ≈ 1 400), oavsett modell, och den ligger sedan kvar i kontexten resten av sessionen. Därför, i den här ordningen:
+
+1. **Kontrollera med kod först.** Triangelantal, alfatäckning, upplösta recept, färger mot paletten, filstorlekar. Det mesta som "ser fel ut" syns redan i data.
+2. **Små bilder.** Rendera förhandsbilder i låg upplösning. Lägg flera varianter i ett kontaktark eller en lineup i stället för separata bilder.
+3. **Faktagranskning av bilder delegeras** till en underagent med `model: "haiku"`: rättstavad text, kanter och halo runt alfa, antal objekt, acceptanstester med tydliga kriterier. Underagenten svarar med en kort lista, så att bilden aldrig hamnar i huvudkontexten. Det lönar sig vid flera bilder; för en enda liten bild är underagentens startkostnad ofta högre än bilden.
+4. **Stilbedömningar** (följer det stilguiden, vilken variant är bäst) görs av huvudagenten, på ett nedskalat kontaktark, och bara när det behövs: när ett verktyg är nytt eller ändrat, eller när användaren ber om det.
 
 ## Miljö (den här maskinen)
 
@@ -30,7 +38,7 @@ Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stilisera
 
 Använd i första hand MCP-servern `tinkertown` (`create_tree`, `generate_texture`, `list_assets`). Nya verktyg läggs till i `tools/mcp/server.py` som tunna omslag runt ett skript i `tools/<område>/`.
 
-Fallgrop: ez-tree faller tyst tillbaka på standardträdet vid okänt preset-namn. `gen_tree.mjs` översätter `oak_medium` → `"Oak Medium"` och avbryter vid miss; ta inte bort den kontrollen.
+Trädgeneratorn: allt (bark, lövkluster, granens barr) byggs från samma skelett i `skeleton.mjs`. Lägg aldrig till lövverk eller grenar som inte utgår från skelettet; då försvinner garantin att delarna sitter ihop. Arter och stil-parametrar ändras i `species.json`, inte i koden. Kontrollera `checks.ok` i svaret i stället för att titta på bilder.
 
 Kommandoradsvarianter:
 

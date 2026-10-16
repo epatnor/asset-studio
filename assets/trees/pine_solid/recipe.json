@@ -1,0 +1,10 @@
+{
+  "name": "pine_solid",
+  "preset": "pine_medium",
+  "seed": 3,
+  "height": 12,
+  "frond_texture": false,
+  "bark": "bark_stylized_color",
+  "leaves": "frond_atlas",
+  "leaf_mass": "leaf_mass"
+}

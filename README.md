@@ -25,7 +25,7 @@ Koden delas från början i två delar, så att båda målen fungerar utan omskr
 | Del | Gör | I webbläsaren | I desktopappen |
 |---|---|---|---|
 | Klient | Three.js-spel och editor, spelaren och UI | Webbsida | Electron-fönster |
-| Lokal server (Node) | Sparar världsrecept, kör verktygen (ez-tree, Blender, ComfyUI), MCP-server för AI-agenter | Separat process på `localhost` | Electrons Node-del |
+| Lokal server (Node) | Sparar världsrecept, kör verktygen (trädgeneratorn, Blender, ComfyUI), MCP-server för AI-agenter | Separat process på `localhost` | Electrons Node-del |
 
 Klienten pratar bara med servern via ett eget API. Den anropar aldrig verktyg direkt.
 
@@ -35,9 +35,9 @@ Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem o
 
 | Område | Verktyg | Status |
 |---|---|---|
-| Träd | [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT) + Blender | Fungerar: recept → GLB |
+| Träd | Egen generator (`tools/tree/`): skelett, bark, lövverk | v3: allt växer ur ett skelett och kontrolleras (anslutna grenar, fäst lövverk). Arter som data i `species.json`; 3 LOD → GLB |
 | Texturer | Krea-2 Turbo via lokal ComfyUI | Fungerar: bark (sömlös), lövsprite (alfa) |
-| MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `list_assets` |
+| MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `generate_leaf_atlas`, `list_assets` |
 | Terräng, vatten, vegetation, props, karaktärer | – | Ej påbörjat |
 | Editor/runtime | Three.js | Ej påbörjat (motor vald) |
 | Desktopapp | Electron | Senare |
@@ -46,7 +46,7 @@ Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem o
 
 ```
 tools/mcp/        MCP-servern som exponerar verktygen för AI-agenter
-tools/tree/       ez-tree-generator och Blender-montering
+tools/tree/       trädgeneratorn: arter (species.json), skelett, bark, lövkrona, gran
 tools/texture/    Krea-2-generering och efterbehandling (sömlöst, alfa)
 assets/textures/  delade, stiliserade texturer (raw/ = original från Krea-2)
 assets/trees/     genererade träd: <namn>.glb, recipe.json, förhandsbild
@@ -68,8 +68,9 @@ Projektets `.mcp.json` registrerar servern `tinkertown`, som startas med `uv run
 
 | Verktyg | Exempel | Svar |
 |---|---|---|
-| `create_tree` | `{"name":"pine3","preset":"pine_medium","seed":3,"height":11,"bark":"pine_bark"}` | `{"glb": "assets/trees/pine3/pine3.glb", "branch_tris": 10032, ...}` |
+| `create_tree` | `{"name":"cherry_v2","preset":"ash_medium","seed":5,"height":7,"leaves":"blossom_atlas"}` | `{"glb": "assets/trees/cherry_v2/cherry_v2.glb", "clusters": 14, "tris_lod": [18720, 13820, 10992], ...}` |
 | `generate_texture` | `{"name":"pine_bark","prompt":"pine bark, flaky reddish plates","kind":"tile"}` | `{"path": "assets/textures/pine_bark.png", "seed": ...}` |
+| `generate_leaf_atlas` | `{"name":"maple_atlas","prompt":"a dense cluster of autumn orange maple leaves on a short twig"}` | `{"atlas": "assets/textures/maple_atlas.png", ...}` |
 | `list_assets` | `{}` | `{"trees": [...], "textures": [...]}` |
 
 `generate_texture` lägger automatiskt till husets stil (`house_style=true`) och rätt instruktioner för `tile` (sömlös yta) eller `cutout` (sprite med alfa på vit bakgrund).
@@ -84,10 +85,10 @@ python3 -I tools/tree/make_tree.py '{"name":"oak42","preset":"oak_medium","seed"
 
 Svar: `{"glb": "assets/trees/oak42/oak42.glb", "height_m": 9.0, "branch_tris": 3166, "leaf_tris": 10640, ...}`
 
-Presets: `oak_*`, `pine_*`, `aspen_*`, `ash_*` (small/medium/large), `bush_1..3`. Alla ez-tree-parametrar kan överstyras via `options`, t.ex. färre segment för lägre polygonantal:
+Presets: `oak_*`, `aspen_*`, `ash_*`, `cherry_*`, `pine_*` (gran) i small/medium/large, och `bush_1..3`. Artens skelett kan överstyras via `species`, och svaret innehåller `checks` med `ok: true` när trädet hänger ihop.
 
 ```bash
-python3 -I tools/tree/make_tree.py '{"name":"aspen7","preset":"aspen_medium","seed":7,"height":7,"options":{"branch":{"segments":{"0":6,"1":4,"2":3,"3":3}}}}'
+python3 -I tools/tree/make_tree.py '{"name":"oak_wide","preset":"oak_medium","seed":7,"height":8,"species":{"levels":[{"count":[7,9],"angle":[58,10]}]}}'
 ```
 
 En ny textur:

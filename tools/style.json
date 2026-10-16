@@ -1,6 +1,5 @@
 {
   "_doc": "Maskinläsbara stilvärden. Förklaringar i docs/style-guide.md. Alla verktyg läser härifrån.",
-
   "prompt": {
     "house_style": "stylized semi-realistic game art, hand-painted PBR look, painterly brush strokes, low-frequency detail, large calm color areas, soft top-down light-to-dark gradient, subtle lighter edge highlights, saturated but controlled colors, warm light and cool shadows, chunky readable shapes",
     "kinds": {
@@ -9,11 +8,13 @@
       "raw": ""
     }
   },
-
   "palette": {
     "foliage_light": "#8FCB4A",
     "foliage_mid": "#4E9A3A",
     "foliage_shadow": "#2F6B4F",
+    "conifer_light": "#9CC46A",
+    "conifer_mid": "#5F9447",
+    "conifer_dark": "#2C5237",
     "bark": "#7A4E2D",
     "bark_shadow": "#4A2E22",
     "stone": "#A9A39A",
@@ -25,27 +26,50 @@
     "accent_warm": "#F2A23A",
     "accent_magic": "#9B6BE0"
   },
-
   "geometry": {
     "bevel_fraction": 0.03,
     "bevel_segments": 2,
-    "weighted_normal": { "mode": "FACE_AREA", "keep_sharp": true, "weight": 50 }
+    "weighted_normal": {
+      "mode": "FACE_AREA",
+      "keep_sharp": true,
+      "weight": 50
+    }
   },
-
   "budgets_tris": {
-    "prop_small": [500, 3000],
-    "prop_medium": [3000, 15000],
-    "building_module": [2000, 10000],
-    "tree": [10000, 40000],
-    "bush": [2000, 8000],
-    "character": [30000, 60000]
+    "prop_small": [
+      500,
+      3000
+    ],
+    "prop_medium": [
+      3000,
+      15000
+    ],
+    "building_module": [
+      2000,
+      10000
+    ],
+    "tree": [
+      10000,
+      40000
+    ],
+    "bush": [
+      2000,
+      8000
+    ],
+    "character": [
+      30000,
+      60000
+    ]
   },
-
   "preview": {
     "view_transform": "AgX",
-    "look": "AgX - Medium High Contrast",
-    "sun": { "elevation_deg": 45, "energy": 4.0, "color": "#FFEDD1" },
-    "sky_color": "#8CB8F0",
-    "sky_strength": 1.0
+    "look": "AgX - Punchy",
+    "sun": {
+      "elevation_deg": 42,
+      "energy": 5.5,
+      "color": "#FFE9C7"
+    },
+    "sky_color": "#6FA6EE",
+    "sky_strength": 1.15
   }
 }
