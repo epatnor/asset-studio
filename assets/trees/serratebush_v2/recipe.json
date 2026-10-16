@@ -1,0 +1,9 @@
+{
+  "name": "serratebush_v2",
+  "preset": "serratebush_medium",
+  "seed": 3,
+  "height": 1.0,
+  "bark": "bark_painted",
+  "leaves": "solid",
+  "leaf_mass": "leaf_mass"
+}

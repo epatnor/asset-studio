@@ -1,0 +1,10 @@
+{
+  "name": "grid_6",
+  "preset": "serratebush_medium",
+  "seed": 6,
+  "height": 0.7,
+  "leaf_tint": "#8FC85A",
+  "bark": "bark_painted",
+  "leaves": "leaf_surface",
+  "leaf_mass": "leaf_mass"
+}

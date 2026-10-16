@@ -1,0 +1,9 @@
+{
+  "name": "ballbush_v2",
+  "preset": "ballbush_medium",
+  "seed": 3,
+  "height": 1.2,
+  "bark": "bark_painted",
+  "leaves": "bush_atlas",
+  "leaf_mass": "bush_mass"
+}

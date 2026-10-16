@@ -4,6 +4,6 @@
   "seed": 12,
   "height": 1.0,
   "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
+  "leaves": "bush_atlas",
+  "leaf_mass": "bush_mass"
 }

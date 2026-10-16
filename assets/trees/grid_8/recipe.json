@@ -1,0 +1,10 @@
+{
+  "name": "grid_8",
+  "preset": "petalbush_medium",
+  "seed": 8,
+  "height": 0.7,
+  "leaf_tint": "#6DBE4E",
+  "bark": "bark_painted",
+  "leaves": "leaf_surface",
+  "leaf_mass": "leaf_mass"
+}

@@ -24,7 +24,8 @@
     "water_deep": "#2B7FA6",
     "sky": "#8CB8F0",
     "accent_warm": "#F2A23A",
-    "accent_magic": "#9B6BE0"
+    "accent_magic": "#9B6BE0",
+    "bush_green": "#6FB04A"
   },
   "geometry": {
     "bevel_fraction": 0.03,

@@ -54,7 +54,9 @@ def create_tree(name: str, preset: str = "oak_medium", seed: int = 0, height: fl
 
     preset: <art>_<small|medium|large>, arter i tools/tree/species.json: oak, maple, ash, aspen, birch,
       cherry, willow (hängande), acacia (paraplykrona), cypress (pelare), jpine (japansk tall, kuddar),
-      pine/fir (gran), palm, deadtree (kal), shrub (hög buske), bush (rund buske; även bush_1..3).
+      pine/fir (gran), palm, deadtree (kal), shrub (hög buske), bush (rund buske; även bush_1..3),
+      ballbush och moundbush (stamlösa bulliga buskar som vilar på marken),
+      leafbush, petalbush och serratebush (bladkupoler av solida blad; leaf_tint ger färgvarianter).
       Gräs och blommor är en annan generator.
       bush_* ger buske, pine_* gran av solida barrgrenar i våningar, övriga lövträd.
     seed: samma seed + preset ger samma träd. height: meter (buskar 0,8–1,6).

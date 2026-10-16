@@ -98,13 +98,15 @@ def main():
     if bark_tint:
         gen["barkTint"] = bark_tint
         gen["bark"] = str(gray_version(TEX / f"{bark}.png"))
+    if sp["foliage"]["type"] == "leafdome" and (TEX / f"{leaves}.png").exists():
+        gen["leaves"] = str(gray_version(TEX / f"{leaves}.png"))
     tint = recipe.get("leaf_tint", sp.get("leaf_tint"))
     if tint and tint.startswith("palette:"):
         tint = json.loads((ROOT / "tools" / "style.json").read_text())["palette"][tint.split(":", 1)[1]]
     if tint:
         gen["leafTint"] = tint
         for key in ("leaves", "leafMass"):
-            if key in gen:
+            if key in gen and Path(gen[key]).exists():  # bladkupoler har ingen lövtextur
                 gen[key] = str(gray_version(Path(gen[key])))
     run = subprocess.run(["node", str(TOOL / "gen_tree.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
     if run.returncode:

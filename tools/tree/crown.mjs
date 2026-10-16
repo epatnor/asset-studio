@@ -81,6 +81,9 @@ function domeClumps(twigs, o, r) {
   const n = twigs.length;
   const c = mul(twigs.reduce(add, [0, 0, 0]), 1 / n);
   const radii = [0, 1, 2].map((a) => Math.max(...twigs.map((p) => Math.abs(p[a] - c[a]))) * 0.85);
+  // round: sfärisk grundform (bollbuskar), oberoende av hur de dolda grenarna råkade sprida sig
+  // (största radien, så att sfären omsluter alla kvistar och inga täckningspuffar sticker ut)
+  if (o.round) { const m = Math.max(...radii) / 0.85; radii[0] = radii[1] = radii[2] = m; }
   radii[1] *= o.flattenY ?? 1;
   const meanR = (radii[0] + radii[1] + radii[2]) / 3;
   const out = [{ center: [c[0], c[1] - radii[1] * 0.1, c[2]], radii: radii.map((x) => x * 0.72), count: n }];

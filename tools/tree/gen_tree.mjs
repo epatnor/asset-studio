@@ -9,6 +9,7 @@ import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
 import { buildConiferFoliage } from './conifer.mjs';
 import { buildCrown } from './crown.mjs';
+import { buildLeafDome } from './leafdome.mjs';
 
 const SPECIES = JSON.parse(fs.readFileSync(new URL('./species.json', import.meta.url)));
 const STYLE = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -55,7 +56,8 @@ const barkLods = [
   ...l, barkRepeat, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height,
   lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
-  maxLevel: fronds ? 0 : l.maxLevel,
+  // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas
+  maxLevel: sp.stemless ? -1 : fronds ? 0 : l.maxLevel,
   topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
 }));
 
@@ -71,6 +73,16 @@ if (fronds) {
       .map(([k, v]) => [k, lin(pal[v])])),
   });
   checks.fronds_attached = foliage.fronds; // varje barrgren följer en riktig gren
+} else if (sp.foliage.type === 'leafdome') {
+  // Bladkupol: solida, facetterade blad i ringar. leafTint ger en egen palett (mörk/mellan/ljus av tinten)
+  const pal = STYLE.palette;
+  const names = { dark: 'foliage_shadow', mid: 'foliage_mid', light: 'foliage_light', ...(sp.foliage.palette ?? {}) };
+  const palette = recipe.leafTint
+    ? (() => { const c = lin(recipe.leafTint); return { dark: c.map((x) => x * 0.38), mid: c.map((x) => x * 0.7), light: c.map((x) => Math.min(1, x * 1.1 + 0.03)) }; })()
+    : Object.fromEntries(Object.entries(names).map(([k, v]) => [k, lin(pal[v])]));
+  foliage = buildLeafDome({ ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, palette });
+  foliage.clusters = [];
+  checks.leaves = foliage.leaves;
 } else if (sp.foliage.type === 'none') {
   // Kala träd (döda träd): bara stam och grenar
   const none = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] });
@@ -100,6 +112,14 @@ if (fronds) {
     return !sk.twigs.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * meanR);
   }).length;
 }
+// Stamlösa buskar: sänk hela formen så att den vilar på marken (lite nedsänkt så att den inte svävar)
+if (sp.stemless) {
+  let minY = Infinity;
+  for (const lod of foliage.lods) for (const g of [lod, lod.volume].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) minY = Math.min(minY, g.positions[i]);
+  const dy = -minY - height * (sp.sink ?? 0.05);
+  for (const lod of foliage.lods) for (const g of [lod, lod.volume].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] += dy;
+  checks.resting_on_ground = true;
+}
 checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs;
 
 // 4. GLB
@@ -116,15 +136,18 @@ if (fronds && recipe.frondTexture) {
   // Målad barrtextur (gråskala) med alfa bara i kanten: solid kärna, spretiga barr i silhuetten
   leafMat = doc.createMaterial('Fronds').setBaseColorTexture(texture(recipe.frondTexture, 'fronds'))
     .setRoughnessFactor(0.85).setMetallicFactor(0).setAlphaMode('MASK').setAlphaCutoff(0.45);
-} else if (fronds) {
-  leafMat = doc.createMaterial('Fronds').setRoughnessFactor(0.85).setMetallicFactor(0);
+} else if (sp.foliage.type === 'leafdome' && leaves && fs.existsSync(leaves)) {
+  // Bladkupol med målad bladyta (gråskala): formen kommer från geometrin, färgen från paletten (vertexfärg)
+  leafMat = doc.createMaterial('Leaves').setBaseColorTexture(texture(leaves, 'leaf_surface')).setRoughnessFactor(0.8).setMetallicFactor(0);
+} else if (fronds || sp.foliage.type === 'leafdome') {
+  leafMat = doc.createMaterial(fronds ? 'Fronds' : 'Leaves').setRoughnessFactor(0.85).setMetallicFactor(0);
 } else {
   leafMat = doc.createMaterial('Leaves').setBaseColorTexture(texture(leaves, 'leaves'))
     .setRoughnessFactor(0.85).setMetallicFactor(0).setAlphaMode('MASK').setAlphaCutoff(0.45).setDoubleSided(false);
 }
 // leafTint: färgen som materialparameter (gråskaletexturer), som Material Instances
 const tint = recipe.leafTint && lin(recipe.leafTint);
-if (tint) leafMat.setBaseColorFactor([...tint, 1]);
+if (tint && sp.foliage.type !== 'leafdome') leafMat.setBaseColorFactor([...tint, 1]);
 // v4-kronans massa har bara vertexfärg (projicerad textur ger ränder på sidorna); äldre kronor har lövmassa
 // Kronmassan: målad lövmassa (lådprojicerad i crown.mjs, tintad som löven), annars bara vertexfärg
 const massMat = !fronds && (leafMass
@@ -159,7 +182,7 @@ const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', re
 const tris = [], alphaTris = [];
 foliage.lods.forEach((lod, i) => {
   const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i });
-  lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat)));
+  if (barkLods[i].indices.length) lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat)));
   if (lod.indices.length) lodNode.addChild(doc.createNode(`${name}_leaves_LOD${i}`).setMesh(mesh(`leaves_LOD${i}`, lod, leafMat, { _CLUSTER: lod.cluster })));
   let volTris = 0;
   if (lod.volume && massMat) {
@@ -168,7 +191,7 @@ foliage.lods.forEach((lod, i) => {
   }
   root.addChild(lodNode);
   tris.push(Math.round((barkLods[i].indices.length + lod.indices.length) / 3 + volTris));
-  alphaTris.push(fronds && !recipe.frondTexture ? 0 : lod.indices.length / 3); // det som kostar overdraw
+  alphaTris.push((fronds && !recipe.frondTexture) || sp.foliage.type === 'leafdome' ? 0 : lod.indices.length / 3); // det som kostar overdraw
 });
 doc.createScene(name).addChild(root);
 fs.mkdirSync(path.dirname(out), { recursive: true });

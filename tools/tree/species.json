@@ -1,5 +1,5 @@
 {
-  "_doc": "Arter för trädgeneratorn (skeleton.mjs). Längder är relativa (stammen ~1) och hela trädet skalas till receptets höjd efteråt. Vinklar i grader från föräldergrenens riktning. count = [min, max]. photo = dragning uppåt (ljus), gravity = dragning nedåt, gnarl = slumpmässig krokighet per sektion. lenFalloff: grenar högre upp på föräldern blir kortare (1 = linjärt mot noll i toppen). Stilen (färger, texturer) styrs av style.json och receptet, inte här. leaf_tint: standardfärg för löven (\"palette:<namn>\" pekar på style.json, eller \"#RRGGBB\"); receptets leaf_tint vinner.",
+  "_doc": "Arter för trädgeneratorn (skeleton.mjs). Längder är relativa (stammen ~1) och hela trädet skalas till receptets höjd efteråt. Vinklar i grader från föräldergrenens riktning. count = [min, max]. photo = dragning uppåt (ljus), gravity = dragning nedåt, gnarl = slumpmässig krokighet per sektion. lenFalloff: grenar högre upp på föräldern blir kortare (1 = linjärt mot noll i toppen). Stilen (färger, texturer) styrs av style.json och receptet, inte här. leaf_tint: standardfärg för löven (\"palette:<namn>\" pekar på style.json, eller \"#RRGGBB\"); receptets leaf_tint vinner. stemless: inga synliga stammar/grenar (bollbuskar); formen sänks så att den vilar på marken (sink = nedsänkning i andel av höjden). round: sfärisk kupol (bollbuskar).",
   "oak": {
     "trunk": {
       "length": 0.42,
@@ -539,13 +539,14 @@
       "mode": "dome",
       "puffR": 0.5,
       "domeBottom": -0.2,
-      "coverR": 0.95
+      "coverR": 0.95,
+      "massScale": 0.35
     },
-    "leaves": "leaflet_atlas",
+    "leaves": "bush_atlas",
     "bark": "bark_painted",
     "minTwigRadius": 0.3,
-    "leaf_tint": "palette:foliage_light",
-    "mass": "foliage_painted"
+    "leaf_tint": "palette:bush_green",
+    "mass": "bush_mass"
   },
   "_sizes": {
     "small": {
@@ -577,7 +578,12 @@
     "jpine": "jpine",
     "palm": "palm",
     "deadtree": "deadtree",
-    "shrub": "shrub"
+    "shrub": "shrub",
+    "ballbush": "ballbush",
+    "moundbush": "moundbush",
+    "leafbush": "leafbush",
+    "petalbush": "petalbush",
+    "serratebush": "serratebush"
   },
   "maple": {
     "trunk": {
@@ -1348,12 +1354,299 @@
       "mode": "dome",
       "puffR": 0.5,
       "domeBottom": -0.2,
-      "coverR": 0.95
+      "coverR": 0.95,
+      "massScale": 0.35
     },
-    "leaves": "leaflet_atlas",
+    "leaves": "bush_atlas",
     "bark": "bark_painted",
     "minTwigRadius": 0.3,
-    "leaf_tint": "palette:foliage_light",
-    "mass": "foliage_painted"
+    "leaf_tint": "palette:bush_green",
+    "mass": "bush_mass"
+  },
+  "ballbush": {
+    "trunk": {
+      "length": 0.1,
+      "radius": 0.03,
+      "sections": 2,
+      "segments": 7,
+      "gnarl": 0.1,
+      "photo": 0.0,
+      "flare": 0,
+      "roots": 0,
+      "lobes": 0,
+      "lobeAmp": 0.12,
+      "twist": 1.0
+    },
+    "levels": [
+      {
+        "count": [
+          10,
+          12
+        ],
+        "start": 0.0,
+        "angle": [
+          70,
+          35
+        ],
+        "length": 1.6,
+        "lenFalloff": 0.0,
+        "radius": 0.7,
+        "gnarl": 0.15,
+        "photo": 0.25,
+        "gravity": 0.0,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 7,
+      "fill": 1.0,
+      "union": 0.05,
+      "cell": 0.07,
+      "cards": 1100,
+      "cardSize": 0.07,
+      "bottom": 0.85,
+      "lump": 0.05,
+      "flattenY": 0.95,
+      "undersideWeight": 0.7,
+      "puffs": 2,
+      "puff": 0.85,
+      "puffScale": 0.5,
+      "puffOut": 0.8,
+      "stickOut": 0.08,
+      "normalBlend": 0.95,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "domeBottom": -0.7,
+      "coverR": 0.95,
+      "core": true,
+      "round": true,
+      "massScale": 0.35
+    },
+    "leaves": "bush_atlas",
+    "bark": "bark_painted",
+    "minTwigRadius": 0.3,
+    "leaf_tint": "palette:bush_green",
+    "mass": "bush_mass",
+    "stemless": true,
+    "sink": 0.06
+  },
+  "moundbush": {
+    "trunk": {
+      "length": 0.1,
+      "radius": 0.03,
+      "sections": 2,
+      "segments": 7,
+      "gnarl": 0.1,
+      "photo": 0.0,
+      "flare": 0,
+      "roots": 0,
+      "lobes": 0,
+      "lobeAmp": 0.12,
+      "twist": 1.0
+    },
+    "levels": [
+      {
+        "count": [
+          8,
+          10
+        ],
+        "start": 0.0,
+        "angle": [
+          72,
+          12
+        ],
+        "length": 5.0,
+        "lenFalloff": 0.0,
+        "radius": 0.7,
+        "gnarl": 0.3,
+        "photo": 0.25,
+        "gravity": 0.0,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "crown",
+      "clumps": 9,
+      "fill": 1.0,
+      "union": 0.05,
+      "cell": 0.1,
+      "cards": 1300,
+      "cardSize": 0.07,
+      "bottom": 0.85,
+      "lump": 0.05,
+      "flattenY": 0.55,
+      "undersideWeight": 0.7,
+      "puffs": 2,
+      "puff": 0.85,
+      "puffScale": 0.5,
+      "puffOut": 0.8,
+      "stickOut": 0.08,
+      "normalBlend": 0.95,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.45,
+      "domeBottom": -0.5,
+      "coverR": 0.95,
+      "core": true,
+      "massScale": 0.35
+    },
+    "leaves": "bush_atlas",
+    "bark": "bark_painted",
+    "minTwigRadius": 0.3,
+    "leaf_tint": "palette:bush_green",
+    "mass": "bush_mass",
+    "stemless": true,
+    "sink": 0.06
+  },
+  "leafbush": {
+    "stemless": true,
+    "trunk": {
+      "length": 0.1,
+      "radius": 0.02,
+      "sections": 2,
+      "segments": 5,
+      "gnarl": 0.0,
+      "photo": 0.0,
+      "flare": 0,
+      "roots": 0
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          6
+        ],
+        "start": 0.0,
+        "angle": [
+          60,
+          20
+        ],
+        "length": 2.0,
+        "lenFalloff": 0.0,
+        "radius": 0.7,
+        "gnarl": 0.1,
+        "photo": 0.1,
+        "gravity": 0.0,
+        "sections": 2,
+        "segments": 3
+      }
+    ],
+    "leaves": "leaf_surface",
+    "bark": "bark_painted",
+    "sink": 0.02,
+    "foliage": {
+      "type": "leafdome",
+      "shape": "pointed",
+      "rings": 6,
+      "leafLen": 0.55,
+      "leafWidth": 0.62,
+      "fold": 0.35,
+      "width": 2.1,
+      "overlap": 1.7,
+      "lift": 0.35,
+      "thetaMax": 92
+    }
+  },
+  "petalbush": {
+    "stemless": true,
+    "trunk": {
+      "length": 0.1,
+      "radius": 0.02,
+      "sections": 2,
+      "segments": 5,
+      "gnarl": 0.0,
+      "photo": 0.0,
+      "flare": 0,
+      "roots": 0
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          6
+        ],
+        "start": 0.0,
+        "angle": [
+          60,
+          20
+        ],
+        "length": 2.0,
+        "lenFalloff": 0.0,
+        "radius": 0.7,
+        "gnarl": 0.1,
+        "photo": 0.1,
+        "gravity": 0.0,
+        "sections": 2,
+        "segments": 3
+      }
+    ],
+    "leaves": "leaf_surface",
+    "bark": "bark_painted",
+    "sink": 0.02,
+    "foliage": {
+      "type": "leafdome",
+      "shape": "round",
+      "rings": 5,
+      "leafLen": 0.6,
+      "leafWidth": 0.95,
+      "fold": 0.2,
+      "width": 2.1,
+      "overlap": 1.5,
+      "lift": 0.3,
+      "thetaMax": 92
+    }
+  },
+  "serratebush": {
+    "stemless": true,
+    "trunk": {
+      "length": 0.1,
+      "radius": 0.02,
+      "sections": 2,
+      "segments": 5,
+      "gnarl": 0.0,
+      "photo": 0.0,
+      "flare": 0,
+      "roots": 0
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          6
+        ],
+        "start": 0.0,
+        "angle": [
+          60,
+          20
+        ],
+        "length": 2.0,
+        "lenFalloff": 0.0,
+        "radius": 0.7,
+        "gnarl": 0.1,
+        "photo": 0.1,
+        "gravity": 0.0,
+        "sections": 2,
+        "segments": 3
+      }
+    ],
+    "leaves": "leaf_surface",
+    "bark": "bark_painted",
+    "sink": 0.02,
+    "foliage": {
+      "type": "leafdome",
+      "shape": "serrated",
+      "rings": 7,
+      "leafLen": 0.5,
+      "leafWidth": 0.6,
+      "fold": 0.4,
+      "width": 2.1,
+      "overlap": 1.8,
+      "lift": 0.4,
+      "thetaMax": 92
+    }
   }
 }

@@ -85,7 +85,7 @@ python3 -I tools/tree/make_tree.py '{"name":"oak42","preset":"oak_medium","seed"
 
 Svar: `{"glb": "assets/trees/oak42/oak42.glb", "height_m": 9.0, "branch_tris": 3166, "leaf_tris": 10640, ...}`
 
-Presets: `<art>_<small|medium|large>` där arterna finns i `tools/tree/species.json`: oak, maple, ash, aspen, birch, cherry, willow, acacia, cypress, jpine, pine (gran), palm, deadtree, shrub och bush (även `bush_1..3`). En ny art läggs till som data, utan kodändring. Svaret innehåller `checks` med `ok: true` när växten hänger ihop.
+Presets: `<art>_<small|medium|large>` där arterna finns i `tools/tree/species.json`: oak, maple, ash, aspen, birch, cherry, willow, acacia, cypress, jpine, pine (gran), palm, deadtree, shrub, bush (även `bush_1..3`), de stamlösa `ballbush` och `moundbush`, och bladkupolerna `leafbush`, `petalbush` och `serratebush`. En ny art läggs till som data, utan kodändring. Svaret innehåller `checks` med `ok: true` när växten hänger ihop.
 
 ```bash
 python3 -I tools/tree/make_tree.py '{"name":"oak_wide","preset":"oak_medium","seed":7,"height":8,"species":{"levels":[{"count":[7,9],"angle":[58,10]}]}}'
