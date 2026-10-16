@@ -22,7 +22,9 @@ function grow(start, dir, length, r0, rTip, spec, r, groundY) {
   const bendSide = norm([Math.cos(r() * 6.283), 0, Math.sin(r() * 6.283)]), bendPh = r() * 6.283;
   for (let i = 1; i <= spec.sections; i++) {
     const t = i / spec.sections;
-    d = norm(add(add(d, mul(randomUnit(r), spec.gnarl)), add(mul(UP, spec.photo * 0.5), mul(UP, -spec.gravity * (0.5 + t)))));
+    // droopCurve: nästan ingen tyngd vid fästet och mycket mot spetsen, så grenen går ut och bågnar ner
+    const grav = spec.droopCurve ? spec.gravity * (0.1 + 2.2 * t * t) : spec.gravity * (0.5 + t);
+    d = norm(add(add(d, mul(randomUnit(r), spec.gnarl)), add(mul(UP, spec.photo * 0.5), mul(UP, -grav))));
     if (spec.bend) d = norm(add(d, mul(bendSide, spec.bend * Math.cos(t * Math.PI * (spec.bendFreq ?? 1.5) + bendPh))));
     // Grenar får inte gå ner i marken: böj uppåt nära marken
     if (p[1] + d[1] * step < groundY) d = norm([d[0], Math.max(d[1], 0.25), d[2]]);
@@ -60,11 +62,11 @@ export function buildSkeleton(sp, seed, size = {}) {
       if (L.whorls) {
         // Kransar (gran): flera grenar på samma höjd, jämnt fördelade runt stammen
         for (let w = 0; w < L.whorls; w++) {
-          const t = L.start + (L.end - L.start) * (w / (L.whorls - 1)) + (r() - 0.5) * 0.01;
-          const k = w / (L.whorls - 1);
+          const k = L.whorls > 1 ? w / (L.whorls - 1) : 0; // en enda krans (palm) sitter vid start
+          const t = L.start + (L.end - L.start) * k + (r() - 0.5) * 0.01;
           const cnt = Math.max(1, Math.round((pick(L.count, r) * (1 - k) + pick(L.countTop ?? L.count, r) * k) * (size.count ?? 1)));
           const rot = r() * Math.PI * 2;
-          for (let j = 0; j < cnt; j++) slots.push({ t, az: rot + (j / cnt) * Math.PI * 2 + (r() - 0.5) * 0.3 });
+          for (let j = 0; j < cnt; j++) slots.push({ t, k, az: rot + (j / cnt) * Math.PI * 2 + (r() - 0.5) * 0.3 });
         }
       } else {
         const cnt = Math.max(1, Math.round(pick(L.count, r) * (size.count ?? 1)));
@@ -78,7 +80,9 @@ export function buildSkeleton(sp, seed, size = {}) {
       for (const s of slots) {
         const at = sampleBranch(par, s.t);
         const [b1, b2] = basis(at.d);
-        const ang = (L.angle[0] + (r() * 2 - 1) * L.angle[1]) * Math.PI / 180;
+        // angleTop: vinkeln kan ändras med höjden (gran: grenarna hänger brantare nedåt högre upp)
+        const base = L.angleTop !== undefined && s.k !== undefined ? L.angle[0] + (L.angleTop - L.angle[0]) * s.k : L.angle[0];
+        const ang = (base + (r() * 2 - 1) * L.angle[1]) * Math.PI / 180;
         const side = add(mul(b1, Math.cos(s.az)), mul(b2, Math.sin(s.az)));
         const dir = norm(add(mul(at.d, Math.cos(ang)), mul(side, Math.sin(ang))));
         const length = Math.max(L.minLength ?? 0, par.length * L.length * (1 - s.t * L.lenFalloff) * (0.85 + r() * 0.3));

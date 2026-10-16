@@ -38,7 +38,7 @@ En bild kostar ungefär bredd × höjd / 750 tokens (1024×1024 ≈ 1 400), oavs
 
 Använd i första hand MCP-servern `tinkertown` (`create_tree`, `generate_texture`, `list_assets`). Nya verktyg läggs till i `tools/mcp/server.py` som tunna omslag runt ett skript i `tools/<område>/`.
 
-Trädgeneratorn: allt (bark, lövkluster, granens barr) byggs från samma skelett i `skeleton.mjs`. Lägg aldrig till lövverk eller grenar som inte utgår från skelettet; då försvinner garantin att delarna sitter ihop. Arter och stil-parametrar ändras i `species.json`, inte i koden. Kontrollera `checks.ok` i svaret i stället för att titta på bilder.
+Trädgeneratorn är till för alla större växter (träd och buskar; gräs och blommor är en egen generator). **Skapa eller justera aldrig enskilda träd för hand**: förbättringar görs i generatorns kod eller som artdata i `species.json`, och varje träd är ett recept som körs genom generatorn. Allt (bark, lövkluster, granens barr) byggs från samma skelett i `skeleton.mjs`. Lägg aldrig till lövverk eller grenar som inte utgår från skelettet; då försvinner garantin att delarna sitter ihop. Arter och stil-parametrar ändras i `species.json`, inte i koden. Kontrollera `checks.ok` i svaret i stället för att titta på bilder.
 
 Kommandoradsvarianter:
 

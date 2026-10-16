@@ -22,8 +22,12 @@ sys.path.insert(0, str(ROOT / "tools" / "texture"))
 import post_textures  # noqa: E402
 
 STYLE_FILE = ROOT / "tools" / "style.json"  # se docs/style-guide.md
-TREE_PRESETS = [f"{t}_{s}" for t in ("oak", "aspen", "ash", "cherry", "pine") for s in ("small", "medium", "large")] + \
-               ["bush_1", "bush_2", "bush_3"]
+def tree_presets() -> list[str]:
+    # Läses från species.json vid varje anrop, så att en ny art blir tillgänglig utan kodändring
+    sp = json.loads((ROOT / "tools" / "tree" / "species.json").read_text())
+    return [f"{k}_{s}" for k in sp["_presets"] for s in sp["_sizes"]] + [f"bush_{n}" for n in (1, 2, 3)]
+
+
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 mcp = FastMCP("tinkertown")
@@ -46,9 +50,12 @@ def create_tree(name: str, preset: str = "oak_medium", seed: int = 0, height: fl
                 species: dict | None = None, bark: str | None = None, leaves: str | None = None,
                 bark_scale: list[float] | None = None, canopy: dict | None = None,
                 conifer: dict | None = None, leaf_tint: str | None = None, preview: bool = False) -> dict:
-    """Skapa ett stiliserat träd som GLB (3 LOD) i assets/trees/<name>/.
+    """Skapa en större växt (träd eller buske) som GLB (3 LOD) i assets/trees/<name>/.
 
-    preset: oak_*, aspen_*, ash_*, cherry_*, pine_* (small/medium/large) eller bush_1..3.
+    preset: <art>_<small|medium|large>, arter i tools/tree/species.json: oak, maple, ash, aspen, birch,
+      cherry, willow (hängande), acacia (paraplykrona), cypress (pelare), jpine (japansk tall, kuddar),
+      pine/fir (gran), palm, deadtree (kal), shrub (hög buske), bush (rund buske; även bush_1..3).
+      Gräs och blommor är en annan generator.
       bush_* ger buske, pine_* gran av solida barrgrenar i våningar, övriga lövträd.
     seed: samma seed + preset ger samma träd. height: meter (buskar 0,8–1,6).
     species: överstyr artens skelett (tools/tree/species.json), t.ex. {"levels": [{"count": [8, 10]}]}.
@@ -61,8 +68,8 @@ def create_tree(name: str, preset: str = "oak_medium", seed: int = 0, height: fl
     preview: rendera även en förhandsbild via Blender (långsammare; behövs sällan).
     """
     _check_name(name)
-    if preset not in TREE_PRESETS:
-        raise ValueError(f"okänt preset, välj bland: {', '.join(TREE_PRESETS)}")
+    if preset not in tree_presets():
+        raise ValueError(f"okänt preset, välj bland: {', '.join(tree_presets())}")
     recipe = {"name": name, "preset": preset, "seed": seed, "height": height, "preview": preview}
     if species:
         recipe["species"] = species

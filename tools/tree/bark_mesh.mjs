@@ -36,7 +36,8 @@ export function barkMesh(sk, o) {
   for (const b of sk.branches) {
     if (b.level > o.maxLevel) continue;
     const segs = Math.max(3, Math.round(b.segments * o.segScale));
-    const nodes = b.nodes;
+    // topCut: stammen slutar under toppen (granens tofs tar över där)
+    const nodes = b.level === 0 && o.topCut ? b.nodes.filter((n, i) => i < 2 || n.p[1] <= o.topCut * o.height) : b.nodes;
     const base = g.positions.length / 3;
     // Parallellförflyttade ramar längs grenen (ingen vridning mellan ringarna)
     let d0 = norm(sub(nodes[1].p, nodes[0].p));

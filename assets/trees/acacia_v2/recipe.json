@@ -1,0 +1,9 @@
+{
+  "name": "acacia_v2",
+  "preset": "acacia_medium",
+  "seed": 3,
+  "height": 8,
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}

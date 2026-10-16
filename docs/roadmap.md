@@ -84,7 +84,10 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [ ] Materialparametrar i editorn som reglage: tint, vindstyrka, lövstorlek, genomlysning (motsvarar Material Instances).
 - [x] Gran (`pine_*`): egen generator (`conifer.mjs`) med tjock stam och ringar av solida, nedåthängande barrgrenar med flikiga spetsar. Inga alfakort och ingen textur, och färger ur `style.json` (`conifer_*`). Cirka 30 000 / 12 000 / 4 000 trianglar för LOD0–2.
 - [x] Granen enligt "Stylized 3D Pine Tree" (ZugZug Art): asymmetri per våning, enstaka saknade grenar, varma torra toner på cirka 12 % av grenarna, och en målad 2×2-barratlas (`frond_atlas`) med alfa bara i kanten, så att silhuetten blir spretig. `frond_texture: false` ger helt solida grenar utan alfa (för LOD eller svag hårdvara).
-- [ ] Granen: rötter vid stamfoten, och en tydligare toppskott.
+- [x] Granen: grenarna går ut nästan vågrätt och bågnar ner mot spetsen (`droopCurve`), brantare högre upp (`angleTop`); solfjäderformade barrgrenar (`fan`), färre och större per krans, en uppåtriktad tofs i toppen och stammen kapad under tofsen.
+- [x] Generatorn täcker alla större växter som data i `species.json`: ek, lönn, ask, asp, björk (vit bark via `bark_tint`), körsbär, pil (hängande lövgardiner, `hang`), akacia (paraplykrona), cypress (pelare), japansk tall (platta kuddar, `mode: clusters` + `coverFlatten`), gran, palm (en krans i toppen), dött träd (`foliage: none`), hög buske och rund buske. MCP-verktyget läser arterna direkt ur filen.
+- [ ] Pil: jämnare krona och en stamfot som inte delar sig. Palm: synliga småblad (fler segment längs bladet).
+- [ ] Solid gran (`frond_texture: false`): fingrar i barrgrenarnas ytterkant, så att de inte blir kantiga paddlar.
 - [ ] Ta bort eller slå ihop små, ensamma kluster långt från resten av kronan (körsbärets lösa nedre klump, tallens skivor vid grenändar).
 - [ ] Tydligare skuggkontrast i kronorna (granskningen tycker fortfarande att den är svag).
 - [ ] Tallen: tätare och tjockare våningar, och kapa lösa, kala grenar och den tunna toppspetsen.

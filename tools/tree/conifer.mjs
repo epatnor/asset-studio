@@ -21,10 +21,14 @@ function smoothNormals(g) {
 }
 
 // En barrgren längs center(u): bredast vid ~55 %, flikig ytterkant, välvd ovansida, tunnare undersida
-function frond(g, center, width, lobes, lobeDepth, thick, segL, segW, shade, fid, cell, warm) {
+function frond(g, center, width, lobes, lobeDepth, thick, segL, segW, shade, fid, cell, warm, fan = false) {
   const start = g.positions.length / 3;
   const halfW = (u) => {
-    const body = Math.sin(Math.PI * Math.min(1, u * 1.05) ** 0.8) * width * 0.5;
+    // fan: solfjäder som blir bredare utåt och rundas av först i yttersta spetsen (referensens gran);
+    // annars bredast på mitten
+    const body = fan
+      ? (0.18 + 0.82 * Math.min(1, u / 0.8) ** 0.75) * Math.sqrt(Math.max(0, 1 - Math.max(0, (u - 0.82) / 0.18) ** 2)) * width * 0.5
+      : Math.sin(Math.PI * Math.min(1, u * 1.05) ** 0.8) * width * 0.5;
     return body * (1 - lobeDepth * Math.abs(Math.sin(u * Math.PI * lobes)) * clamp01((u - 0.3) / 0.4));
   };
   for (const layer of [0, 1]) {
@@ -96,10 +100,10 @@ export function buildConiferFoliage(sk, o) {
     };
   });
 
-  // Toppskott: en kort, uppåtriktad barrgren på stammens spets, så toppen inte blir en kal pinne
+  // Toppen: en uppåtriktad tofs på stammens spets, så toppen inte blir en kal pinne
   const trunk = sk.branches[0];
   const top = trunk.nodes[trunk.nodes.length - 1].p;
-  const topLen = H * 0.08;
+  const topLen = H * 0.12;
   const lodDefs = [{ segL: 8, segW: 6, keep: 1 }, { segL: 5, segW: 4, keep: 0.8 }, { segL: 3, segW: 2, keep: 0.6 }];
   const lods = lodDefs.map(({ segL, segW, keep }) => {
     const g = empty();
@@ -109,11 +113,21 @@ export function buildConiferFoliage(sk, o) {
       // Barren följer grenen exakt: mittlinjen är grenens egen axel
       const center = (u) => sampleBranch(f.b, u).p;
       frond(g, center, f.width * widen, o.lobes, o.textured ? o.lobeDepth * 0.4 : o.lobeDepth,
-        f.thick, segL, segW, shade, fid, o.textured ? f.cell : -1, f.warm);
+        f.thick, segL, segW, shade, fid, o.textured ? f.cell : -1, f.warm, o.fan);
     });
     // Lätt lutande: rakt uppåt skulle göra sidriktningen cross(UP, tangent) odefinierad
-    const tipCenter = (u) => add(sub(top, [0, topLen * 0.7, 0]), mul(norm([0.35, 1, 0.1]), topLen * u));
-    frond(g, tipCenter, topLen * 0.55, 2, 0.2, topLen * 0.08, segL, segW, shade, fronds.length, o.textured ? 0 : -1, null);
+    // Tofs i toppen: en krans av korta barrgrenar som pekar uppåt (~30° från lodlinjen) runt en mittgren
+    const tuft = o.tuft ?? 6;
+    const tuftBase = sub(top, [0, topLen * 1.1, 0]);
+    for (let j = 0; tuft > 0 && j <= tuft; j++) {
+      const mid = j === tuft;
+      const a = (j / tuft) * Math.PI * 2 + 0.4;
+      const tilt = mid ? 0.1 : 0.75;
+      const dir = norm([Math.cos(a) * tilt, 1, Math.sin(a) * tilt]);
+      const len = topLen * (mid ? 1.5 : 0.85 + (j % 2) * 0.2);
+      const c = (u) => add(add(tuftBase, [0, mid ? 0 : topLen * 0.25 * (j % 3) / 2, 0]), mul(dir, len * u));
+      frond(g, c, len * (mid ? 0.5 : 0.7), 2, 0.25, len * 0.08, segL, segW, shade, fronds.length + j, o.textured ? j % 4 : -1, null);
+    }
     smoothNormals(g);
     // Mjuk stiliserad skuggning: blanda normalen mot en kon-normal (ut från stammen och uppåt)
     for (let i = 0; i < g.positions.length; i += 3) {

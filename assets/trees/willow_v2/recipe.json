@@ -1,0 +1,9 @@
+{
+  "name": "willow_v2",
+  "preset": "willow_medium",
+  "seed": 8,
+  "height": 9,
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}

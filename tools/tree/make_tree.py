@@ -94,6 +94,10 @@ def main():
         if ft and (TEX / f"{ft}.png").exists():
             # Gråskala: texturen ger penseldrag och alfakant, färgen kommer från paletten (vertexfärg)
             gen["frondTexture"] = str(gray_version(TEX / f"{ft}.png"))
+    bark_tint = recipe.get("bark_tint", sp.get("bark_tint"))
+    if bark_tint:
+        gen["barkTint"] = bark_tint
+        gen["bark"] = str(gray_version(TEX / f"{bark}.png"))
     tint = recipe.get("leaf_tint", sp.get("leaf_tint"))
     if tint and tint.startswith("palette:"):
         tint = json.loads((ROOT / "tools" / "style.json").read_text())["palette"][tint.split(":", 1)[1]]

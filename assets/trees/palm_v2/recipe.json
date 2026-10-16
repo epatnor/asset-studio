@@ -1,0 +1,9 @@
+{
+  "name": "palm_v2",
+  "preset": "palm_medium",
+  "seed": 5,
+  "height": 10,
+  "bark": "bark_painted",
+  "leaves": "solid",
+  "leaf_mass": "leaf_mass"
+}

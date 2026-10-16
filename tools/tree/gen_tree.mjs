@@ -56,6 +56,7 @@ const barkLods = [
   lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   maxLevel: fronds ? 0 : l.maxLevel,
+  topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
 }));
 
 // 3. Lövverk, fäst i skelettet
@@ -65,9 +66,15 @@ if (fronds) {
   foliage = buildConiferFoliage(sk, {
     seed: seedEff, height, normalBlend: 0.5, ...sp.foliage, ...(recipe.conifer ?? {}),
     textured: !!recipe.frondTexture,
-    palette: { light: lin(pal.conifer_light), mid: lin(pal.conifer_mid), dark: lin(pal.conifer_dark) },
+    // Paletten kan väljas per art (palm: lövträdens grönt), standard är granens
+    palette: Object.fromEntries(Object.entries({ light: 'conifer_light', mid: 'conifer_mid', dark: 'conifer_dark', ...(sp.foliage.palette ?? {}) })
+      .map(([k, v]) => [k, lin(pal[v])])),
   });
   checks.fronds_attached = foliage.fronds; // varje barrgren följer en riktig gren
+} else if (sp.foliage.type === 'none') {
+  // Kala träd (döda träd): bara stam och grenar
+  const none = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] });
+  foliage = { lods: [none(), none(), none()], clusters: [] };
 } else if (sp.foliage.type === 'crown') {
   // v4: sammanslagen molnlik kronmassa + täta små lövkort
   const opts = { ...sp.foliage, cards: Math.round(sp.foliage.cards * (size.cards ?? 1)), ...(recipe.canopy ?? {}), seed: seedEff, height };
@@ -102,6 +109,8 @@ const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).
 const texture = (file, name) => doc.createTexture(name).setImage(new Uint8Array(fs.readFileSync(file))).setMimeType('image/png');
 
 const barkMat = doc.createMaterial('Bark').setBaseColorTexture(texture(bark, 'bark')).setRoughnessFactor(0.9).setMetallicFactor(0);
+// barkTint (björk, palm, dött träd): barken är då gråskala och färgas här
+if (recipe.barkTint) barkMat.setBaseColorFactor([...lin(recipe.barkTint), 1]);
 let leafMat;
 if (fronds && recipe.frondTexture) {
   // Målad barrtextur (gråskala) med alfa bara i kanten: solid kärna, spretiga barr i silhuetten
@@ -151,7 +160,7 @@ const tris = [], alphaTris = [];
 foliage.lods.forEach((lod, i) => {
   const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i });
   lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat)));
-  lodNode.addChild(doc.createNode(`${name}_leaves_LOD${i}`).setMesh(mesh(`leaves_LOD${i}`, lod, leafMat, { _CLUSTER: lod.cluster })));
+  if (lod.indices.length) lodNode.addChild(doc.createNode(`${name}_leaves_LOD${i}`).setMesh(mesh(`leaves_LOD${i}`, lod, leafMat, { _CLUSTER: lod.cluster })));
   let volTris = 0;
   if (lod.volume && massMat) {
     lodNode.addChild(doc.createNode(`${name}_volume_LOD${i}`).setMesh(mesh(`volume_LOD${i}`, lod.volume, massMat, { _CLUSTER: lod.volume.cluster })));

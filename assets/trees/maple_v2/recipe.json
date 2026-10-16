@@ -1,0 +1,9 @@
+{
+  "name": "maple_v2",
+  "preset": "maple_medium",
+  "seed": 4,
+  "height": 9,
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}

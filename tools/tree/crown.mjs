@@ -127,7 +127,8 @@ export function buildCrown(twigs, o) {
   for (const p of twigs) {
     if (insideAny(p)) continue;
     const pr = refR * (o.coverR ?? 0.75) * (0.85 + r() * 0.3);
-    clumps.push({ center: p, radii: [pr, pr * 0.92, pr], count: 1, minR: pr * 0.92, bottom: o.bottom ?? 0.75,
+    const fy = o.coverFlatten ?? 1; // kuddar (japansk tall): platta täckningspuffar
+    clumps.push({ center: p, radii: [pr, pr * 0.92 * fy, pr], count: 1, minR: pr * 0.92 * fy, bottom: o.bottom ?? 0.75,
       waves: clumps[0].waves.map((w) => ({ ...w, ph: w.ph + r() * 6 })) });
   }
   // Puffar: mindre klumpar på klumparnas övre och yttre sida, så kronan blir bullig som ett stackmoln
@@ -221,6 +222,26 @@ export function buildCrown(twigs, o) {
     // Moturs sett från +cn (framsidan utåt); enkelsidigt så att normalerna inte vänds på baksidan
     g.indices.push(start, start + 3, start + 1, start, start + 2, start + 3); // b × t = −cn, så vänd ordningen
   };
+
+  // Hängande gardiner (pil): strängar av små lövkort som hänger rakt ned från kronans undersida
+  if (o.hang) {
+    const lower = tris.filter((_, i) => i % 3 === 0).map(([a]) => fine.verts[a]).filter((p) => gradient(f, p, cardSize * 0.2)[1] < 0.15);
+    for (let s = 0; s < o.hang && lower.length; s++) {
+      const top = lower[Math.floor(r() * lower.length)];
+      const L = H * (o.hangLength ?? 0.3) * (0.6 + r() * 0.6);
+      const out = norm([top[0], 0, top[2]]);
+      const n = Math.max(3, Math.round(L / (cardSize * 0.55)));
+      for (let i = 0; i < n; i++) {
+        const u = i / n;
+        // Svag båge utåt, så gardinen inte hänger rakt in i stammen
+        const p = add(top, add(mul([0, -1, 0], L * u), mul(out, L * 0.08 * Math.sin(u * Math.PI))));
+        if (p[1] < H * 0.04) break;
+        const cn = norm(add(out, mul(randomUnit(r), 0.5)));
+        const t = norm(add([0, -1, 0], mul(randomUnit(r), 0.3)));
+        cards.push({ p, n: puffNormal(top, cardSize * 0.2), cn, t, size: cardSize * (0.7 + r() * 0.4), cell: Math.floor(r() * 4), prio: r(), depth: 0.2 + 0.3 * u, crev: 0, ci: 0 });
+      }
+    }
+  }
 
   const lodDefs = [{ keep: 1, scale: 1, cell: 1 }, { keep: 0.45, scale: 1.45, cell: 1.6 }, { keep: 0.18, scale: 2.2, cell: 2.6 }];
   const lods = lodDefs.map(({ keep, scale, cell }) => {
