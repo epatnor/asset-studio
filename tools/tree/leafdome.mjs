@@ -65,7 +65,38 @@ export function buildLeafDome(o) {
   const H = o.height, R = H * (o.width ?? 1.4) / 2;
   const thetaMax = (o.thetaMax ?? 105) * Math.PI / 180;
   const leaves = [];
-  const rings = o.rings ?? 6;
+  const color = (shade) => (shade < 0.5 ? lerp(o.palette.dark, o.palette.mid, shade * 2) : lerp(o.palette.mid, o.palette.light, (shade - 0.5) * 2));
+  if (o.layout === 'scatter') {
+    // Oregelbundet: blad spridda jämnt men slumpvis (Fibonacci-sfär + jitter) över en ellipsoid som
+    // fortsätter förbi ekvatorn, så att undersidan böjer sig in mot marken (en boll, inte en hatt)
+    const ry = H * 0.5, cy = H * 0.5, hs = ry / R;
+    const thMax = (o.thetaMax ?? 160) * Math.PI / 180;
+    const leafLen = R * (o.leafLen ?? 0.45), leafW = leafLen * (o.leafWidth ?? 0.7);
+    const cap = (1 - Math.cos(thMax)) / 2; // andel av sfärens yta som täcks
+    const area = 4 * Math.PI * ((R * R * 2 + R * ry) / 3) * cap;
+    const N = Math.round(area / (leafLen * leafW * 0.6) * (o.overlap ?? 2.2));
+    for (let i = 0; i < N; i++) {
+      // Fibonacci-punkt inom polkalotten, med jitter så att inga rader syns
+      const z = 1 - cap * 2 * ((i + 0.5 + (r() - 0.5) * 0.9) / N);
+      const th = Math.acos(Math.max(-1, Math.min(1, z)));
+      const az = i * 2.399963 + (r() - 0.5) * 0.5;
+      const k = th / thMax;
+      const dn = norm([Math.sin(th) * Math.cos(az), Math.cos(th) / hs, Math.sin(th) * Math.sin(az)]);
+      const merid = norm([Math.cos(th) * Math.cos(az), -Math.sin(th) * hs, Math.cos(th) * Math.sin(az)]);
+      const surf = [Math.sin(th) * Math.cos(az) * R * 0.88, cy + Math.cos(th) * ry * 0.88, Math.sin(th) * Math.sin(az) * R * 0.88];
+      // Slumpvis vridning i ytans plan kring den nedåtgående riktningen, plus varierande lyft
+      const spin = (r() - 0.5) * 2 * (o.spread ?? 55) * Math.PI / 180;
+      const tdir = add(mul(merid, Math.cos(spin)), mul(cross(dn, merid), Math.sin(spin)));
+      const axis = norm(add(tdir, mul(dn, (o.lift ?? 0.3) * (0.4 + r() * 0.9))));
+      const len = leafLen * (0.75 + r() * 0.5);
+      const base = sub(surf, mul(axis, len * 0.3));
+      const side = norm(cross(axis, dn));
+      // Tydlig gradient som i referensen: ljus topp, mörk undersida
+      const shade = clamp01(0.78 - 0.7 * k + 0.2 * Math.max(0, dn[1]) + (r() - 0.5) * 0.2);
+      leaves.push({ base, axis, side, len, width: len * (o.leafWidth ?? 0.7), col: color(shade), dn, prio: r(), k });
+    }
+  }
+  const rings = o.layout === 'scatter' ? 0 : o.rings ?? 6;
   for (let i = 0; i < rings; i++) {
     const k = (i + 0.5) / rings;
     const th = thetaMax * k ** 0.85;

@@ -1537,7 +1537,7 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.02,
+    "sink": 0.04,
     "foliage": {
       "type": "leafdome",
       "shape": "pointed",
@@ -1545,10 +1545,12 @@
       "leafLen": 0.55,
       "leafWidth": 0.62,
       "fold": 0.35,
-      "width": 2.1,
-      "overlap": 1.7,
-      "lift": 0.35,
-      "thetaMax": 92
+      "width": 1.45,
+      "overlap": 1.8,
+      "lift": 0.3,
+      "thetaMax": 160,
+      "layout": "scatter",
+      "spread": 55
     }
   },
   "petalbush": {
@@ -1586,18 +1588,20 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.02,
+    "sink": 0.04,
     "foliage": {
       "type": "leafdome",
       "shape": "round",
       "rings": 5,
-      "leafLen": 0.6,
-      "leafWidth": 0.95,
-      "fold": 0.2,
-      "width": 2.1,
-      "overlap": 1.5,
-      "lift": 0.3,
-      "thetaMax": 92
+      "leafLen": 0.55,
+      "leafWidth": 0.85,
+      "fold": 0.22,
+      "width": 1.45,
+      "overlap": 1.7,
+      "lift": 0.25,
+      "thetaMax": 160,
+      "layout": "scatter",
+      "spread": 50
     }
   },
   "serratebush": {
@@ -1635,7 +1639,7 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.02,
+    "sink": 0.04,
     "foliage": {
       "type": "leafdome",
       "shape": "serrated",
@@ -1643,10 +1647,12 @@
       "leafLen": 0.5,
       "leafWidth": 0.6,
       "fold": 0.4,
-      "width": 2.1,
+      "width": 1.4,
       "overlap": 1.8,
-      "lift": 0.4,
-      "thetaMax": 92
+      "lift": 0.35,
+      "thetaMax": 160,
+      "layout": "scatter",
+      "spread": 60
     }
   }
 }

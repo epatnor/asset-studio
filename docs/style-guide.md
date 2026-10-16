@@ -10,7 +10,16 @@ Gäller allt som skapas i Tinkertown och Azshara Island, oavsett om det görs av
 - **Läsbarhet går före detalj.** Ett objekt ska kunna kännas igen på sin silhuett på 30 meters avstånd.
 - **Mid-poly.** Vi optimerar inte för gamla integrerade grafikkort. Polygoner läggs där de syns: på silhuetter och rundade kanter, inte på platta ytor.
 
-## 1. Form
+## Huvudreferens för helheten
+
+Målbilden för världen som helhet är stilen i asset-paketet **Pure Nature** (Unreal Engine): mjuka gröna kullar, stora låg-poly-klippor med platta ljusa ytor och skarpa kanter, täta stiliserade granar, runda bulliga buskar och lövträd, klar blå himmel med mjuka moln, och mättade men harmoniska färger med mycket ljus. Allt läses tydligt på avstånd, och formerna är förenklade utan att bli leksaksaktiga.
+
+Det betyder för generatorerna:
+- **Vegetation:** bulliga kronor och runda buskar (redan i trädgeneratorn), granar i tydliga våningar.
+- **Terräng och klippor:** stora, enkla former med plana fasetter och fasade kanter, ljusa toppar och kallare skuggsidor. Inget brusigt detaljberg.
+- **Ljus:** klar sol, ljus himmel och luftperspektiv som tonar bort bakgrunden mot blått.
+
+
 
 | Regel | Praktiskt |
 |---|---|
