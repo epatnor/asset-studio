@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – parken</title>
+<style>
+  :root { --ink: #1f2a1c; --panel: rgba(255, 255, 255, 0.82); }
+  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  .panel { position: fixed; top: 16px; left: 16px; max-width: min(340px, calc(100vw - 32px)); background: var(--panel);
+           backdrop-filter: blur(6px); border-radius: 12px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); }
+  .panel h1 { margin: 0 0 4px; font-size: 18px; }
+  .panel p { margin: 0 0 8px; font-size: 13px; opacity: 0.85; }
+  .panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+  .panel select, .panel input[type=range] { flex: 1; }
+  .panel a { color: #2f6b2a; }
+  #status { font-size: 12px; opacity: 0.7; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Tinkertown · parken</h1>
+  <p>Generatorernas träd, buskar och props i en liten park, på blandad mark med stigar. Allt är genererat. <a href="index.html">Till raderna</a></p>
+  <p>Klicka för att gå runt: <b>WASD</b>, <b>Shift</b> spring, <b>Space</b> hopp, <b>mus</b> titta. <b>Esc</b> släpper musen, <b>Tab</b> växlar till översikt.</p>
+  <label>Detaljnivå <select id="lod"><option value="0">LOD0 (nära)</option><option value="1">LOD1</option><option value="2">LOD2 (långt bort)</option></select></label>
+  <label>Vind <input id="wind" type="range" min="0" max="2" step="0.05" value="0.6"></label>
+  <label><input id="labels" type="checkbox"> Visa skyltar</label>
+  <div id="status">Laddar…</div>
+</div>
+<script type="module">
+import { createWorld } from './world.js';
+const W = createWorld(document.getElementById('app'), { fog: [80, 280] });
+const { THREE, scene, camera, controls, fp } = W;
+window.__tinker = W; // för felsökning och automatiska tester
+const status = document.getElementById('status');
+
+// Seedad slump, så att parken ser likadan ut varje gång
+let seed = 12345;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+// --- Terräng: mjuka kullar, något plattare i mitten ---
+const SIZE = 120, SEG = 240;
+function heightAt(x, z) {
+  const r = Math.hypot(x, z) / (SIZE / 2);
+  const hills = 1.3 * Math.sin(x * 0.05 + 1.1) * Math.cos(z * 0.045 - 0.4) + 0.6 * Math.sin(x * 0.11 + z * 0.07) + 0.25 * Math.sin(x * 0.23 - z * 0.19);
+  return hills * (0.35 + 0.65 * Math.min(1, r * 1.4)) + Math.max(0, r - 0.8) * 6; // höjs mot kanten, som en skål
+}
+fp.heightAt = heightAt;
+
+// --- Stigar: slingrande splines, plana mot terrängen ---
+const pathDefs = [
+  [[-45, -30], [-20, -38], [5, -25], [25, -32], [44, -12], [38, 15], [15, 22], [-5, 12], [-28, 20], [-46, 5]],
+  [[-5, 12], [0, -2], [5, -25]],
+  [[15, 22], [20, 40], [5, 50]],
+];
+const pathPts = [];
+for (const def of pathDefs) {
+  const curve = new THREE.CatmullRomCurve3(def.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+  for (const p of curve.getSpacedPoints(def.length * 30)) pathPts.push(p);
+}
+const pathDist = (x, z) => { let m = Infinity; for (const p of pathPts) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < m) m = d; } return Math.sqrt(m); };
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const noise2 = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.09 + Math.sin(z * 0.07) * 2) + 0.25 * Math.sin(z * 0.08 - x * 0.03 + 1.7);
+
+const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
+geo.rotateX(-Math.PI / 2);
+const P = geo.attributes.position, N = P.count;
+const splat = new Float32Array(N * 4), pathW = new Float32Array(N);
+const uv = geo.attributes.uv;
+for (let i = 0; i < N; i++) {
+  const x = P.getX(i), z = P.getZ(i);
+  pathW[i] = 1 - smooth(1.0, 2.0, pathDist(x, z));
+  P.setY(i, heightAt(x, z) - pathW[i] * 0.06); // stigen ligger en aning nedtrampad
+  uv.setXY(i, x / 3, z / 3);                    // en texturupprepning per 3 m
+}
+geo.computeVertexNormals();
+
+// --- Markmaterial: blandar gräs, äng, skogsmark och stig per vertex ---
+const tl = new THREE.TextureLoader();
+const fallback = { grass: '#6fa046', meadow: '#8ab24f', forestfloor: '#6e5a3a', path: '#b89466' };
+const tex = (name) => new Promise((res) => tl.load(`../assets/textures/surface_${name}.png`, (t) => {
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; res(t);
+}, undefined, () => { // saknas texturen än: en enfärgad ersättare
+  const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'); x.fillStyle = fallback[name]; x.fillRect(0, 0, 4, 4);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; res(t);
+}));
+const [tGrass, tMeadow, tForest, tPath] = await Promise.all(['grass', 'meadow', 'forestfloor', 'path'].map(tex));
+const groundMat = new THREE.MeshStandardMaterial({ map: tGrass, roughness: 1 });
+groundMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath } });
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 splat;\nvarying vec4 vSplat;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D tMeadow, tForest, tPath;\nvarying vec4 vSplat;')
+    .replace('#include <map_fragment>', `
+      // Mot synlig upprepning: blanda varje textur med sig själv i en annan skala och vridning
+      vec2 uvB = mat2(0.8, -0.6, 0.6, 0.8) * vMapUv * 0.37 + 0.31;
+      float k = 0.5 + 0.5 * sin(vMapUv.x * 0.7 + sin(vMapUv.y * 0.53) * 1.7);
+      #define TEX2(t, s) mix(texture2D(t, vMapUv * s).rgb, texture2D(t, uvB * s).rgb, k * 0.55)
+      vec3 cG = TEX2(map, 1.0), cM = TEX2(tMeadow, 0.9), cF = TEX2(tForest, 1.1), cP = TEX2(tPath, 1.3);
+      diffuseColor.rgb *= cG * vSplat.x + cM * vSplat.y + cF * vSplat.z + cP * vSplat.w;`);
+};
+const ground = new THREE.Mesh(geo, groundMat);
+ground.receiveShadow = true;
+scene.add(ground);
+W.setShadowArea(new THREE.Vector3(0, 0, 0), 70);
+
+// --- Placering med regler ---
+const catalog = await (await fetch('catalog.json')).json();
+const items = catalog.rows.flatMap((r) => r.items);
+const bySpecies = (list) => items.filter((i) => list.includes(i.species));
+const groups = {
+  trees: bySpecies(['oak', 'maple', 'ash', 'aspen', 'birch', 'cherry', 'willow', 'acacia', 'cypress', 'jpine', 'pine', 'fir']).filter((i) => !/autumn|spring/.test(i.name)),
+  bushes: bySpecies(['bush', 'shrub', 'ballbush', 'moundbush', 'leafbush', 'petalbush', 'serratebush']),
+  rocks: bySpecies(['stone', 'stones', 'mossy_stone']),
+  boulders: bySpecies(['boulder', 'mossy_boulder']),
+  underTrees: bySpecies(['fly_agaric', 'porcini', 'chanterelle', 'leafpile', 'creeper', 'ivy', 'stump', 'mossy_stump']),
+};
+const loaded = new Map();
+const total = Object.values(groups).reduce((s, g) => s + g.length, 0);
+let n = 0;
+for (const g of Object.values(groups)) for (const it of g) {
+  const root = await W.loadModel(it.glb);
+  loaded.set(it.name, { root, ...W.measure(root), it });
+  status.textContent = `Laddar ${++n} / ${total}`;
+}
+
+const placedTrees = [], occupied = [];
+const free = (x, z, r) => occupied.every((o) => (o.x - x) ** 2 + (o.z - z) ** 2 > (o.r + r) ** 2);
+function place(m, x, z, { scale = 1, sign = true } = {}) {
+  const obj = m.root.clone();
+  obj.position.set(x, heightAt(x, z), z);
+  obj.rotation.y = rnd() * Math.PI * 2;
+  obj.scale.setScalar(scale);
+  scene.add(obj);
+  const footprint = Math.max(m.size.x, m.size.z) * 0.5 * scale;
+  occupied.push({ x, z, r: footprint * (m.hasTrunk ? 0.55 : 0.8) });
+  W.colliders.push({ x, z, r: m.hasTrunk ? THREE.MathUtils.clamp(m.size.y * 0.035, 0.25, 0.7) * scale : footprint * 0.8 });
+  if (sign && m.it) {
+    const s = W.makeSign(m.it.name, m.it.tint, 1.2);
+    const a = rnd() * Math.PI * 2, d = footprint + 0.6;
+    s.position.set(x + Math.cos(a) * d, heightAt(x + Math.cos(a) * d, z + Math.sin(a) * d), z + Math.sin(a) * d);
+    s.lookAt(x, s.position.y, z); s.rotateY(Math.PI);
+    s.visible = false;
+    scene.add(s);
+  }
+  return obj;
+}
+function scatter(list, count, rule, opts) {
+  let tries = 0, made = 0;
+  while (made < count && tries++ < count * 400) {
+    const m = loaded.get(list[made % list.length].name);
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * (SIZE / 2 - 8);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    const r = Math.max(m.size.x, m.size.z) * 0.45;
+    if (!rule(x, z, m) || !free(x, z, r)) continue;
+    const obj = place(m, x, z, { scale: 0.9 + rnd() * 0.25, ...opts });
+    if (list === groups.trees) placedTrees.push({ x, z, r });
+    made++;
+  }
+}
+// Träd i grupper en bit från stigarna
+scatter(groups.trees, groups.trees.length * 2, (x, z) => pathDist(x, z) > 4.5 && noise2(x * 1.6, z * 1.6) > 0.42);
+// Buskar längs stigkanterna och i bryn
+scatter(groups.bushes, groups.bushes.length * 3, (x, z) => { const d = pathDist(x, z); return d > 1.8 && d < 5; });
+// Under träden: svampar, lövhögar, krypväxter, stubbar
+for (const t of placedTrees) {
+  for (let k = 0; k < 2; k++) {
+    const m = loaded.get(groups.underTrees[Math.floor(rnd() * groups.underTrees.length)].name);
+    const a = rnd() * Math.PI * 2, d = t.r * (0.4 + rnd() * 0.7) + 1;
+    const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d;
+    if (pathDist(x, z) > 1.4 && free(x, z, Math.max(m.size.x, m.size.z) * 0.3)) place(m, x, z, { scale: 0.9 + rnd() * 0.3, sign: false });
+  }
+}
+// Stenar utspridda, bumlingar på kullarna
+scatter(groups.rocks, 26, (x, z) => pathDist(x, z) > 1.3, { sign: false });
+scatter(groups.boulders, 8, (x, z) => pathDist(x, z) > 3 && heightAt(x, z) > 0.4);
+
+// Skogsmark under och kring träden, äng i öppna gläntor, gräs däremellan, stig överst
+const nearTree = (x, z) => { let m = Infinity; for (const t of placedTrees) m = Math.min(m, Math.hypot(t.x - x, t.z - z) - t.r * 0.5); return m; };
+for (let i = 0; i < N; i++) {
+  const x = P.getX(i), z = P.getZ(i);
+  const forest = 1 - smooth(1.5, 5.5, nearTree(x, z));
+  const meadow = smooth(0.48, 0.66, noise2(x, z)) * (1 - forest);
+  const grass = Math.max(0, 1 - forest - meadow);
+  const p = pathW[i];
+  splat.set([grass * (1 - p), meadow * (1 - p), forest * (1 - p), p], i * 4);
+}
+geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
+
+// Start: på stigen, tittar in i parken
+const start = pathPts[0];
+fp.pos.set(start.x, heightAt(start.x, start.z), start.z);
+fp.yaw = Math.atan2(-(pathPts[8].x - start.x), -(pathPts[8].z - start.z));
+camera.position.set(0, 55, 75);
+controls.target.set(0, 0, 0);
+status.textContent = `${W.signs.length} växter och props, plus marktäcke under träden`;
+
+document.getElementById('lod').onchange = (e) => W.setLod(Number(e.target.value));
+document.getElementById('wind').oninput = (e) => (W.wind.uWind.value = Number(e.target.value));
+document.getElementById('labels').onchange = (e) => W.signs.forEach((s) => (s.visible = e.target.checked));
+</script>
+</body>
+</html>

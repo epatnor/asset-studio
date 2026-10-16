@@ -172,6 +172,33 @@ def create_prop(name: str, preset: str = "stone", seed: int = 0, params: dict | 
 
 
 @mcp.tool()
+def generate_surface(name: str, preset: str | None = None, prompt: str | None = None, seed: int | None = None,
+                     normal: float | None = None) -> dict:
+    """Generera en SÖMLÖS, stiliserad yttextur (mark, gräs, sten, plankor ...) + normalkarta.
+
+    preset: planks, dirt, grass, meadow, path, road, cliff, stone, gravel, riverbed, mud, sand,
+      forestfloor, snow (tools/texture/surfaces.json). Eget material: ange prompt (och valfritt namn som preset).
+    Resultat: assets/textures/surface_<name>.png och surface_<name>_normal.png.
+    Svaret har seam_score (under ~1,6 = sömlös). Tar ungefär 3 minuter (två bildgenereringar).
+    """
+    _check_name(name)
+    recipe = {"name": name, "preset": preset or name}
+    params = {}
+    if prompt:
+        params["prompt"] = prompt
+    if normal is not None:
+        params["normal"] = normal
+    if params:
+        recipe["params"] = params
+        surfaces = json.loads((ROOT / "tools" / "texture" / "surfaces.json").read_text())
+        if recipe["preset"] not in surfaces:
+            recipe["preset"] = "dirt"  # bas för egna material; prompten ersätter presetets
+    if seed is not None:
+        recipe["seed"] = seed
+    return json.loads(_run(["uv", "run", "--quiet", "--script", "tools/texture/make_surface.py", json.dumps(recipe)], 1200))
+
+
+@mcp.tool()
 def list_assets() -> dict:
     """Lista genererade träd och texturer (bara namn)."""
     a = ROOT / "assets"

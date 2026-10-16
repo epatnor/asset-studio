@@ -150,6 +150,15 @@ Klient (shader och placering):
 - [ ] Stockar, stubbar, rötter.
 - [ ] Biomer: regeluppsättningar som väljer vilka naturobjekt som sprids var.
 
+### Ytor (texturgeneratorn, `tools/texture/make_surface.py`)
+- [x] Sömlösa, stiliserade yttexturer med Krea-2: generera, förskjut ett halvt varv, måla om sömkorset (inpainting med `SetLatentNoiseMask`), lägg bara tillbaka korset, harmonisera kanterna och jämna ut stora ljusskillnader (FFT-oskärpa med wrap). Normalkarta ur ljusheten. `seam_score` i svaret.
+- [x] Ytor som data i `surfaces.json`: plankor, jord, gräs, äng, stig, väg, klippvägg, sten, grus, flodbädd, lera, sand, skogsmark och snö. MCP-verktyget `generate_surface`.
+- [x] Parken (`showcase/park.html`): kuperad terräng, slingrande stigar, blandad mark (gräs, äng, skogsmark, stig) i en shader med motmedel mot synlig upprepning, och växter och props placerade efter regler.
+- [ ] Normalkartorna används ännu inte i parkens markshader.
+- [ ] Väg och grus visar fortfarande svagt korset från sömlagningen vid upprepning; prova bredare mask eller två omgångar.
+- [ ] Generatorn för marktäcke (småstenar, gräs, högt gräs, blommor, ängsblommor, vass, säd) att sprida ut i parken.
+- [ ] Höjd- och roughness-kartor; blandning efter höjd (stenar sticker upp ur gräset) i stället för linjär blandning.
+
 ### Vatten och hav
 - [ ] Hav: stiliserad vattenshader med djupfärg (grunt turkos, djupt blått), skumkant mot land och mjuka vågor.
 - [ ] Sjöar: vattenyta på en angiven nivå, som klipps mot terrängen.
