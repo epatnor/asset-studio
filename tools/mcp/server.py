@@ -50,7 +50,7 @@ def create_tree(name: str, preset: str = "oak_medium", seed: int = 0, height: fl
                 species: dict | None = None, bark: str | None = None, leaves: str | None = None,
                 bark_scale: list[float] | None = None, canopy: dict | None = None,
                 conifer: dict | None = None, leaf_tint: str | None = None, preview: bool = False) -> dict:
-    """Skapa en större växt (träd eller buske) som GLB (3 LOD) i assets/trees/<name>/.
+    """Skapa en större växt (träd eller buske) som glTF (3 LOD, delade texturer) i assets/trees/<name>/.
 
     preset: <art>_<small|medium|large>, arter i tools/tree/species.json: oak, maple, ash, aspen, birch,
       cherry, willow (hängande), acacia (paraplykrona), cypress (pelare), jpine (japansk tall, kuddar),
@@ -149,7 +149,7 @@ def prop_presets() -> list[str]:
 @mcp.tool()
 def create_prop(name: str, preset: str = "stone", seed: int = 0, params: dict | None = None,
                 stone_tint: str | None = None, moss_tint: str | None = None) -> dict:
-    """Skapa en naturprop för skog, stig och fält som GLB (3 LOD) i assets/props/<name>/.
+    """Skapa en naturprop för skog, stig och fält som glTF (3 LOD, delade texturer) i assets/props/<name>/.
 
     preset: stone, stones (grupp), boulder, mossy_stone, mossy_boulder, fly_agaric, porcini,
       chanterelle, stump, mossy_stump, leafpile, creeper, ivy (se tools/props/props.json).

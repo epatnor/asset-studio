@@ -51,7 +51,7 @@ tools/mcp/        MCP-servern som exponerar verktygen för AI-agenter
 tools/tree/       trädgeneratorn: arter (species.json), skelett, bark, lövkrona, gran
 tools/texture/    Krea-2-generering och efterbehandling (sömlöst, alfa)
 assets/textures/  delade, stiliserade texturer (raw/ = original från Krea-2)
-assets/trees/     genererade träd: <namn>.glb, recipe.json, förhandsbild
+assets/trees/     genererade träd: <namn>.gltf + .bin (texturer delas från assets/textures/), recipe.json, förhandsbild
 docs/concept/     konceptbilder
 build/            mellanfiler (OBJ m.m.), ignoreras av git
 ```
@@ -88,7 +88,7 @@ Projektets `.mcp.json` registrerar servern `tinkertown`, som startas med `uv run
 
 | Verktyg | Exempel | Svar |
 |---|---|---|
-| `create_tree` | `{"name":"cherry_v2","preset":"ash_medium","seed":5,"height":7,"leaves":"blossom_atlas"}` | `{"glb": "assets/trees/cherry_v2/cherry_v2.glb", "clusters": 14, "tris_lod": [18720, 13820, 10992], ...}` |
+| `create_tree` | `{"name":"cherry_v2","preset":"ash_medium","seed":5,"height":7,"leaves":"blossom_atlas"}` | `{"model": "assets/trees/cherry_v2/cherry_v2.gltf", "clusters": 14, "tris_lod": [18720, 13820, 10992], ...}` |
 | `generate_texture` | `{"name":"pine_bark","prompt":"pine bark, flaky reddish plates","kind":"tile"}` | `{"path": "assets/textures/pine_bark.png", "seed": ...}` |
 | `generate_leaf_atlas` | `{"name":"maple_atlas","prompt":"a dense cluster of autumn orange maple leaves on a short twig"}` | `{"atlas": "assets/textures/maple_atlas.png", ...}` |
 | `list_assets` | `{}` | `{"trees": [...], "textures": [...]}` |
@@ -103,7 +103,7 @@ Ett träd:
 python3 -I tools/tree/make_tree.py '{"name":"oak42","preset":"oak_medium","seed":42,"height":9}'
 ```
 
-Svar: `{"glb": "assets/trees/oak42/oak42.glb", "height_m": 9.0, "branch_tris": 3166, "leaf_tris": 10640, ...}`
+Svar: `{"model": "assets/trees/oak42/oak42.gltf", "height_m": 9.0, "branch_tris": 3166, "leaf_tris": 10640, ...}`
 
 Presets: `<art>_<small|medium|large>` där arterna finns i `tools/tree/species.json`: oak, maple, ash, aspen, birch, cherry, willow, acacia, cypress, jpine, pine (gran), palm, deadtree, shrub, bush (även `bush_1..3`), de stamlösa `ballbush` och `moundbush`, och bladkupolerna `leafbush`, `petalbush` och `serratebush`. En ny art läggs till som data, utan kodändring. Svaret innehåller `checks` med `ok: true` när växten hänger ihop.
 

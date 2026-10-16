@@ -1,10 +1,11 @@
 // Propsgenerator: naturprops för skog, stig och fält (stenar, bumlingar, mossa, svampar, stubbar,
 // lövhögar, krypväxter). Fristående från trädgeneratorn men återanvänder dess byggstenar
 // (avståndsfält + surface nets, barkrör, solida blad). Recept in, GLB ut, en rad JSON som svar.
-// Användning: node gen_prop.mjs '{"preset":"mossy_boulder","seed":3,"out":"x.glb","textures":{...}}'
+// Användning: node gen_prop.mjs '{"preset":"mossy_boulder","seed":3,"out":"x.gltf","textures":{...}}'
 import fs from 'node:fs';
 import path from 'node:path';
 import { Document, NodeIO } from '@gltf-transform/core';
+import { sharedTexture, writeGltf } from '../tree/gltf_write.mjs';
 import { add, sub, mul, dot, cross, norm, lerp, clamp01, UP, rng, randomUnit } from '../tree/vec.mjs';
 import { surfaceNets, gradient, buildCrown } from '../tree/crown.mjs';
 import { barkMesh } from '../tree/bark_mesh.mjs';
@@ -309,7 +310,8 @@ const lods = build();
 const doc = new Document();
 const buffer = doc.createBuffer();
 const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
-const tex = (file, nm) => doc.createTexture(nm).setImage(new Uint8Array(fs.readFileSync(file))).setMimeType('image/png');
+// Texturer refereras till delade filer (bäddas inte in), se tools/tree/gltf_write.mjs
+const tex = (file, nm) => sharedTexture(doc, file, nm, out);
 function material(nm, { texture, tint, alpha, rough = 0.9 } = {}) {
   const m = doc.createMaterial(nm).setRoughnessFactor(rough).setMetallicFactor(0);
   if (texture && fs.existsSync(texture)) m.setBaseColorTexture(tex(texture, nm));
@@ -332,7 +334,7 @@ const MATS = {
 };
 const matCache = {};
 const getMat = (part) => (matCache[part] ??= (part === 'cap' && sp.kind === 'stump' ? material('Rings', { texture: T.rings, rough: 0.8 }) : MATS[part]()));
-const name = recipe.name ?? path.basename(out, '.glb');
+const name = recipe.name ?? path.basename(out, path.extname(out));
 const root = doc.createNode(name).setExtras({ generator: 'tinkertown/prop@1', recipe: { preset, seed } });
 const tris = [];
 let minY = Infinity;
@@ -363,11 +365,11 @@ lods.forEach((parts, i) => {
 });
 doc.createScene(name).addChild(root);
 fs.mkdirSync(path.dirname(out), { recursive: true });
-fs.writeFileSync(out, await new NodeIO().writeBinary(doc));
+await writeGltf(doc, out, NodeIO);
 const partsLod0 = Object.entries(lods[0]).filter(([, g]) => g?.indices?.length).map(([p]) => p);
 // Kontroller: något genererades, och propen vilar i marken (lätt nedsänkt, inte svävande)
 // Vilar på marken: något når ner till marken (och går gärna ner under den), men den svävar inte
 const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -2.5 };
 checks.wind_torn = WIND_TORN;
 checks.ok = partsLod0.length > 0 && checks.resting_on_ground && WIND_TORN === 0;
-console.log(JSON.stringify({ glb: out, preset, kind: sp.kind, tris_lod: tris, checks }));
+console.log(JSON.stringify({ model: out, preset, kind: sp.kind, tris_lod: tris, checks }));

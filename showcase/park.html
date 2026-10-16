@@ -127,7 +127,7 @@ const loaded = new Map();
 const total = Object.values(groups).reduce((s, g) => s + g.length, 0);
 let n = 0;
 for (const g of Object.values(groups)) for (const it of g) {
-  const root = await W.loadModel(it.glb);
+  const root = await W.loadModel(it.model);
   loaded.set(it.name, { root, ...W.measure(root), it });
   status.textContent = `Laddar ${++n} / ${total}`;
 }

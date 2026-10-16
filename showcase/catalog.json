@@ -9,7 +9,7 @@
           "label": "oak_autumn",
           "tint": "#E08A2E",
           "height": 9,
-          "glb": "../assets/trees/oak_autumn/oak_autumn.glb"
+          "model": "../assets/trees/oak_autumn/oak_autumn.gltf"
         },
         {
           "name": "oak_spring",
@@ -17,7 +17,7 @@
           "label": "oak_spring",
           "tint": "#A6D85E",
           "height": 9,
-          "glb": "../assets/trees/oak_spring/oak_spring.glb"
+          "model": "../assets/trees/oak_spring/oak_spring.gltf"
         },
         {
           "name": "oak_v2",
@@ -25,7 +25,7 @@
           "label": "oak_v2",
           "tint": null,
           "height": 9,
-          "glb": "../assets/trees/oak_v2/oak_v2.glb"
+          "model": "../assets/trees/oak_v2/oak_v2.gltf"
         },
         {
           "name": "maple_v2",
@@ -33,7 +33,7 @@
           "label": "maple_v2",
           "tint": null,
           "height": 9,
-          "glb": "../assets/trees/maple_v2/maple_v2.glb"
+          "model": "../assets/trees/maple_v2/maple_v2.gltf"
         },
         {
           "name": "ash_v2",
@@ -41,7 +41,7 @@
           "label": "ash_v2",
           "tint": null,
           "height": 10,
-          "glb": "../assets/trees/ash_v2/ash_v2.glb"
+          "model": "../assets/trees/ash_v2/ash_v2.gltf"
         },
         {
           "name": "aspen_v2",
@@ -49,7 +49,7 @@
           "label": "aspen_v2",
           "tint": null,
           "height": 11,
-          "glb": "../assets/trees/aspen_v2/aspen_v2.glb"
+          "model": "../assets/trees/aspen_v2/aspen_v2.gltf"
         },
         {
           "name": "birch_v2",
@@ -57,7 +57,7 @@
           "label": "birch_v2",
           "tint": null,
           "height": 11,
-          "glb": "../assets/trees/birch_v2/birch_v2.glb"
+          "model": "../assets/trees/birch_v2/birch_v2.gltf"
         },
         {
           "name": "cherry_v2",
@@ -65,7 +65,7 @@
           "label": "cherry_v2",
           "tint": null,
           "height": 7,
-          "glb": "../assets/trees/cherry_v2/cherry_v2.glb"
+          "model": "../assets/trees/cherry_v2/cherry_v2.gltf"
         }
       ]
     },
@@ -78,7 +78,7 @@
           "label": "willow_v2",
           "tint": null,
           "height": 9,
-          "glb": "../assets/trees/willow_v2/willow_v2.glb"
+          "model": "../assets/trees/willow_v2/willow_v2.gltf"
         },
         {
           "name": "acacia_v2",
@@ -86,7 +86,7 @@
           "label": "acacia_v2",
           "tint": null,
           "height": 8,
-          "glb": "../assets/trees/acacia_v2/acacia_v2.glb"
+          "model": "../assets/trees/acacia_v2/acacia_v2.gltf"
         },
         {
           "name": "cypress_v2",
@@ -94,7 +94,7 @@
           "label": "cypress_v2",
           "tint": null,
           "height": 10,
-          "glb": "../assets/trees/cypress_v2/cypress_v2.glb"
+          "model": "../assets/trees/cypress_v2/cypress_v2.gltf"
         },
         {
           "name": "jpine_v2",
@@ -102,7 +102,7 @@
           "label": "jpine_v2",
           "tint": null,
           "height": 7,
-          "glb": "../assets/trees/jpine_v2/jpine_v2.glb"
+          "model": "../assets/trees/jpine_v2/jpine_v2.gltf"
         },
         {
           "name": "palm_v2",
@@ -110,7 +110,7 @@
           "label": "palm_v2",
           "tint": null,
           "height": 10,
-          "glb": "../assets/trees/palm_v2/palm_v2.glb"
+          "model": "../assets/trees/palm_v2/palm_v2.gltf"
         },
         {
           "name": "deadtree_v2",
@@ -118,7 +118,7 @@
           "label": "deadtree_v2",
           "tint": null,
           "height": 8,
-          "glb": "../assets/trees/deadtree_v2/deadtree_v2.glb"
+          "model": "../assets/trees/deadtree_v2/deadtree_v2.gltf"
         }
       ]
     },
@@ -131,7 +131,7 @@
           "label": "fir_small",
           "tint": null,
           "height": 6,
-          "glb": "../assets/trees/fir_small/fir_small.glb"
+          "model": "../assets/trees/fir_small/fir_small.gltf"
         },
         {
           "name": "pine_v2",
@@ -139,7 +139,7 @@
           "label": "pine_v2",
           "tint": null,
           "height": 12,
-          "glb": "../assets/trees/pine_v2/pine_v2.glb"
+          "model": "../assets/trees/pine_v2/pine_v2.gltf"
         }
       ]
     },
@@ -152,7 +152,7 @@
           "label": "bush1_v2",
           "tint": null,
           "height": 1.3,
-          "glb": "../assets/trees/bush1_v2/bush1_v2.glb"
+          "model": "../assets/trees/bush1_v2/bush1_v2.gltf"
         },
         {
           "name": "bush2_v2",
@@ -160,7 +160,7 @@
           "label": "bush2_v2",
           "tint": null,
           "height": 1.0,
-          "glb": "../assets/trees/bush2_v2/bush2_v2.glb"
+          "model": "../assets/trees/bush2_v2/bush2_v2.gltf"
         },
         {
           "name": "shrub_v2",
@@ -168,7 +168,7 @@
           "label": "shrub_v2",
           "tint": null,
           "height": 2.4,
-          "glb": "../assets/trees/shrub_v2/shrub_v2.glb"
+          "model": "../assets/trees/shrub_v2/shrub_v2.gltf"
         },
         {
           "name": "ballbush_small",
@@ -176,7 +176,7 @@
           "label": "ballbush_small",
           "tint": null,
           "height": 0.7,
-          "glb": "../assets/trees/ballbush_small/ballbush_small.glb"
+          "model": "../assets/trees/ballbush_small/ballbush_small.gltf"
         },
         {
           "name": "ballbush_v2",
@@ -184,7 +184,7 @@
           "label": "ballbush_v2",
           "tint": null,
           "height": 1.2,
-          "glb": "../assets/trees/ballbush_v2/ballbush_v2.glb"
+          "model": "../assets/trees/ballbush_v2/ballbush_v2.gltf"
         },
         {
           "name": "moundbush_v2",
@@ -192,7 +192,7 @@
           "label": "moundbush_v2",
           "tint": null,
           "height": 1.0,
-          "glb": "../assets/trees/moundbush_v2/moundbush_v2.glb"
+          "model": "../assets/trees/moundbush_v2/moundbush_v2.gltf"
         }
       ]
     },
@@ -205,7 +205,7 @@
           "label": "grid_1",
           "tint": "#7CC24A",
           "height": 0.9,
-          "glb": "../assets/trees/grid_1/grid_1.glb"
+          "model": "../assets/trees/grid_1/grid_1.gltf"
         },
         {
           "name": "grid_4",
@@ -213,7 +213,7 @@
           "label": "grid_4",
           "tint": "#B6D86A",
           "height": 0.9,
-          "glb": "../assets/trees/grid_4/grid_4.glb"
+          "model": "../assets/trees/grid_4/grid_4.gltf"
         },
         {
           "name": "grid_7",
@@ -221,7 +221,7 @@
           "label": "grid_7",
           "tint": "#3F9E47",
           "height": 0.9,
-          "glb": "../assets/trees/grid_7/grid_7.glb"
+          "model": "../assets/trees/grid_7/grid_7.gltf"
         },
         {
           "name": "leafbush_v2",
@@ -229,7 +229,7 @@
           "label": "leafbush_v2",
           "tint": null,
           "height": 0.9,
-          "glb": "../assets/trees/leafbush_v2/leafbush_v2.glb"
+          "model": "../assets/trees/leafbush_v2/leafbush_v2.gltf"
         },
         {
           "name": "grid_2",
@@ -237,7 +237,7 @@
           "label": "grid_2",
           "tint": "#9BD45E",
           "height": 0.9,
-          "glb": "../assets/trees/grid_2/grid_2.glb"
+          "model": "../assets/trees/grid_2/grid_2.gltf"
         },
         {
           "name": "grid_5",
@@ -245,7 +245,7 @@
           "label": "grid_5",
           "tint": "#58B03C",
           "height": 0.9,
-          "glb": "../assets/trees/grid_5/grid_5.glb"
+          "model": "../assets/trees/grid_5/grid_5.gltf"
         },
         {
           "name": "grid_8",
@@ -253,7 +253,7 @@
           "label": "grid_8",
           "tint": "#6DBE4E",
           "height": 0.9,
-          "glb": "../assets/trees/grid_8/grid_8.glb"
+          "model": "../assets/trees/grid_8/grid_8.gltf"
         },
         {
           "name": "petalbush_v2",
@@ -261,7 +261,7 @@
           "label": "petalbush_v2",
           "tint": null,
           "height": 0.8,
-          "glb": "../assets/trees/petalbush_v2/petalbush_v2.glb"
+          "model": "../assets/trees/petalbush_v2/petalbush_v2.gltf"
         },
         {
           "name": "grid_3",
@@ -269,7 +269,7 @@
           "label": "grid_3",
           "tint": "#4FA845",
           "height": 0.9,
-          "glb": "../assets/trees/grid_3/grid_3.glb"
+          "model": "../assets/trees/grid_3/grid_3.gltf"
         },
         {
           "name": "grid_6",
@@ -277,7 +277,7 @@
           "label": "grid_6",
           "tint": "#8FC85A",
           "height": 0.9,
-          "glb": "../assets/trees/grid_6/grid_6.glb"
+          "model": "../assets/trees/grid_6/grid_6.gltf"
         },
         {
           "name": "grid_9",
@@ -285,7 +285,7 @@
           "label": "grid_9",
           "tint": "#A9D25C",
           "height": 0.9,
-          "glb": "../assets/trees/grid_9/grid_9.glb"
+          "model": "../assets/trees/grid_9/grid_9.gltf"
         },
         {
           "name": "serratebush_v2",
@@ -293,7 +293,7 @@
           "label": "serratebush_v2",
           "tint": null,
           "height": 1.0,
-          "glb": "../assets/trees/serratebush_v2/serratebush_v2.glb"
+          "model": "../assets/trees/serratebush_v2/serratebush_v2.gltf"
         }
       ]
     },
@@ -306,7 +306,7 @@
           "label": "stone1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/stone1/stone1.glb"
+          "model": "../assets/props/stone1/stone1.gltf"
         },
         {
           "name": "stones1",
@@ -314,7 +314,7 @@
           "label": "stones1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/stones1/stones1.glb"
+          "model": "../assets/props/stones1/stones1.gltf"
         },
         {
           "name": "mossy_stone1",
@@ -322,7 +322,7 @@
           "label": "mossy_stone1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/mossy_stone1/mossy_stone1.glb"
+          "model": "../assets/props/mossy_stone1/mossy_stone1.gltf"
         },
         {
           "name": "boulder1",
@@ -330,7 +330,7 @@
           "label": "boulder1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/boulder1/boulder1.glb"
+          "model": "../assets/props/boulder1/boulder1.gltf"
         },
         {
           "name": "mossy_boulder1",
@@ -338,7 +338,7 @@
           "label": "mossy_boulder1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/mossy_boulder1/mossy_boulder1.glb"
+          "model": "../assets/props/mossy_boulder1/mossy_boulder1.gltf"
         }
       ]
     },
@@ -351,7 +351,7 @@
           "label": "fly_agaric1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/fly_agaric1/fly_agaric1.glb"
+          "model": "../assets/props/fly_agaric1/fly_agaric1.gltf"
         },
         {
           "name": "porcini1",
@@ -359,7 +359,7 @@
           "label": "porcini1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/porcini1/porcini1.glb"
+          "model": "../assets/props/porcini1/porcini1.gltf"
         },
         {
           "name": "chanterelle1",
@@ -367,7 +367,7 @@
           "label": "chanterelle1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/chanterelle1/chanterelle1.glb"
+          "model": "../assets/props/chanterelle1/chanterelle1.gltf"
         },
         {
           "name": "stump1",
@@ -375,7 +375,7 @@
           "label": "stump1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/stump1/stump1.glb"
+          "model": "../assets/props/stump1/stump1.gltf"
         },
         {
           "name": "mossy_stump1",
@@ -383,7 +383,7 @@
           "label": "mossy_stump1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/mossy_stump1/mossy_stump1.glb"
+          "model": "../assets/props/mossy_stump1/mossy_stump1.gltf"
         },
         {
           "name": "leafpile1",
@@ -391,7 +391,7 @@
           "label": "leafpile1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/leafpile1/leafpile1.glb"
+          "model": "../assets/props/leafpile1/leafpile1.gltf"
         },
         {
           "name": "creeper1",
@@ -399,7 +399,7 @@
           "label": "creeper1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/creeper1/creeper1.glb"
+          "model": "../assets/props/creeper1/creeper1.gltf"
         },
         {
           "name": "ivy1",
@@ -407,7 +407,7 @@
           "label": "ivy1",
           "tint": null,
           "height": null,
-          "glb": "../assets/props/ivy1/ivy1.glb"
+          "model": "../assets/props/ivy1/ivy1.gltf"
         }
       ]
     }

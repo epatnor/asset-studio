@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { shareTextures } from './shared_textures.js';
 
 export function createWorld(container, { fog = [60, 220] } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -59,7 +60,7 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
     material.needsUpdate = true;
   };
 
-  const loader = new GLTFLoader();
+  const loader = shareTextures(new GLTFLoader());
   const models = [];
   async function loadModel(url) {
     const root = (await loader.loadAsync(url)).scene;

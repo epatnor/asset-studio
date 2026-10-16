@@ -22,14 +22,14 @@ ROWS = [
 items = []
 dirs = sorted((ROOT / "assets" / "trees").iterdir()) + sorted((ROOT / "assets" / "props").iterdir() if (ROOT / "assets" / "props").exists() else [])
 for d in dirs:
-    rec, glb = d / "recipe.json", d / f"{d.name}.glb"
+    rec, glb = d / "recipe.json", d / f"{d.name}.gltf"
     if not (rec.exists() and glb.exists()):
         continue
     r = json.loads(rec.read_text())
     preset = r.get("preset", "")
     species = preset if d.parent.name == "props" else preset.split("_")[0]
     items.append({"name": d.name, "species": species, "label": d.name, "tint": r.get("leaf_tint"), "height": r.get("height"),
-                  "glb": f"../assets/{d.parent.name}/{d.name}/{d.name}.glb"})
+                  "model": f"../assets/{d.parent.name}/{d.name}/{d.name}.gltf"})
 
 rows = []
 for title, species in ROWS:

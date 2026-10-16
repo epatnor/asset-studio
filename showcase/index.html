@@ -42,6 +42,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { shareTextures } from './shared_textures.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -190,7 +191,7 @@ function makeSign(text, tint, scale = 1) {
   return sign;
 }
 
-const loader = new GLTFLoader();
+const loader = shareTextures(new GLTFLoader());
 const placed = [];
 const status = document.getElementById('status');
 
@@ -210,7 +211,7 @@ async function main() {
   const bounds = new THREE.Box3();
   for (const row of rows) {
     const models = await Promise.all(row.items.map(async (it) => {
-      const gltf = await loader.loadAsync(it.glb);
+      const gltf = await loader.loadAsync(it.model);
       status.textContent = `Laddar ${++loaded} / ${total}`;
       return { it, root: gltf.scene };
     }));

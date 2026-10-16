@@ -1,4 +1,4 @@
-"""En naturprop från ett recept -> assets/props/<name>/<name>.glb (3 LOD).
+"""En naturprop från ett recept -> assets/props/<name>/<name>.gltf + .bin (texturer delas i assets/textures) (3 LOD).
 
   python3 -I tools/props/make_prop.py '{"name":"boulder1","preset":"mossy_boulder","seed":3}'
 
@@ -42,7 +42,7 @@ def main():
     sp = {**props[preset], **recipe.get("params", {})}
     out_dir = ROOT / "assets" / "props" / name
     out_dir.mkdir(parents=True, exist_ok=True)
-    glb = out_dir / f"{name}.glb"
+    glb = out_dir / f"{name}.gltf"
 
     textures = {}
     for role, default, tint_key in TEXTURES[sp["kind"]]:
@@ -62,7 +62,7 @@ def main():
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
     (out_dir / "recipe.json").write_text(json.dumps(recipe, indent=2))
-    result["glb"] = str(glb.relative_to(ROOT))
+    result["model"] = str(glb.relative_to(ROOT))
     print(json.dumps(result))
 
 

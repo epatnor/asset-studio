@@ -1,9 +1,10 @@
 // Trädgenerator v3: art (species.json) -> skelett -> bark + lövverk fäst i skelettet -> kontroller -> GLB.
 // Allt växer ur samma skelett, så delarna sitter alltid ihop. Ingen Blender och ingen Three.js behövs.
-// Användning: node gen_tree.mjs '{"preset":"oak_medium","seed":42,"height":9,"out":"x.glb","bark":"b.png","leaves":"atlas.png"}'
+// Användning: node gen_tree.mjs '{"preset":"oak_medium","seed":42,"height":9,"out":"x.gltf","bark":"b.png","leaves":"atlas.png"}'
 import fs from 'node:fs';
 import path from 'node:path';
 import { Document, NodeIO } from '@gltf-transform/core';
+import { sharedTexture, writeGltf } from './gltf_write.mjs';
 import { buildSkeleton, scaleSkeleton, validateSkeleton } from './skeleton.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
@@ -128,7 +129,8 @@ checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && che
 const doc = new Document();
 const buffer = doc.createBuffer();
 const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
-const texture = (file, name) => doc.createTexture(name).setImage(new Uint8Array(fs.readFileSync(file))).setMimeType('image/png');
+// Texturer refereras till delade filer (bäddas inte in), se gltf_write.mjs
+const texture = (file, name) => sharedTexture(doc, file, name, out);
 
 const barkMat = doc.createMaterial('Bark').setBaseColorTexture(texture(bark, 'bark')).setRoughnessFactor(0.9).setMetallicFactor(0);
 // barkTint (björk, palm, dött träd): barken är då gråskala och färgas här
@@ -193,7 +195,7 @@ function mesh(name, g, mat, extra = {}) {
   return doc.createMesh(name).addPrimitive(prim);
 }
 
-const name = recipe.name ?? path.basename(out, '.glb');
+const name = recipe.name ?? path.basename(out, path.extname(out));
 const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, kind } });
 const tris = [], alphaTris = [];
 let stemMat;
@@ -218,11 +220,10 @@ foliage.lods.forEach((lod, i) => {
 doc.createScene(name).addChild(root);
 checks.wind_torn = WIND_TORN;
 checks.ok = checks.ok && WIND_TORN === 0;
-fs.mkdirSync(path.dirname(out), { recursive: true });
-fs.writeFileSync(out, await new NodeIO().writeBinary(doc));
+await writeGltf(doc, out, NodeIO);
 
 // Kort svar, avsett för en AI-agent
 console.log(JSON.stringify({
-  glb: out, species: spName, kind, height_m: height, tris_lod: tris, alpha_tris_lod: alphaTris,
+  model: out, species: spName, kind, height_m: height, tris_lod: tris, alpha_tris_lod: alphaTris,
   bark_tris_lod: barkLods.map((b) => b.indices.length / 3), checks,
 }));

@@ -1,4 +1,4 @@
-"""Ett träd från ett recept -> assets/trees/<name>/<name>.glb (v3: skelett, bark och lövverk som sitter ihop, 3 LOD).
+"""Ett träd från ett recept -> assets/trees/<name>/<name>.gltf + .bin (texturer delas i assets/textures) (v3: skelett, bark och lövverk som sitter ihop, 3 LOD).
 
   python3 -I tools/tree/make_tree.py '{"name":"oak42","preset":"oak_medium","seed":42,"height":9}'
 
@@ -56,8 +56,11 @@ def preview(glbs, out, lod=0, size=(1024, 512)):
 
 
 def gray_version(src):
-    # Cachad gråskaleversion i build/gray/, görs om bara när källan är nyare
-    dst = ROOT / "build" / "gray" / f"{src.stem}_gray.png"
+    # Gråskaleversion i assets/textures/gray/ (delas av alla modeller som tintar, och publiceras med dem);
+    # görs om bara när källan är nyare. En fil som redan är gråskala används som den är.
+    if src.stem.endswith("_gray"):
+        return src
+    dst = TEX / "gray" / f"{src.stem}_gray.png"
     if not dst.exists() or dst.stat().st_mtime < src.stat().st_mtime:
         dst.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["uv", "run", "--quiet", "--no-project", "--python", "3.12", "--with", "pillow==11.1.0",
@@ -77,7 +80,7 @@ def main():
     leaves = recipe.get("leaves", sp.get("leaves", "leaf_atlas"))
     out_dir = ROOT / "assets" / "trees" / name
     out_dir.mkdir(parents=True, exist_ok=True)
-    glb = out_dir / f"{name}.glb"
+    glb = out_dir / f"{name}.gltf"
 
     gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "species", "canopy", "conifer")}
     # Lövmassan till kronans volymer: <atlas utan _atlas>_mass om den finns, annars leaf_mass
@@ -117,7 +120,7 @@ def main():
     if recipe.get("preview"):
         preview([glb], out_dir / f"{name}_preview.png")
         result["preview"] = str((out_dir / f"{name}_preview.png").relative_to(ROOT))
-    result["glb"] = str(glb.relative_to(ROOT))
+    result["model"] = str(glb.relative_to(ROOT))
     print(json.dumps(result))
 
 

@@ -46,7 +46,7 @@ Kommandoradsvarianter:
 
 | Kommando | Gör |
 |---|---|
-| `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.glb` |
-| `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.glb` |
+| `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.gltf` (+ .bin) |
+| `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin) |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |
