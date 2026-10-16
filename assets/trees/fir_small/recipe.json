@@ -3,7 +3,7 @@
   "preset": "pine_small",
   "seed": 8,
   "height": 6,
-  "bark": "bark_stylized_color",
+  "bark": "bark_painted",
   "leaves": "frond_atlas",
   "leaf_mass": "leaf_mass"
 }

@@ -6,14 +6,18 @@
       "radius": 0.07,
       "sections": 8,
       "segments": 14,
-      "gnarl": 0.12,
+      "gnarl": 0.14,
       "photo": 0.05,
-      "flare": 0.55,
+      "flare": 0.7,
       "roots": 5,
-      "bend": 0.12,
-      "bendFreq": 1.4,
-      "rootAmp": 0.45,
-      "flareHeight": 0.08
+      "bend": 0.2,
+      "bendFreq": 1.6,
+      "rootAmp": 0.6,
+      "flareHeight": 0.08,
+      "lobes": 4,
+      "lobeAmp": 0.2,
+      "twist": 1.3,
+      "bulge": 0.06
     },
     "levels": [
       {
@@ -29,7 +33,7 @@
         "length": 1.05,
         "lenFalloff": 0.35,
         "radius": 0.62,
-        "gnarl": 0.22,
+        "gnarl": 0.28,
         "photo": 0.18,
         "gravity": 0.05,
         "sections": 7,
@@ -76,19 +80,31 @@
     ],
     "foliage": {
       "type": "crown",
-      "clumps": 10,
-      "fill": 1.7,
-      "union": 0.08,
+      "clumps": 9,
+      "fill": 1.0,
+      "union": 0.03,
       "cell": 0.035,
-      "cards": 3800,
-      "cardSize": 0.05,
+      "cards": 3600,
+      "cardSize": 0.045,
       "bottom": 0.7,
-      "lump": 0.15,
-      "flattenY": 1.1
+      "lump": 0.05,
+      "flattenY": 1.0,
+      "puffs": 2,
+      "puff": 0.85,
+      "stickOut": 0.08,
+      "puffScale": 0.5,
+      "puffOut": 0.85,
+      "normalBlend": 0.95,
+      "undersideWeight": 0.7,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "coverR": 0.95
     },
     "leaves": "leaflet_atlas",
-    "bark": "bark_stylized_color",
-    "leaf_tint": "palette:foliage_light"
+    "bark": "bark_painted",
+    "leaf_tint": "palette:foliage_light",
+    "mass": "foliage_painted"
   },
   "aspen": {
     "trunk": {
@@ -100,8 +116,12 @@
       "photo": 0.15,
       "flare": 0.55,
       "roots": 4,
-      "bend": 0.05,
-      "rootAmp": 0.45
+      "bend": 0.1,
+      "rootAmp": 0.45,
+      "lobes": 3,
+      "lobeAmp": 0.1,
+      "twist": 0.8,
+      "bulge": 0.04
     },
     "levels": [
       {
@@ -146,18 +166,30 @@
     "foliage": {
       "type": "crown",
       "clumps": 9,
-      "fill": 1.55,
-      "union": 0.08,
+      "fill": 1.0,
+      "union": 0.03,
       "cell": 0.035,
-      "cards": 3400,
-      "cardSize": 0.05,
+      "cards": 3600,
+      "cardSize": 0.045,
       "bottom": 0.7,
-      "lump": 0.15,
-      "flattenY": 1.15
+      "lump": 0.05,
+      "flattenY": 1.15,
+      "puffs": 2,
+      "puff": 0.85,
+      "stickOut": 0.08,
+      "puffScale": 0.5,
+      "puffOut": 0.85,
+      "normalBlend": 0.95,
+      "undersideWeight": 0.7,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "coverR": 0.95
     },
     "leaves": "leaflet_atlas",
-    "bark": "bark_stylized_color",
-    "leaf_tint": "palette:foliage_light"
+    "bark": "bark_painted",
+    "leaf_tint": "palette:foliage_light",
+    "mass": "foliage_painted"
   },
   "ash": {
     "trunk": {
@@ -169,8 +201,12 @@
       "photo": 0.1,
       "flare": 0.55,
       "roots": 5,
-      "bend": 0.08,
-      "rootAmp": 0.45
+      "bend": 0.14,
+      "rootAmp": 0.45,
+      "lobes": 4,
+      "lobeAmp": 0.15,
+      "twist": 1.0,
+      "bulge": 0.05
     },
     "levels": [
       {
@@ -186,7 +222,7 @@
         "length": 0.72,
         "lenFalloff": 0.45,
         "radius": 0.58,
-        "gnarl": 0.2,
+        "gnarl": 0.26,
         "photo": 0.32,
         "gravity": 0.02,
         "sections": 6,
@@ -233,34 +269,50 @@
     ],
     "foliage": {
       "type": "crown",
-      "clumps": 10,
-      "fill": 1.7,
-      "union": 0.08,
+      "clumps": 9,
+      "fill": 1.0,
+      "union": 0.03,
       "cell": 0.035,
-      "cards": 3800,
-      "cardSize": 0.05,
+      "cards": 3600,
+      "cardSize": 0.045,
       "bottom": 0.7,
-      "lump": 0.15,
-      "flattenY": 1.1
+      "lump": 0.05,
+      "flattenY": 1.0,
+      "puffs": 2,
+      "puff": 0.85,
+      "stickOut": 0.08,
+      "puffScale": 0.5,
+      "puffOut": 0.85,
+      "normalBlend": 0.95,
+      "undersideWeight": 0.7,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "coverR": 0.95
     },
     "leaves": "leaflet_atlas",
-    "bark": "bark_stylized_color",
-    "leaf_tint": "palette:foliage_light"
+    "bark": "bark_painted",
+    "leaf_tint": "palette:foliage_light",
+    "mass": "foliage_painted"
   },
   "cherry": {
     "trunk": {
-      "length": 0.38,
+      "length": 0.5,
       "radius": 0.07,
       "sections": 7,
       "segments": 14,
       "gnarl": 0.22,
       "photo": 0.02,
-      "flare": 0.55,
+      "flare": 0.75,
       "roots": 5,
-      "bend": 0.2,
-      "bendFreq": 1.2,
-      "rootAmp": 0.45,
-      "flareHeight": 0.09
+      "bend": 0.28,
+      "bendFreq": 1.3,
+      "rootAmp": 0.65,
+      "flareHeight": 0.09,
+      "lobes": 3,
+      "lobeAmp": 0.22,
+      "twist": 1.6,
+      "bulge": 0.07
     },
     "levels": [
       {
@@ -268,7 +320,7 @@
           4,
           6
         ],
-        "start": 0.55,
+        "start": 0.6,
         "angle": [
           52,
           12
@@ -276,9 +328,9 @@
         "length": 0.78,
         "lenFalloff": 0.25,
         "radius": 0.65,
-        "gnarl": 0.25,
-        "photo": 0.12,
-        "gravity": 0.06,
+        "gnarl": 0.31,
+        "photo": 0.22,
+        "gravity": 0.0,
         "sections": 7,
         "segments": 7
       },
@@ -323,19 +375,32 @@
     ],
     "foliage": {
       "type": "crown",
-      "clumps": 10,
-      "fill": 1.7,
-      "union": 0.08,
+      "clumps": 9,
+      "fill": 1.0,
+      "union": 0.03,
       "cell": 0.035,
-      "cards": 3800,
-      "cardSize": 0.05,
+      "cards": 3600,
+      "cardSize": 0.045,
       "bottom": 0.65,
-      "lump": 0.15,
-      "flattenY": 1.1
+      "lump": 0.05,
+      "flattenY": 1.0,
+      "puffs": 2,
+      "puff": 0.85,
+      "stickOut": 0.08,
+      "puffScale": 0.5,
+      "puffOut": 0.85,
+      "normalBlend": 0.95,
+      "undersideWeight": 0.7,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "coverR": 0.95,
+      "domeBottom": -0.15
     },
     "leaves": "blossom_atlas",
-    "bark": "bark_stylized_color",
-    "leaf_tint": "#F06AA8"
+    "bark": "bark_painted",
+    "leaf_tint": "#F06AA8",
+    "mass": "foliage_painted"
   },
   "fir": {
     "trunk": {
@@ -346,7 +411,11 @@
       "gnarl": 0.025,
       "photo": 0.3,
       "flare": 0.4,
-      "roots": 5
+      "roots": 5,
+      "lobes": 5,
+      "lobeAmp": 0.08,
+      "twist": 0.6,
+      "bulge": 0.03
     },
     "levels": [
       {
@@ -387,7 +456,7 @@
       "dryShare": 0.12
     },
     "leaves": "frond_atlas",
-    "bark": "bark_stylized_color"
+    "bark": "bark_painted"
   },
   "bush": {
     "trunk": {
@@ -398,7 +467,10 @@
       "gnarl": 0.1,
       "photo": 0.0,
       "flare": 0.2,
-      "roots": 0
+      "roots": 0,
+      "lobes": 3,
+      "lobeAmp": 0.12,
+      "twist": 1.0
     },
     "levels": [
       {
@@ -442,21 +514,33 @@
     ],
     "foliage": {
       "type": "crown",
-      "clumps": 6,
-      "fill": 1.5,
-      "union": 0.12,
+      "clumps": 7,
+      "fill": 1.0,
+      "union": 0.05,
       "cell": 0.05,
-      "cards": 1600,
-      "cardSize": 0.09,
+      "cards": 1500,
+      "cardSize": 0.07,
       "bottom": 0.85,
-      "lump": 0.12,
+      "lump": 0.05,
       "flattenY": 0.85,
-      "undersideWeight": 0.5
+      "undersideWeight": 0.7,
+      "puffs": 1,
+      "puff": 0.85,
+      "puffScale": 0.55,
+      "puffOut": 0.8,
+      "stickOut": 0.08,
+      "normalBlend": 0.95,
+      "creviceDark": 0.6,
+      "mode": "dome",
+      "puffR": 0.5,
+      "domeBottom": -0.2,
+      "coverR": 0.95
     },
     "leaves": "leaflet_atlas",
-    "bark": "bark_stylized_color",
+    "bark": "bark_painted",
     "minTwigRadius": 0.3,
-    "leaf_tint": "palette:foliage_light"
+    "leaf_tint": "palette:foliage_light",
+    "mass": "foliage_painted"
   },
   "_sizes": {
     "small": {

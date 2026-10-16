@@ -3,7 +3,7 @@
   "preset": "oak_medium",
   "seed": 42,
   "height": 9,
-  "bark": "bark_stylized_color",
+  "bark": "bark_painted",
   "leaves": "leaflet_atlas",
-  "leaf_mass": "leaf_mass"
+  "leaf_mass": "foliage_painted"
 }

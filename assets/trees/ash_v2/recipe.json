@@ -3,7 +3,7 @@
   "preset": "ash_medium",
   "seed": 21,
   "height": 10,
-  "bark": "bark_stylized_color",
+  "bark": "bark_painted",
   "leaves": "leaflet_atlas",
-  "leaf_mass": "leaf_mass"
+  "leaf_mass": "foliage_painted"
 }

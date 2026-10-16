@@ -47,7 +47,7 @@ export function buildSkeleton(sp, seed, size = {}) {
   const branches = [];
   const r0 = T.radius, rTip = T.radius * 0.18;
   const lean = norm([(r() - 0.5) * 0.08, 1, (r() - 0.5) * 0.08]);
-  const trunk = { level: 0, nodes: grow([0, 0, 0], lean, T.length, r0, rTip, { ...T, gravity: 0 }, r, 0), parent: -1, t: 0, segments: T.segments, length: T.length };
+  const trunk = { level: 0, nodes: grow([0, 0, 0], lean, T.length, r0, rTip, { ...T, gravity: 0 }, r, 0), parent: -1, t: 0, segments: T.segments, length: T.length, phase: r() * 6.283 };
   branches.push(trunk);
 
   let parents = [0];
@@ -86,7 +86,7 @@ export function buildSkeleton(sp, seed, size = {}) {
         const cr0 = Math.min(at.r * L.radius, at.r * 0.85);
         const minRadius = Math.min(cr0, T.radius * (sp.minTwigRadius ?? 0.12));
         const nodes = grow(at.p, dir, length, cr0, cr0 * 0.2, { ...L, minRadius }, r, 0.05 * T.length);
-        branches.push({ level, nodes, parent: pi, t: s.t, segments: L.segments, length });
+        branches.push({ level, nodes, parent: pi, t: s.t, segments: L.segments, length, phase: r() * 6.283 });
         next.push(branches.length - 1);
       }
     }

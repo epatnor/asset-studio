@@ -5,6 +5,28 @@ import { add, sub, mul, dot, cross, norm, len, basis } from './vec.mjs';
 
 const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], indices: [] });
 
+// Jämna normaler för en grens vertexar (från base) ur dess trianglar (från triStart). Sömmen
+// (första och sista kolumnen i varje ring) får samma normal, så att den inte syns.
+function recomputeNormals(g, base, triStart, row) {
+  const nV = g.positions.length / 3 - base;
+  const acc = new Float64Array(nV * 3);
+  const P = (k) => [g.positions[k * 3], g.positions[k * 3 + 1], g.positions[k * 3 + 2]];
+  for (let i = triStart; i < g.indices.length; i += 3) {
+    const [a, b, c] = [g.indices[i], g.indices[i + 1], g.indices[i + 2]];
+    const fn = cross(sub(P(b), P(a)), sub(P(c), P(a)));
+    for (const k of [a, b, c]) for (let j = 0; j < 3; j++) acc[(k - base) * 3 + j] += fn[j];
+  }
+  for (let k = 0; k + 1 < nV; k += row) { // laga sömmen: summera första och sista kolumnen
+    const e = k + row - 1;
+    if (e >= nV - 1) break;
+    for (let j = 0; j < 3; j++) { const sum = acc[k * 3 + j] + acc[e * 3 + j]; acc[k * 3 + j] = sum; acc[e * 3 + j] = sum; }
+  }
+  for (let k = 0; k < nV; k++) {
+    const n = norm([acc[k * 3], acc[k * 3 + 1], acc[k * 3 + 2]]);
+    g.normals[(base + k) * 3] = n[0]; g.normals[(base + k) * 3 + 1] = n[1]; g.normals[(base + k) * 3 + 2] = n[2];
+  }
+}
+
 /**
  * @param {object} sk  skelett (efter skalning)
  * @param {object} o   { barkRepeat, maxLevel, segScale, flare, roots, height }
@@ -32,6 +54,14 @@ export function barkMesh(sk, o) {
         const a = (s / segs) * Math.PI * 2;
         const dir = add(mul(n1, Math.cos(a)), mul(n2, Math.sin(a)));
         let rad = nodes[i].r;
+        // Vriden, flikig stam: tvärsnittet får några utbuktningar som vrider sig uppåt och avtar
+        // med höjden (stammen fullt ut, första grennivån svagare), plus mjuka svällningar längs grenen
+        if (o.lobes && b.level <= 1) {
+          const fade = b.level === 0 ? 1 - 0.6 * t : 0.5 * (1 - t);
+          const twist = (vAcc / o.height) * Math.PI * 2 * (o.twist ?? 1);
+          rad *= 1 + (o.lobeAmp ?? 0.15) * fade * Math.cos(o.lobes * a + twist + b.phase);
+          rad *= 1 + (o.bulge ?? 0.05) * Math.sin(vAcc / o.height * 9 + b.phase * 3);
+        }
         // Stammens fot: utsvängning och rotknölar
         if (b.level === 0 && o.flare) {
           const h = nodes[i].p[1] / (o.height * (o.flareHeight ?? 0.06));
@@ -47,6 +77,7 @@ export function barkMesh(sk, o) {
       }
     }
     const row = segs + 1;
+    const triStart = g.indices.length;
     for (let i = 0; i < nodes.length - 1; i++) for (let s = 0; s < segs; s++) {
       const a = base + i * row + s, c = a + row;
       g.indices.push(a, a + 1, c, a + 1, c + 1, c); // moturs sett utifrån (d × tangent pekar inåt)
@@ -62,6 +93,7 @@ export function barkMesh(sk, o) {
     g.wind.push(1);
     const last = base + (nodes.length - 1) * row;
     for (let s = 0; s < segs; s++) g.indices.push(last + s, last + s + 1, ti);
+    if (o.lobes && b.level <= 1) recomputeNormals(g, base, triStart, row);
   }
   return g;
 }

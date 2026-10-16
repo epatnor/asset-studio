@@ -10,18 +10,22 @@ const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: []
 // Mjuk union (smooth min) av klumparna, med lite brus per klump så att formen blir knölig ("blomkål")
 function crownField(clumps, k) {
   // Polynomisk smooth min (Inigo Quilez): blandar bara där klumparna möts och blåser upp formen
-  // högst k/4, till skillnad från exp-summan som växer med antalet klumpar
+  // högst k/4, till skillnad från exp-summan som växer med antalet klumpar.
+  // Returnerar även vilken klump som ligger närmast (för puffnormaler) och det minsta enskilda
+  // avståndet (skillnaden mot unionen visar var det är en skreva mellan två puffar).
   const smin = (a, b) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
   return (p) => {
-    let dist = Infinity;
-    for (const c of clumps) {
+    let dist = Infinity, dmin = Infinity, ci = 0;
+    clumps.forEach((c, i) => {
       const q = [(p[0] - c.center[0]) / c.radii[0], (p[1] - c.center[1]) / (p[1] < c.center[1] ? c.radii[1] * c.bottom : c.radii[1]), (p[2] - c.center[2]) / c.radii[2]];
       const l = Math.hypot(q[0], q[1], q[2]) || 1e-6;
       const dir = [q[0] / l, q[1] / l, q[2] / l];
       const lump = c.waves.reduce((s, w) => s + w.a * Math.sin(dot(dir, w.k) + w.ph), 0);
-      dist = smin(dist, (l - 1 - lump) * c.minR);
-    }
-    return dist;
+      const d = (l - 1 - lump) * c.minR;
+      if (d < dmin) { dmin = d; ci = i; }
+      dist = smin(dist, d);
+    });
+    return { d: dist, dmin, ci };
   };
 }
 
@@ -71,6 +75,26 @@ function surfaceNets(f, lo, hi, cell) {
   return { verts, quads: quads.filter((q) => q.every((x) => x >= 0)) };
 }
 
+// Kupolläge: stora runda puffar jämnt fördelade (Fibonacci-sfär) över kronans övre och yttre yta,
+// som stackmoln (referensbilden), plus en kärna som fyller insidan
+function domeClumps(twigs, o, r) {
+  const n = twigs.length;
+  const c = mul(twigs.reduce(add, [0, 0, 0]), 1 / n);
+  const radii = [0, 1, 2].map((a) => Math.max(...twigs.map((p) => Math.abs(p[a] - c[a]))) * 0.85);
+  radii[1] *= o.flattenY ?? 1;
+  const meanR = (radii[0] + radii[1] + radii[2]) / 3;
+  const out = [{ center: [c[0], c[1] - radii[1] * 0.1, c[2]], radii: radii.map((x) => x * 0.72), count: n }];
+  const N = o.clumps ?? 11;
+  for (let i = 0; i < N * 1.6 && out.length < N + 1; i++) {
+    const y = 1 - (i + 0.5) / (N * 1.6) * 2, rr = Math.sqrt(1 - y * y), th = i * 2.399963;
+    if (y < (o.domeBottom ?? -0.35)) continue; // inga puffar under kronan
+    const d = [Math.cos(th) * rr, y, Math.sin(th) * rr];
+    const pr = meanR * (o.puffR ?? 0.42) * (0.85 + r() * 0.3);
+    out.push({ center: add(c, [d[0] * radii[0] * 0.8, d[1] * radii[1] * 0.8, d[2] * radii[2] * 0.8]), radii: [pr, pr * 0.92, pr], count: 1 });
+  }
+  return out;
+}
+
 /**
  * @param {number[][]} twigs  kvistpunkter från skelettet (meter)
  * @param {object} o  { seed, height, clumps, fill, union, cell, cards, cardSize, bottom, lump, normalBlend, undersideWeight }
@@ -78,7 +102,7 @@ function surfaceNets(f, lo, hi, cell) {
 export function buildCrown(twigs, o) {
   const r = rng(o.seed * 6151 + 3);
   const H = o.height;
-  const clumps = clusterLeaves(twigs, o.clumps, r, o.flattenY ?? 0.9);
+  const clumps = o.mode === 'dome' ? domeClumps(twigs, o, r) : clusterLeaves(twigs, o.clumps, r, o.flattenY ?? 0.9);
   // Kärnklump vid kronans tyngdpunkt (på en kvist), som binder ihop klumparna till en krona
   if (o.core !== false && clumps.length > 2) {
     const cg = mul(clumps.reduce((s, c) => add(s, c.center), [0, 0, 0]), 1 / clumps.length);
@@ -91,13 +115,49 @@ export function buildCrown(twigs, o) {
     const meanR = (c.radii[0] + c.radii[1] + c.radii[2]) / 3;
     let best = twigs[0], bd = Infinity;
     for (const p of twigs) { const d = Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]); if (d < bd) { bd = d; best = p; } }
-    if (bd > 0.3 * meanR) c.center = lerp(best, c.center, (0.3 * meanR) / bd);
+    if (bd > 0.28 * meanR) c.center = lerp(best, c.center, (0.28 * meanR) / bd);
     c.minR = Math.min(...c.radii);
     c.bottom = o.bottom ?? 0.75; // plattare undersida, som i referenserna
     c.waves = Array.from({ length: 4 }, () => ({ k: mul(randomUnit(r), 3 + r() * 4), ph: r() * 6.283, a: (o.lump ?? 0.1) * (0.6 + r() * 0.8) }));
   }
+  // Täckning: varje kvist utanför kronan får en egen puff (centrerad på kvisten), så att inga kala
+  // grenar sticker ut. Girigt: när en kvist täcks av en ny puff täcks dess grannar ofta också.
+  const insideAny = (p, f = 0.85) => clumps.some((c) => [0, 1, 2].reduce((s, a) => s + ((p[a] - c.center[a]) / (c.radii[a] * f)) ** 2, 0) <= 1);
+  const refR = clumps.slice(1).reduce((s, c) => s + c.radii[0], 0) / Math.max(1, clumps.length - 1);
+  for (const p of twigs) {
+    if (insideAny(p)) continue;
+    const pr = refR * (o.coverR ?? 0.75) * (0.85 + r() * 0.3);
+    clumps.push({ center: p, radii: [pr, pr * 0.92, pr], count: 1, minR: pr * 0.92, bottom: o.bottom ?? 0.75,
+      waves: clumps[0].waves.map((w) => ({ ...w, ph: w.ph + r() * 6 })) });
+  }
+  // Puffar: mindre klumpar på klumparnas övre och yttre sida, så kronan blir bullig som ett stackmoln
+  const base = clumps.length;
+  for (let i = 0; i < base; i++) {
+    const c = clumps[i];
+    for (let j = 0; j < (o.puffs ?? 0); j++) {
+      let d = randomUnit(r);
+      d = norm([d[0] + c.center[0] * 0.15, Math.abs(d[1]) * 0.9 + 0.1, d[2] + c.center[2] * 0.15]);
+      const s2 = (o.puffScale ?? 0.45) + r() * 0.2;
+      clumps.push({
+        center: add(c.center, mul([d[0] * c.radii[0], d[1] * c.radii[1], d[2] * c.radii[2]], o.puffOut ?? 0.72)),
+        radii: c.radii.map((x) => x * s2), count: 1, bottom: c.bottom, minR: c.minR * s2, parent: i,
+        waves: c.waves.map((w) => ({ ...w, ph: w.ph + j * 1.7, a: w.a * 0.7 })),
+      });
+    }
+  }
   const k = (o.union ?? 0.08) * H;
-  const f = crownField(clumps, k);
+  const info = crownField(clumps, k);
+  const f = (p) => info(p).d;
+  // Bullig skuggning: blanda fältets normal med den närmaste puffens egen ellipsoidnormal
+  // (guidens sfäriska överskrivning, α ≈ 0,75–0,9), så varje bulle får eget ljus och egen skugga
+  const puffNormal = (p, e) => {
+    const g = gradient(f, p, e);
+    const c = clumps[info(p).ci];
+    const sph = norm([(p[0] - c.center[0]) / c.radii[0] ** 2, (p[1] - c.center[1]) / c.radii[1] ** 2, (p[2] - c.center[2]) / c.radii[2] ** 2]);
+    return norm(lerp(g, sph, o.puff ?? 0.5));
+  };
+  // Skrevor: där unionen ligger klart under närmaste enskilda klump smälter två puffar ihop
+  const crevice = (p) => { const x = info(p); return clamp01((x.dmin - x.d) / (k * 0.25)); };
   let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
   // Rutnätet måste rymma hela ytan med marginal (knölar + blandning), annars klipps kronan till en låda
   for (const c of clumps) for (let a = 0; a < 3; a++) {
@@ -107,10 +167,10 @@ export function buildCrown(twigs, o) {
   lo[1] = Math.max(lo[1], 0.02);
   const crownMinY = lo[1], crownMaxY = hi[1];
   const wUp = o.undersideWeight ?? 0.3;
-  const shade = (p, n, depth) => {
+  const shade = (p, n, depth, crev = 0) => {
     const hN = clamp01((p[1] - crownMinY) / Math.max(1e-6, crownMaxY - crownMinY));
     const up = clamp01(n[1] * 0.5 + 0.5);
-    const light = clamp01((0.35 * hN + wUp * up + 0.4 * (1 - depth)) / (0.75 + wUp));
+    const light = clamp01((0.35 * hN + wUp * up + 0.4 * (1 - depth)) / (0.75 + wUp)) * (1 - (o.creviceDark ?? 0.45) * crev);
     // Ljusare skuggvärde än tidigare: målbilderna har klara, mättade kronor med mjuka skuggor
     return lerp([0.42, 0.46, 0.52], [1.0, 1.0, 0.94], light ** 0.8);
   };
@@ -133,15 +193,15 @@ export function buildCrown(twigs, o) {
     const [a, b, c] = tris[lo2];
     let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
     const base = add(fine.verts[a], add(mul(sub(fine.verts[b], fine.verts[a]), u), mul(sub(fine.verts[c], fine.verts[a]), v)));
-    const n = gradient(f, base, cardSize * 0.2);
-    // De flesta korten ligger strax utanför ytan; några sticker ut och bryter silhuetten
-    const out = r() < 0.15 ? 0.35 + r() * 0.35 : -0.1 + r() * 0.3;
+    const n = puffNormal(base, cardSize * 0.2);
+    // Korten ligger mest inbäddade i ytan (mjuka massor, få enskilda blad); några sticker ut i silhuetten
+    const out = r() < (o.stickOut ?? 0.12) ? 0.25 + r() * 0.3 : -0.3 + r() * 0.35;
     const p = add(base, mul(n, out * cardSize));
     const cn = norm(add(n, mul(randomUnit(r), 0.6)));
     const [t0] = basis(cn);
     const ang = r() * Math.PI * 2;
     const t = norm(add(mul(t0, Math.cos(ang)), mul(cross(cn, t0), Math.sin(ang))));
-    cards.push({ p, n, cn, t, size: cardSize * (0.75 + r() * 0.5), cell: Math.floor(r() * 4), prio: r(), depth: clamp01(0.5 - out) });
+    cards.push({ p, n, cn, t, size: cardSize * (0.75 + r() * 0.5), cell: Math.floor(r() * 4), prio: r(), depth: clamp01(0.5 - out), crev: crevice(base), ci: info(base).ci });
   }
 
   const pushCard = (g, c, scale) => {
@@ -149,14 +209,14 @@ export function buildCrown(twigs, o) {
     const w = c.size * scale * 0.5, h = c.size * scale;
     const start = g.positions.length / 3;
     const cu = (c.cell % 2) * 0.5, cvv = Math.floor(c.cell / 2) * 0.5;
-    const col = shade(c.p, c.n, c.depth);
+    const col = shade(c.p, c.n, c.depth, c.crev);
     for (const [u, vv] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
       // Lövets bas (v=0) nära ytan, spetsen utåt längs t
       const pos = add(c.p, add(mul(b, (u - 0.5) * 2 * w), mul(c.t, (vv - 0.25) * h)));
-      const nn = norm(lerp(c.cn, gradient(f, pos, h * 0.2), o.normalBlend ?? 0.85));
+      const nn = norm(lerp(c.cn, puffNormal(pos, h * 0.2), o.normalBlend ?? 0.85));
       g.positions.push(...pos); g.normals.push(...nn);
       g.uvs.push(cu + u * 0.5, cvv + (1 - vv) * 0.5);
-      g.colors.push(...col); g.wind.push(windAt(pos) * (0.7 + 0.3 * vv)); g.cluster.push(0);
+      g.colors.push(...col); g.wind.push(windAt(pos) * (0.7 + 0.3 * vv)); g.cluster.push(c.ci);
     }
     // Moturs sett från +cn (framsidan utåt); enkelsidigt så att normalerna inte vänds på baksidan
     g.indices.push(start, start + 3, start + 1, start, start + 2, start + 3); // b × t = −cn, så vänd ordningen
@@ -168,21 +228,30 @@ export function buildCrown(twigs, o) {
     for (const c of cards) if (c.prio < keep) pushCard(g, c, scale);
     // Ogenomskinlig kronmassa, lite inkrympt så att korten ligger utanpå
     const mesh = cell === 1 ? fine : surfaceNets(f, lo, hi, (o.cell ?? 0.035) * H * cell);
-    const vol = empty();
-    for (const p0 of mesh.verts) {
-      const n = gradient(f, p0, cardSize * 0.2);
+    // Beräkna vertexdata en gång per vertex, och bygg sedan icke-indexerade quads med lådprojektion:
+    // varje quad projiceras längs sin dominerande axel, så texturen inte sträcks ut på sidorna
+    const vd = mesh.verts.map((p0) => {
+      const n = puffNormal(p0, cardSize * 0.2);
       const p = sub(p0, mul(n, cardSize * 0.15));
-      vol.positions.push(...p); vol.normals.push(...n);
-      vol.uvs.push(p[0] / (H * 0.25), p[2] / (H * 0.25));
-      vol.colors.push(...shade(p, n, 0.55)); vol.wind.push(windAt(p) * 0.5); vol.cluster.push(0);
-    }
-    // Vänd varje quad så att den pekar längs fältets gradient (utåt)
+      return { p, n, col: shade(p, n, 0.55, crevice(p0)), wind: windAt(p) * 0.5, ci: info(p0).ci };
+    });
+    const vol = empty();
+    const S = 1 / (H * (o.massScale ?? 0.18)); // texturupprepningar per meter
     for (const q of mesh.quads) {
       const [a, b, c, d] = q.map((i) => mesh.verts[i]);
       const qn = cross(sub(c, a), sub(d, b));
       const out = dot(qn, gradient(f, mul(add(add(a, b), add(c, d)), 0.25), cardSize * 0.2)) > 0;
-      if (out) vol.indices.push(q[0], q[1], q[2], q[0], q[2], q[3]);
-      else vol.indices.push(q[0], q[2], q[1], q[0], q[3], q[2]);
+      const ax = [0, 1, 2].reduce((m, x) => (Math.abs(qn[x]) > Math.abs(qn[m]) ? x : m), 0);
+      const [u1, u2] = ax === 0 ? [2, 1] : ax === 1 ? [0, 2] : [0, 1];
+      const start = vol.positions.length / 3;
+      for (const vi of q) {
+        const v = vd[vi];
+        vol.positions.push(...v.p); vol.normals.push(...v.n);
+        vol.uvs.push(v.p[u1] * S, -v.p[u2] * S);
+        vol.colors.push(...v.col); vol.wind.push(v.wind); vol.cluster.push(v.ci);
+      }
+      if (out) vol.indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
+      else vol.indices.push(start, start + 2, start + 1, start, start + 3, start + 2);
     }
     g.volume = vol;
     return g;

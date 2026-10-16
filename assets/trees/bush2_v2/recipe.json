@@ -3,7 +3,7 @@
   "preset": "bush_2",
   "seed": 12,
   "height": 1.0,
-  "bark": "bark_stylized_color",
+  "bark": "bark_painted",
   "leaves": "leaflet_atlas",
-  "leaf_mass": "leaf_mass"
+  "leaf_mass": "foliage_painted"
 }

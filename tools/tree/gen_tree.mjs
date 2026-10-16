@@ -53,6 +53,7 @@ const barkLods = [
   { maxLevel: 1, segScale: 0.5 },
 ].map((l) => barkMesh(sk, {
   ...l, barkRepeat, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height,
+  lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   maxLevel: fronds ? 0 : l.maxLevel,
 }));
@@ -72,10 +73,15 @@ if (fronds) {
   const opts = { ...sp.foliage, cards: Math.round(sp.foliage.cards * (size.cards ?? 1)), ...(recipe.canopy ?? {}), seed: seedEff, height };
   foliage = buildCrown(sk.twigs, opts);
   checks.clusters = foliage.clusters.length;
+  // Klumpar måste sitta på en kvist; puffar måste sitta inne i sin föräldraklump
+  const inside = (p, c, f) => [0, 1, 2].reduce((s, a) => s + ((p[a] - c.center[a]) / (c.radii[a] * f)) ** 2, 0) <= 1;
   checks.floating_clusters = foliage.clusters.filter((c) => {
+    if (c.parent !== undefined) return !inside(c.center, foliage.clusters[c.parent], 1);
     const meanR = (c.radii[0] + c.radii[1] + c.radii[2]) / 3;
     return !sk.twigs.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.31 * meanR);
   }).length;
+  // Kala grenar: kvistar som inte ligger inne i någon klump
+  checks.uncovered_twigs = sk.twigs.filter((p) => !foliage.clusters.some((c) => inside(p, c, 1))).length;
 } else {
   const opts = { ...sp.foliage, cards: Math.round(sp.foliage.cards * (size.cards ?? 1)), ...(recipe.canopy ?? {}), seed: seedEff };
   if (!leafMass) opts.volume = false;
@@ -87,7 +93,7 @@ if (fronds) {
     return !sk.twigs.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * meanR);
   }).length;
 }
-checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters;
+checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs;
 
 // 4. GLB
 const doc = new Document();
@@ -110,8 +116,11 @@ if (fronds && recipe.frondTexture) {
 // leafTint: färgen som materialparameter (gråskaletexturer), som Material Instances
 const tint = recipe.leafTint && lin(recipe.leafTint);
 if (tint) leafMat.setBaseColorFactor([...tint, 1]);
-const massMat = !fronds && leafMass && doc.createMaterial('LeafMass').setBaseColorTexture(texture(leafMass, 'leaf_mass'))
-  .setRoughnessFactor(0.9).setMetallicFactor(0);
+// v4-kronans massa har bara vertexfärg (projicerad textur ger ränder på sidorna); äldre kronor har lövmassa
+// Kronmassan: målad lövmassa (lådprojicerad i crown.mjs, tintad som löven), annars bara vertexfärg
+const massMat = !fronds && (leafMass
+  ? doc.createMaterial('LeafMass').setBaseColorTexture(texture(leafMass, 'leaf_mass')).setRoughnessFactor(0.9).setMetallicFactor(0)
+  : doc.createMaterial('LeafMass').setRoughnessFactor(0.9).setMetallicFactor(0));
 if (tint && massMat) massMat.setBaseColorFactor([...tint, 1]);
 
 function mesh(name, g, mat, extra = {}) {
@@ -124,6 +133,15 @@ function mesh(name, g, mat, extra = {}) {
     .setIndices(acc('SCALAR', Uint32Array.from(g.indices)))
     .setMaterial(mat);
   for (const [k, v] of Object.entries(extra)) prim.setAttribute(k, acc('SCALAR', Float32Array.from(v)));
+  // Vinddata i vertexfärg enligt stilguidens konvention, läsbar direkt i Unreal/Godot/Unity:
+  // R = höjd över marken, G = rörlighet (avstånd från gren-pivot), B = slumpmässig fas per kluster
+  const nV = g.positions.length / 3, wc = new Float32Array(nV * 4);
+  const cl = extra._CLUSTER;
+  for (let i = 0; i < nV; i++) {
+    const phase = cl ? ((Math.sin((cl[i] + 1) * 12.9898) * 43758.5453) % 1 + 1) % 1 : 0.5;
+    wc.set([Math.min(1, Math.max(0, g.positions[i * 3 + 1] / height)), g.wind[i], phase, 1], i * 4);
+  }
+  prim.setAttribute('COLOR_1', acc('VEC4', wc));
   return doc.createMesh(name).addPrimitive(prim);
 }
 

@@ -53,6 +53,11 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [x] ez-tree och three borttagna ur trädverktyget.
 - [x] **v4-krona för lövträd** (`crown.mjs`): underklumpar vid kvistarna, en kärnklump som binder ihop dem, polynomisk smooth min till ett molnlikt fält, en ogenomskinlig kronmesh via surface nets, och tusentals små lövkort (`leaflet_atlas`) med normaler från fältet. Inspirerat av målbilderna och "Stylized Tree Generator" (Superhive).
 - [x] Stammen: mjuk S-böj, kraftigare rotutsvängning. Lövfärg per art via `leaf_tint` i `species.json` (pekar på paletten). Klarare förhandsljus (AgX Punchy).
+- [x] Bulliga kronor enligt "Stil- och Teknikguide: Stiliserad Vegetation" (Painterly/Ghibli): kupolläge med stora runda puffar på kronans yta (Fibonacci-fördelning), mindre bullar ovanpå, täckningspuffar på varje kvist (inga kala grenar, kontrollen `uncovered_twigs`), puffnormaler (α ≈ 0,85) och mörkare skrevor mellan bullarna. Kronmassan har bara vertexfärg.
+- [x] Vinddata i `COLOR_1` enligt guiden: R = höjd, G = rörlighet, B = fas per kluster (läsbar i Unreal, Godot och Unity).
+- [x] Dynamiska stammar: flikigt tvärsnitt (3–5 utbuktningar) som vrider sig uppåt och avtar med höjden, svällningar längs grenen, starkare S-böj, och jämna normaler från geometrin. Allt styrs av `lobes`, `lobeAmp`, `twist`, `bulge` och `bend` per art.
+- [x] Målade texturer: `bark_painted` (långa, flytande fåror) och `foliage_painted` (flikiga lövklumpar) på kronmassan, med lådprojektion per quad (inga ränder), tintad som löven.
+- [ ] Generering 2–6 s per träd med många puffar: snabba upp fältet (spatialt rutnät över klumparna) om det blir ett problem.
 - [ ] Jämfört med målbilderna saknas fortfarande: genomlysning, vind och färgvariation per klump (shader i klienten), finare blad i silhuetten, och en mer målad bark.
 - [ ] Granens övre kransar: tätare, så att stammen inte syns mellan dem. Granen behöver också samma ljusa, mättade färgskala som lövträden.
 - [x] ez-tree-geometri med UV, recept → GLB.
