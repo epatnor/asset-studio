@@ -224,6 +224,16 @@ export function buildCrown(twigs, o) {
     }
     // Moturs sett från +cn (framsidan utåt); enkelsidigt så att normalerna inte vänds på baksidan
     g.indices.push(start, start + 3, start + 1, start, start + 2, start + 3); // b × t = −cn, så vänd ordningen
+    // Baksida: samma fyra hörn igen med omvänd ordning men SAMMA normal, så att baksidan belyses som
+    // framsidan (ett dubbelsidigt material skulle vända normalen och förstöra klotskuggningen).
+    // Från kronans utsida vänder kopian bort från kameran och sorteras bort, så ingen extra overdraw där.
+    const back = g.positions.length / 3;
+    for (let k = 0; k < 4; k++) {
+      for (const key of ['positions', 'normals', 'colors']) g[key].push(...g[key].slice((start + k) * 3, (start + k) * 3 + 3));
+      g.uvs.push(...g.uvs.slice((start + k) * 2, (start + k) * 2 + 2));
+      g.wind.push(g.wind[start + k]); g.cluster.push(g.cluster[start + k]);
+    }
+    g.indices.push(back, back + 1, back + 3, back, back + 3, back + 2);
   };
 
   // Hängande gardiner (pil): strängar av små lövkort som hänger rakt ned från kronans undersida
