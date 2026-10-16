@@ -14,6 +14,21 @@ Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna e
 4. **Enhetlig stil.** Stiliserad, halvrealistisk mid-poly i stil med Overwatch och Fortnite. Se [stilguiden](docs/style-guide.md); värden som verktygen läser finns i [`tools/style.json`](tools/style.json).
 5. **Bygg själv bara när inget bra gratis verktyg finns.**
 
+## Plattform och arkitektur
+
+- **Renderare:** [Three.js](https://threejs.org). Tinkertown är ett eget motorlager ovanpå: editor, spelläge, världsrecept och verktygsregister. Ingen egen renderare.
+- **Mål 1, webbläsaren:** spelet och editorn körs i en vanlig webbläsare.
+- **Mål 2, desktopapp:** samma kod paketeras senare med [Electron](https://www.electronjs.org). Electron har med sig en egen Chromium, så WebGPU och WebGL beter sig likadant överallt. (Tauri valdes bort: på Linux använder det WebKitGTK, med svagare WebGPU- och WebGL-stöd.)
+
+Koden delas från början i två delar, så att båda målen fungerar utan omskrivning:
+
+| Del | Gör | I webbläsaren | I desktopappen |
+|---|---|---|---|
+| Klient | Three.js-spel och editor, spelaren och UI | Webbsida | Electron-fönster |
+| Lokal server (Node) | Sparar världsrecept, kör verktygen (ez-tree, Blender, ComfyUI), MCP-server för AI-agenter | Separat process på `localhost` | Electrons Node-del |
+
+Klienten pratar bara med servern via ett eget API. Den anropar aldrig verktyg direkt.
+
 ## Status
 
 | Område | Verktyg | Status |
@@ -22,7 +37,8 @@ Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna e
 | Texturer | Krea-2 Turbo via lokal ComfyUI | Fungerar: bark (sömlös), lövsprite (alfa) |
 | MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `list_assets` |
 | Terräng, vatten, vegetation, props, karaktärer | – | Ej påbörjat |
-| Editor/runtime | – | Ej påbörjat (motor ej vald) |
+| Editor/runtime | Three.js | Ej påbörjat (motor vald) |
+| Desktopapp | Electron | Senare |
 
 ## Struktur
 

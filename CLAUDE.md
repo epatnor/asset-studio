@@ -2,6 +2,10 @@
 
 Läs README.md för visionen. Det viktigaste här är tokenekonomin: **låt verktygen göra jobbet.**
 
+## Arkitektur
+
+Three.js-klient (spel och editor) och en lokal Node-server (världsrecept, verktyg, MCP), som kopplas ihop via ett eget API. Målet är först webbläsaren, sedan en desktopapp med Electron. Klientkod får inte förutsätta Node eller Electron, och serverkod får inte förutsätta en webbläsare. Se "Plattform och arkitektur" i README.md.
+
 ## Stil
 
 Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stiliserad PBR (inte cel-shading), chunky former med bevel + weighted normals, låg-frekventa målade texturer, klumpiga trädkronor med canopy-normaler. Verktyg läser stilvärden ur `tools/style.json` i stället för att hårdkoda dem. Läs guiden innan ett nytt verktyg byggs; läs den inte vid varje vanligt verktygsanrop.
