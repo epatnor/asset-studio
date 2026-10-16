@@ -134,17 +134,20 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 Referens: "Stylized Grass Tutorial" (akbutea), med en Genshin Impact-liknande stil. Det mesta av looken sitter i shadern och i att gräset tar färg från marken.
 
 Generator (tillgång):
-- [ ] Gräsknippe (`create_grass_patch`): strån från lätt böjda plan, duplicerade, skalade och roterade till ett oregelbundet, fylligt knippe. Recept: antal strån, höjd, bredd, böj, spridning.
-- [ ] Pivot vid basen, och **alla normaler pekar rakt upp**, så att knippet inte får svarta skuggor.
-- [ ] UV med strånas bas längst ner (v=0 vid marken), plus `_WIND` 0 vid basen och 1 i toppen.
-- [ ] Varianter: kort, medel och högt gräs (högt i övergångar och kanter), och några med blommor.
+- [x] Gräsknippe (`create_grass_patch`): strån från lätt böjda plan, duplicerade, skalade och roterade till ett oregelbundet, fylligt knippe. Recept: antal strån, höjd, bredd, böj, spridning.
+- [x] Växtgeneratorn (`create_plant`, `tools/plants/`): samma kurvbyggsten för gräsknippen, vass, kaveldun, säd (vete, korn) och blommor (prästkrage, vallmo, smörblomma, tulpan, blåklint, lavendel, lupin). Stjälkar är platta band som klienten vrider mot kameran; 3 LOD; kontroller för rötter, fästen, normaler, vind och budget.
+- [x] Gräsfältet (`showcase/grass.js`): hundratusentals instansierade strån i tuvor per ruta, täthet och höjd från marken, brusfläckar, skugga under kronor och hinder, rotfärg från marktexturen, vindbyar som böjer och ljusar, glesare på avstånd.
+- [ ] Gräsfältet: PCG-graf som data (punkter → täthet → filter → attribut → utplacering) i stället för parkens egna funktioner, och omräkning per ruta när marken ändras.
+- [x] Pivot vid basen, och **alla normaler pekar rakt upp**, så att knippet inte får svarta skuggor.
+- [x] UV med strånas bas längst ner (v=0 vid marken), plus `_WIND` 0 vid basen och 1 i toppen.
+- [x] Varianter: kort, medel och högt gräs (högt i övergångar och kanter), och några med blommor.
 
 Klient (shader och placering):
-- [ ] Gräset tar sin basfärg från markens färg under sig. Motsvarigheten till Unreals Runtime Virtual Texture: sampla terrängens färg- och splatkarta på världens xz. Målar man marken rosa blir gräset rosa där.
-- [ ] Gradient från mörk bas till ljus topp, i shadern i stället för per strå.
-- [ ] Vind i vertexshadern via `_WIND` (förankrad bas, rörlig topp).
-- [ ] "Rullande vind": en panorerande brustextur som tillfälligt gör stråk av gräset ljusare, som vindvågor över fältet.
-- [ ] **Inga kastade skuggor från gräs** (för dyrt). Djupet kommer från färgskiftningarna. Gräset tar däremot emot skuggor från träd och byggnader.
+- [x] Gräset tar sin basfärg från markens färg under sig. Motsvarigheten till Unreals Runtime Virtual Texture: sampla terrängens färg- och splatkarta på världens xz. Målar man marken rosa blir gräset rosa där.
+- [x] Gradient från mörk bas till ljus topp, i shadern i stället för per strå.
+- [x] Vind i vertexshadern via `_WIND` (förankrad bas, rörlig topp).
+- [x] "Rullande vind": en panorerande brustextur som tillfälligt gör stråk av gräset ljusare, som vindvågor över fältet.
+- [x] **Inga kastade skuggor från gräs** (för dyrt). Djupet kommer från färgskiftningarna. Gräset tar däremot emot skuggor från träd och byggnader.
 - [ ] Instansiering (`InstancedMesh`) och utmålning med spridningsborsten. Densitet och längd styrs av markens material.
 - [ ] Målade stråk av ljusare och mörkare mark som gräset plockar upp.
 - [ ] Stockar, stubbar, rötter.
@@ -156,7 +159,7 @@ Klient (shader och placering):
 - [x] Parken (`showcase/park.html`): kuperad terräng, slingrande stigar, blandad mark (gräs, äng, skogsmark, stig) i en shader med motmedel mot synlig upprepning, och växter och props placerade efter regler.
 - [ ] Normalkartorna används ännu inte i parkens markshader.
 - [ ] Väg och grus visar fortfarande svagt korset från sömlagningen vid upprepning; prova bredare mask eller två omgångar.
-- [ ] Generatorn för marktäcke (småstenar, gräs, högt gräs, blommor, ängsblommor, vass, säd) att sprida ut i parken.
+- [x] Gräs, blommor, vass och säd utspridda i parken (småstenar återstår).
 - [ ] Höjd- och roughness-kartor; blandning efter höjd (stenar sticker upp ur gräset) i stället för linjär blandning.
 
 ### Vatten och hav

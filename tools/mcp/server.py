@@ -171,6 +171,30 @@ def create_prop(name: str, preset: str = "stone", seed: int = 0, params: dict | 
     return json.loads(_run([sys.executable, "-I", "tools/props/make_prop.py", json.dumps(recipe)], 600))
 
 
+def plant_presets() -> list[str]:
+    sp = json.loads((ROOT / "tools" / "plants" / "plants.json").read_text())
+    return [k for k in sp if not k.startswith("_")]
+
+
+@mcp.tool()
+def create_plant(name: str, preset: str = "grass_tuft", seed: int = 0, params: dict | None = None) -> dict:
+    """Skapa en växt för mark och äng som glTF (3 LOD) i assets/plants/<name>/: gräsknippen, vass, säd och blommor.
+
+    preset: grass_tuft, grass_tall, grass_seeded, feather_grass, reed, cattail, wheat, barley, daisy, poppy,
+      buttercup, tulip, cornflower, lavender, lupine (se tools/plants/plants.json).
+    params: överstyr arten, t.ex. {"scale": 1.3} eller {"colors": {"petal": "#F08CB0"}}.
+    Vanligt gräs i stora mängder är klientens gräsfält, inte en modell.
+    Svaret har "checks" (rötter i marken, delar fästa vid stjälken, vind hel, budget).
+    """
+    _check_name(name)
+    if preset not in plant_presets():
+        raise ValueError(f"okänt preset, välj bland: {', '.join(plant_presets())}")
+    recipe = {"name": name, "preset": preset, "seed": seed}
+    if params:
+        recipe["params"] = params
+    return json.loads(_run([sys.executable, "-I", "tools/plants/make_plant.py", json.dumps(recipe)], 300))
+
+
 @mcp.tool()
 def generate_surface(name: str, preset: str | None = None, prompt: str | None = None, seed: int | None = None,
                      normal: float | None = None) -> dict:
@@ -205,6 +229,7 @@ def list_assets() -> dict:
     return {
         "trees": sorted(p.name for p in (a / "trees").iterdir() if p.is_dir()) if (a / "trees").exists() else [],
         "props": sorted(p.name for p in (a / "props").iterdir() if p.is_dir()) if (a / "props").exists() else [],
+        "plants": sorted(p.name for p in (a / "plants").iterdir() if p.is_dir()) if (a / "plants").exists() else [],
         "textures": sorted(p.stem for p in (a / "textures").glob("*.png")),
     }
 

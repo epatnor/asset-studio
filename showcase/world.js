@@ -50,8 +50,16 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
       shader.uniforms.uTime = wind.uTime;
       shader.uniforms.uWind = wind.uWind;
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float _wind;\nuniform float uTime;\nuniform float uWind;')
+        .replace('#include <common>', '#include <common>\nattribute float _wind;\nattribute vec3 _stem;\nuniform float uTime;\nuniform float uWind;')
         .replace('#include <begin_vertex>', `#include <begin_vertex>
+          // Platta stjälkar (_stem = förskjutning från mittlinjen) vrids runt mittlinjen mot kameran
+          if (dot(_stem, _stem) > 0.0) {
+            vec3 c = transformed - _stem;
+            vec3 toCam = cameraPosition - (modelMatrix * vec4(c, 1.0)).xyz;
+            vec3 sideW = normalize(cross(vec3(0.0, 1.0, 0.0), toCam));
+            vec3 sideL = normalize(transpose(mat3(modelMatrix)) * sideW), perp = cross(sideL, vec3(0.0, 1.0, 0.0));
+            transformed = c + sideL * length(_stem) * sign(dot(_stem, sideL) * 1000.0 + dot(_stem, perp));
+          }
           vec4 wp = modelMatrix * vec4(position, 1.0);
           float ph = wp.x * 0.35 + wp.z * 0.25;
           float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
@@ -161,12 +169,15 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
     renderer.setSize(innerWidth, innerHeight);
   });
   const clock = new THREE.Clock();
+  const frameHooks = [];
+  const onFrame = (fn) => frameHooks.push(fn);
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
     wind.uTime.value = clock.elapsedTime;
     if (fp.active) updateFp(dt); else controls.update();
+    for (const fn of frameHooks) fn(dt);
     renderer.render(scene, camera);
   });
 
-  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode };
+  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame };
 }

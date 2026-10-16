@@ -25,7 +25,18 @@
     "sky": "#8CB8F0",
     "accent_warm": "#F2A23A",
     "accent_magic": "#9B6BE0",
-    "bush_green": "#6FB04A"
+    "bush_green": "#6FB04A",
+    "grass_tip": "#A8D45A",
+    "straw": "#E3C277",
+    "reed_plume": "#B89A7A",
+    "cattail": "#6E4A2E",
+    "petal_white": "#F4F1E6",
+    "petal_red": "#D9402E",
+    "petal_yellow": "#F2C230",
+    "petal_blue": "#4F7BE0",
+    "petal_purple": "#9B6BE0",
+    "petal_pink": "#F08CB0",
+    "flower_center": "#F2B02E"
   },
   "geometry": {
     "bevel_fraction": 0.03,
@@ -60,6 +71,10 @@
     "character": [
       30000,
       60000
+    ],
+    "ground_cover": [
+      100,
+      4000
     ]
   },
   "preview": {

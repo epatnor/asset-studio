@@ -410,6 +410,136 @@
           "model": "../assets/props/ivy1/ivy1.gltf"
         }
       ]
+    },
+    {
+      "title": "Gräs, vass och säd",
+      "items": [
+        {
+          "name": "grass_tuft1",
+          "species": "grass_tuft",
+          "label": "grass_tuft1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/grass_tuft1/grass_tuft1.gltf"
+        },
+        {
+          "name": "grass_tall1",
+          "species": "grass_tall",
+          "label": "grass_tall1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/grass_tall1/grass_tall1.gltf"
+        },
+        {
+          "name": "grass_seeded1",
+          "species": "grass_seeded",
+          "label": "grass_seeded1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/grass_seeded1/grass_seeded1.gltf"
+        },
+        {
+          "name": "feather_grass1",
+          "species": "feather_grass",
+          "label": "feather_grass1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/feather_grass1/feather_grass1.gltf"
+        },
+        {
+          "name": "reed1",
+          "species": "reed",
+          "label": "reed1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/reed1/reed1.gltf"
+        },
+        {
+          "name": "cattail1",
+          "species": "cattail",
+          "label": "cattail1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/cattail1/cattail1.gltf"
+        },
+        {
+          "name": "wheat1",
+          "species": "wheat",
+          "label": "wheat1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/wheat1/wheat1.gltf"
+        },
+        {
+          "name": "barley1",
+          "species": "barley",
+          "label": "barley1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/barley1/barley1.gltf"
+        }
+      ]
+    },
+    {
+      "title": "Blommor",
+      "items": [
+        {
+          "name": "daisy1",
+          "species": "daisy",
+          "label": "daisy1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/daisy1/daisy1.gltf"
+        },
+        {
+          "name": "poppy1",
+          "species": "poppy",
+          "label": "poppy1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/poppy1/poppy1.gltf"
+        },
+        {
+          "name": "buttercup1",
+          "species": "buttercup",
+          "label": "buttercup1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/buttercup1/buttercup1.gltf"
+        },
+        {
+          "name": "tulip1",
+          "species": "tulip",
+          "label": "tulip1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/tulip1/tulip1.gltf"
+        },
+        {
+          "name": "cornflower1",
+          "species": "cornflower",
+          "label": "cornflower1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/cornflower1/cornflower1.gltf"
+        },
+        {
+          "name": "lavender1",
+          "species": "lavender",
+          "label": "lavender1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/lavender1/lavender1.gltf"
+        },
+        {
+          "name": "lupine1",
+          "species": "lupine",
+          "label": "lupine1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/plants/lupine1/lupine1.gltf"
+        }
+      ]
     }
   ]
 }

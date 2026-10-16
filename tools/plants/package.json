@@ -1,0 +1,9 @@
+{
+  "name": "tinkertown-plants",
+  "private": true,
+  "type": "module",
+  "description": "Växtgenerator för Tinkertown (gräs, vass, säd, blommor)",
+  "dependencies": {
+    "@gltf-transform/core": "4.1.4"
+  }
+}

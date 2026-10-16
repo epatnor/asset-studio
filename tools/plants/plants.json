@@ -1,0 +1,1062 @@
+{
+  "_doc": "Arter för gen_plant.mjs. layers: knippen av 'blades' (strån/blad från marken) eller 'stalks' (stjälkar som kan ha leaves och ett head). Längder i meter, vinklar i grader från lodlinjen. head.type: tuft (tofs/vippa), spike (ax: säd, lavendel, lupin), cattail (kolv), flower (kronblad + mitt, valfri knopp). colors: färgnyckel -> palettnamn i style.json eller #RRGGBB. groundTint: färgnycklar vars rot tar markens färg. Vanligt gräs i stora mängder är inte en modell utan klientens gräsfält (showcase/grass.js).",
+  "grass_tuft": {
+    "colors": {
+      "blade": "grass_tip"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          26,
+          34
+        ],
+        "length": [
+          0.22,
+          0.38
+        ],
+        "width": [
+          0.034,
+          0.051
+        ],
+        "spread": 0.07,
+        "lean": [
+          4,
+          30
+        ],
+        "bend": [
+          0.15,
+          0.45
+        ],
+        "twist": 0.6,
+        "shape": "grass",
+        "fold": 0.5,
+        "segments": 5
+      }
+    ]
+  },
+  "grass_tall": {
+    "colors": {
+      "blade": "grass_tip"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          30,
+          40
+        ],
+        "length": [
+          0.55,
+          0.95
+        ],
+        "width": [
+          0.0374,
+          0.0578
+        ],
+        "spread": 0.1,
+        "lean": [
+          4,
+          28
+        ],
+        "bend": [
+          0.3,
+          0.7
+        ],
+        "twist": 0.8,
+        "shape": "grass",
+        "fold": 0.5,
+        "segments": 6
+      }
+    ]
+  },
+  "grass_seeded": {
+    "colors": {
+      "blade": "grass_tip",
+      "stalk": "foliage_light",
+      "head": "straw"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          24,
+          30
+        ],
+        "length": [
+          0.4,
+          0.7
+        ],
+        "width": [
+          0.034,
+          0.051
+        ],
+        "spread": 0.09,
+        "lean": [
+          4,
+          30
+        ],
+        "bend": [
+          0.3,
+          0.6
+        ],
+        "twist": 0.7,
+        "shape": "grass",
+        "fold": 0.5,
+        "segments": 5
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          4,
+          6
+        ],
+        "length": [
+          0.8,
+          1.05
+        ],
+        "radius": 0.0088,
+        "spread": 0.06,
+        "lean": [
+          3,
+          14
+        ],
+        "bend": [
+          0.1,
+          0.3
+        ],
+        "segments": 7,
+        "head": {
+          "type": "tuft",
+          "count": [
+            7,
+            10
+          ],
+          "length": [
+            0.08,
+            0.14
+          ],
+          "width": 0.0192,
+          "lean": [
+            15,
+            45
+          ],
+          "bend": 0.5
+        }
+      }
+    ]
+  },
+  "feather_grass": {
+    "colors": {
+      "blade": "foliage_light",
+      "stalk": "foliage_light",
+      "head": "#EDE3C8"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          34,
+          44
+        ],
+        "length": [
+          0.45,
+          0.75
+        ],
+        "width": [
+          0.0136,
+          0.0238
+        ],
+        "spread": 0.07,
+        "lean": [
+          6,
+          35
+        ],
+        "bend": [
+          0.5,
+          0.9
+        ],
+        "twist": 0.4,
+        "shape": "grass",
+        "fold": 0.3,
+        "segments": 6
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          5,
+          8
+        ],
+        "length": [
+          0.6,
+          0.85
+        ],
+        "radius": 0.0066,
+        "spread": 0.05,
+        "lean": [
+          8,
+          25
+        ],
+        "bend": [
+          0.3,
+          0.6
+        ],
+        "segments": 7,
+        "head": {
+          "type": "tuft",
+          "count": [
+            3,
+            4
+          ],
+          "length": [
+            0.22,
+            0.32
+          ],
+          "width": 0.0352,
+          "lean": [
+            40,
+            80
+          ],
+          "bend": 0.8,
+          "shape": "leaf"
+        }
+      }
+    ]
+  },
+  "reed": {
+    "colors": {
+      "stalk": "foliage_light",
+      "leaf": "grass_tip",
+      "head": "reed_plume"
+    },
+    "layers": [
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          5,
+          7
+        ],
+        "length": [
+          1.6,
+          2.2
+        ],
+        "radius": 0.0264,
+        "spread": 0.18,
+        "lean": [
+          2,
+          10
+        ],
+        "bend": [
+          0.05,
+          0.2
+        ],
+        "segments": 10,
+        "leaves": {
+          "count": [
+            4,
+            6
+          ],
+          "at": [
+            0.15,
+            0.8
+          ],
+          "length": [
+            0.35,
+            0.5
+          ],
+          "width": [
+            0.048,
+            0.072
+          ],
+          "lean": [
+            40,
+            40
+          ],
+          "bend": [
+            0.4,
+            0.7
+          ],
+          "shape": "grass"
+        },
+        "head": {
+          "type": "tuft",
+          "count": [
+            14,
+            18
+          ],
+          "length": [
+            0.16,
+            0.24
+          ],
+          "width": 0.03,
+          "lean": [
+            4,
+            30
+          ],
+          "bend": 1.0,
+          "shape": "leaf"
+        }
+      }
+    ]
+  },
+  "cattail": {
+    "colors": {
+      "stalk": "foliage_mid",
+      "blade": "grass_tip",
+      "head": "cattail"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "count": [
+          10,
+          14
+        ],
+        "length": [
+          1.0,
+          1.5
+        ],
+        "width": [
+          0.051,
+          0.0765
+        ],
+        "spread": 0.12,
+        "lean": [
+          2,
+          16
+        ],
+        "bend": [
+          0.15,
+          0.45
+        ],
+        "twist": 1.2,
+        "shape": "strap",
+        "fold": 0.4,
+        "segments": 7
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          3,
+          4
+        ],
+        "length": [
+          1.3,
+          1.7
+        ],
+        "radius": 0.0176,
+        "spread": 0.08,
+        "lean": [
+          1,
+          6
+        ],
+        "bend": [
+          0.02,
+          0.06
+        ],
+        "segments": 9,
+        "head": {
+          "type": "cattail",
+          "radius": 0.0364,
+          "span": 0.14,
+          "top": 0.1
+        }
+      }
+    ]
+  },
+  "wheat": {
+    "colors": {
+      "stalk": "straw",
+      "leaf": "#C9B565",
+      "head": "straw"
+    },
+    "groundTint": [
+      "stalk",
+      "leaf"
+    ],
+    "layers": [
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          5,
+          7
+        ],
+        "length": [
+          0.9,
+          1.1
+        ],
+        "radius": 0.0132,
+        "spread": 0.07,
+        "lean": [
+          2,
+          10
+        ],
+        "bend": [
+          0.05,
+          0.15
+        ],
+        "segments": 9,
+        "leaves": {
+          "count": [
+            2,
+            3
+          ],
+          "at": [
+            0.15,
+            0.5
+          ],
+          "length": [
+            0.25,
+            0.35
+          ],
+          "width": [
+            0.0288,
+            0.0416
+          ],
+          "lean": [
+            35,
+            35
+          ],
+          "bend": [
+            0.4,
+            0.8
+          ],
+          "shape": "grass"
+        },
+        "head": {
+          "type": "spike",
+          "span": 0.13,
+          "kernels": [
+            16,
+            20
+          ],
+          "rows": 4,
+          "size": [
+            0.0126,
+            0.0308
+          ],
+          "angle": 22,
+          "taper": 0.4,
+          "awn": 0.04
+        }
+      }
+    ]
+  },
+  "barley": {
+    "colors": {
+      "stalk": "#D8C47A",
+      "leaf": "#B9B060",
+      "head": "#E8D08A"
+    },
+    "groundTint": [
+      "stalk",
+      "leaf"
+    ],
+    "layers": [
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          5,
+          7
+        ],
+        "length": [
+          0.8,
+          1.0
+        ],
+        "radius": 0.011,
+        "spread": 0.07,
+        "lean": [
+          4,
+          14
+        ],
+        "bend": [
+          0.3,
+          0.5
+        ],
+        "segments": 9,
+        "leaves": {
+          "count": [
+            2,
+            3
+          ],
+          "at": [
+            0.15,
+            0.5
+          ],
+          "length": [
+            0.22,
+            0.3
+          ],
+          "width": [
+            0.0256,
+            0.0352
+          ],
+          "lean": [
+            35,
+            35
+          ],
+          "bend": [
+            0.4,
+            0.8
+          ],
+          "shape": "grass"
+        },
+        "head": {
+          "type": "spike",
+          "span": 0.12,
+          "kernels": [
+            14,
+            18
+          ],
+          "rows": 2,
+          "size": [
+            0.0112,
+            0.028
+          ],
+          "angle": 18,
+          "taper": 0.3,
+          "awn": 0.11
+        }
+      }
+    ]
+  },
+  "daisy": {
+    "colors": {
+      "leaf": "foliage_mid",
+      "stalk": "foliage_light",
+      "petal": "petal_white",
+      "center": "flower_center",
+      "bud": "foliage_light"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          6,
+          8
+        ],
+        "length": [
+          0.08,
+          0.13
+        ],
+        "width": [
+          0.0425,
+          0.0595
+        ],
+        "spread": 0.03,
+        "lean": [
+          55,
+          75
+        ],
+        "bend": [
+          0.2,
+          0.4
+        ],
+        "shape": "leaf",
+        "fold": 0.3,
+        "segments": 4
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          3,
+          5
+        ],
+        "length": [
+          0.22,
+          0.34
+        ],
+        "radius": 0.0055,
+        "spread": 0.04,
+        "lean": [
+          5,
+          22
+        ],
+        "bend": [
+          0.05,
+          0.2
+        ],
+        "segments": 6,
+        "head": {
+          "type": "flower",
+          "petals": 14,
+          "length": 0.0494,
+          "width": 0.0171,
+          "cup": 8,
+          "curl": -10,
+          "center": [
+            0.0171,
+            0.0133
+          ],
+          "faceUp": 0.6,
+          "bud": {
+            "chance": 0.2,
+            "radius": 0.0108,
+            "length": 0.0216
+          }
+        }
+      }
+    ]
+  },
+  "poppy": {
+    "colors": {
+      "leaf": "foliage_mid",
+      "stalk": "foliage_light",
+      "petal": "petal_red",
+      "center": "#2E2A3A",
+      "bud": "foliage_light"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          5,
+          7
+        ],
+        "length": [
+          0.1,
+          0.16
+        ],
+        "width": [
+          0.0425,
+          0.0595
+        ],
+        "spread": 0.03,
+        "lean": [
+          45,
+          70
+        ],
+        "bend": [
+          0.2,
+          0.4
+        ],
+        "shape": "leaf",
+        "fold": 0.3,
+        "segments": 4
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          2,
+          4
+        ],
+        "length": [
+          0.4,
+          0.6
+        ],
+        "radius": 0.0066,
+        "spread": 0.04,
+        "lean": [
+          4,
+          18
+        ],
+        "bend": [
+          0.1,
+          0.3
+        ],
+        "segments": 7,
+        "head": {
+          "type": "flower",
+          "petals": 4,
+          "length": 0.076,
+          "width": 0.095,
+          "cup": 35,
+          "curl": 10,
+          "center": [
+            0.0152,
+            0.0228
+          ],
+          "faceUp": 0.5,
+          "bud": {
+            "chance": 0.3,
+            "radius": 0.018,
+            "length": 0.0396
+          }
+        }
+      }
+    ]
+  },
+  "buttercup": {
+    "colors": {
+      "leaf": "foliage_mid",
+      "stalk": "foliage_light",
+      "petal": "petal_yellow",
+      "center": "#E39A1E"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          5,
+          7
+        ],
+        "length": [
+          0.06,
+          0.1
+        ],
+        "width": [
+          0.051,
+          0.068
+        ],
+        "spread": 0.03,
+        "lean": [
+          55,
+          75
+        ],
+        "bend": [
+          0.2,
+          0.3
+        ],
+        "shape": "leaf",
+        "fold": 0.3,
+        "segments": 3
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          5,
+          8
+        ],
+        "length": [
+          0.18,
+          0.3
+        ],
+        "radius": 0.0044,
+        "spread": 0.05,
+        "lean": [
+          5,
+          30
+        ],
+        "bend": [
+          0.1,
+          0.3
+        ],
+        "segments": 5,
+        "head": {
+          "type": "flower",
+          "petals": 5,
+          "length": 0.0304,
+          "width": 0.0304,
+          "cup": 40,
+          "curl": 0,
+          "center": [
+            0.0095,
+            0.0095
+          ],
+          "faceUp": 0.7
+        }
+      }
+    ]
+  },
+  "tulip": {
+    "colors": {
+      "leaf": "foliage_mid",
+      "stalk": "foliage_light",
+      "petal": "petal_pink",
+      "center": "flower_center"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          2,
+          3
+        ],
+        "length": [
+          0.22,
+          0.3
+        ],
+        "width": [
+          0.085,
+          0.1105
+        ],
+        "spread": 0.015,
+        "lean": [
+          12,
+          30
+        ],
+        "bend": [
+          0.3,
+          0.5
+        ],
+        "twist": 0.6,
+        "shape": "leaf",
+        "fold": 0.5,
+        "segments": 5
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          1,
+          1
+        ],
+        "length": [
+          0.36,
+          0.42
+        ],
+        "radius": 0.0088,
+        "spread": 0.01,
+        "lean": [
+          1,
+          5
+        ],
+        "bend": [
+          0.02,
+          0.05
+        ],
+        "segments": 6,
+        "head": {
+          "type": "flower",
+          "petals": 6,
+          "rings": 1,
+          "length": 0.1045,
+          "width": 0.0798,
+          "cup": 72,
+          "curl": 6,
+          "center": [
+            0.0,
+            0.0
+          ],
+          "faceUp": 0.8
+        }
+      }
+    ]
+  },
+  "cornflower": {
+    "colors": {
+      "leaf": "foliage_light",
+      "stalk": "foliage_light",
+      "petal": "petal_blue",
+      "center": "#3A3F8F"
+    },
+    "layers": [
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          4,
+          6
+        ],
+        "length": [
+          0.4,
+          0.6
+        ],
+        "radius": 0.0055,
+        "spread": 0.05,
+        "lean": [
+          5,
+          20
+        ],
+        "bend": [
+          0.1,
+          0.3
+        ],
+        "segments": 7,
+        "leaves": {
+          "count": [
+            2,
+            3
+          ],
+          "at": [
+            0.1,
+            0.5
+          ],
+          "length": [
+            0.06,
+            0.1
+          ],
+          "width": [
+            0.0096,
+            0.016
+          ],
+          "lean": [
+            30,
+            30
+          ],
+          "bend": [
+            0.2,
+            0.4
+          ],
+          "shape": "leaf"
+        },
+        "head": {
+          "type": "flower",
+          "petals": 9,
+          "length": 0.0342,
+          "width": 0.019,
+          "cup": 30,
+          "curl": -15,
+          "center": [
+            0.0133,
+            0.019
+          ],
+          "faceUp": 0.6
+        }
+      }
+    ]
+  },
+  "lavender": {
+    "colors": {
+      "leaf": "#8FA889",
+      "stalk": "#8FA889",
+      "head": "petal_purple"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          18,
+          24
+        ],
+        "length": [
+          0.12,
+          0.2
+        ],
+        "width": [
+          0.0102,
+          0.0153
+        ],
+        "spread": 0.06,
+        "lean": [
+          10,
+          45
+        ],
+        "bend": [
+          0.1,
+          0.3
+        ],
+        "shape": "strap",
+        "fold": 0.2,
+        "segments": 3
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          8,
+          11
+        ],
+        "length": [
+          0.35,
+          0.5
+        ],
+        "radius": 0.0044,
+        "spread": 0.07,
+        "lean": [
+          5,
+          30
+        ],
+        "bend": [
+          0.05,
+          0.15
+        ],
+        "segments": 6,
+        "head": {
+          "type": "spike",
+          "span": 0.22,
+          "kernels": [
+            16,
+            20
+          ],
+          "rows": 6,
+          "size": [
+            0.0098,
+            0.0154
+          ],
+          "angle": 40,
+          "taper": 0.5
+        }
+      }
+    ]
+  },
+  "lupine": {
+    "colors": {
+      "leaf": "foliage_mid",
+      "stalk": "foliage_light",
+      "head": "petal_purple"
+    },
+    "layers": [
+      {
+        "type": "blades",
+        "color": "leaf",
+        "count": [
+          10,
+          14
+        ],
+        "length": [
+          0.1,
+          0.16
+        ],
+        "width": [
+          0.0306,
+          0.0442
+        ],
+        "spread": 0.06,
+        "lean": [
+          35,
+          65
+        ],
+        "bend": [
+          0.2,
+          0.4
+        ],
+        "shape": "leaf",
+        "fold": 0.3,
+        "segments": 3
+      },
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          3,
+          4
+        ],
+        "length": [
+          0.6,
+          0.85
+        ],
+        "radius": 0.011,
+        "spread": 0.05,
+        "lean": [
+          2,
+          12
+        ],
+        "bend": [
+          0.03,
+          0.1
+        ],
+        "segments": 8,
+        "head": {
+          "type": "spike",
+          "span": 0.35,
+          "kernels": [
+            26,
+            32
+          ],
+          "rows": 5,
+          "size": [
+            0.0168,
+            0.0224
+          ],
+          "angle": 65,
+          "taper": 0.6
+        }
+      }
+    ]
+  }
+}
