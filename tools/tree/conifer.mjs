@@ -21,6 +21,7 @@ function smoothNormals(g) {
 }
 
 // En barrgren längs center(u): bredast vid ~55 %, flikig ytterkant, välvd ovansida, tunnare undersida
+let o_edgeDrop = 0.1;
 function frond(g, center, width, lobes, lobeDepth, thick, segL, segW, shade, fid, cell, warm, fan = false) {
   const start = g.positions.length / 3;
   const halfW = (u) => {
@@ -37,12 +38,15 @@ function frond(g, center, width, lobes, lobeDepth, thick, segL, segW, shade, fid
       const c = center(u);
       const tangent = norm(sub(center(Math.min(1, u + 0.02)), center(Math.max(0, u - 0.02))));
       const side = norm(cross(UP, tangent));
-      const up = norm(cross(side, tangent));
+      // Grenens ovansida: cross(tangent, side) pekar uppåt. (cross(side, tangent) pekade nedåt, så välvningen
+      // buktade nedåt och kanterna lyftes till ett V, och sett från kortsidan korsade lagren varandra som ett X.)
+      const up = norm(cross(tangent, side));
       for (let j = 0; j <= segW; j++) {
         const s = (j / segW) * 2 - 1, w = halfW(u);
         const arch = (1 - s * s) * thick * (1 - u * 0.6);
         const y = layer === 0 ? arch : -thick * 0.35 * (1 - s * s) * (1 - u * 0.6);
-        const p = add(c, add(mul(side, s * w), mul(up, y - Math.abs(s) * w * 0.25)));
+        // Kanterna faller bara lite: nästan platt, men inte helt
+        const p = add(c, add(mul(side, s * w), mul(up, y - Math.abs(s) * w * (o_edgeDrop ?? 0.1))));
         g.positions.push(...p);
         g.normals.push(0, 0, 0);
         if (cell >= 0) g.uvs.push((cell % 2) * 0.5 + ((s + 1) / 2) * 0.5, Math.floor(cell / 2) * 0.5 + (1 - u) * 0.5);
@@ -77,6 +81,7 @@ function frond(g, center, width, lobes, lobeDepth, thick, segL, segW, shade, fid
  * @param {object} o   { seed, height, width, lobes, lobeDepth, chunk, asymmetry, dryShare, textured, palette, normalBlend }
  */
 export function buildConiferFoliage(sk, o) {
+  o_edgeDrop = o.edgeDrop ?? 0.1;
   const r = rng(o.seed * 104729 + 7);
   const H = o.height;
   const L1 = sk.branches.filter((b) => b.level === 1);
@@ -100,10 +105,9 @@ export function buildConiferFoliage(sk, o) {
     };
   });
 
-  // Toppen: en uppåtriktad tofs på stammens spets, så toppen inte blir en kal pinne
+  // Toppen: en hatt av små uppåtriktade kransar och en spets (se nedan)
   const trunk = sk.branches[0];
   const top = trunk.nodes[trunk.nodes.length - 1].p;
-  const topLen = H * 0.12;
   const lodDefs = [{ segL: 8, segW: 6, keep: 1 }, { segL: 5, segW: 4, keep: 0.8 }, { segL: 3, segW: 2, keep: 0.6 }];
   const lods = lodDefs.map(({ segL, segW, keep }) => {
     const g = empty();
@@ -115,18 +119,28 @@ export function buildConiferFoliage(sk, o) {
       frond(g, center, f.width * widen, o.lobes, o.textured ? o.lobeDepth * 0.4 : o.lobeDepth,
         f.thick, segL, segW, shade, fid, o.textured ? f.cell : -1, f.warm, o.fan);
     });
-    // Lätt lutande: rakt uppåt skulle göra sidriktningen cross(UP, tangent) odefinierad
-    // Tofs i toppen: en krans av korta barrgrenar som pekar uppåt (~30° från lodlinjen) runt en mittgren
-    const tuft = o.tuft ?? 6;
-    const tuftBase = sub(top, [0, topLen * 1.1, 0]);
-    for (let j = 0; tuft > 0 && j <= tuft; j++) {
-      const mid = j === tuft;
-      const a = (j / tuft) * Math.PI * 2 + 0.4;
-      const tilt = mid ? 0.1 : 0.75;
-      const dir = norm([Math.cos(a) * tilt, 1, Math.sin(a) * tilt]);
-      const len = topLen * (mid ? 1.5 : 0.85 + (j % 2) * 0.2);
-      const c = (u) => add(add(tuftBase, [0, mid ? 0 : topLen * 0.25 * (j % 3) / 2, 0]), mul(dir, len * u));
-      frond(g, c, len * (mid ? 0.5 : 0.7), 2, 0.25, len * 0.08, segL, segW, shade, fronds.length + j, o.textured ? j % 4 : -1, null);
+    // Hatt i toppen: några små kransar av korta barrgrenar som pekar snett uppåt och blir mindre
+    // mot toppen, plus en spets i mitten. Sitter över stammens slut och ger den spetsiga granformen.
+    const hat = o.hat ?? { whorls: 3, height: 0.16, reach: 0.11 };
+    let id = fronds.length;
+    if (hat.whorls > 0) {
+      const hH = H * hat.height, base0 = sub(top, [0, hH * 0.85, 0]);
+      for (let w = 0; w < hat.whorls; w++) {
+        const k = w / hat.whorls;
+        const yb = add(base0, [0, hH * 0.8 * k, 0]);
+        const n = Math.max(3, Math.round(6 - 2 * k));
+        const L = H * hat.reach * (1 - 0.55 * k);
+        for (let j = 0; j < n; j++) {
+          const a = w * 0.6 + (j / n) * Math.PI * 2;
+          const dir = norm([Math.cos(a), 0.55 + 0.6 * k, Math.sin(a)]); // brantare högre upp
+          const c = (u) => add(yb, add(mul(dir, L * u), [0, -L * 0.12 * u * u, 0])); // svag båge nedåt
+          frond(g, c, L * 0.8, 3, 0.3, L * 0.07, segL, segW, shade, id++, o.textured ? j % 4 : -1, null, o.fan);
+        }
+      }
+      // Spetsen: lätt lutande (rakt uppåt gör sidriktningen cross(UP, tangent) odefinierad)
+      const spikeL = hH * 0.8, sdir = norm([0.25, 1, 0.08]);
+      const sb = sub(top, [0, spikeL * 0.35, 0]);
+      frond(g, (u) => add(sb, mul(sdir, spikeL * u)), spikeL * 0.42, 2, 0.2, spikeL * 0.06, segL, segW, shade, id++, o.textured ? 0 : -1, null, false);
     }
     smoothNormals(g);
     // Mjuk stiliserad skuggning: blanda normalen mot en kon-normal (ut från stammen och uppåt)
