@@ -134,14 +134,6 @@
           "glb": "../assets/trees/fir_small/fir_small.glb"
         },
         {
-          "name": "pine_solid",
-          "species": "pine",
-          "label": "pine_solid",
-          "tint": null,
-          "height": 12,
-          "glb": "../assets/trees/pine_solid/pine_solid.glb"
-        },
-        {
           "name": "pine_v2",
           "species": "pine",
           "label": "pine_v2",

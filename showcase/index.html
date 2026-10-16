@@ -34,15 +34,14 @@
   <p>Allt nedan är genererat från recept. Dra för att rotera, scrolla för att zooma.</p>
   <label>Detaljnivå <select id="lod"><option value="0">LOD0 (nära)</option><option value="1">LOD1</option><option value="2">LOD2 (långt bort)</option></select></label>
   <label>Vind <input id="wind" type="range" min="0" max="2" step="0.05" value="0.6"></label>
-  <label><input id="labels" type="checkbox" checked> Visa namn</label>
+  <label><input id="labels" type="checkbox" checked> Visa skyltar</label>
   <div id="status">Laddar…</div>
-  <p id="hint" style="margin:8px 0 0">Klicka på scenen för att gå runt: <b>WASD</b> gå, <b>Shift</b> spring, <b>Space</b> hopp, <b>mus</b> titta, <b>scroll</b> zoom. <b>Esc</b> släpper musen, <b>Tab</b> växlar till översikt.</p>
+  <p id="hint" style="margin:8px 0 0">Klicka på scenen för att gå runt i förstaperson: <b>WASD</b> gå, <b>Shift</b> spring, <b>Space</b> hopp, <b>mus</b> titta. <b>Esc</b> släpper musen, <b>Tab</b> växlar till översikt.</p>
 </div>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -53,11 +52,6 @@ renderer.toneMappingExposure = 1.15;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
-
-const labelRenderer = new CSS2DRenderer();
-labelRenderer.setSize(innerWidth, innerHeight);
-Object.assign(labelRenderer.domElement.style, { position: 'fixed', inset: '0', pointerEvents: 'none' });
-app.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
 const SKY = new THREE.Color('#8fbdf0'), HORIZON = new THREE.Color('#d9ecff');
@@ -108,55 +102,37 @@ function addWind(material) {
   material.needsUpdate = true;
 }
 
-// --- RPG-läge: spelarfigur i tredje person, kamera bakom med mouselook ---
+// --- Förstapersonsläge: kamera i ögonhöjd med mouselook ---
 const colliders = [];
-const player = new THREE.Group();
-{
-  const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.7, 6, 14), mat('#3d6fb6'));
-  body.position.y = 0.65;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 14), mat('#f1c9a5'));
-  head.position.y = 1.38;
-  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.35, 16), mat('#c0533a'));
-  hat.position.y = 1.66;
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), mat('#e3a987'));
-  nose.position.set(0, 1.38, -0.21); // framåt = -z
-  for (const o of [body, head, hat, nose]) { o.castShadow = true; player.add(o); }
-  player.visible = false;
-  scene.add(player);
-}
-const rpg = { active: false, yaw: 0, pitch: 0.28, dist: 5, vel: new THREE.Vector3(), onGround: true, keys: new Set() };
-const HEAD = new THREE.Vector3(0, 1.45, 0);
-window.__tinker = { player, rpg, setMode }; // för felsökning och automatiska tester
+const EYE = 1.65;
+const fp = { active: false, pos: new THREE.Vector3(), yaw: 0, pitch: -0.05, vel: 0, onGround: true, keys: new Set() };
+window.__tinker = { fp, setMode: (a) => setMode(a) }; // för felsökning och automatiska tester
 
 function setMode(active) {
-  rpg.active = active;
-  player.visible = active;
+  fp.active = active;
   controls.enabled = !active;
   if (!active && document.pointerLockElement) document.exitPointerLock();
 }
 renderer.domElement.addEventListener('click', () => {
-  if (!rpg.active) setMode(true);
+  if (!fp.active) setMode(true);
   renderer.domElement.requestPointerLock();
 });
 addEventListener('mousemove', (e) => {
-  if (!rpg.active || document.pointerLockElement !== renderer.domElement) return;
-  rpg.yaw -= e.movementX * 0.0025;
-  rpg.pitch = THREE.MathUtils.clamp(rpg.pitch + e.movementY * 0.0022, -0.35, 1.25);
+  if (!fp.active || document.pointerLockElement !== renderer.domElement) return;
+  fp.yaw -= e.movementX * 0.0022;
+  // Full frihet uppåt och nedåt (±90°, strax innan polen så att rotationen inte vänder)
+  fp.pitch = THREE.MathUtils.clamp(fp.pitch - e.movementY * 0.0022, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
 });
-addEventListener('wheel', (e) => { if (rpg.active) rpg.dist = THREE.MathUtils.clamp(rpg.dist + e.deltaY * 0.004, 2, 14); }, { passive: true });
 addEventListener('keydown', (e) => {
-  if (e.code === 'Tab') { e.preventDefault(); setMode(!rpg.active); return; }
-  rpg.keys.add(e.code);
-  if (e.code === 'Space' && rpg.active && rpg.onGround) { rpg.vel.y = 5.2; rpg.onGround = false; }
+  if (e.code === 'Tab') { e.preventDefault(); setMode(!fp.active); return; }
+  fp.keys.add(e.code);
+  if (e.code === 'Space' && fp.active && fp.onGround) { fp.vel = 5; fp.onGround = false; }
 });
-addEventListener('keyup', (e) => rpg.keys.delete(e.code));
+addEventListener('keyup', (e) => fp.keys.delete(e.code));
 
-const tmp = new THREE.Vector3();
-function updateRpg(dt) {
-  const k = rpg.keys;
-  // Rörelse relativt kamerans riktning (yaw); Shift springer
-  const fwd = new THREE.Vector3(-Math.sin(rpg.yaw), 0, -Math.cos(rpg.yaw));
+function updateFp(dt) {
+  const k = fp.keys;
+  const fwd = new THREE.Vector3(-Math.sin(fp.yaw), 0, -Math.cos(fp.yaw));
   const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
   const move = new THREE.Vector3();
   if (k.has('KeyW')) move.add(fwd);
@@ -164,33 +140,54 @@ function updateRpg(dt) {
   if (k.has('KeyD')) move.add(right);
   if (k.has('KeyA')) move.sub(right);
   const speed = k.has('ShiftLeft') || k.has('ShiftRight') ? 7.5 : 3.2;
-  if (move.lengthSq() > 0) {
-    move.normalize().multiplyScalar(speed * dt);
-    player.position.add(move);
-    // Figuren vänder sig mjukt mot rörelseriktningen
-    const target = Math.atan2(-move.x, -move.z);
-    let d = target - player.rotation.y;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    player.rotation.y += d * Math.min(1, dt * 12);
-  }
-  // Hopp och gravitation
-  rpg.vel.y -= 14 * dt;
-  player.position.y += rpg.vel.y * dt;
-  if (player.position.y <= 0) { player.position.y = 0; rpg.vel.y = 0; rpg.onGround = true; }
-  // Kollision mot stammar och buskar: knuffa ut ur cirklarna (spelarens radie 0,35 m)
+  if (move.lengthSq() > 0) fp.pos.add(move.normalize().multiplyScalar(speed * dt));
+  fp.vel -= 14 * dt;
+  fp.pos.y += fp.vel * dt;
+  if (fp.pos.y <= 0) { fp.pos.y = 0; fp.vel = 0; fp.onGround = true; }
+  // Kollision mot stammar och buskar (spelarens radie 0,35 m)
   for (const c of colliders) {
-    const dx = player.position.x - c.x, dz = player.position.z - c.z;
-    const min = c.r + 0.35, d2 = dx * dx + dz * dz;
-    if (d2 < min * min && d2 > 1e-8) { const d = Math.sqrt(d2); player.position.x = c.x + (dx / d) * min; player.position.z = c.z + (dz / d) * min; }
+    const dx = fp.pos.x - c.x, dz = fp.pos.z - c.z, min = c.r + 0.35, d2 = dx * dx + dz * dz;
+    if (d2 < min * min && d2 > 1e-8) { const d = Math.sqrt(d2); fp.pos.x = c.x + (dx / d) * min; fp.pos.z = c.z + (dz / d) * min; }
   }
-  // Kamera bakom och ovanför, efter yaw/pitch; aldrig under marken
-  const head = tmp.copy(player.position).add(HEAD);
-  camera.position.set(
-    head.x + Math.sin(rpg.yaw) * Math.cos(rpg.pitch) * rpg.dist,
-    Math.max(0.4, head.y + Math.sin(rpg.pitch) * rpg.dist),
-    head.z + Math.cos(rpg.yaw) * Math.cos(rpg.pitch) * rpg.dist,
-  );
-  camera.lookAt(head);
+  camera.position.set(fp.pos.x, fp.pos.y + EYE, fp.pos.z);
+  camera.rotation.set(fp.pitch, fp.yaw, 0, 'YXZ');
+}
+
+// --- Skyltar: små träskyltar nedstuckna i marken, med text målad på en canvas ---
+const signs = [];
+const postMat = new THREE.MeshStandardMaterial({ color: '#7a5636', roughness: 0.9 });
+function makeSign(text, tint, scale = 1) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  const font = 'bold 44px system-ui, sans-serif';
+  ctx.font = font;
+  const tw = ctx.measureText(text).width + (tint ? 46 : 0);
+  c.width = Math.ceil(tw + 48); c.height = 84;
+  // Trä: grundfärg, några ådror och en mörkare kant
+  ctx.fillStyle = '#c59a62'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = 'rgba(110, 72, 38, 0.35)'; ctx.lineWidth = 2;
+  for (let y = 12; y < c.height; y += 14) { ctx.beginPath(); ctx.moveTo(0, y + Math.sin(y) * 2); ctx.bezierCurveTo(c.width * 0.3, y - 3, c.width * 0.7, y + 4, c.width, y); ctx.stroke(); }
+  ctx.strokeStyle = '#7a5636'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, c.width - 6, c.height - 6);
+  ctx.font = font; ctx.fillStyle = '#3b2615'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 24, c.height / 2 + 2);
+  if (tint) { ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(c.width - 34, c.height / 2, 14, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#3b2615'; ctx.lineWidth = 3; ctx.stroke(); }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  const h = 0.24 * scale, w = h * (c.width / c.height);
+  const sign = new THREE.Group();
+  const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+  const wood = new THREE.MeshStandardMaterial({ color: '#a77d4c', roughness: 0.9 });
+  // Box-sidor: +x, -x, +y, -y, +z (fram, texten), -z (bak)
+  const board = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.035 * scale), [wood, wood, wood, wood, front, wood]);
+  board.position.y = 0.5 * scale;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.05 * scale, 0.62 * scale, 0.05 * scale), postMat);
+  post.position.set(0, 0.25 * scale, -0.03 * scale);
+  for (const m of [board, post]) { m.castShadow = true; m.receiveShadow = true; sign.add(m); }
+  // Lite snett, som om den stuckits ner för hand
+  sign.rotation.set((Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.1);
+  signs.push(sign);
+  return sign;
 }
 
 const loader = new GLTFLoader();
@@ -202,21 +199,6 @@ function setLod(n) {
     const m = o.name.match(/_LOD(\d)$/);
     if (m) o.visible = Number(m[1]) === n;
   });
-}
-
-function label(text, cls, pos, parent, tint) {
-  const div = document.createElement('div');
-  div.className = cls;
-  div.textContent = text;
-  if (tint) { // tintade varianter: en färgprick i stället för hex-koden
-    const dot = document.createElement('span');
-    Object.assign(dot.style, { display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: tint, marginLeft: '5px' });
-    div.appendChild(dot);
-  }
-  const obj = new CSS2DObject(div);
-  obj.position.copy(pos);
-  parent.add(obj);
-  return obj;
 }
 
 async function main() {
@@ -249,7 +231,9 @@ async function main() {
       const w = Math.max(size.x, 0.8);
       m.root.position.set(x + w / 2 - (box.min.x + box.max.x) / 2, 0, -(box.min.z + box.max.z) / 2);
       row3d.add(m.root);
-      m.labelObj = label(m.it.label, 'tag', new THREE.Vector3(m.root.position.x, 0.05, size.z / 2 + 0.6), row3d, m.it.tint);
+      const sign = makeSign(m.it.label, m.it.tint);
+      sign.position.set(m.root.position.x, 0, size.z / 2 + 0.7);
+      row3d.add(sign);
       x += w + Math.max(1.8, w * 0.25); // små växter får mer luft så att etiketterna inte krockar
       depth = Math.max(depth, size.z);
       // Kollision: stammen för träd (ungefär), större delen av formen för stamlösa buskar
@@ -262,7 +246,9 @@ async function main() {
     scene.add(row3d);
     row3d.updateMatrixWorld(true);
     for (const m of models) { const p = new THREE.Vector3(); m.root.getWorldPosition(p); colliders.push({ x: p.x, z: p.z, r: m.radius }); }
-    row3d.userData.title = label(row.title, 'row-title', new THREE.Vector3(-4, 0.2, 0), row3d);
+    const title = makeSign(row.title, null, 2.2);
+    title.position.set(-4, 0, 0.5);
+    row3d.add(title);
     bounds.expandByObject(row3d);
     z -= depth + 6;
   }
@@ -277,26 +263,24 @@ async function main() {
   Object.assign(sun.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: r * 4 });
   sun.shadow.camera.updateProjectionMatrix();
   status.textContent = `${placed.length} växter i ${rows.length} rader`;
-  player.position.set(c.x, 0, bounds.max.z + 6); // startar framför utställningen, tittar in mot raderna
+  fp.pos.set(c.x, 0, bounds.max.z + 6); // startar framför utställningen och tittar in mot raderna
 }
 
 document.getElementById('lod').onchange = (e) => setLod(Number(e.target.value));
 document.getElementById('wind').oninput = (e) => (windUniforms.uWind.value = Number(e.target.value));
-document.getElementById('labels').onchange = (e) => (labelRenderer.domElement.style.display = e.target.checked ? '' : 'none');
+document.getElementById('labels').onchange = (e) => signs.forEach((s) => (s.visible = e.target.checked));
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
-  labelRenderer.setSize(innerWidth, innerHeight);
 });
 
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   windUniforms.uTime.value = clock.elapsedTime;
-  if (rpg.active) updateRpg(dt); else controls.update();
+  if (fp.active) updateFp(dt); else controls.update();
   renderer.render(scene, camera);
-  labelRenderer.render(scene, camera);
 });
 main().catch((e) => { status.textContent = 'Fel: ' + e.message; console.error(e); });
 </script>
