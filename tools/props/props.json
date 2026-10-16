@@ -216,5 +216,39 @@
     "leafEvery": 0.05,
     "tint": "#4F9E3D",
     "vine": "#4E5A2A"
+  },
+  "log": {
+    "kind": "log",
+    "length": 2.2,
+    "radius": 0.2,
+    "lobes": 4,
+    "lobeAmp": 0.1,
+    "moss": false
+  },
+  "mossy_log": {
+    "kind": "log",
+    "length": 2.6,
+    "radius": 0.24,
+    "lobes": 4,
+    "lobeAmp": 0.1,
+    "moss": true
+  },
+  "pebbles": {
+    "kind": "rock",
+    "size": 0.07,
+    "blobs": [
+      1,
+      2
+    ],
+    "squash": 0.6,
+    "lump": 0.08,
+    "facet": 0.3,
+    "moss": 0.0,
+    "count": [
+      12,
+      18
+    ],
+    "spread": 0.7,
+    "cell": 0.2
   }
 }

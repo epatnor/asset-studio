@@ -12,7 +12,8 @@
 // bygger ytorna med samma shader för alla typer.
 //
 // Shaderknepen, i stil med WoW: inga riktiga speglingar eller djupbuffertar.
-// - Djupet räknas ur terrängen och bakas in per hörn: grunt till djupt i färg och genomskinlighet.
+// - Djupet räknas ur terrängen och bakas in per hörn. Ytan är tunn och genomskinlig; grumligheten (murk)
+//   tilltar med djupet som absorption (1 - e^(-djup·murk)). Botten mörknar per färgkanal i markens shader.
 // - Himlen speglas falskt med fresnel. Krusningar i två lager ger normaler och ett skarpt solglitter.
 // - Strömmande vatten: krusningarna flyter med strömmen (flödeskarta i två faser), vitt skum i grunda forsar.
 // - Hav: dyning och vågband som rullar in mot stranden. Skum mot land för alla typer.
@@ -20,12 +21,12 @@
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export const WATER_TYPES = {
-  pond:   { shape: 'basin', radius: 7, depth: 1.8, freeboard: 0.18, wobble: 1, colors: { shallow: '#3E9F8F', deep: '#123F5C' }, swell: 0.008, ripple: 1, turbulence: 0, shoreWaves: 0, bed: 'pondbed' },
-  lake:   { shape: 'basin', radius: 18, depth: 3.5, freeboard: 0.25, wobble: 1.3, colors: { shallow: '#3A9EA0', deep: '#0E365E' }, swell: 0.02, ripple: 1.3, turbulence: 0, shoreWaves: 0.3, bed: 'pondbed' },
-  stream: { shape: 'channel', width: 0.6, depth: 0.32, bank: 0.1, speed: 1.3, colors: { shallow: '#3C9686', deep: '#1D5464' }, swell: 0.004, ripple: 1.4, turbulence: 1, shoreWaves: 0, bed: 'riverbed' },
-  brook:  { shape: 'channel', width: 1.6, depth: 0.8, bank: 0.14, speed: 0.9, colors: { shallow: '#4FAE9C', deep: '#1B5468' }, swell: 0.006, ripple: 1.2, turbulence: 0.6, shoreWaves: 0, bed: 'riverbed' },
-  river:  { shape: 'channel', width: 4.5, depth: 2, bank: 0.22, speed: 0.7, colors: { shallow: '#4A9A88', deep: '#123F55' }, swell: 0.012, ripple: 1.1, turbulence: 0.35, shoreWaves: 0, bed: 'riverbed' },
-  ocean:  { shape: 'sea', level: 0, colors: { shallow: '#3FC9BC', deep: '#0B3A6A' }, swell: 0.09, ripple: 1.5, turbulence: 0, shoreWaves: 1, bed: 'sand', size: 400 },
+  pond:   { shape: 'basin', radius: 7, depth: 1.8, freeboard: 0.18, wobble: 1, colors: { shallow: '#3E9F8F', deep: '#123F5C' }, swell: 0.008, ripple: 1, turbulence: 0, shoreWaves: 0, murk: 1.3, bed: 'pondbed' },
+  lake:   { shape: 'basin', radius: 18, depth: 3.5, freeboard: 0.25, wobble: 1.3, colors: { shallow: '#3A9EA0', deep: '#0E365E' }, swell: 0.02, ripple: 1.3, turbulence: 0, shoreWaves: 0.3, murk: 0.9, bed: 'pondbed' },
+  stream: { shape: 'channel', width: 0.6, depth: 0.32, bank: 0.1, speed: 1.3, colors: { shallow: '#3C9686', deep: '#1D5464' }, swell: 0.004, ripple: 1.4, turbulence: 1, shoreWaves: 0, murk: 0.8, bed: 'riverbed' },
+  brook:  { shape: 'channel', width: 1.6, depth: 0.8, bank: 0.14, speed: 0.9, colors: { shallow: '#4FAE9C', deep: '#1B5468' }, swell: 0.006, ripple: 1.2, turbulence: 0.6, shoreWaves: 0, murk: 0.9, bed: 'riverbed' },
+  river:  { shape: 'channel', width: 4.5, depth: 2, bank: 0.22, speed: 0.7, colors: { shallow: '#4A9A88', deep: '#123F55' }, swell: 0.012, ripple: 1.1, turbulence: 0.35, shoreWaves: 0, murk: 1.1, bed: 'riverbed' },
+  ocean:  { shape: 'sea', level: 0, colors: { shallow: '#3FC9BC', deep: '#0B3A6A' }, swell: 0.09, ripple: 1.5, turbulence: 0, shoreWaves: 1, murk: 0.55, bed: 'sand', size: 400 },
 };
 export const BEDS = ['pondbed', 'riverbed', 'sand']; // bottentexturer, i den ordning markens shader läser dem
 
@@ -163,7 +164,7 @@ const VERT = `
   }`;
 const FRAG = `
   uniform vec3 uShallow, uDeep, uFoam, uSky, uHorizon, uSunDir, uSunColor;
-  uniform float uTime, uWind, uRipple, uTurb, uShore;
+  uniform float uTime, uWind, uRipple, uTurb, uShore, uMurk;
   varying vec3 vW; varying float vD; varying vec2 vFlow;
   #include <fog_pars_fragment>
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -188,18 +189,18 @@ const FRAG = `
     float fres = clamp(0.04 + 0.96 * pow(1.0 - max(dot(n, V), 0.0), 5.0), 0.0, 1.0) * 0.6;
     vec3 r = reflect(-V, n);
     vec3 sky = mix(uHorizon, uSky, clamp(r.y * 1.6, 0.0, 1.0));
-    vec3 col = mix(uShallow, uDeep, smoothstep(0.02, 0.9 + uShore * 2.0, vD));
+    float murk = 1.0 - exp(-max(vD, 0.0) * uMurk);               // hur mycket vatten ljuset passerar
+    vec3 col = mix(uShallow, uDeep, murk);
     col = mix(col, sky, fres);
     float s = pow(max(dot(n, normalize(uSunDir + V)), 0.0), 280.0);
     col += uSunColor * (smoothstep(0.35, 0.45, s) * 1.4 + s * 0.4);
     // Skum: kant mot land, band mot stranden, forsar i grunt strömmande vatten, vågband på havet
-    float edge = 1.0 - smoothstep(0.0, 0.07, vD);
-    float bands = smoothstep(0.55, 0.6, fract(vD * 4.0 + uTime * 0.18 + vnoise(vW.xz * 1.8) * 0.7)) * (1.0 - smoothstep(0.02, 0.25, vD));
+    float edge = 1.0 - smoothstep(0.0, 0.035, vD);
     float rapids = uTurb * smoothstep(0.4, 1.4, length(vFlow)) * (1.0 - smoothstep(0.05, 0.45, vD)) * smoothstep(0.5, 0.8, vnoise(vW.xz * 3.0 - vFlow * uTime * 1.5));
     float surf = uShore * smoothstep(0.82, 0.92, fract(vD * 0.6 + uTime * 0.12 + vnoise(vW.xz * 0.3) * 0.3)) * (1.0 - smoothstep(0.3, 2.5, vD));
-    float foam = max(max(edge * 0.8, bands * 0.3) * smoothstep(0.35, 0.75, vnoise(vW.xz * 6.0 + uTime * 0.4)), max(rapids, surf * 0.8));
+    float foam = max(edge * 0.55 * smoothstep(0.3, 0.7, vnoise(vW.xz * 6.0 + uTime * 0.4)), max(rapids, surf * 0.8));
     col = mix(col, uFoam, clamp(foam, 0.0, 1.0));
-    float alpha = clamp(mix(0.5, 0.97, smoothstep(0.0, 0.55, vD)) + fres * 0.3 + foam, 0.0, 1.0); // grumligt
+    float alpha = clamp(0.1 + murk * 0.85 + fres * 0.8 + foam + s * 0.5, 0.0, 1.0) * smoothstep(-0.02, 0.03, vD); // tunn yta, grumligt med djupet
     gl_FragColor = vec4(col, alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
@@ -212,7 +213,7 @@ function material(W, b) {
     uShallow: { value: new THREE.Color(b.colors.shallow) }, uDeep: { value: new THREE.Color(b.colors.deep) }, uFoam: { value: new THREE.Color('#EAF6F2') },
     uSky: { value: new THREE.Color('#8fbdf0') }, uHorizon: { value: new THREE.Color('#d9ecff') },
     uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() }, uSunColor: { value: new THREE.Color('#fff1d6') },
-    uSwell: { value: b.swell }, uRipple: { value: b.ripple }, uTurb: { value: b.turbulence }, uShore: { value: b.shoreWaves },
+    uSwell: { value: b.swell }, uRipple: { value: b.ripple }, uTurb: { value: b.turbulence }, uShore: { value: b.shoreWaves }, uMurk: { value: b.murk },
   }]);
   uniforms.uTime = W.wind.uTime; uniforms.uWind = W.wind.uWind; // delade, inte kopior
   const tmp = new THREE.Vector3();

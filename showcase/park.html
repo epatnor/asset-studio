@@ -138,7 +138,8 @@ const groups = {
   bushes: bySpecies(['bush', 'shrub', 'ballbush', 'moundbush', 'leafbush', 'petalbush', 'serratebush']),
   rocks: bySpecies(['stone', 'stones', 'mossy_stone']),
   boulders: bySpecies(['boulder', 'mossy_boulder']),
-  underTrees: bySpecies(['fly_agaric', 'porcini', 'chanterelle', 'leafpile', 'creeper', 'ivy', 'stump', 'mossy_stump']),
+  underTrees: bySpecies(['fly_agaric', 'porcini', 'chanterelle', 'leafpile', 'creeper', 'ivy', 'stump', 'mossy_stump', 'log', 'mossy_log']),
+  pebbles: bySpecies(['pebbles']),
 };
 const loaded = new Map();
 const total = Object.values(groups).reduce((s, g) => s + g.length, 0);
@@ -222,6 +223,8 @@ for (const t of placedTrees) {
 // Stenar utspridda, bumlingar på kullarna
 scatter(groups.rocks, 26, (x, z) => pathDist(x, z) > 1.3, { sign: false });
 scatter(groups.boulders, 8, (x, z) => pathDist(x, z) > 3 && heightAt(x, z) > 0.4);
+// Småsten i stigkanterna
+scatter(groups.pebbles, 30, (x, z) => { const d = pathDist(x, z); return d > 1.1 && d < 2.2; }, { sign: false });
 
 // Skogsmark under och kring träden, äng i öppna gläntor, gräs däremellan, stig överst
 const nearTree = (x, z) => { let m = Infinity; for (const t of placedTrees) m = Math.min(m, Math.hypot(t.x - x, t.z - z) - t.r * 0.5); return m; };

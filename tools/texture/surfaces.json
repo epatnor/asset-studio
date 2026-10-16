@@ -9,11 +9,11 @@
     "normal": 0.8
   },
   "grass": {
-    "prompt": "short lush lawn grass seen from above, soft clumps of fresh green blades with lighter yellow-green tips",
+    "prompt": "short lush lawn seen from directly above, a dense carpet of grass blade tips and small clumps in fresh greens with lighter yellow-green tips, no individual tall blades",
     "normal": 0.6
   },
   "meadow": {
-    "prompt": "wild meadow ground seen from above, mixed green grass with scattered tiny yellow and white flowers and clover",
+    "prompt": "wild meadow ground seen from directly above, dense green grass carpet with scattered tiny yellow and white flower heads seen face-on as small round dots, and clover leaves",
     "normal": 0.6
   },
   "path": {
@@ -49,7 +49,7 @@
     "normal": 0.7
   },
   "forestfloor": {
-    "prompt": "forest floor seen from above, mix of moss, pine needles, small twigs and fallen leaves on dark earth",
+    "prompt": "forest floor seen from directly above, flat mix of moss patches, pine needles, small twigs and fallen leaves lying flat on dark earth",
     "normal": 0.8
   },
   "snow": {

@@ -4,7 +4,7 @@
 
 Receptfält (alla utom name är valfria):
   preset      en nyckel i tools/props/props.json: stone, stones, boulder, mossy_stone, mossy_boulder,
-              fly_agaric, porcini, chanterelle, stump, mossy_stump, leafpile, creeper, ivy
+              fly_agaric, porcini, chanterelle, stump, mossy_stump, log, mossy_log, pebbles, leafpile, creeper, ivy
   seed        samma recept ger samma prop
   params      överstyr presetets parametrar, t.ex. {"size": 2.5, "moss": 0.7} eller {"tint": "#B5452A"}
   stone_tint, moss_tint   färga sten eller mossa (texturen blir gråskala)
@@ -27,6 +27,7 @@ TEXTURES = {
     "rock": [("stone", "stone_painted", "stone_tint"), ("moss", "moss_painted", "moss_tint")],
     "mushroom": [("cap", None, "capTint")],
     "stump": [("bark", "bark_painted", None), ("rings", "stump_rings", None), ("moss", "moss_painted", "moss_tint")],
+    "log": [("bark", "bark_painted", None), ("rings", "stump_rings", None), ("moss", "moss_painted", "moss_tint")],
     "leafpile": [("leaves", None, "tint"), ("mass", None, "tint")],
     "creeper": [("leaves", "leaf_surface", "always")],
 }

@@ -193,7 +193,9 @@ def main():
         return
     size = int(recipe.get("size", 1024))
     seed = int(recipe.get("seed", random.randint(0, 2**31)))
-    prompt = ", ".join([sp["prompt"], STYLE["house_style"], STYLE["kinds"]["tile"], "uniform density across the whole image, no vignette, no focal point"])
+    # Vyn först (den väger tyngst): rakt uppifrån, så att ytan ser rätt ut från alla håll när den läggs på marken.
+    # Husets ljusgradient uppifrån utelämnas för ytor; den ger ojämn ton i en sömlös textur.
+    prompt = ", ".join([STYLE["surface_view"], sp["prompt"], STYLE["surface_style"], STYLE["kinds"]["tile"], "uniform density across the whole image, no vignette, no focal point"])
 
     base = np.asarray(txt2img(prompt, size, seed))
     shifted = np.roll(base, (size // 2, size // 2), axis=(0, 1))

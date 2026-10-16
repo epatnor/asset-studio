@@ -16,7 +16,7 @@ ROWS = [
     ("Buskar", ["bush", "shrub", "ballbush", "moundbush"]),
     ("Bladkupoler", ["leafbush", "petalbush", "serratebush"]),
     ("Stenar och mossa", ["stone", "stones", "mossy_stone", "boulder", "mossy_boulder"]),
-    ("Svampar, stubbar och marktäcke", ["fly_agaric", "porcini", "chanterelle", "stump", "mossy_stump", "leafpile", "creeper", "ivy"]),
+    ("Svampar, stubbar och marktäcke", ["fly_agaric", "porcini", "chanterelle", "stump", "mossy_stump", "log", "mossy_log", "pebbles", "leafpile", "creeper", "ivy"]),
     ("Gräs, vass och säd", ["grass_tuft", "grass_tall", "grass_seeded", "feather_grass", "reed", "cattail", "wheat", "barley"]),
     ("Blommor", ["daisy", "poppy", "buttercup", "tulip", "cornflower", "lavender", "lupine"]),
     ("Vattenväxter", ["water_lily", "pondweed"]),

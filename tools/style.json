@@ -6,7 +6,9 @@
       "tile": "seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective",
       "cutout": "isolated on a pure flat white background, no shadow, no ground",
       "raw": ""
-    }
+    },
+    "surface_view": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field",
+    "surface_style": "stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting"
   },
   "palette": {
     "foliage_light": "#8FCB4A",

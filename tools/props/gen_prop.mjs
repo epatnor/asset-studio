@@ -216,6 +216,38 @@ function stumpLods() {
   return lods;
 }
 
+// ---------- Stock: en liggande stam, byggd som två halvor av stubbens barkrör ut från mitten ----------
+// Varje halva slutar i en snittyta med årsringar. Stocken ligger med ungefär en fjärdedel i marken.
+function logLods() {
+  const L = sp.length, R0 = sp.radius, y0 = R0 * 0.72, bend = (r() - 0.5) * 0.15 * L, ph = r() * 6.28;
+  const half = (dir) => {
+    const nodes = Array.from({ length: 10 }, (_, i) => {
+      const t = i / 9, x = dir * (t * L * 0.5 - 0.02);
+      return { p: [x, y0 + Math.sin(t * 3.1) * R0 * 0.08, bend * (1 - (2 * x / L) ** 2)], r: R0 * (1 - (dir > 0 ? 0.18 : 0.06) * t) };
+    });
+    return { branches: [{ level: 0, nodes, segments: 14, phase: ph }] };
+  };
+  const halves = [half(1), half(-1)];
+  const lods = [1, 0.7, 0.5].map((segScale) => {
+    const parts = { bark: empty(), cap: empty() };
+    for (const sk of halves) {
+      const g = barkMesh(sk, { maxLevel: 0, segScale, barkRepeat: 0.6, flare: 0, roots: 0, rootAmp: 0, flareHeight: 0.1,
+        height: L, lobes: sp.lobes, lobeAmp: sp.lobeAmp, twist: 0.2, bulge: 0.03, flatTop: true, sinkDepth: 0 });
+      append(parts.bark, { ...g, cap: undefined });
+      if (g.cap) append(parts.cap, g.cap);
+    }
+    return parts;
+  });
+  if (sp.moss) { // mosskuddar längs ovansidan
+    const pads = Array.from({ length: 5 }, () => ({ off: [(r() - 0.5) * L * 0.8, y0 + R0 * 0.75, (r() - 0.5) * R0 * 0.6], s: R0 * (0.5 + r() * 0.4), seed: Math.floor(r() * 2 ** 31) }));
+    lods.forEach((parts, li) => {
+      parts.moss = empty();
+      for (const p of pads) append(parts.moss, buildRock(p.s, { blobs: [2, 3], squash: 0.35, lump: 0.12, facet: 0.1, moss: 2, cell: 0.12 }, rng(p.seed), p.off, [1, 1.6, 2.6][li]).moss);
+    });
+  }
+  return lods;
+}
+
 // ---------- Lövhög: låg kupol av höstlöv (trädgeneratorns krona utan träd) ----------
 function leafpileLods() {
   const R = sp.radius, H = sp.height;
@@ -305,7 +337,7 @@ function windTorn(g) {
 let WIND_TORN = 0;
 
 // ---------- GLB ----------
-const build = { rock: rockLods, mushroom: mushroomLods, stump: stumpLods, leafpile: leafpileLods, creeper: creeperLods }[sp.kind];
+const build = { rock: rockLods, mushroom: mushroomLods, stump: stumpLods, log: logLods, leafpile: leafpileLods, creeper: creeperLods }[sp.kind];
 const lods = build();
 const doc = new Document();
 const buffer = doc.createBuffer();
@@ -333,7 +365,7 @@ const MATS = {
   vines: () => material('Vines', { rough: 0.9 }),
 };
 const matCache = {};
-const getMat = (part) => (matCache[part] ??= (part === 'cap' && sp.kind === 'stump' ? material('Rings', { texture: T.rings, rough: 0.8 }) : MATS[part]()));
+const getMat = (part) => (matCache[part] ??= (part === 'cap' && (sp.kind === 'stump' || sp.kind === 'log') ? material('Rings', { texture: T.rings, rough: 0.8 }) : MATS[part]()));
 const name = recipe.name ?? path.basename(out, path.extname(out));
 const root = doc.createNode(name).setExtras({ generator: 'tinkertown/prop@1', recipe: { preset, seed } });
 const tris = [];

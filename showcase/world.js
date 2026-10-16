@@ -61,12 +61,27 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
 
   // Vind: läser generatorernas _WIND-attribut (0 vid stammen, 1 i spetsarna)
   const wind = { uTime: { value: 0 }, uWind: { value: 0.6 } };
+  // Löv (Leaves, LeafMass, Fronds) får dessutom färgvariation per klump (_CLUSTER) och genomlysning i motljus
+  const foliage = { uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() }, uTrans: { value: 0.55 }, uVary: { value: 1 } };
+  const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
   const addWind = (material) => {
+    const leafy = FOLIAGE.test(material.name);
+    material.customProgramCacheKey = () => `tinkertown-wind-${leafy}`;
     material.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = wind.uTime;
       shader.uniforms.uWind = wind.uWind;
+      Object.assign(shader.uniforms, foliage);
+      if (leafy) shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary;\nvarying vec3 vVary;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), vVary, uVary);')
+        .replace('#include <opaque_fragment>', `
+          // Genomlysning: ljust och varmt där man ser mot solen genom lövverket
+          vec3 sunV = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
+          float back = pow(max(dot(-normalize(vViewPosition), sunV), 0.0), 4.0);
+          outgoingLight += diffuseColor.rgb * vec3(1.0, 0.92, 0.7) * back * uTrans;
+          #include <opaque_fragment>`);
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float _wind;\nattribute vec3 _stem;\nuniform float uTime;\nuniform float uWind;')
+        .replace('#include <common>', '#include <common>\nattribute float _wind;\nattribute vec3 _stem;\nattribute float _cluster;\nuniform float uTime;\nuniform float uWind;\nvarying vec3 vVary;')
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           // Platta stjälkar (_stem = förskjutning från mittlinjen) vrids runt mittlinjen mot kameran
           if (dot(_stem, _stem) > 0.0) {
@@ -79,7 +94,10 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
           vec4 wp = modelMatrix * vec4(position, 1.0);
           float ph = wp.x * 0.35 + wp.z * 0.25;
           float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
-          transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;`);
+          transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;
+          // Varje klump i kronan får en liten egen ljushet och ton (varmare eller kallare)
+          float h1 = fract(sin(_cluster * 12.9898 + 1.7) * 43758.5453), h2 = fract(sin(_cluster * 78.233 + 4.1) * 24634.6345);
+          vVary = vec3(1.0 + (h2 - 0.5) * 0.1, 1.0, 1.0 - (h2 - 0.5) * 0.12) * (0.9 + h1 * 0.2);`);
     };
     material.needsUpdate = true;
   };
@@ -195,9 +213,10 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
     updateShadowArea();
     // Skuggkartan ritas om var tredje bild (20 gånger/s räcker för träd som svajar), eller när området flyttats
     if (++frame % 3 === 0) renderer.shadowMap.needsUpdate = true;
+    foliage.uSunDir.value.subVectors(sun.position, sun.target.position).normalize();
     for (const fn of frameHooks) fn(dt);
     renderer.render(scene, camera);
   });
 
-  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame };
+  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, foliage };
 }

@@ -9,14 +9,14 @@ import { BEDS } from './water.js';
 const SURFACES = ['grass', 'meadow', 'forestfloor', 'path'];
 const FALLBACK = { grass: '#6fa046', meadow: '#8ab24f', forestfloor: '#6e5a3a', path: '#b89466', pondbed: '#4d4a38', riverbed: '#7d7a6a', sand: '#dcc79a' };
 
-export async function loadSurfaces(W, names) {
+export async function loadSurfaces(W, names, { normal = false } = {}) {
   const { THREE } = W;
   const tl = new THREE.TextureLoader();
-  const one = (name) => new Promise((res) => tl.load(`../assets/textures/surface_${name}.png`, (t) => {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; res(t);
+  const one = (name) => new Promise((res) => tl.load(`../assets/textures/surface_${name}${normal ? '_normal' : ''}.png`, (t) => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = normal ? THREE.NoColorSpace : THREE.SRGBColorSpace; t.anisotropy = 8; res(t);
   }, undefined, () => { // saknas texturen än: en enfärgad ersättare
-    const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'); x.fillStyle = FALLBACK[name] ?? '#808080'; x.fillRect(0, 0, 4, 4);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; res(t);
+    const c = document.createElement('canvas'); c.width = c.height = 4; const x = c.getContext('2d'); x.fillStyle = normal ? '#8080ff' : FALLBACK[name] ?? '#808080'; x.fillRect(0, 0, 4, 4);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = normal ? THREE.NoColorSpace : THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; res(t);
   }));
   return Promise.all(names.map(one));
 }
@@ -40,16 +40,19 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
   geo.setAttribute('water', new THREE.BufferAttribute(water, 2));
   geo.setAttribute('bed', new THREE.BufferAttribute(bed, 3));
 
-  const [tGrass, tMeadow, tForest, tPath, ...beds] = await loadSurfaces(W, [...SURFACES, ...BEDS]);
-  const mat = new THREE.MeshStandardMaterial({ map: tGrass, roughness: 1 });
+  const [[tGrass, tMeadow, tForest, tPath, ...beds], [nGrass, nMeadow, nForest, nPath, ...nBeds]] = await Promise.all([
+    loadSurfaces(W, [...SURFACES, ...BEDS]), loadSurfaces(W, [...SURFACES, ...BEDS], { normal: true })]);
+  // normalMap slår på normalkartsvägen i shadern; själva normalen blandas av alla ytor nedan
+  const mat = new THREE.MeshStandardMaterial({ map: tGrass, normalMap: nGrass, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 1 });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath },
-      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, uTime: W.wind.uTime });
+      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, uTime: W.wind.uTime,
+      nMeadow: { value: nMeadow }, nForest: { value: nForest }, nPath: { value: nPath }, nBed0: { value: nBeds[0] }, nBed1: { value: nBeds[1] }, nBed2: { value: nBeds[2] } });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 splat;\nattribute vec2 water;\nattribute vec3 bed;\nvarying vec4 vSplat;\nvarying vec2 vWater;\nvarying vec3 vBed;\nvarying float vWY;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vWater = water; vBed = bed; vWY = position.y;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        uniform sampler2D tMeadow, tForest, tPath, tBed0, tBed1, tBed2;
+        uniform sampler2D tMeadow, tForest, tPath, tBed0, tBed1, tBed2, nMeadow, nForest, nPath, nBed0, nBed1, nBed2;
         uniform float uTime;
         varying vec4 vSplat; varying vec2 vWater; varying vec3 vBed; varying float vWY;
         // Kaustik: ljusa, slingrande nät som rör sig över botten
@@ -69,9 +72,17 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
         float wet = smoothstep(0.0, 1.0, vWater.x), d = vWater.y - vWY, under = clamp(d / 0.35, 0.0, 1.0) * wet;
         vec3 bedCol = TEX2(tBed0, 0.8) * vBed.x + TEX2(tBed1, 0.8) * vBed.y + TEX2(tBed2, 0.9) * vBed.z;
         diffuseColor.rgb = mix(diffuseColor.rgb, bedCol, wet * smoothstep(-0.15, 0.05, d) * step(0.5, vBed.x + vBed.y + vBed.z));
-        diffuseColor.rgb *= mix(1.0, 0.68, wet * (1.0 - under));
-        diffuseColor.rgb = diffuseColor.rgb * mix(vec3(1.0), vec3(0.5, 0.66, 0.7), under)
-          + caustic(vMapUv * 3.6, uTime) * under * (1.0 - smoothstep(0.2, 0.9, d)) * vec3(0.3, 0.36, 0.34);`);
+        diffuseColor.rgb *= mix(1.0, 0.7, wet * (1.0 - under));                    // våt strand
+        // Absorption: ljuset går ner och upp igen genom vattnet; rött försvinner först, sedan grönt
+        vec3 absorb = exp(-max(d, 0.0) * vec3(2.4, 1.1, 0.8) * wet);
+        diffuseColor.rgb = diffuseColor.rgb * mix(vec3(1.0), absorb, under)
+          + caustic(vMapUv * 3.6, uTime) * under * exp(-max(d, 0.0) * 2.2) * vec3(0.32, 0.38, 0.34);
+        float bedW = wet * smoothstep(-0.15, 0.05, d) * step(0.5, vBed.x + vBed.y + vBed.z);`)
+      // Normalkartor: samma blandning som färgen, så att reliefen följer ytan (och botten under vattnet)
+      .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `
+        vec3 nSurf = TEX2(normalMap, 1.0) * vSplat.x + TEX2(nMeadow, 0.9) * vSplat.y + TEX2(nForest, 1.1) * vSplat.z + TEX2(nPath, 1.3) * vSplat.w;
+        vec3 nBedC = TEX2(nBed0, 0.8) * vBed.x + TEX2(nBed1, 0.8) * vBed.y + TEX2(nBed2, 0.9) * vBed.z;
+        vec3 mapN = mix(nSurf, nBedC, bedW) * 2.0 - 1.0;`);
   };
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;

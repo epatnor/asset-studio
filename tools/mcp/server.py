@@ -152,7 +152,7 @@ def create_prop(name: str, preset: str = "stone", seed: int = 0, params: dict | 
     """Skapa en naturprop för skog, stig och fält som glTF (3 LOD, delade texturer) i assets/props/<name>/.
 
     preset: stone, stones (grupp), boulder, mossy_stone, mossy_boulder, fly_agaric, porcini,
-      chanterelle, stump, mossy_stump, leafpile, creeper, ivy (se tools/props/props.json).
+      chanterelle, stump, mossy_stump, log, mossy_log, pebbles, leafpile, creeper, ivy (se tools/props/props.json).
     params: överstyr presetet, t.ex. {"size": 2.5, "moss": 0.7}, {"count": [6, 9]} eller {"tint": "#B5452A"}.
     stone_tint/moss_tint: "#RRGGBB" färgar sten eller mossa.
     Svaret har "checks" (delar genererade, vilar på marken).

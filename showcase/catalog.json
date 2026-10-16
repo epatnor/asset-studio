@@ -386,6 +386,30 @@
           "model": "../assets/props/mossy_stump1/mossy_stump1.gltf"
         },
         {
+          "name": "log1",
+          "species": "log",
+          "label": "log1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/props/log1/log1.gltf"
+        },
+        {
+          "name": "mossy_log1",
+          "species": "mossy_log",
+          "label": "mossy_log1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/props/mossy_log1/mossy_log1.gltf"
+        },
+        {
+          "name": "pebbles1",
+          "species": "pebbles",
+          "label": "pebbles1",
+          "tint": null,
+          "height": null,
+          "model": "../assets/props/pebbles1/pebbles1.gltf"
+        },
+        {
           "name": "leafpile1",
           "species": "leafpile",
           "label": "leafpile1",
