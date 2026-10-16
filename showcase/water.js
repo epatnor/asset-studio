@@ -10,7 +10,7 @@
 
 export function createPond(W, { heightAt, level, center, radius, inside = () => true, colors = {} }) {
   const { THREE, scene } = W;
-  const c = { shallow: '#52CDBE', deep: '#1B6898', foam: '#F2FBFF', ...colors };
+  const c = { shallow: '#3E9F8F', deep: '#123F5C', foam: '#EAF6F2', ...colors };
   const size = radius * 3, seg = Math.ceil(size * 4);
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
@@ -65,7 +65,7 @@ export function createPond(W, { heightAt, level, center, radius, inside = () => 
         float fres = clamp(0.04 + 0.96 * pow(1.0 - max(dot(n, V), 0.0), 5.0), 0.0, 1.0) * 0.6;
         vec3 r = reflect(-V, n);
         vec3 sky = mix(uHorizon, uSky, clamp(r.y * 1.6, 0.0, 1.0));
-        vec3 col = mix(uShallow, uDeep, smoothstep(0.05, 1.3, vD));
+        vec3 col = mix(uShallow, uDeep, smoothstep(0.02, 0.9, vD));
         col = mix(col, sky, fres);
         // Stiliserat glitter: en skarp tröskel ovanpå ett mjukt högdager
         float s = pow(max(dot(n, normalize(uSunDir + V)), 0.0), 280.0);
@@ -75,7 +75,7 @@ export function createPond(W, { heightAt, level, center, radius, inside = () => 
         float bands = smoothstep(0.55, 0.6, fract(vD * 4.0 + uTime * 0.18 + vnoise(p * 1.8) * 0.7)) * (1.0 - smoothstep(0.02, 0.25, vD));
         float foam = max(edge * 0.8, bands * 0.3) * smoothstep(0.35, 0.75, vnoise(p * 6.0 + uTime * 0.4));
         col = mix(col, uFoam, foam);
-        float alpha = clamp(mix(0.3, 0.92, smoothstep(0.0, 0.9, vD)) + fres * 0.3 + foam, 0.0, 1.0);
+        float alpha = clamp(mix(0.5, 0.97, smoothstep(0.0, 0.55, vD)) + fres * 0.3 + foam, 0.0, 1.0); // grumligt: botten syns bara nära kanten
         gl_FragColor = vec4(col, alpha);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>

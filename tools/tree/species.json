@@ -1431,7 +1431,7 @@
     "leaf_tint": "palette:bush_green",
     "mass": "bush_mass",
     "stemless": true,
-    "sink": 0.06
+    "sink": 0.2
   },
   "moundbush": {
     "trunk": {
@@ -1500,7 +1500,7 @@
     "leaf_tint": "palette:bush_green",
     "mass": "bush_mass",
     "stemless": true,
-    "sink": 0.06
+    "sink": 0.22
   },
   "leafbush": {
     "stemless": true,
@@ -1537,7 +1537,7 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.04,
+    "sink": 0.18,
     "foliage": {
       "type": "leafdome",
       "shape": "pointed",
@@ -1588,7 +1588,7 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.04,
+    "sink": 0.18,
     "foliage": {
       "type": "leafdome",
       "shape": "round",
@@ -1639,7 +1639,7 @@
     ],
     "leaves": "leaf_surface",
     "bark": "bark_painted",
-    "sink": 0.04,
+    "sink": 0.18,
     "foliage": {
       "type": "leafdome",
       "shape": "serrated",
