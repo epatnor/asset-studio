@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
+import { createMaterialPatcher } from './materials.js';
 
 export function createWorld(container, { fog = [60, 220] } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -62,53 +63,17 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
 
   // Vind: läser generatorernas _WIND-attribut (0 vid stammen, 1 i spetsarna)
   const wind = { uTime: { value: 0 }, uWind: { value: 0.6 } };
-  // Löv (Leaves, LeafMass, Fronds) får dessutom färgvariation per klump (_CLUSTER) och genomlysning i motljus
-  const foliage = { uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() }, uTrans: { value: 0.55 }, uVary: { value: 1 } };
-  const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
-  const addWind = (material) => {
-    const leafy = FOLIAGE.test(material.name);
-    material.customProgramCacheKey = () => `tinkertown-wind-${leafy}`;
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.uTime = wind.uTime;
-      shader.uniforms.uWind = wind.uWind;
-      Object.assign(shader.uniforms, foliage);
-      if (leafy) shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary;\nvarying vec3 vVary;')
-        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), vVary, uVary);')
-        .replace('#include <opaque_fragment>', `
-          // Genomlysning: ljust och varmt där man ser mot solen genom lövverket
-          vec3 sunV = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
-          float back = pow(max(dot(-normalize(vViewPosition), sunV), 0.0), 4.0);
-          outgoingLight += diffuseColor.rgb * vec3(1.0, 0.92, 0.7) * back * uTrans;
-          #include <opaque_fragment>`);
-      shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float _wind;\nattribute vec3 _stem;\nattribute float _cluster;\nuniform float uTime;\nuniform float uWind;\nvarying vec3 vVary;')
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          // Platta stjälkar (_stem = förskjutning från mittlinjen) vrids runt mittlinjen mot kameran
-          if (dot(_stem, _stem) > 0.0) {
-            vec3 c = transformed - _stem;
-            vec3 toCam = cameraPosition - (modelMatrix * vec4(c, 1.0)).xyz;
-            vec3 sideW = normalize(cross(vec3(0.0, 1.0, 0.0), toCam));
-            vec3 sideL = normalize(transpose(mat3(modelMatrix)) * sideW), perp = cross(sideL, vec3(0.0, 1.0, 0.0));
-            transformed = c + sideL * length(_stem) * sign(dot(_stem, sideL) * 1000.0 + dot(_stem, perp));
-          }
-          vec4 wp = modelMatrix * vec4(position, 1.0);
-          float ph = wp.x * 0.35 + wp.z * 0.25;
-          float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
-          transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;
-          // Varje klump i kronan får en liten egen ljushet och ton (varmare eller kallare)
-          float h1 = fract(sin(_cluster * 12.9898 + 1.7) * 43758.5453), h2 = fract(sin(_cluster * 78.233 + 4.1) * 24634.6345);
-          vVary = vec3(1.0 + (h2 - 0.5) * 0.1, 1.0, 1.0 - (h2 - 0.5) * 0.12) * (0.9 + h1 * 0.2);`);
-    };
-    material.needsUpdate = true;
-  };
+  // Generatorernas material får vind, platta stjälkar, lövens genomlysning och stenarnas mossa (materials.js)
+  const foliage = { uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() } };
+  const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir: foliage.uSunDir });
+  const addWind = (material, url = location.href) => patchMaterial(material, url);
 
   const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)) // geometrin är meshopt-komprimerad;
   const models = [];
   async function loadModel(url) {
     const root = (await loader.loadAsync(url)).scene;
     root.traverse((o) => {
-      if (o.isMesh) { o.castShadow = o.receiveShadow = true; addWind(o.material); }
+      if (o.isMesh) { o.castShadow = o.receiveShadow = true; addWind(o.material, url); }
       const lod = o.name.match(/_LOD(\d)$/);
       if (lod) o.visible = lod[1] === '0';
     });

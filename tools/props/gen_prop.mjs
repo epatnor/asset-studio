@@ -73,7 +73,8 @@ function buildRock(size, o, rr, offset = [0, 0, 0], cellScale = 1) {
     qn = norm(outward ? qn : mul(qn, -1));
     if (mid[1] < cut + size * 0.01) continue; // hoppa över botten (dold under marken)
     // Mossa på uppåtvända ytor, med lite brus i kanten
-    const isMoss = o.moss > 0 && qn[1] + mossNoise(mid) * 0.18 > 1 - o.moss * 1.25;
+    // unified: allt blir sten och klienten lägger mossan i shadern (mjuk kant, se showcase/materials.js)
+    const isMoss = !o.unified && o.moss > 0 && qn[1] + mossNoise(mid) * 0.18 > 1 - o.moss * 1.25;
     const g2 = isMoss ? moss : stone;
     const ax = [0, 1, 2].reduce((m, x) => (Math.abs(qn[x]) > Math.abs(qn[m]) ? x : m), 0);
     const [u1, u2] = ax === 0 ? [2, 1] : ax === 1 ? [0, 2] : [0, 1];
@@ -104,7 +105,7 @@ function rockLods() {
   return [1, 1.6, 2.6].map((cs) => {
     const parts = { stone: empty(), moss: empty() };
     for (const pl of placements) {
-      const g = buildRock(pl.s, sp, rng(pl.seed), pl.off, cs);
+      const g = buildRock(pl.s, { ...sp, unified: true }, rng(pl.seed), pl.off, cs);
       append(parts.stone, g.stone); append(parts.moss, g.moss);
     }
     return parts;
@@ -354,7 +355,15 @@ function material(nm, { texture, tint, alpha, rough = 0.9 } = {}) {
 // Material per del; texturerna kommer från make_prop.py (gråskala när de tintas)
 const T = textures;
 const MATS = {
-  stone: () => material('Stone', { texture: T.stone, tint: recipe.stoneTint }),
+  stone: () => {
+    const m = material('Stone', { texture: T.stone, tint: recipe.stoneTint });
+    if (sp.kind !== 'rock') return m;
+    // Triplanar sten och mossa i världskoordinater i klienten; mängd, textur och skala som extras
+    const mossFile = T.moss && (fs.existsSync(T.moss.replace(/\.png$/, '.webp')) ? T.moss.replace(/\.png$/, '.webp') : T.moss);
+    const size = Array.isArray(sp.size) ? (sp.size[0] + sp.size[1]) / 2 : sp.size;
+    return m.setExtras({ triplanar: true, moss: sp.moss ?? 0, mossTint: recipe.mossTint ?? null, stoneScale: 1 / Math.max(0.6, size * 0.9), mossScale: sp.mossRepeat ?? 4,
+      mossTexture: mossFile ? path.relative(path.dirname(out), mossFile).split(path.sep).join('/') : null });
+  },
   moss: () => material('Moss', { texture: T.moss, tint: recipe.mossTint }),
   cap: () => material('Cap', { texture: T.cap, tint: sp.capTint, rough: 0.6 }),
   gills: () => material('Gills', { rough: 0.9 }),

@@ -127,7 +127,7 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [x] Lövhögar av höstlöv (`leafpile`, `autumn_atlas`).
 - [x] Krypväxter: rankor längs marken med solida blad (`creeper`, `ivy`).
 - [ ] Stockar och nedfallna grenar, blommor och gräs (gräs är en egen generator), svampar på stubbar.
-- [ ] Mossan: mjukare övergång mot stenen (vertexfärgsblandning i kanten).
+- [x] Mossan: mjuk, brusig övergång mot stenen, med triplanar sten och mossa i världskoordinater i klientens shader (`showcase/materials.js`).
 - [ ] Biomer: regeluppsättningar som väljer vilka props som sprids var.
 
 ### Gräs

@@ -44,6 +44,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
+import { createMaterialPatcher } from './materials.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -87,22 +88,10 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxPolarAngle = Math.PI * 0.49;
 
-// Enkel vind: läser generatorns _WIND-attribut (0 vid stammen, 1 i spetsarna)
+// Vind, platta stjälkar, lövens genomlysning och stenarnas mossa: samma materialtillägg som i parken
 const windUniforms = { uTime: { value: 0 }, uWind: { value: 0.6 } };
-function addWind(material) {
-  material.onBeforeCompile = (shader) => {
-    shader.uniforms.uTime = windUniforms.uTime;
-    shader.uniforms.uWind = windUniforms.uWind;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float _wind;\nuniform float uTime;\nuniform float uWind;')
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-        vec4 wp = modelMatrix * vec4(position, 1.0);
-        float ph = wp.x * 0.35 + wp.z * 0.25;
-        float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
-        transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;`);
-  };
-  material.needsUpdate = true;
-}
+const sunDir = { value: new THREE.Vector3(0.6, 1.1, 0.8).normalize() }; // samma riktning som solen nedan
+const patchMaterial = createMaterialPatcher(THREE, { wind: windUniforms, sunDir });
 
 // --- Förstapersonsläge: kamera i ögonhöjd med mouselook ---
 const colliders = [];
@@ -223,7 +212,7 @@ async function main() {
       m.root.traverse((o) => {
         if (o.isMesh) {
           o.castShadow = o.receiveShadow = true;
-          addWind(o.material);
+          patchMaterial(o.material, m.it.model);
         }
         const lod = o.name.match(/_LOD(\d)$/);
         if (lod) o.visible = lod[1] === '0';
