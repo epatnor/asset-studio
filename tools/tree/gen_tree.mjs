@@ -47,7 +47,7 @@ scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 const checks = validateSkeleton(sk);
 
 // 2. Bark med riktig LOD: LOD1 utan yngsta grennivån, LOD2 bara stam och första nivån
-const barkRepeat = recipe.barkRepeat ?? 1.2; // meter per texturupprepning
+const barkRepeat = recipe.barkRepeat ?? 1.08; // meter per texturupprepning
 const barkLods = [
   { maxLevel: 9, segScale: 1 },
   { maxLevel: Math.max(1, sk.maxLevel - 1), segScale: 0.7 },

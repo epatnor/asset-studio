@@ -307,7 +307,7 @@ export function buildCrown(twigs, o) {
       return { p, n, col: shade(p, n, 0.55, crevice(p0)), wind: windAt(p) * 0.5, ci: info(p0).ci };
     });
     const vol = empty();
-    const S = 1 / (H * (o.massScale ?? 0.18)); // texturupprepningar per meter
+    const S = 1 / (H * (o.massScale ?? 0.162)); // texturupprepningar per meter
     for (const q of mesh.quads) {
       const [a, b, c, d] = q.map((i) => mesh.verts[i]);
       const qn = cross(sub(c, a), sub(d, b));

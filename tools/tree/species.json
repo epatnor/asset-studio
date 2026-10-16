@@ -540,7 +540,7 @@
       "puffR": 0.5,
       "domeBottom": -0.2,
       "coverR": 0.95,
-      "massScale": 0.35
+      "massScale": 0.315
     },
     "leaves": "bush_atlas",
     "bark": "bark_painted",
@@ -1355,7 +1355,7 @@
       "puffR": 0.5,
       "domeBottom": -0.2,
       "coverR": 0.95,
-      "massScale": 0.35
+      "massScale": 0.315
     },
     "leaves": "bush_atlas",
     "bark": "bark_painted",
@@ -1423,7 +1423,7 @@
       "coverR": 0.95,
       "core": true,
       "round": true,
-      "massScale": 0.35
+      "massScale": 0.315
     },
     "leaves": "bush_atlas",
     "bark": "bark_painted",
@@ -1492,7 +1492,7 @@
       "domeBottom": -0.5,
       "coverR": 0.95,
       "core": true,
-      "massScale": 0.35
+      "massScale": 0.315
     },
     "leaves": "bush_atlas",
     "bark": "bark_painted",

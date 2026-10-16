@@ -10,7 +10,7 @@ Receptfält (alla utom name är valfria):
   bark, leaves            texturnamn i assets/textures (leaves är en 2x2-atlas; standard enligt arten)
   leaf_mass               sömlös lövmassa för kronans volymer (standard: <atlas>_mass, annars leaf_mass)
   leaf_tint               "#RRGGBB": tinta löven i materialet (t.ex. höstfärg) med gråskaleatlas
-  bark_repeat             meter per upprepning av barktexturen (standard 1,2)
+  bark_repeat             meter per upprepning av barktexturen (standard 1,08)
   canopy                  överstyr lövkronan: clusters, cards, flattenY, fill, union, normalBlend
   conifer                 överstyr granens barr: width, lobes, lobeDepth, chunk, asymmetry, dryShare
   frond_texture           för granar: målad barratlas (standard enligt arten), false = solida grenar utan alfa
@@ -85,7 +85,7 @@ def main():
     if mass:
         gen["leafMass"] = str(TEX / f"{mass}.png")
     gen |= {"name": name, "out": str(glb), "bark": str(TEX / f"{bark}.png"), "leaves": str(TEX / f"{leaves}.png"),
-            "barkRepeat": recipe.get("bark_repeat", 1.2)}
+            "barkRepeat": recipe.get("bark_repeat", 1.08)}
     # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.
     # Atlas och lövmassa används i gråskala och tintas via baseColorFactor.
     # Granar: målad barratlas med alfakant om den finns (frond_texture: false ger solida grenar)
