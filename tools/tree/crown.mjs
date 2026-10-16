@@ -1,3 +1,4 @@
+import { barkMesh } from './bark_mesh.mjs';
 // Lövkrona v4: underklumpar vid kvistarna smälts ihop till EN molnlik form (mjuk union av ellipsoider
 // som avståndsfält), som görs till en ogenomskinlig mesh med surface nets. Ytan täcks tätt av små
 // lövkort med normaler från samma fält, så kronan skuggas som en mjuk massa med tydliga löv i kanten.
@@ -198,14 +199,28 @@ export function buildCrown(twigs, o) {
     let u = r(), v = r(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
     const base = add(fine.verts[a], add(mul(sub(fine.verts[b], fine.verts[a]), u), mul(sub(fine.verts[c], fine.verts[a]), v)));
     const n = puffNormal(base, cardSize * 0.2);
-    // Korten ligger mest inbäddade i ytan (mjuka massor, få enskilda blad); några sticker ut i silhuetten
-    const out = r() < (o.stickOut ?? 0.12) ? 0.25 + r() * 0.3 : -0.3 + r() * 0.35;
+    // Regel: varje korts rot sitter i volymen (vid eller strax innanför ytan), aldrig fritt i luften.
+    // Utstickande kort flyttas inte ut från ytan; de LUTAS ut, så att roten sitter fast och spetsen
+    // bryter silhuetten.
+    const stick = r() < (o.stickOut ?? 0.12);
+    const out = stick ? -0.08 - r() * 0.1 : -0.3 + r() * 0.26;
     const p = add(base, mul(n, out * cardSize));
-    const cn = norm(add(n, mul(randomUnit(r), 0.6)));
-    const [t0] = basis(cn);
-    const ang = r() * Math.PI * 2;
-    const t = norm(add(mul(t0, Math.cos(ang)), mul(cross(cn, t0), Math.sin(ang))));
-    cards.push({ p, n, cn, t, size: cardSize * (0.75 + r() * 0.5), cell: Math.floor(r() * 4), prio: r(), depth: clamp01(0.5 - out), crev: crevice(base), ci: info(base).ci });
+    let cn, t;
+    if (stick) {
+      t = norm(add(n, mul(randomUnit(r), 0.6)));          // spetsen pekar ut från ytan
+      cn = sub(n, mul(t, dot(n, t)));                      // kortets plan innehåller utåtriktningen
+      cn = dot(cn, cn) > 1e-6 ? norm(cn) : basis(t)[0];
+    } else {
+      cn = norm(add(n, mul(randomUnit(r), 0.6)));
+      const [t0] = basis(cn);
+      const ang = r() * Math.PI * 2;
+      t = norm(add(mul(t0, Math.cos(ang)), mul(cross(cn, t0), Math.sin(ang))));
+    }
+    const size = cardSize * (0.75 + r() * 0.5);
+    // Roten (mitten av kortets bas) måste ligga i volymen: på bulliga, konvexa ytor hamnar den annars utanför
+    let pp = p;
+    for (let k = 0; k < 12 && f(sub(pp, mul(t, size * 0.25))) > -cardSize * 0.02; k++) pp = sub(pp, mul(n, cardSize * 0.08));
+    cards.push({ p: pp, n, cn, t, size, cell: Math.floor(r() * 4), prio: r(), depth: clamp01(0.5 - out), crev: crevice(base), ci: info(base).ci });
   }
 
   const pushCard = (g, c, scale) => {
@@ -220,7 +235,7 @@ export function buildCrown(twigs, o) {
       const nn = norm(lerp(c.cn, puffNormal(pos, h * 0.2), o.normalBlend ?? 0.85));
       g.positions.push(...pos); g.normals.push(...nn);
       g.uvs.push(cu + u * 0.5, cvv + (1 - vv) * 0.5);
-      g.colors.push(...col); g.wind.push(windAt(pos) * (0.7 + 0.3 * vv)); g.cluster.push(c.ci);
+      g.colors.push(...col); g.wind.push(c.strand ? windAt(c.root) * 0.9 : windAt(pos) * (0.7 + 0.3 * vv)); g.cluster.push(c.ci);
     }
     // Moturs sett från +cn (framsidan utåt); enkelsidigt så att normalerna inte vänds på baksidan
     g.indices.push(start, start + 3, start + 1, start, start + 2, start + 3); // b × t = −cn, så vänd ordningen
@@ -236,7 +251,8 @@ export function buildCrown(twigs, o) {
     g.indices.push(back, back + 1, back + 3, back, back + 3, back + 2);
   };
 
-  // Hängande gardiner (pil): strängar av små lövkort som hänger rakt ned från kronans undersida
+  // Hängande gardiner (pil): stänglar som hänger ned från kronans undersida, med blad längs stjälken
+  const strands = [];
   if (o.hang) {
     const lower = tris.filter((_, i) => i % 3 === 0).map(([a]) => fine.verts[a]).filter((p) => gradient(f, p, cardSize * 0.2)[1] < 0.15);
     for (let s = 0; s < o.hang && lower.length; s++) {
@@ -244,15 +260,36 @@ export function buildCrown(twigs, o) {
       const L = H * (o.hangLength ?? 0.3) * (0.6 + r() * 0.6);
       const out = norm([top[0], 0, top[2]]);
       const n = Math.max(3, Math.round(L / (cardSize * 0.55)));
-      for (let i = 0; i < n; i++) {
+      // Stjälken börjar en bit inne i volymen och hänger ned med en svag båge utåt
+      const at = (u) => add(sub(top, mul(gradient(f, top, cardSize * 0.2), cardSize * 0.35)), add(mul([0, -1, 0], L * u), mul(out, L * 0.08 * Math.sin(u * Math.PI))));
+      const nodes = [];
+      for (let i = 0; i <= n; i++) {
+        const pt = at(i / n);
+        if (pt[1] < H * 0.04) break;
+        nodes.push({ p: pt, r: cardSize * 0.035 * (1 - 0.5 * i / n) });
+      }
+      if (nodes.length < 3) continue;
+      strands.push({ level: 1, nodes, segments: 4, phase: 0, length: L });
+      // Bladen sitter längs stjälken: kortets rot (överkant) ligger på stjälken
+      for (let i = 1; i < nodes.length; i++) {
         const u = i / n;
-        // Svag båge utåt, så gardinen inte hänger rakt in i stammen
-        const p = add(top, add(mul([0, -1, 0], L * u), mul(out, L * 0.08 * Math.sin(u * Math.PI))));
-        if (p[1] < H * 0.04) break;
         const cn = norm(add(out, mul(randomUnit(r), 0.5)));
         const t = norm(add([0, -1, 0], mul(randomUnit(r), 0.3)));
-        cards.push({ p, n: puffNormal(top, cardSize * 0.2), cn, t, size: cardSize * (0.7 + r() * 0.4), cell: Math.floor(r() * 4), prio: r(), depth: 0.2 + 0.3 * u, crev: 0, ci: 0 });
+        const sz = cardSize * (0.7 + r() * 0.4);
+        const p = add(nodes[i].p, mul(t, sz * 0.25)); // så att roten (p − t·0,25h) hamnar på stjälken
+        cards.push({ p, n: puffNormal(top, cardSize * 0.2), cn, t, size: sz, cell: Math.floor(r() * 4), prio: r(), depth: 0.2 + 0.3 * u, crev: 0, ci: 0, strand: true, root: nodes[i].p });
       }
+    }
+  }
+
+  // Kontroll: ett korts rot (mitten av kortets bas) ska sitta i volymen eller på en stjälk
+  const floatingCards = cards.filter((c) => !c.strand && f(sub(c.p, mul(c.t, c.size * 0.25))) > cardSize * 0.08).length;
+  let stems = null;
+  if (strands.length) {
+    stems = barkMesh({ branches: strands }, { maxLevel: 9, segScale: 1, barkRepeat: 0.3, height: H });
+    for (let i = 0; i < stems.positions.length / 3; i++) {
+      stems.colors.splice(i * 3, 3, 0.16, 0.2, 0.08); // mörkt gröngrått (linjärt), annars ser de tunna stänglarna vita ut i himmelsljuset
+      stems.wind[i] = windAt([stems.positions[i * 3], stems.positions[i * 3 + 1], stems.positions[i * 3 + 2]]) * 0.9;
     }
   }
 
@@ -288,7 +325,8 @@ export function buildCrown(twigs, o) {
       else vol.indices.push(start, start + 2, start + 1, start, start + 3, start + 2);
     }
     g.volume = vol;
+    if (stems) g.stems = stems;
     return g;
   });
-  return { clusters: clumps, lods };
+  return { clusters: clumps, lods, floatingCards };
 }

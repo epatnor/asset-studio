@@ -59,6 +59,7 @@ const barkLods = [
   // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas
   maxLevel: sp.stemless ? -1 : fronds ? 0 : l.maxLevel,
   topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
+  sinkDepth: Math.max(0.3, height * (sp.trunk.sinkDepth ?? 0.12)), // stammen går ner under marken
 }));
 
 // 3. Lövverk, fäst i skelettet
@@ -92,6 +93,7 @@ if (fronds) {
   const opts = { ...sp.foliage, cards: Math.round(sp.foliage.cards * (size.cards ?? 1)), ...(recipe.canopy ?? {}), seed: seedEff, height };
   foliage = buildCrown(sk.twigs, opts);
   checks.clusters = foliage.clusters.length;
+  checks.floating_cards = foliage.floatingCards; // lövkort vars rot inte sitter i volymen eller på en stjälk
   // Klumpar måste sitta på en kvist; puffar måste sitta inne i sin föräldraklump
   const inside = (p, c, f) => [0, 1, 2].reduce((s, a) => s + ((p[a] - c.center[a]) / (c.radii[a] * f)) ** 2, 0) <= 1;
   checks.floating_clusters = foliage.clusters.filter((c) => {
@@ -120,7 +122,7 @@ if (sp.stemless) {
   for (const lod of foliage.lods) for (const g of [lod, lod.volume].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] += dy;
   checks.resting_on_ground = true;
 }
-checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs;
+checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs && !checks.floating_cards;
 
 // 4. GLB
 const doc = new Document();
@@ -194,6 +196,7 @@ function mesh(name, g, mat, extra = {}) {
 const name = recipe.name ?? path.basename(out, '.glb');
 const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, kind } });
 const tris = [], alphaTris = [];
+let stemMat;
 foliage.lods.forEach((lod, i) => {
   const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i });
   if (barkLods[i].indices.length) lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat)));
@@ -202,6 +205,11 @@ foliage.lods.forEach((lod, i) => {
   if (lod.volume && massMat) {
     lodNode.addChild(doc.createNode(`${name}_volume_LOD${i}`).setMesh(mesh(`volume_LOD${i}`, lod.volume, massMat, { _CLUSTER: lod.volume.cluster })));
     volTris = lod.volume.indices.length / 3;
+  }
+  if (lod.stems?.indices.length) {
+    // Hängande stänglar (pil): tunna gröngrå rankor som löven sitter på
+    stemMat ??= doc.createMaterial('Stems').setRoughnessFactor(0.9).setMetallicFactor(0);
+    lodNode.addChild(doc.createNode(`${name}_stems_LOD${i}`).setMesh(mesh(`stems_LOD${i}`, lod.stems, stemMat)));
   }
   root.addChild(lodNode);
   tris.push(Math.round((barkLods[i].indices.length + lod.indices.length) / 3 + volTris));

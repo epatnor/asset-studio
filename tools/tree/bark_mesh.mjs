@@ -37,7 +37,13 @@ export function barkMesh(sk, o) {
     if (b.level > o.maxLevel) continue;
     const segs = Math.max(3, Math.round(b.segments * o.segScale));
     // topCut: stammen slutar under toppen (granens tofs tar över där)
-    const nodes = b.level === 0 && o.topCut ? b.nodes.filter((n, i) => i < 2 || n.p[1] <= o.topCut * o.height) : b.nodes;
+    let nodes = b.level === 0 && o.topCut ? b.nodes.filter((n, i) => i < 2 || n.p[1] <= o.topCut * o.height) : b.nodes;
+    // sinkDepth: stammen fortsätter rakt ner under marken, så att en sluttning aldrig visar ett avhugget
+    // snitt. Bara geometri: skelettets noder (och grenarnas fästpunkter) ändras inte.
+    if (b.level === 0 && o.sinkDepth > 0) {
+      const n0 = nodes[0];
+      nodes = [{ p: sub(n0.p, [0, o.sinkDepth, 0]), r: n0.r }, { p: sub(n0.p, [0, o.sinkDepth * 0.5, 0]), r: n0.r }, ...nodes];
+    }
     const base = g.positions.length / 3;
     // Parallellförflyttade ramar längs grenen (ingen vridning mellan ringarna)
     let d0 = norm(sub(nodes[1].p, nodes[0].p));
@@ -65,14 +71,14 @@ export function barkMesh(sk, o) {
         }
         // Stammens fot: utsvängning och rotknölar
         if (b.level === 0 && o.flare) {
-          const h = nodes[i].p[1] / (o.height * (o.flareHeight ?? 0.06));
+          const h = Math.max(0, nodes[i].p[1]) / (o.height * (o.flareHeight ?? 0.06)); // under marken: full rotbredd
           if (h < 1) rad *= 1 + o.flare * (1 - h) ** 2 * (1 + (o.roots ? (o.rootAmp ?? 0.6) * Math.max(0, Math.cos(o.roots * a)) ** 2 : 0));
         }
         g.positions.push(...add(nodes[i].p, mul(dir, rad)));
         g.normals.push(...dir);
         g.uvs.push((s / segs) * uRep, vAcc / o.barkRepeat);
         // Mörkare nedtill och mot fästen (enkel AO), ljusare upptill
-        const ao = b.level === 0 ? 0.62 + 0.38 * Math.min(1, nodes[i].p[1] / (o.height * 0.35)) : 0.78 + 0.22 * t;
+        const ao = b.level === 0 ? 0.62 + 0.38 * Math.min(1, Math.max(0, nodes[i].p[1]) / (o.height * 0.35)) : 0.78 + 0.22 * t;
         g.colors.push(ao, ao, ao);
         g.wind.push(b.level === 0 ? (nodes[i].p[1] / o.height) ** 2 * 0.15 : Math.min(1, 0.25 * b.level + 0.4 * t));
       }

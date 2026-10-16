@@ -42,7 +42,7 @@ function rockField(size, o, rr) {
   }));
   const k = size * 0.18;
   const smin = (a, b) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
-  const cut = -size * 0.12; // stenen går lite ner i marken
+  const cut = -size * 0.35; // stenen fortsätter en bra bit ner, så att den inte avslöjar sin botten i en sluttning
   const f = (p) => {
     let d = Infinity;
     for (const b of blobs) {
@@ -169,7 +169,8 @@ function mushroomLods() {
       const gillP = [[rs * 1.1, sp.shape === 'funnel' ? hc * 0.05 : hc * 0.12], [rc * 0.98, 0]];
       const gills = lathe(gillP, segs, 1, gillC);
       // Fot: avsmalnande, med svullen bas (porcini), lätt böjd
-      const stemP = Array.from({ length: 6 }, (_, i) => { const t = i / 5; return [rs * (1 + (sp.bulb - 1) * (1 - t) ** 2), -m.hs + m.hs * t]; });
+      // Foten börjar en bit under marken, så att svampen inte svävar i en sluttning
+      const stemP = Array.from({ length: 7 }, (_, i) => { const t = i / 6; return [rs * (1 + (sp.bulb - 1) * Math.min(1, (1 - t) * 1.2) ** 2), -m.hs - 0.04 + (m.hs + 0.04) * t]; });
       const stem = lathe(stemP, Math.max(5, segs - 4), 1, stemC);
       const [tx, ty, tz] = m.tilt;
       const rot = (p) => { // rotera runt y, luta runt x och z
@@ -195,7 +196,7 @@ function stumpLods() {
   const sk = { branches: [{ level: 0, nodes, segments: 16, phase: r() * 6.28 }] };
   const lods = [1, 0.7, 0.5].map((segScale) => {
     const g = barkMesh(sk, { maxLevel: 0, segScale, barkRepeat: 0.6, flare: sp.flare, roots: sp.roots, rootAmp: sp.rootAmp, flareHeight: 0.45,
-      height: H, lobes: sp.lobes, lobeAmp: sp.lobeAmp, twist: 0.4, bulge: 0.03, flatTop: true });
+      height: H, lobes: sp.lobes, lobeAmp: sp.lobeAmp, twist: 0.4, bulge: 0.03, flatTop: true, sinkDepth: 0.35 });
     const parts = { bark: { ...g, cap: undefined }, cap: g.cap };
     return parts;
   });
@@ -226,10 +227,10 @@ function leafpileLods() {
     union: 0.15, cell: 0.09, cards: sp.cards, cardSize: 0.2, stickOut: 0.15, normalBlend: 0.85, undersideWeight: 0.6, lump: 0.08, coverR: 0.9,
     seed, height: H,
   });
-  // Ställ högen på marken
-  let minY = Infinity;
-  for (const lod of crown.lods) for (const g of [lod, lod.volume]) for (let i = 1; i < g.positions.length; i += 3) minY = Math.min(minY, g.positions[i]);
+  // Ställ högen på marken, varje LOD för sig (större kort i lägre LOD når längre ner)
   return crown.lods.map((lod) => {
+    let minY = Infinity;
+    for (const g of [lod, lod.volume]) for (let i = 1; i < g.positions.length; i += 3) minY = Math.min(minY, g.positions[i]);
     for (const g of [lod, lod.volume]) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] -= minY + H * 0.08;
     return { leaves: lod, mass: lod.volume };
   });
@@ -365,7 +366,8 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, await new NodeIO().writeBinary(doc));
 const partsLod0 = Object.entries(lods[0]).filter(([, g]) => g?.indices?.length).map(([p]) => p);
 // Kontroller: något genererades, och propen vilar i marken (lätt nedsänkt, inte svävande)
-const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -0.6 };
+// Vilar på marken: något når ner till marken (och går gärna ner under den), men den svävar inte
+const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -2.5 };
 checks.wind_torn = WIND_TORN;
 checks.ok = partsLod0.length > 0 && checks.resting_on_ground && WIND_TORN === 0;
 console.log(JSON.stringify({ glb: out, preset, kind: sp.kind, tris_lod: tris, checks }));
