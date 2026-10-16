@@ -289,6 +289,19 @@ function orient(g) {
   }
 }
 
+
+// Vindkontinuitet: hörn i samma punkt måste ha samma vindvikt, annars slits geometrin isär i vinden
+function windTorn(g) {
+  const seen = new Map(); let torn = 0;
+  for (let i = 0; i < g.positions.length / 3; i++) {
+    const key = `${Math.round(g.positions[i * 3] * 1e4)},${Math.round(g.positions[i * 3 + 1] * 1e4)},${Math.round(g.positions[i * 3 + 2] * 1e4)}`;
+    const w = g.wind[i] ?? 0;
+    if (seen.has(key)) { if (Math.abs(seen.get(key) - w) > 1e-4) torn++; } else seen.set(key, w);
+  }
+  return torn;
+}
+let WIND_TORN = 0;
+
 // ---------- GLB ----------
 const build = { rock: rockLods, mushroom: mushroomLods, stump: stumpLods, leafpile: leafpileLods, creeper: creeperLods }[sp.kind];
 const lods = build();
@@ -328,6 +341,7 @@ lods.forEach((parts, i) => {
   for (const [part, g] of Object.entries(parts)) {
     if (!g || !g.indices?.length) continue;
     orient(g);
+    if (i === 0) WIND_TORN += windTorn(g);
     const nV = g.positions.length / 3;
     const fill = (k, n, v) => { if ((g[k]?.length ?? 0) < nV * n) g[k] = Array.from({ length: nV * n }, (_, j) => (g[k]?.[j] ?? v)); };
     fill('colors', 3, 1); fill('wind', 1, 0); fill('uvs', 2, 0);
@@ -352,5 +366,6 @@ fs.writeFileSync(out, await new NodeIO().writeBinary(doc));
 const partsLod0 = Object.entries(lods[0]).filter(([, g]) => g?.indices?.length).map(([p]) => p);
 // Kontroller: något genererades, och propen vilar i marken (lätt nedsänkt, inte svävande)
 const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -0.6 };
-checks.ok = partsLod0.length > 0 && checks.resting_on_ground;
+checks.wind_torn = WIND_TORN;
+checks.ok = partsLod0.length > 0 && checks.resting_on_ground && WIND_TORN === 0;
 console.log(JSON.stringify({ glb: out, preset, kind: sp.kind, tris_lod: tris, checks }));

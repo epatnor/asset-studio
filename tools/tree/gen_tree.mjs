@@ -155,7 +155,21 @@ const massMat = !fronds && (leafMass
   : doc.createMaterial('LeafMass').setRoughnessFactor(0.9).setMetallicFactor(0));
 if (tint && massMat) massMat.setBaseColorFactor([...tint, 1]);
 
+
+// Vindkontinuitet: hörn i samma punkt måste ha samma vindvikt, annars slits geometrin isär i vinden
+function windTorn(g) {
+  const seen = new Map(); let torn = 0;
+  for (let i = 0; i < g.positions.length / 3; i++) {
+    const key = `${Math.round(g.positions[i * 3] * 1e4)},${Math.round(g.positions[i * 3 + 1] * 1e4)},${Math.round(g.positions[i * 3 + 2] * 1e4)}`;
+    const w = g.wind[i] ?? 0;
+    if (seen.has(key)) { if (Math.abs(seen.get(key) - w) > 1e-4) torn++; } else seen.set(key, w);
+  }
+  return torn;
+}
+let WIND_TORN = 0;
+
 function mesh(name, g, mat, extra = {}) {
+  if (/LOD0/.test(name)) WIND_TORN += windTorn(g);
   const prim = doc.createPrimitive()
     .setAttribute('POSITION', acc('VEC3', Float32Array.from(g.positions)))
     .setAttribute('NORMAL', acc('VEC3', Float32Array.from(g.normals)))
@@ -194,6 +208,8 @@ foliage.lods.forEach((lod, i) => {
   alphaTris.push((fronds && !recipe.frondTexture) || sp.foliage.type === 'leafdome' ? 0 : lod.indices.length / 3); // det som kostar overdraw
 });
 doc.createScene(name).addChild(root);
+checks.wind_torn = WIND_TORN;
+checks.ok = checks.ok && WIND_TORN === 0;
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, await new NodeIO().writeBinary(doc));
 

@@ -44,7 +44,9 @@ export function pushLeaf(g, base, axis, side, len, width, fold, shape, col, id, 
       for (const v of [p, q, t]) {
         g.positions.push(...v.p); g.normals.push(...n);
         g.uvs.push(...v.uv); g.colors.push(...(flip ? col.map((x) => x * 0.7) : col));
-        g.wind.push(0.2 + 0.8 * u); g.cluster.push(id);
+        // Vindvikt från hörnets egen position längs bladet (uv.y = 1 − u), INTE från triangelradens
+        // mitt: hörn som delar position måste röra sig lika, annars slits bladet isär i vinden
+        g.wind.push(0.2 + 0.8 * (1 - v.uv[1])); g.cluster.push(id);
       }
       g.indices.push(start, start + 1, start + 2);
     }
