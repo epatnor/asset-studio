@@ -1,17 +1,63 @@
 {
   "_doc": "Ytor för make_surface.py: sömlösa, stiliserade marktexturer. prompt beskriver bara materialet; husets stil och instruktioner för platt, sömlös vy läggs till automatiskt. normal = styrka på normalkartan (0 = ingen).",
-  "planks":     { "prompt": "weathered wooden floor planks running vertically, warm brown wood with soft grain, a few knots, slightly darker gaps between boards", "normal": 1.2 },
-  "dirt":       { "prompt": "bare forest ground soil, warm brown earth with a few tiny pebbles and soft darker patches", "normal": 0.8 },
-  "grass":      { "prompt": "short lush lawn grass seen from above, soft clumps of fresh green blades with lighter yellow-green tips", "normal": 0.6 },
-  "meadow":     { "prompt": "wild meadow ground seen from above, mixed green grass with scattered tiny yellow and white flowers and clover", "normal": 0.6 },
-  "path":       { "prompt": "trodden forest footpath of packed light brown earth with small embedded pebbles and a few dry leaves", "normal": 0.8 },
-  "road":       { "prompt": "old cobblestone road of rounded light grey stones tightly packed, soft warm dust between the stones", "normal": 1.4 },
-  "cliff":      { "prompt": "stylized cliff rock face with large flat planes and soft fractures, light grey stone with cool blue-grey shadows", "normal": 1.6 },
-  "stone":      { "prompt": "large smooth rounded grey flagstones and rock surface with soft cracks, light grey with subtle warm tint", "normal": 1.2 },
-  "gravel":     { "prompt": "loose gravel of small rounded grey and beige pebbles seen from above", "normal": 1.2 },
-  "riverbed":   { "prompt": "shallow riverbed of smooth rounded pebbles in soft blue-grey, beige and brown, wet sheen", "normal": 1.2 },
-  "mud":        { "prompt": "soft wet dark brown mud with gentle ripples and a few puddle highlights", "normal": 0.9 },
-  "sand":       { "prompt": "fine warm beach sand with gentle wind ripples and a few tiny shell fragments", "normal": 0.7 },
-  "forestfloor":{ "prompt": "forest floor seen from above, mix of moss, pine needles, small twigs and fallen leaves on dark earth", "normal": 0.8 },
-  "snow":       { "prompt": "fresh soft snow surface with gentle drifts and faint blue shadows", "normal": 0.5 }
+  "planks": {
+    "prompt": "weathered wooden floor planks running vertically, warm brown wood with soft grain, a few knots, slightly darker gaps between boards",
+    "normal": 1.2
+  },
+  "dirt": {
+    "prompt": "bare forest ground soil, warm brown earth with a few tiny pebbles and soft darker patches",
+    "normal": 0.8
+  },
+  "grass": {
+    "prompt": "short lush lawn grass seen from above, soft clumps of fresh green blades with lighter yellow-green tips",
+    "normal": 0.6
+  },
+  "meadow": {
+    "prompt": "wild meadow ground seen from above, mixed green grass with scattered tiny yellow and white flowers and clover",
+    "normal": 0.6
+  },
+  "path": {
+    "prompt": "trodden forest footpath of packed light brown earth with small embedded pebbles and a few dry leaves",
+    "normal": 0.8
+  },
+  "road": {
+    "prompt": "old cobblestone road of rounded light grey stones tightly packed, soft warm dust between the stones",
+    "normal": 1.4
+  },
+  "cliff": {
+    "prompt": "stylized cliff rock face with large flat planes and soft fractures, light grey stone with cool blue-grey shadows",
+    "normal": 1.6
+  },
+  "stone": {
+    "prompt": "large smooth rounded grey flagstones and rock surface with soft cracks, light grey with subtle warm tint",
+    "normal": 1.2
+  },
+  "gravel": {
+    "prompt": "loose gravel of small rounded grey and beige pebbles seen from above",
+    "normal": 1.2
+  },
+  "riverbed": {
+    "prompt": "shallow riverbed of smooth rounded pebbles in soft blue-grey, beige and brown, wet sheen",
+    "normal": 1.2
+  },
+  "mud": {
+    "prompt": "soft wet dark brown mud with gentle ripples and a few puddle highlights",
+    "normal": 0.9
+  },
+  "sand": {
+    "prompt": "fine warm beach sand with gentle wind ripples and a few tiny shell fragments",
+    "normal": 0.7
+  },
+  "forestfloor": {
+    "prompt": "forest floor seen from above, mix of moss, pine needles, small twigs and fallen leaves on dark earth",
+    "normal": 0.8
+  },
+  "snow": {
+    "prompt": "fresh soft snow surface with gentle drifts and faint blue shadows",
+    "normal": 0.5
+  },
+  "pondbed": {
+    "prompt": "murky pond bottom seen from above, fine dark gravel and silt with a few sunken brown leaves, small twigs and tiny green algae patches",
+    "normal": 1.0
+  }
 }
