@@ -134,12 +134,35 @@ for (const g of Object.values(groups)) for (const it of g) {
 
 const placedTrees = [], occupied = [];
 const free = (x, z, r) => occupied.every((o) => (o.x - x) ** 2 + (o.z - z) ** 2 > (o.r + r) ** 2);
+// Platta modeller utan stam (krypväxter, lövhögar, låga buskar) följer marken: varje vertex flyttas
+// vertikalt lika mycket som marken skiljer sig från höjden vid modellens fot. Stammar står kvar lodrätt.
+const _v = new THREE.Vector3(), _inv = new THREE.Matrix4();
+function drape(obj) {
+  obj.updateMatrixWorld(true);
+  const base = obj.position.y;
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry = o.geometry.clone();
+    const pos = o.geometry.attributes.position;
+    _inv.copy(o.matrixWorld).invert();
+    for (let i = 0; i < pos.count; i++) {
+      _v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      _v.y += heightAt(_v.x, _v.z) - base;
+      _v.applyMatrix4(_inv);
+      pos.setXYZ(i, _v.x, _v.y, _v.z);
+    }
+    pos.needsUpdate = true;
+    o.geometry.computeBoundingSphere();
+    o.geometry.computeBoundingBox();
+  });
+}
 function place(m, x, z, { scale = 1, sign = true } = {}) {
   const obj = m.root.clone();
   obj.position.set(x, heightAt(x, z), z);
   obj.rotation.y = rnd() * Math.PI * 2;
   obj.scale.setScalar(scale);
   scene.add(obj);
+  if (!m.hasTrunk && m.size.y < 0.6 * Math.max(m.size.x, m.size.z)) drape(obj);
   const footprint = Math.max(m.size.x, m.size.z) * 0.5 * scale;
   occupied.push({ x, z, r: footprint * (m.hasTrunk ? 0.55 : 0.8) });
   W.colliders.push({ x, z, r: m.hasTrunk ? THREE.MathUtils.clamp(m.size.y * 0.035, 0.25, 0.7) * scale : footprint * 0.8 });
