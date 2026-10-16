@@ -70,7 +70,8 @@ export function createGrassField(W, opts) {
     ...sharedUniforms(W, textures), uTipA: { value: tips[0] }, uTipB: { value: tips[1] }, uFade: { value: new THREE.Vector2(...fade) },
     uGroundMix: { value: 0.3 }, uBright: { value: 0.9 }, uHeight: { value: 1 }, uDensity: { value: 0.8 },
   };
-  const mat = new THREE.MeshStandardMaterial({ roughness: 0.85, side: THREE.DoubleSide });
+  // Lambert räcker: normalerna pekar ändå rakt upp, och den är mycket billigare per pixel än PBR-materialet
+  const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);
     sh.vertexShader = sh.vertexShader
@@ -153,18 +154,24 @@ export function createGrassField(W, opts) {
 }
 
 /**
- * Instansierade växter från en genererad modell (LOD-nivå `lod`): en InstancedMesh per del.
+ * Instansierade växter från en genererad modell: en InstancedMesh per del och LOD-nivå. Varje växt ritas
+ * med den nivå som passar avståndet till kameran (lodDist: gränser i meter för LOD0, LOD1 och LOD2;
+ * längre bort ritas den inte). Fördelningen räknas om när kameran har flyttat sig en bit.
  * places: [{ x, y, z, yaw, scale, splat }]. Delar vars material har extras.groundTint får rotens färg från marken.
  */
-export function instancePlants(W, root, places, { textures, lod = 0, castShadow = false } = {}) {
-  const { THREE, scene } = W;
+export function instancePlants(W, root, places, { textures, lodDist = [12, 28, 60], castShadow = false } = {}) {
+  const { THREE, scene, camera } = W;
   const uniforms = sharedUniforms(W, textures);
   const meshes = [];
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  const mats = places.map((p) => { q.setFromAxisAngle(up, p.yaw); return m4.compose(new THREE.Vector3(p.x, p.y, p.z), q, new THREE.Vector3(p.scale, p.scale, p.scale)).clone(); });
+  const byLod = [[], [], []];
   root.traverse((o) => {
-    if (!o.isMesh || !o.name.endsWith(`_LOD${lod}`)) return;
+    const lm = o.isMesh && o.name.match(/_LOD(\d)$/);
+    if (!lm) return;
+    const lod = Number(lm[1]);
     const geo = o.geometry.clone();
-    geo.setAttribute('iSplat', new THREE.InstancedBufferAttribute(new Float32Array(places.flatMap((p) => p.splat)), 4));
+    geo.setAttribute('iSplat', new THREE.InstancedBufferAttribute(new Float32Array(places.length * 4), 4));
     const mat = o.material.clone();
     const tint = !!o.material.userData.groundTint;
     mat.onBeforeCompile = (sh) => {
@@ -197,15 +204,32 @@ export function instancePlants(W, root, places, { textures, lod = 0, castShadow 
     };
     mat.customProgramCacheKey = () => `tinkertown-plant-${tint}`; // samma källkod, olika varianter
     const im = new THREE.InstancedMesh(geo, mat, places.length);
-    places.forEach((p, i) => {
-      q.setFromAxisAngle(up, p.yaw);
-      im.setMatrixAt(i, m4.compose(new THREE.Vector3(p.x, p.y, p.z), q, new THREE.Vector3(p.scale, p.scale, p.scale)));
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.computeBoundingSphere();
+    im.count = 0;
     im.castShadow = castShadow; im.receiveShadow = true;
     scene.add(im);
     meshes.push(im);
+    byLod[lod]?.push(im);
   });
+  // Fördela växterna på LOD-nivåerna efter avstånd
+  const last = new THREE.Vector3(Infinity, 0, 0);
+  function relod() {
+    if (camera.position.distanceTo(last) < 2) return;
+    last.copy(camera.position);
+    const counts = [0, 0, 0];
+    for (let i = 0; i < places.length; i++) {
+      const p = places[i], d = Math.hypot(p.x - camera.position.x, p.z - camera.position.z);
+      const lod = d < lodDist[0] ? 0 : d < lodDist[1] ? 1 : d < lodDist[2] ? 2 : -1;
+      if (lod < 0) continue;
+      const k = counts[lod]++;
+      for (const im of byLod[lod]) { im.setMatrixAt(k, mats[i]); im.geometry.attributes.iSplat.array.set(p.splat, k * 4); }
+    }
+    byLod.forEach((list, lod) => list.forEach((im) => {
+      im.count = counts[lod];
+      im.instanceMatrix.needsUpdate = true; im.geometry.attributes.iSplat.needsUpdate = true;
+      if (im.count) im.computeBoundingSphere();
+    }));
+  }
+  relod();
+  W.onFrame(relod);
   return meshes;
 }

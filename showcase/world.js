@@ -12,7 +12,8 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   renderer.toneMapping = THREE.AgXToneMapping; // stilguiden: AgX
   renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap; // mjuk nog med 2048-karta, och mycket billigare än PCFSoft
+  renderer.shadowMap.autoUpdate = false;        // skuggorna ritas om i takt, se animationsloopen
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -27,16 +28,31 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   scene.add(new THREE.HemisphereLight('#cfe6ff', '#5d7a3a', 1.1));
   const sun = new THREE.DirectionalLight('#ffe9c7', 3.2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.03;
   scene.add(sun, sun.target);
-  const setShadowArea = (center, radius) => {
-    sun.position.set(center.x + radius * 0.6, radius * 1.1, center.z + radius * 0.8);
+  // Solen står alltid i samma riktning; skuggområdet flyttas. I förstapersonsläget följer det spelaren
+  // (en mindre yta ger skarpare skuggor för samma kartstorlek), annars täcker det hela området.
+  const SUN_DIR = new THREE.Vector3(0.6, 1.1, 0.8);
+  let baseArea = null;
+  const placeShadow = (center, radius) => {
+    sun.position.copy(center).addScaledVector(SUN_DIR, radius);
     sun.target.position.copy(center);
     Object.assign(sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: radius * 4 });
     sun.shadow.camera.updateProjectionMatrix();
+    renderer.shadowMap.needsUpdate = true;
   };
+  const setShadowArea = (center, radius) => { baseArea = { center: center.clone(), radius }; placeShadow(center, radius); };
+  const FOLLOW_R = 32, followAt = new THREE.Vector3(Infinity, 0, 0);
+  function updateShadowArea() {
+    if (!fp.active) { if (baseArea && followAt.x !== Infinity) { placeShadow(baseArea.center, baseArea.radius); followAt.x = Infinity; } return; }
+    // Mitt i synfältet en bit framför spelaren, avrundat till hela kartpixlar så att skuggkanterna inte darrar
+    const texel = (FOLLOW_R * 2) / sun.shadow.mapSize.x, step = texel * 16;
+    const c = new THREE.Vector3(fp.pos.x - Math.sin(fp.yaw) * FOLLOW_R * 0.45, fp.pos.y, fp.pos.z - Math.cos(fp.yaw) * FOLLOW_R * 0.45);
+    c.set(Math.round(c.x / step) * step, Math.round(c.y / step) * step, Math.round(c.z / step) * step);
+    if (c.distanceTo(followAt) > 0) { followAt.copy(c); placeShadow(c, FOLLOW_R); }
+  }
 
   const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -170,11 +186,15 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   });
   const clock = new THREE.Clock();
   const frameHooks = [];
+  let frame = 0;
   const onFrame = (fn) => frameHooks.push(fn);
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
     wind.uTime.value = clock.elapsedTime;
     if (fp.active) updateFp(dt); else controls.update();
+    updateShadowArea();
+    // Skuggkartan ritas om var tredje bild (20 gånger/s räcker för träd som svajar), eller när området flyttats
+    if (++frame % 3 === 0) renderer.shadowMap.needsUpdate = true;
     for (const fn of frameHooks) fn(dt);
     renderer.render(scene, camera);
   });

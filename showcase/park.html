@@ -20,6 +20,7 @@
   .panel input[type=color] { width: 36px; height: 22px; border: 0; padding: 0; background: none; }
   .panel a { color: #2f6b2a; }
   #status { font-size: 12px; opacity: 0.7; }
+  #perf { font: 12px ui-monospace, monospace; opacity: 0.75; margin-top: 4px; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -49,6 +50,7 @@
     <label><span>Byarnas fart</span><input id="gGustSpeed" type="range" min="0" max="4" step="0.05" value="1.6"></label>
   </details>
   <div id="status">Laddar…</div>
+  <div id="perf"></div>
 </div>
 <script type="module">
 import { createWorld } from './world.js';
@@ -233,6 +235,23 @@ function splatAt(x, z, p = 1 - smooth(1.0, 2.0, pathDist(x, z))) {
 for (let i = 0; i < N; i++) splat.set(splatAt(P.getX(i), P.getZ(i), pathW[i]), i * 4);
 geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
 
+const randomPoint = () => { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * (SIZE / 2 - 10); return [Math.cos(a) * d, Math.sin(a) * d]; };
+const flowers = ['daisy', 'poppy', 'buttercup', 'tulip', 'cornflower', 'lavender', 'lupine'];
+// Blomsterdrivor: stora, avlånga fält där en art dominerar, täta i mitten och splittrade mot kanten
+// (brus bryter upp formen), med lite inblandning av en andra art. Däremellan enstaka blommor.
+const drifts = [];
+for (let tries = 0; tries < 6000 && drifts.length < 12; tries++) {
+  const [x, z] = randomPoint(), s = splatAt(x, z);
+  if (s[1] + s[0] * 0.4 < 0.45 || pathDist(x, z) < 4 || nearTree(x, z) < 3) continue;
+  if (drifts.some((d) => Math.hypot(d.x - x, d.z - z) < d.r + 8)) continue;
+  drifts.push({ x, z, r: 4 + rnd() * 6, stretch: 1.4 + rnd() * 1.2, angle: rnd() * Math.PI,
+    main: flowers[Math.floor(rnd() * flowers.length)], mix: flowers[Math.floor(rnd() * flowers.length)] });
+}
+// Hur mycket av en drivas inre en punkt ligger i (0 utanför, 1 i mitten); gräset blir kortare och glesare där
+const driftAt = (x, z) => { let m = 0; for (const d of drifts) {
+  const dx = x - d.x, dz = z - d.z, u = dx * Math.cos(d.angle) + dz * Math.sin(d.angle), v = -dx * Math.sin(d.angle) + dz * Math.cos(d.angle);
+  m = Math.max(m, 1 - smooth(0.3, 1.0, Math.hypot(u / d.stretch, v) / d.r)); } return m; };
+
 // --- Gräsfält: tuvor av strån som tar rotfärgen från marken, glesare i skugga under kronorna ---
 const groundTex = [tGrass, tMeadow, tForest, tPath];
 const shadeAt = (x, z) => { let m = 0; for (const t of placedTrees) m = Math.max(m, 1 - smooth(t.r * 0.35, t.r * 1.05, Math.hypot(t.x - x, t.z - z))); return m; };
@@ -242,11 +261,11 @@ const field = createGrassField(W, {
   size: SIZE - 10, heightAt, splatAt, textures: groundTex,
   densityAt: (x, z, s) => {
     if (Math.hypot(x, z) > SIZE / 2 - 6 || blocked(x, z)) return 0;
-    return (s[0] + s[1] * 0.95 + s[2] * 0.3) * (0.35 + 0.65 * bald(x, z)) * (1 - 0.8 * shadeAt(x, z));
+    return (s[0] + s[1] * 0.95 + s[2] * 0.3) * (0.35 + 0.65 * bald(x, z)) * (1 - 0.8 * shadeAt(x, z)) * (1 - 0.35 * driftAt(x, z));
   },
   heightScaleAt: (x, z, s) => {
     const d = pathDist(x, z), edge = smooth(1.4, 2.2, d) * (1 - smooth(2.6, 4.5, d)); // högre gräs längs stigkanten
-    return (0.24 + s[1] * 0.22) * (0.85 + 0.3 * noise2(x * 2.3, z * 2.3)) * (1 + 0.6 * edge) * (1 - 0.45 * shadeAt(x, z));
+    return (0.24 + s[1] * 0.22) * (0.85 + 0.3 * noise2(x * 2.3, z * 2.3)) * (1 + 0.6 * edge) * (1 - 0.45 * shadeAt(x, z)) * (1 - 0.5 * driftAt(x, z));
   },
 });
 
@@ -260,14 +279,22 @@ const addPlant = (species, x, z, scale = 1) => {
   if (!plantPlaces.has(species)) plantPlaces.set(species, []);
   plantPlaces.get(species).push({ x, y: heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z) });
 };
-const randomPoint = () => { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * (SIZE / 2 - 10); return [Math.cos(a) * d, Math.sin(a) * d]; };
-const flowers = ['daisy', 'poppy', 'buttercup', 'tulip', 'cornflower', 'lavender', 'lupine'];
-for (let c = 0, tries = 0; c < 70 && tries < 5000; tries++) { // blomsterfläckar: en art per fläck
+for (const d of drifts) {
+  const ca = Math.cos(d.angle), sa = Math.sin(d.angle), cell = 0.55;
+  for (let u = -d.r * d.stretch; u <= d.r * d.stretch; u += cell) for (let v = -d.r; v <= d.r; v += cell) {
+    const x = d.x + (u + (rnd() - 0.5) * cell) * ca - (v + (rnd() - 0.5) * cell) * sa;
+    const z = d.z + (u + (rnd() - 0.5) * cell) * sa + (v + (rnd() - 0.5) * cell) * ca;
+    const e = Math.hypot(u / d.stretch, v) / d.r;                   // 0 i mitten, 1 vid kanten
+    const n = 0.5 + 0.35 * Math.sin(x * 0.9 + Math.sin(z * 0.7) * 2) + 0.25 * Math.sin(z * 1.3 - x * 0.4);
+    const dens = (1 - smooth(0.25, 1.05, e + (n - 0.5) * 0.5)) * 0.95;
+    if (rnd() > dens || pathDist(x, z) < 1.6) continue;
+    addPlant(rnd() < 0.85 ? d.main : d.mix, x, z, 1.15 + (1 - e) * 0.3);
+  }
+}
+for (let c = 0, tries = 0; c < 120 && tries < 8000; tries++) { // enstaka blommor i ängen
   const [x, z] = randomPoint(), s = splatAt(x, z);
   if (s[1] < 0.35 || pathDist(x, z) < 2) continue;
-  const sp = flowers[Math.floor(rnd() * flowers.length)], n = 4 + Math.floor(rnd() * 9);
-  for (let i = 0; i < n; i++) { const a = rnd() * 6.28, d = Math.sqrt(rnd()) * 1.6; addPlant(sp, x + Math.cos(a) * d, z + Math.sin(a) * d); }
-  c++;
+  addPlant(flowers[Math.floor(rnd() * flowers.length)], x, z); c++;
 }
 const tall = ['grass_tall', 'grass_seeded', 'feather_grass', 'grass_tuft'];
 for (let i = 0, tries = 0; i < 260 && tries < 20000; tries++) { // högt gräs längs stigkanter och skogsbryn
@@ -295,7 +322,7 @@ if (fieldAt) for (let gx = -6; gx <= 6; gx += 0.45) for (let gz = -3.5; gz <= 3.
 }
 let plantCount = 0;
 for (const [sp, places] of plantPlaces) {
-  instancePlants(W, plantModels.get(sp), places, { textures: groundTex, lod: sp === 'wheat' || sp === 'barley' ? 1 : 0 });
+  instancePlants(W, plantModels.get(sp), places, { textures: groundTex, lodDist: sp === 'wheat' || sp === 'barley' ? [6, 22, 70] : [12, 28, 60] });
   plantCount += places.length;
 }
 
@@ -310,6 +337,19 @@ status.textContent = `${W.signs.length} växter och props, ${plantCount} instans
 document.getElementById('lod').onchange = (e) => W.setLod(Number(e.target.value));
 document.getElementById('wind').oninput = (e) => (W.wind.uWind.value = Number(e.target.value));
 document.getElementById('labels').onchange = (e) => W.signs.forEach((s) => (s.visible = e.target.checked));
+// Prestandamätare: bilder per sekund, tid per bild, ritanrop och trianglar (skuggpasset inräknat)
+{
+  let frames = 0, t0 = performance.now();
+  const el = document.getElementById('perf'), info = W.renderer.info.render;
+  W.onFrame(() => {
+    frames++;
+    const now = performance.now();
+    if (now - t0 < 500) return;
+    const fps = (frames * 1000) / (now - t0);
+    el.textContent = `${fps.toFixed(0)} fps · ${(1000 / fps).toFixed(1)} ms · ${info.calls} anrop · ${(info.triangles / 1e6).toFixed(2)} M tri`;
+    frames = 0; t0 = now;
+  });
+}
 // Gräsreglagen ändrar shaderns uniforms direkt
 const U = field.uniforms, $ = (id) => document.getElementById(id), num = (id) => Number($(id).value);
 const bind = (id, fn) => { $(id).oninput = fn; fn(); };
