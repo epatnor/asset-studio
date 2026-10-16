@@ -13,7 +13,7 @@ const PROFILES = {
   serrated: (u) => Math.sin(Math.PI * u ** 0.7) * (1 - u) ** 0.25 * (1 - 0.28 * Math.abs(Math.sin(u * Math.PI * 5)) * clamp01((u - 0.15) / 0.2)),
 };
 
-function pushLeaf(g, base, axis, side, len, width, fold, shape, col, id, faceBlend, domeN) {
+export function pushLeaf(g, base, axis, side, len, width, fold, shape, col, id, faceBlend, domeN) {
   const prof = PROFILES[shape] ?? PROFILES.pointed;
   const up = norm(cross(side, axis)); // bladets ovansida
   const rows = 5;

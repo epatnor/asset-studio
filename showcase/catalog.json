@@ -296,6 +296,120 @@
           "glb": "../assets/trees/serratebush_v2/serratebush_v2.glb"
         }
       ]
+    },
+    {
+      "title": "Stenar och mossa",
+      "items": [
+        {
+          "name": "stone1",
+          "species": "stone",
+          "label": "stone1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/stone1/stone1.glb"
+        },
+        {
+          "name": "stones1",
+          "species": "stones",
+          "label": "stones1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/stones1/stones1.glb"
+        },
+        {
+          "name": "mossy_stone1",
+          "species": "mossy_stone",
+          "label": "mossy_stone1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/mossy_stone1/mossy_stone1.glb"
+        },
+        {
+          "name": "boulder1",
+          "species": "boulder",
+          "label": "boulder1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/boulder1/boulder1.glb"
+        },
+        {
+          "name": "mossy_boulder1",
+          "species": "mossy_boulder",
+          "label": "mossy_boulder1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/mossy_boulder1/mossy_boulder1.glb"
+        }
+      ]
+    },
+    {
+      "title": "Svampar, stubbar och marktäcke",
+      "items": [
+        {
+          "name": "fly_agaric1",
+          "species": "fly_agaric",
+          "label": "fly_agaric1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/fly_agaric1/fly_agaric1.glb"
+        },
+        {
+          "name": "porcini1",
+          "species": "porcini",
+          "label": "porcini1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/porcini1/porcini1.glb"
+        },
+        {
+          "name": "chanterelle1",
+          "species": "chanterelle",
+          "label": "chanterelle1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/chanterelle1/chanterelle1.glb"
+        },
+        {
+          "name": "stump1",
+          "species": "stump",
+          "label": "stump1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/stump1/stump1.glb"
+        },
+        {
+          "name": "mossy_stump1",
+          "species": "mossy_stump",
+          "label": "mossy_stump1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/mossy_stump1/mossy_stump1.glb"
+        },
+        {
+          "name": "leafpile1",
+          "species": "leafpile",
+          "label": "leafpile1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/leafpile1/leafpile1.glb"
+        },
+        {
+          "name": "creeper1",
+          "species": "creeper",
+          "label": "creeper1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/creeper1/creeper1.glb"
+        },
+        {
+          "name": "ivy1",
+          "species": "ivy",
+          "label": "ivy1",
+          "tint": null,
+          "height": null,
+          "glb": "../assets/props/ivy1/ivy1.glb"
+        }
+      ]
     }
   ]
 }

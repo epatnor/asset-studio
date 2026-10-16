@@ -29,14 +29,14 @@ function crownField(clumps, k) {
   };
 }
 
-const gradient = (f, p, e) => norm([
+export const gradient = (f, p, e) => norm([
   f([p[0] + e, p[1], p[2]]) - f([p[0] - e, p[1], p[2]]),
   f([p[0], p[1] + e, p[2]]) - f([p[0], p[1] - e, p[2]]),
   f([p[0], p[1], p[2] + e]) - f([p[0], p[1], p[2] - e]),
 ]);
 
 // Surface nets: en vertex per cell som korsar ytan (medel av kantkorsningarna), quads över korsade kanter
-function surfaceNets(f, lo, hi, cell) {
+export function surfaceNets(f, lo, hi, cell) {
   const n = [0, 1, 2].map((a) => Math.max(2, Math.ceil((hi[a] - lo[a]) / cell) + 1));
   const idx = (i, j, k) => i + n[0] * (j + n[1] * k);
   const vals = new Float32Array(n[0] * n[1] * n[2]);

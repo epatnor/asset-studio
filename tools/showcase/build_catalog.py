@@ -15,17 +15,21 @@ ROWS = [
     ("Barrträd", ["pine", "fir"]),
     ("Buskar", ["bush", "shrub", "ballbush", "moundbush"]),
     ("Bladkupoler", ["leafbush", "petalbush", "serratebush"]),
+    ("Stenar och mossa", ["stone", "stones", "mossy_stone", "boulder", "mossy_boulder"]),
+    ("Svampar, stubbar och marktäcke", ["fly_agaric", "porcini", "chanterelle", "stump", "mossy_stump", "leafpile", "creeper", "ivy"]),
 ]
 
 items = []
-for d in sorted((ROOT / "assets" / "trees").iterdir()):
+dirs = sorted((ROOT / "assets" / "trees").iterdir()) + sorted((ROOT / "assets" / "props").iterdir() if (ROOT / "assets" / "props").exists() else [])
+for d in dirs:
     rec, glb = d / "recipe.json", d / f"{d.name}.glb"
     if not (rec.exists() and glb.exists()):
         continue
     r = json.loads(rec.read_text())
-    species = r.get("preset", "").split("_")[0]
+    preset = r.get("preset", "")
+    species = preset if d.parent.name == "props" else preset.split("_")[0]
     items.append({"name": d.name, "species": species, "label": d.name, "tint": r.get("leaf_tint"), "height": r.get("height"),
-                  "glb": f"../assets/trees/{d.name}/{d.name}.glb"})
+                  "glb": f"../assets/{d.parent.name}/{d.name}/{d.name}.glb"})
 
 rows = []
 for title, species in ROWS:

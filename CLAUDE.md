@@ -40,10 +40,13 @@ Använd i första hand MCP-servern `tinkertown` (`create_tree`, `generate_textur
 
 Trädgeneratorn är till för alla större växter (träd och buskar; gräs och blommor är en egen generator). **Skapa eller justera aldrig enskilda träd för hand**: förbättringar görs i generatorns kod eller som artdata i `species.json`, och varje träd är ett recept som körs genom generatorn. Allt (bark, lövkluster, granens barr) byggs från samma skelett i `skeleton.mjs`. Lägg aldrig till lövverk eller grenar som inte utgår från skelettet; då försvinner garantin att delarna sitter ihop. Arter och stil-parametrar ändras i `species.json`, inte i koden. Kontrollera `checks.ok` i svaret i stället för att titta på bilder.
 
+Propsgeneratorn (`tools/props/`, MCP `create_prop`) gör naturprops för skog, stig och fält: stenar, bumlingar, mossa, svampar, stubbar, lövhögar och krypväxter. Samma regel som för träden: nya varianter görs som data i `props.json` eller i generatorns kod, aldrig för hand.
+
 Kommandoradsvarianter:
 
 | Kommando | Gör |
 |---|---|
 | `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.glb` |
+| `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.glb` |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

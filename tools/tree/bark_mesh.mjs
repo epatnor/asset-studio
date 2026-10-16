@@ -83,6 +83,30 @@ export function barkMesh(sk, o) {
       const a = base + i * row + s, c = a + row;
       g.indices.push(a, a + 1, c, a + 1, c + 1, c); // moturs sett utifrån (d × tangent pekar inåt)
     }
+    // flatTop (stubbar): platt snittyta som egen geometri (g.cap) med planar UV för årsringstextur
+    if (o.flatTop && b.level === 0) {
+      const last = base + (nodes.length - 1) * row;
+      const top = nodes[nodes.length - 1];
+      const cap = (g.cap ??= { positions: [], normals: [], uvs: [], colors: [], wind: [], indices: [] });
+      const cb = cap.positions.length / 3;
+      const R = Math.max(...Array.from({ length: segs + 1 }, (_, s) => Math.hypot(g.positions[(last + s) * 3] - top.p[0], g.positions[(last + s) * 3 + 2] - top.p[2])));
+      const pushV = (x, y, z) => {
+        cap.positions.push(x, y, z); cap.normals.push(0, 1, 0);
+        cap.uvs.push(0.5 + (x - top.p[0]) / (2 * R), 0.5 - (z - top.p[2]) / (2 * R));
+        cap.colors.push(1, 1, 1); cap.wind.push(0);
+      };
+      pushV(top.p[0], top.p[1], top.p[2]);
+      for (let s = 0; s <= segs; s++) pushV(g.positions[(last + s) * 3], top.p[1], g.positions[(last + s) * 3 + 2]);
+      for (let s = 0; s < segs; s++) cap.indices.push(cb, cb + 2 + s, cb + 1 + s);
+      // Snittytan ska vetta uppåt: kontrollera första triangeln och vänd allihop om den pekar nedåt
+      const P = (k) => [cap.positions[k * 3], cap.positions[k * 3 + 1], cap.positions[k * 3 + 2]];
+      const [i0, i1, i2] = cap.indices.slice(-segs * 3, -segs * 3 + 3);
+      if (cross(sub(P(i1), P(i0)), sub(P(i2), P(i0)))[1] < 0) {
+        for (let k = cap.indices.length - segs * 3; k < cap.indices.length; k += 3) [cap.indices[k + 1], cap.indices[k + 2]] = [cap.indices[k + 2], cap.indices[k + 1]];
+      }
+      if (o.lobes && b.level <= 1) recomputeNormals(g, base, triStart, row);
+      continue;
+    }
     // Stäng spetsen med en liten kon
     const tip = nodes[nodes.length - 1];
     const tipDir = norm(sub(tip.p, nodes[nodes.length - 2].p));

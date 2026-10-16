@@ -118,9 +118,17 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 
 ## Fas 2: Naturen
 
-### Naturliga objekt
-- [ ] Stenar och block: procedurell form (brus på deformerad kub eller sfär), bevel och weighted normals, mossa ovanpå.
-- [ ] Blommor och svamp.
+### Naturliga objekt (propsgeneratorn, `tools/props/`)
+- [x] Fristående propsgenerator med samma mönster som trädgeneratorn: recept in, GLB (3 LOD) ut till `assets/props/`, arter som data i `props.json`, MCP-verktyget `create_prop`.
+- [x] Stenar, stengrupper och bumlingar: mjuk union av ellipsoider med lågfrekvent brus, mjuka fasetter, platt botten nedsänkt i marken (`stone`, `stones`, `boulder`).
+- [x] Mossa på uppåtvända ytor som eget material (`mossy_stone`, `mossy_boulder`).
+- [x] Svampar i klungor: svarvade hattar, skivor och fötter (`fly_agaric`, `porcini`, `chanterelle`).
+- [x] Stubbar med rötter och årsringar på snittytan, även mossiga (`stump`, `mossy_stump`).
+- [x] Lövhögar av höstlöv (`leafpile`, `autumn_atlas`).
+- [x] Krypväxter: rankor längs marken med solida blad (`creeper`, `ivy`).
+- [ ] Stockar och nedfallna grenar, blommor och gräs (gräs är en egen generator), svampar på stubbar.
+- [ ] Mossan: mjukare övergång mot stenen (vertexfärgsblandning i kanten).
+- [ ] Biomer: regeluppsättningar som väljer vilka props som sprids var.
 
 ### Gräs
 Referens: "Stylized Grass Tutorial" (akbutea), med en Genshin Impact-liknande stil. Det mesta av looken sitter i shadern och i att gräset tar färg från marken.

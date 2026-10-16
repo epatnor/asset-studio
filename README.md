@@ -36,6 +36,7 @@ Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem o
 | Område | Verktyg | Status |
 |---|---|---|
 | Träd | Egen generator (`tools/tree/`): skelett, bark, lövverk | v3: allt växer ur ett skelett och kontrolleras (anslutna grenar, fäst lövverk). Arter som data i `species.json`; 3 LOD → GLB |
+| Naturprops | Egen generator (`tools/props/`) | Stenar, bumlingar, mossa, svampar, stubbar, lövhögar, krypväxter → GLB (`create_prop`) |
 | Texturer | Krea-2 Turbo via lokal ComfyUI | Fungerar: bark (sömlös), lövsprite (alfa) |
 | MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `generate_leaf_atlas`, `list_assets` |
 | Terräng, vatten, vegetation, props, karaktärer | – | Ej påbörjat |

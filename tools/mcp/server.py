@@ -141,12 +141,43 @@ def generate_leaf_atlas(name: str, prompt: str, seed: int = 1000) -> dict:
     return json.loads(_run([sys.executable, "-I", "tools/texture/make_atlas.py", name, prompt, str(seed)], 1800))
 
 
+def prop_presets() -> list[str]:
+    sp = json.loads((ROOT / "tools" / "props" / "props.json").read_text())
+    return [k for k in sp if not k.startswith("_")]
+
+
+@mcp.tool()
+def create_prop(name: str, preset: str = "stone", seed: int = 0, params: dict | None = None,
+                stone_tint: str | None = None, moss_tint: str | None = None) -> dict:
+    """Skapa en naturprop för skog, stig och fält som GLB (3 LOD) i assets/props/<name>/.
+
+    preset: stone, stones (grupp), boulder, mossy_stone, mossy_boulder, fly_agaric, porcini,
+      chanterelle, stump, mossy_stump, leafpile, creeper, ivy (se tools/props/props.json).
+    params: överstyr presetet, t.ex. {"size": 2.5, "moss": 0.7}, {"count": [6, 9]} eller {"tint": "#B5452A"}.
+    stone_tint/moss_tint: "#RRGGBB" färgar sten eller mossa.
+    Svaret har "checks" (delar genererade, vilar på marken).
+    """
+    _check_name(name)
+    if preset not in prop_presets():
+        raise ValueError(f"okänt preset, välj bland: {', '.join(prop_presets())}")
+    recipe = {"name": name, "preset": preset, "seed": seed}
+    if params:
+        recipe["params"] = params
+    for key, v in (("stone_tint", stone_tint), ("moss_tint", moss_tint)):
+        if v:
+            if not re.fullmatch(r"#[0-9A-Fa-f]{6}", v):
+                raise ValueError(f'{key} ska vara "#RRGGBB"')
+            recipe[key] = v
+    return json.loads(_run([sys.executable, "-I", "tools/props/make_prop.py", json.dumps(recipe)], 600))
+
+
 @mcp.tool()
 def list_assets() -> dict:
     """Lista genererade träd och texturer (bara namn)."""
     a = ROOT / "assets"
     return {
         "trees": sorted(p.name for p in (a / "trees").iterdir() if p.is_dir()) if (a / "trees").exists() else [],
+        "props": sorted(p.name for p in (a / "props").iterdir() if p.is_dir()) if (a / "props").exists() else [],
         "textures": sorted(p.stem for p in (a / "textures").glob("*.png")),
     }
 
