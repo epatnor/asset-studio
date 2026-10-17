@@ -44,6 +44,8 @@ Propsgeneratorn (`tools/props/`, MCP `create_prop`) gör naturprops för skog, s
 
 Växtgeneratorn (`tools/plants/`, MCP `create_plant`) gör gräsknippen, vass, säd och blommor som data i `plants.json`. Vanligt gräs i stora mängder är inte modeller utan klientens gräsfält i `showcase/grass.js` (instansierade strån som tar rotfärgen från marken).
 
+Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna.
+
 Kommandoradsvarianter:
 
 | Kommando | Gör |
@@ -51,5 +53,6 @@ Kommandoradsvarianter:
 | `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.gltf` (+ .bin) |
 | `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin) |
 | `python3 -I tools/plants/make_plant.py '<recept>'` | Växt → `assets/plants/<name>/<name>.gltf` (+ .bin) |
+| `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

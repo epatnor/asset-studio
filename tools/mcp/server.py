@@ -196,6 +196,27 @@ def create_plant(name: str, preset: str = "grass_tuft", seed: int = 0, params: d
 
 
 @mcp.tool()
+def import_model(name: str, source: str, height: float | None = None, scale: float | None = None,
+                 max_texture: int = 1024, category: str = "prop_medium") -> dict:
+    """Importera en färdig modell (GLB/glTF, eller FBX/OBJ/DAE/blend/STL/PLY via Blender) till assets/imported/<name>/.
+
+    Normaliseras till meter (cm och mm gissas, eller ange height i meter eller scale), centreras med pivot vid
+    marken, komprimeras (WebP-texturer upp till max_texture px, meshopt-geometri) och läggs i katalogen.
+    category: budgetkategori i style.json (prop_small, prop_medium, tree, bush, building_module, character).
+    Svaret har storlek, trianglar mot budget och "checks".
+    """
+    _check_name(name)
+    recipe = {"name": name, "source": source, "max_texture": max_texture, "category": category}
+    if height:
+        recipe["height"] = height
+    if scale:
+        recipe["scale"] = scale
+    result = json.loads(_run([sys.executable, "-I", "tools/import/make_import.py", json.dumps(recipe)], 600))
+    _run([sys.executable, "-I", "tools/showcase/build_catalog.py"], 60)
+    return result
+
+
+@mcp.tool()
 def generate_surface(name: str, preset: str | None = None, prompt: str | None = None, seed: int | None = None,
                      normal: float | None = None) -> dict:
     """Generera en SÖMLÖS, stiliserad yttextur (mark, gräs, sten, plankor ...) + normalkarta.
@@ -230,6 +251,7 @@ def list_assets() -> dict:
         "trees": sorted(p.name for p in (a / "trees").iterdir() if p.is_dir()) if (a / "trees").exists() else [],
         "props": sorted(p.name for p in (a / "props").iterdir() if p.is_dir()) if (a / "props").exists() else [],
         "plants": sorted(p.name for p in (a / "plants").iterdir() if p.is_dir()) if (a / "plants").exists() else [],
+        "imported": sorted(p.name for p in (a / "imported").iterdir() if p.is_dir()) if (a / "imported").exists() else [],
         "textures": sorted(p.stem for p in (a / "textures").glob("*.png")),
     }
 

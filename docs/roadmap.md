@@ -109,6 +109,16 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [ ] Dra och släpp från biblioteket ut i världen.
 - [ ] Knappen "Fler varianter" genererar nya seeds i bakgrunden.
 
+### Import av färdiga modeller (`tools/import/`, MCP `import_model`)
+Andras modeller (Sketchfab, Kenney, egna) ska fungera som våra egna. Idé från NoirStage ("import and normalize any 3D asset").
+- [x] Import av GLB/glTF, och FBX, OBJ, DAE och blend via Blender headless.
+- [x] Normalisering: meter (gissar centimeter och millimeter), valfri höjd, centrerad med pivot vid markkontakten, dubbletter sammanslagna, oanvänt bortrensat.
+- [x] Komprimering som våra egna: texturer till WebP med maxstorlek, geometri med meshopt. Kontroller och en rad i katalogen.
+- [ ] LOD-nivåer med förenkling (meshoptimizer simplify) för det som placeras i stort antal.
+- [ ] Stilanpassning: tona texturer och färger mot paletten i `style.json`, så att importerat inte sticker ut.
+- [ ] Kollisionsform och fotavtryck i metadata.
+- [ ] Miniatyrbild till biblioteket.
+
 ### Placering
 - [ ] Placera där spelaren tittar. Fäster mot terrängen, med valfri anpassning till markens normal.
 - [ ] Slumpvis rotation och skala inom intervall per objekttyp.
@@ -211,6 +221,7 @@ Klient (shader och placering):
 
 ### Karaktärer
 - [ ] Basmodell att utgå från (undersök MPFB/MakeHuman, och kontrollera licensen för användning i spel).
+- [ ] Automatisk rigg av importerade eller genererade humanoider (befintligt skelett), och fria animationer ovanpå (idé från NoirStage).
 - [ ] Stiliserade proportioner enligt stilguiden: större händer, huvud och fötter.
 - [ ] Kläder, hår och utrustning som lager.
 - [ ] Animationer: undersök fria källor. Mixamo är inte öppen källkod, så kontrollera villkoren.

@@ -3,7 +3,7 @@
 // Användning: node gen_tree.mjs '{"preset":"oak_medium","seed":42,"height":9,"out":"x.gltf","bark":"b.png","leaves":"atlas.png"}'
 import fs from 'node:fs';
 import path from 'node:path';
-import { Document, NodeIO } from '@gltf-transform/core';
+import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
 import { buildSkeleton, scaleSkeleton, validateSkeleton } from './skeleton.mjs';
 import { barkMesh } from './bark_mesh.mjs';
@@ -220,7 +220,7 @@ foliage.lods.forEach((lod, i) => {
 doc.createScene(name).addChild(root);
 checks.wind_torn = WIND_TORN;
 checks.ok = checks.ok && WIND_TORN === 0;
-await writeGltf(doc, out, NodeIO);
+await writeGltf(doc, out);
 
 // Kort svar, avsett för en AI-agent
 console.log(JSON.stringify({

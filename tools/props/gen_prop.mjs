@@ -4,7 +4,7 @@
 // Användning: node gen_prop.mjs '{"preset":"mossy_boulder","seed":3,"out":"x.gltf","textures":{...}}'
 import fs from 'node:fs';
 import path from 'node:path';
-import { Document, NodeIO } from '@gltf-transform/core';
+import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from '../tree/gltf_write.mjs';
 import { add, sub, mul, dot, cross, norm, lerp, clamp01, UP, rng, randomUnit } from '../tree/vec.mjs';
 import { surfaceNets, gradient, buildCrown } from '../tree/crown.mjs';
@@ -406,7 +406,7 @@ lods.forEach((parts, i) => {
 });
 doc.createScene(name).addChild(root);
 fs.mkdirSync(path.dirname(out), { recursive: true });
-await writeGltf(doc, out, NodeIO);
+await writeGltf(doc, out);
 const partsLod0 = Object.entries(lods[0]).filter(([, g]) => g?.indices?.length).map(([p]) => p);
 // Kontroller: något genererades, och propen vilar i marken (lätt nedsänkt, inte svävande)
 // Vilar på marken: något når ner till marken (och går gärna ner under den), men den svävar inte

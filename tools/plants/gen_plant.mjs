@@ -8,7 +8,7 @@
 // _GROUND är 1. _STEM: se ribbon(). COLOR_0 ger en mörkare bas för visare som inte har den shadern.
 import fs from 'node:fs';
 import path from 'node:path';
-import { Document, NodeIO } from '@gltf-transform/core';
+import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
 import { add, sub, mul, dot, cross, norm, lerp, len, rng, UP } from '../tree/vec.mjs';
 
@@ -364,7 +364,7 @@ lods.forEach(({ parts: ps }, i) => {
   tris.push(Math.round(t));
 });
 doc.createScene(name).addChild(root);
-await writeGltf(doc, out, NodeIO);
+await writeGltf(doc, out);
 
 const budget = STYLE.budgets_tris.ground_cover ?? [100, 4000];
 checks.resting_on_ground = minY < 0 && minY > -0.2;

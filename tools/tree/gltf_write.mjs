@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { NodeIO } from '@gltf-transform/core';
-import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
+import { ALL_EXTENSIONS, EXTMeshoptCompression } from '@gltf-transform/extensions';
 import { quantize, reorder } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
 
@@ -26,7 +26,7 @@ export function sharedTexture(doc, file, name, outPath) {
 
 export const io = async () => {
   await MeshoptEncoder.ready; await MeshoptDecoder.ready;
-  return new NodeIO().registerExtensions([EXTMeshoptCompression, KHRMeshQuantization])
+  return new NodeIO().registerExtensions(ALL_EXTENSIONS) // alla, så att importerade modeller kan läsas och skrivas
     .registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 };
 
@@ -44,7 +44,8 @@ export async function compress(doc, outPath) {
   doc.createExtension(EXTMeshoptCompression).setRequired(true).setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
 }
 
-export async function writeGltf(doc, outPath) {
+// images: skriv också bilderna (importerade modeller har egna texturer; generatorernas delas i assets/textures)
+export async function writeGltf(doc, outPath, { images = false } = {}) {
   await compress(doc, outPath);
   const base = path.basename(outPath, path.extname(outPath));
   for (const b of doc.getRoot().listBuffers()) b.setURI(`${base}.bin`);
@@ -53,7 +54,7 @@ export async function writeGltf(doc, outPath) {
   fs.writeFileSync(outPath, JSON.stringify(json));
   // Bara geometribufferten skrivs; bilderna finns redan som delade filer
   for (const [uri, data] of Object.entries(resources)) {
-    if (uri.endsWith('.bin')) fs.writeFileSync(path.join(path.dirname(outPath), uri), data);
+    if (images || uri.endsWith('.bin')) fs.writeFileSync(path.join(path.dirname(outPath), uri), data);
   }
   return outPath;
 }
