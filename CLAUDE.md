@@ -10,6 +10,16 @@ Three.js-klient (spel och editor) och en lokal Node-server (världsrecept, verkt
 
 Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stiliserad PBR (inte cel-shading), chunky former med bevel + weighted normals, låg-frekventa målade texturer, klumpiga trädkronor med canopy-normaler. Verktyg läser stilvärden ur `tools/style.json` i stället för att hårdkoda dem. Läs guiden innan ett nytt verktyg byggs; läs den inte vid varje vanligt verktygsanrop.
 
+## Referenser (Apparition)
+
+Referensbilder och underlag för Tinkertown och Aszhara Studio samlas på moodboarden Apparition (MCP `apparition`). Boarden är indelad i grupper så att man bara läser det uppgiften kräver:
+
+1. `get_board` först: där syns grupperna och vad var och en är till för.
+2. Sedan `list_items` eller `get_style` för **en** grupp. Det är text (palett, taggar, anteckningar) och räcker oftast.
+3. Titta bara på bilder via `contact_sheet` för gruppen, och bara när texten inte räcker. Läs aldrig hela boarden.
+
+Skriv tillbaka det du lär dig med `update_item` och `set_description`. Apparition är under utveckling och boarden kan tömmas, så den är ett komplement: stilguiden och `tools/style.json` gäller före boarden.
+
 ## Regler
 
 - Skapa aldrig geometri eller texturer "för hand" i tokens. Använd eller bygg ett verktyg.
