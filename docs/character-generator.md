@@ -8,9 +8,17 @@ Samma mönster som trädgeneratorn: ett skelett först, allt annat byggs från s
 
 Primitivkroppen (`body.mjs`) såg ut som lera: smooth-min av bollar och koner ger inga plan, inga skarpa kanter och inga anatomiska markeringar, och anatomi går inte att skulptera med siffror. Människokroppar tas därför från **MakeHumans basmesh hm08** (CC0, `third_party/makehuman/`, se SOURCE.md): anatomiskt grundad, bara quads, 13 380 hörn i kroppen (26 800 trianglar), med targets för kön, ålder, muskler, vikt, längd och proportioner och "joint cubes" som skelettet placeras i. `hm08.mjs` läser meshen och blandar macro-targets, `gen_hm08.mjs` skriver en kropp. Stilen (cirka 8 huvuden, längre ben, större händer, fötter och ögon) läggs på som egna targets. hm08 blir mallen för människorasen; regioner, sömmar, sockets och delar byggs ovanpå. Primitivkroppen finns kvar för varelser utan mänsklig bas.
 
-## Grundidé: delar som recept, inte meshar
+## Grundidé: en byggsats med sömkontrakt
 
-Kläderna genereras mot kroppens avståndsfält: ett plagg är ett område på kroppen (vilka kroppsdelar det täcker och hur långt) plus ett lager utanpå (uppblåsning, veck, bårder, material). Därför passar varje plagg på varje kropp av sig självt, och att byta ras är att generera samma recept mot en ny kropp. En tunika på en ork och på en gnom är samma recept men två meshar. Det fungerar inte för färdiga, handgjorda meshar (importerade rustningar); de behöver en variant per kroppstyp eller anpassning i efterhand (se "Senare").
+En spelkaraktär är en byggsats: ett skelett plus **platser** (slots) där varje plats har utbytbara delar. Naken bål, skjorta och rustning är tre meshar för samma plats, inte lager ovanpå varandra. Så gör de flesta spel; fysisk tygsimulering i lager är för dyr för många figurer i webbläsaren, klipper igenom kroppen och ritar samma pixel flera gånger. Lösa delar (kappa, kjol, långt hår) får i stället några fjäderben eller svaj i vertexshadern.
+
+**Sömkontraktet** gör delarna utbytbara:
+- Sömmarna väljs en gång på hm08 som riktiga kantslingor: hals, axel, armbåge, handled, midja, ljumske, knä och fotled. De sparas som hörnindex i `hm08_kit.json`.
+- Varje del slutar exakt i sina sömmar: samma hörn (antal, läge, normal och vikter) som den nakna kroppen i sömmen. Då passar vilken bål som helst med vilka armar som helst, utan glipor och utan synlig skarv i rörelse.
+- Den nakna delen är hm08:s egen region. Kläder är andra meshar som slutar i samma sömmar; ett plagg som är tjockare än huden viker in fållen till sömmen inne i delen, så att kanten syns som ett steg på plagget men anslutningen är exakt.
+- En del kan ta flera platser (en långärmad rock tar bål, överarmar och underarmar och slutar vid handlederna). Dess yttre kanter måste vara sömmar ur kontraktet.
+- Delarna följer kroppsformen: varje hörn i en del binds till kroppens yta (som MakeHumans MHCLO: en triangel på basmeshen plus en förskjutning), så att en skjorta följer med när reglagen för vikt eller muskler ändras. Vikterna kopieras samma väg.
+- Kombinationer i lager (skjorta + väst + rock) blir egna varianter för platsen eller små tilläggsdelar utanpå, inte fria lager.
 
 ## 1. Skelett och proportioner (klart)
 - Humanoidskelett med standardnamn: Hips, Spine, Chest, Neck, Head, Left/Right Shoulder, UpperArm, LowerArm, Hand, UpperLeg, LowerLeg, Foot, Toe. Vänster = +X, karaktären tittar mot +Z, y uppåt, meter.
@@ -19,11 +27,11 @@ Kläderna genereras mot kroppens avståndsfält: ett plagg är ett område på k
 - Läggs till: `LeftEye`/`RightEye` (blick), `Jaw` (tal och mun senare) och **sockets**: tomma noder under ben där stela delar fästs: `socket_hand_R` och `socket_hand_L` (grepp), `socket_back` (sköld, ryggsäck, vapen på ryggen), `socket_hip_L`/`socket_hip_R` (svärd i skida, verktyg), `socket_head` (hjälm, hatt). Sockets placeras per kropp, så att ett svärd hamnar rätt i både en dvärgs och en hjältes hand.
 - Ledernas lägen räknas ur kroppens värden (height, heads, build, shoulders, waist, hips, belly, hands, feet, legs, neck, hunch), med lite variation per seed. Hjältar 7,5–8 huvuden; inte chunky, inte chibi.
 
-## 2. Kropp i regioner med gemensamma sömmar
-- Kroppen är fortfarande ett avståndsfält (mjuk union av rundade koner och ellipsoider, platt sula vid y = 0, mesh med surface nets) men **meshen delas i regioner** längs sömmar där kläder brukar sluta, så att skarven alltid kan döljas: huvud (söm vid kragen), bål, överarmar, underarmar, händer (söm vid handleden), bäcken, lår, underben, fötter (söm vid fotleden).
-- Regionerna skärs ur samma mesh, så hörnen i sömmarna är identiska mellan grannregioner: inga glipor, och normalerna stämmer över skarven.
-- Ett plagg som täcker en region **döljer kroppen under sig** (regionen renderas inte). Det tar bort genomstick när kroppen rör sig och sparar trianglar.
-- Byst och andra könsformer är kroppsdata (t.ex. `bust` för heroine), inte plagg.
+## 2. Platser och sömmar på hm08
+- 15 nakna delar: huvud (med hals till sömmen ovanför nyckelbenen), bål, bäcken, överarmar, underarmar, händer, lår, underben och fötter (vänster och höger).
+- Sömmarna är kantslingor i hm08 nära lederna. Kontroll: varje söm är en sluten slinga, delas av exakt två delar, och delarna blir exakt 15 sammanhängande bitar.
+- Byst och andra könsformer är kroppsdata (targets), inte delar.
+- (Primitivkroppen hade samma 15 regioner, men med taggiga triangelgränser i stället för kantslingor.)
 
 ## 3. Delarna, sorterade efter hur svåra de är att sätta ihop och animera
 
@@ -31,10 +39,10 @@ Kläderna genereras mot kroppens avståndsfält: ett plagg är ett område på k
 |---|---|---|---|
 | A. Stela delar | vapen, sköldar, verktyg, stela hjälmar, smycken, ryggsäckar | fästs i en socket; ingen skinning | följer sitt ben; greppunkt och riktning enligt en konvention (handtaget längs +Y, eggen mot +Z) |
 | B. Huvuddelar | ögon, ögonbryn, hår, skägg, hattar, öron per ras | skinnas 100 % på Head (ögon på Eye-benen); långt hår blandas med Neck och Chest | enkla; ögonen kan titta, käken öppnas senare |
-| C. Tajta plagg | tröjor, byxor, handskar, stövlar, armskydd, bälten, tajta rustningsdelar | genereras som ett lager utanpå kroppens fält i de regioner plagget täcker; vikterna kopieras från närmaste kroppspunkt | följer kroppen exakt, eftersom formen och vikterna kommer från samma kropp |
+| C. Tajta plagg | tröjor, byxor, handskar, stövlar, armskydd, bälten, tajta rustningsdelar | ersätter de nakna delarna på sina platser och slutar i sömmarna; formen och vikterna binds till kroppens yta | följer kroppen exakt, eftersom formen och vikterna kommer från samma kropp |
 | D. Lösa plagg | kjolar, rockar, kappor, mantlar, långt fladdrande hår | som C, men behöver egna ben (kjol- och kappben) eller simulering, och särskilda vikter mellan benen | svårast: benen får inte skära igenom kjolen; görs sist |
 
-- **Lager** för nivå C: under (skjorta, byxor), över (väst, rustning, rock) och ytterst (kappa). Varje lager blåses upp lite mer än det under, och ett lager som täcker ett annat helt döljer det.
+- **Plats och sömmar** för nivå C och D: delen anger vilka platser den tar och slutar i deras sömmar (se sömkontraktet). Kroppen under finns inte kvar.
 - **Hår och huvudbonader:** en hatt eller hjälm anger om håret ska döljas, klippas (håret skärs mot hattens fält, så att det inte sticker igenom) eller behållas.
 - **Färg:** varje del har sina färger (bas och accent) och sitt material (Skin, Cloth, Leather, Metal, Hair; roughness ur `character.materials`). Regeln om en accent gäller hela den sammansatta karaktären. Den målade looken (ljusare uppåt, AO i veck, varmare hud vid öron, näsa och händer) ligger i vertexfärgen per del.
 - **Ansikte och ögon:** ögonen är egna delar, stora och mandelformade (`eye_scale`), med iris, pupill och blank hornhinna; de sitter delvis under ögonlocken. Ögonbrynen har hårfärg.
@@ -76,12 +84,14 @@ Spelaren väljer det som receptet redan beskriver: ras eller kropp, man eller kv
 - Varje steg får en egen grupp i Apparition med skärmbilder ("Character generator N: ...").
 
 ## Ordning
-1. **Klart:** skelett, kroppsfält och mesh; alla arketyper klarar kontrollerna (`skeleton.mjs`, `body.mjs`, `gen_character.mjs`, `make_character.py`).
-2. Kroppen i regioner med gemensamma sömmar; mallmesh per ras med fast topologi (varianter projiceras på sina fält); kön och byst; sockets och Eye- och Jaw-ben; formatet med en nod per del. Förhandsbild med regionerna i olika färger. **Klart:** `regions.mjs` (15 regioner ur närmaste bensegment, städning av öar, kontroll av sömmar), `template.mjs` (mjuk bindning till de tre närmaste segmenten, projicering och avslappning längs quad-kanterna), mallens cellstorlek ur en grov provmeshning (cirka 45 000 trianglar). Människor delar hero-mallen; dvärg och goblin har egna. Alla arketyper klarar kontrollerna, med exakt symmetri.
-3. Ansiktsvärden och förval; huvuddelar (nivå B): ögon, ögonbryn, hår per stil, skägg, hårfärg; vertexfärg och material.
-4. Tajta plagg (nivå C) ur `parts.json`: tunika, skjorta, byxor, stövlar, handskar, bälte; täckning, döljning, lager, accent. Arketypernas `sleeves`, `pants` och `boots` blir standardutrustning.
-5. Skinning och klippen; genomstickskontroll i poser; lineup-sida med utbyte av delar och reglage som morph targets (början på karaktärsskapandet).
-6. Stela delar (nivå A): sockets i bruk, vapen och verktyg via props-generatorn eller `import_model`.
-7. MCP-verktyget `create_character`, katalograd, stilgranskning mot Apparition; parken med gående karaktärer.
+1. **Klart:** skelett, kroppsfält och mesh (primitivkroppen, finns kvar för varelser utan mänsklig bas).
+2. **Klart:** regioner, mall per ras och sockets på primitivkroppen (`regions.mjs`, `template.mjs`); idéerna förs över till hm08.
+3. **Klart:** människokroppar ur MakeHuman hm08 (`hm08.mjs`, `gen_hm08.mjs`); macro-targets ger tydligt olika kroppar ur samma mesh.
+4. **Klart:** byggsatsens sömkontrakt på hm08 (`kit_hm08.mjs` → `hm08_kit.json`): 14 sömmar som kantslingor, 15 nakna delar, en meshnod per del.
+5. Första klädvarianten för en plats: en tunika för bålen som slutar exakt i sömmarna, med invikt fåll; byte mellan naken och tunika i samma bild.
+6. Egna targets: stilisering mot konceptet, köpmansmage, dvärgproportioner.
+7. Ansikte och huvuddelar (nivå B): ögon (hm08:s hjälpgeometri), ögonbryn, hår, skägg, hårfärg; vertexfärg och material.
+8. Skinning (hm08:s vikter för `game_engine` som grund) och klippen; sockets; lineup-sida med byte av delar och reglage.
+9. Fler delar (byxor, stövlar, handskar, rock), stela delar i sockets, MCP-verktyget `create_character`, parken.
 
 Senare: lösa plagg (nivå D: kjol, rock, kappa, långt hår med egna ben), hjälmar som klipper håret, rasbyte som test (samma utrustning på dvärg och goblin), anpassning av importerade rustningar till våra kroppar, ansiktsuttryck och fler klipp.

@@ -3,7 +3,8 @@
 //   node gen_hm08.mjs '{"name":"hero_hm","out":"/abs/hero_hm.gltf","macro":{"gender":1,"age":0.5,"muscle":0.8,"weight":0.55,"height":0.8,"proportions":1}}'
 //
 // Receptfält: macro (gender 1 = man, age 0,5 = 25 år, muscle, weight, height, proportions; 0–1, 0,5 = medel),
-// ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB).
+// ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB), kit (true: en meshnod per naken del enligt
+// sömkontraktet i hm08_kit.json), explode (dra isär delarna, t.ex. 0,15), debug ("parts": en färg per del).
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
@@ -72,13 +73,30 @@ for (const [bone, par] of BONES) {
 const linear = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
 const skin = linear(recipe.skin ?? '#E9B48A');
 const mat = doc.createMaterial('Skin').setRoughnessFactor(style.character.materials.skin.roughness).setMetallicFactor(0);
-const prim = doc.createPrimitive()
-  .setAttribute('POSITION', acc('VEC3', Float32Array.from(verts.flat())))
-  .setAttribute('NORMAL', acc('VEC3', Float32Array.from(normals.flat())))
-  .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(verts.flatMap(() => skin))))
-  .setIndices(acc('SCALAR', Uint32Array.from(tris.flat())))
-  .setMaterial(mat);
-root.addChild(doc.createNode(`${name}_body`).setMesh(doc.createMesh(`${name}_body`).addPrimitive(prim)));
+// En mesh per del. Normalerna räknades på hela kroppen, så hörnen i en söm har samma läge och normal
+// på båda sidor. Varje quad gav två trianglar i ordning (tris[2f], tris[2f + 1]).
+const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8', '#9B6BE0', '#E07A1F', '#2FA866',
+  '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
+const kit = recipe.kit ? JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url))).parts : { body: quads.map((_, f) => f) };
+const lo = [0, 1, 2].map((k) => Math.min(...verts.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...verts.map((p) => p[k])));
+const mid = lo.map((v, k) => (v + hi[k]) / 2);
+Object.entries(kit).forEach(([part, faces], pi) => {
+  const local = new Map(), idx = [];
+  for (const f of faces) for (const t of [tris[2 * f], tris[2 * f + 1]]) for (const v of t) { if (!local.has(v)) local.set(v, local.size); idx.push(local.get(v)); }
+  const vs = [...local.keys()];
+  const col = recipe.debug === 'parts' ? linear(DEBUG[pi % DEBUG.length]) : skin;
+  const prim = doc.createPrimitive()
+    .setAttribute('POSITION', acc('VEC3', Float32Array.from(vs.flatMap((v) => verts[v]))))
+    .setAttribute('NORMAL', acc('VEC3', Float32Array.from(vs.flatMap((v) => normals[v]))))
+    .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(vs.flatMap(() => col))))
+    .setIndices(acc('SCALAR', Uint32Array.from(idx)))
+    .setMaterial(mat);
+  const c = [0, 1, 2].map((k) => vs.reduce((s, v) => s + verts[v][k], 0) / vs.length);
+  const node = doc.createNode(`body_${part}`).setMesh(doc.createMesh(`body_${part}`).addPrimitive(prim));
+  // Isärdragning i x och y; allt lyfts så att den lägsta delen står kvar på marken
+  if (recipe.explode) node.setTranslation([(c[0] - mid[0]) * recipe.explode, (c[1] - lo[1]) * recipe.explode, 0]);
+  root.addChild(node);
+});
 root.setExtras({ source: 'makehuman hm08 (CC0)', macro: recipe.macro, joints: J });
 doc.createScene(name).addChild(root);
 await writeGltf(doc, recipe.out);
