@@ -6,11 +6,12 @@ Receptfält (alla utom name är valfria):
   archetype   arketyp i characters.json (standard hero)
   seed        samma recept ger samma karaktär
   overrides   överstyr arketypens värden, t.ex. {"heads": 7.5, "hair": "long"}
-  cell        meshens cellstorlek i meter (standard efter höjden, inom triangelbudgeten)
+  cell        mallens cellstorlek i meter (standard: framräknad för cirka 45 000 trianglar)
   preview     rendera förhandsbild via Blender, framifrån och i profil (standard false)
+  debug       "regions": en färg per kroppsregion i stället för hud
 
 Svarar med en rad JSON inklusive "checks" (fötterna på marken, symmetri, en sammanhängande mesh,
-uppmätt antal huvuden, budget).
+uppmätt antal huvuden, budget, mallens passning och vända trianglar, regioner och sömmar, sockets).
 """
 import json
 import subprocess
@@ -29,7 +30,7 @@ def main():
     out_dir = ROOT / "assets" / "characters" / name
     out_dir.mkdir(parents=True, exist_ok=True)
     gltf = out_dir / f"{name}.gltf"
-    gen = {k: v for k, v in recipe.items() if k in ("archetype", "seed", "overrides", "cell")} | {"name": name, "out": str(gltf)}
+    gen = {k: v for k, v in recipe.items() if k in ("archetype", "seed", "overrides", "cell", "debug")} | {"name": name, "out": str(gltf)}
     run = subprocess.run(["node", str(TOOL / "gen_character.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
     if run.returncode:
         print(json.dumps({"ok": False, "error": run.stderr[-800:]}))

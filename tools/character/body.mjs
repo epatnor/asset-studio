@@ -39,7 +39,11 @@ export function buildBody(sk, a) {
     sideStart[s] = prims.length;
     // Säte och bröstmuskler
     ell([x * 0.28 * W * a.hips, D.hipY - 0.03 * torso, -0.2 * W], [0.3 * W * b, 0.32 * W * b, 0.28 * W * b], { bone: 'Hips', part: 'pelvis', k: kBody });
-    ell([x * 0.24 * W, J.Chest[1] + 0.12 * torso, J.Chest[2] + 0.24 * W * b], [0.34 * W * b, 0.2 * torso, 0.18 * W * b], { bone: 'Chest', part: 'chest', k: kBody });
+    const bust = a.bust ?? 0, pec = 1 - 0.7 * bust;
+    ell([x * 0.24 * W, J.Chest[1] + 0.12 * torso, J.Chest[2] + 0.24 * W * b], [0.34 * W * b * pec, 0.2 * torso * pec, 0.18 * W * b * pec], { bone: 'Chest', part: 'chest', k: kBody });
+    if (bust > 0.05) {
+      ell([x * 0.21 * W, J.Chest[1] + 0.08 * torso, J.Chest[2] + (0.36 + 0.14 * bust) * W * b], [(0.18 + 0.1 * bust) * W, (0.16 + 0.08 * bust) * W, (0.15 + 0.1 * bust) * W], { bone: 'Chest', part: 'chest', k: 0.06 * W });
+    }
     // Trapezius och axel
     const ua = J[`${s}UpperArm`], la = J[`${s}LowerArm`], hand = J[`${s}Hand`];
     cone(add(J.Neck, [0, 0.04 * torso, 0]), add(ua, [0, 0.08 * W, 0]), 0.24 * W * b, 0.2 * W * b, { bone: `${s}Shoulder`, part: 'chest', k: kBody });
@@ -54,8 +58,7 @@ export function buildBody(sk, a) {
 
     // Hand: handflata, två fingergrupper och tumme. tIn pekar mot kroppen, wv framåt (tumsidan).
     const L = D.handL;
-    const tIn = mul(norm(cross(dh, [0, 0, 1])), x);
-    let wv = norm(cross(tIn, dh)); if (wv[2] < 0) wv = mul(wv, -1);
+    const { palm: tIn, thumb: wv } = dirs[s];
     const hp = (along, side, inward) => add(hand, add(mul(dh, along * L), add(mul(wv, side * L), mul(tIn, inward * L))));
     ell(hp(0.28, 0, 0), [0.13 * L, 0.3 * L, 0.25 * L], { bone: `${s}Hand`, part: 'hand', k: 0.02 * W }, frame(dh, tIn));
     cone(hp(0.5, 0.1, 0), hp(0.95, 0.1, 0.12), 0.075 * L, 0.06 * L, { bone: `${s}Hand`, part: 'hand', k: 0.006 * W });
@@ -81,7 +84,7 @@ export function buildBody(sk, a) {
 
   // Hals och huvud. O ligger i hakans höjd rakt under huvudleden; ansiktet framåt (+Z).
   cone(add(J.Neck, [0, -0.04 * torso, 0]), J.Head, 0.27 * h * a.neck * b, 0.23 * h * a.neck, { bone: 'Neck', part: 'neck', k: kJoint });
-  const O = [J.Head[0], J.Head[1] - 0.22 * h, J.Head[2] + 0.03 * h];
+  const O = sk.face;
   const at = (x, y, z) => add(O, [x * h, y * h, z * h]);
   const head = (o) => ({ bone: 'Head', part: 'head', ...o });
   ell(at(0, 0.56, -0.04), [0.37 * h, 0.44 * h, 0.45 * h], head({ k: 0.08 * h }));

@@ -1,6 +1,13 @@
 {
-  "_doc": "Arketyper för gen_character.mjs. Stilen är halvrealistisk med eleganta överdrivna proportioner (docs/style-guide.md avsnitt 6, style.json character). height i meter. heads: kroppshöjd i huvudhöjder (hjälte 7,5–8, minst 4,5). Övriga proportioner är multiplikatorer runt en realistisk vuxen (1 = normalt): build, shoulders, waist, hips, belly (0–1), hands, feet, legs (benlängd), neck. hunch i grader. hair: bald, short, spiky, bob, bun, long. ears: round eller pointy. eyes 1 = stiliserat stora mandelögon. sleeves: 0 ärmlöst, 1 till armbågen, 2 hela vägen. pants: 0 shorts, 1 till knät, 2 hela vägen. boots: 0 skor, 1 halvhöga, 2 till knät. beard 0–1. concept: kort beskrivning för konceptbilder (tools/character/concept.py). colors: listor att välja ur med seed (#RRGGBB). Basfärgerna (cloth, pants, shoes) är dämpade; accent hamnar på exakt en av regionerna i accentOn.",
+  "_races": {
+    "_doc": "Ras: mallkroppen (reference, arketyp med seed 0) ger topologin som alla kroppar av rasen delar.",
+    "human": { "reference": "hero" },
+    "dwarf": { "reference": "dwarf" },
+    "goblin": { "reference": "goblin" }
+  },
+  "_doc": "Arketyper för gen_character.mjs. race: nyckel i _races. sex: male eller female (förval för ansikte senare). bust 0–1. Stilen är halvrealistisk med eleganta överdrivna proportioner (docs/style-guide.md avsnitt 6, style.json character). height i meter. heads: kroppshöjd i huvudhöjder (hjälte 7,5–8, minst 4,5). Övriga proportioner är multiplikatorer runt en realistisk vuxen (1 = normalt): build, shoulders, waist, hips, belly (0–1), hands, feet, legs (benlängd), neck. hunch i grader. hair: bald, short, spiky, bob, bun, long. ears: round eller pointy. eyes 1 = stiliserat stora mandelögon. sleeves: 0 ärmlöst, 1 till armbågen, 2 hela vägen. pants: 0 shorts, 1 till knät, 2 hela vägen. boots: 0 skor, 1 halvhöga, 2 till knät. beard 0–1. concept: kort beskrivning för konceptbilder (tools/character/concept.py). colors: listor att välja ur med seed (#RRGGBB). Basfärgerna (cloth, pants, shoes) är dämpade; accent hamnar på exakt en av regionerna i accentOn.",
   "hero": {
+    "race": "human", "sex": "male", "bust": 0,
     "concept": "a young adventurer hero, confident stance",
     "height": 1.85, "heads": 7.75, "build": 1.0, "shoulders": 1.15, "waist": 0.85, "hips": 0.95, "belly": 0.0, "hands": 1.08, "feet": 1.05, "legs": 1.06, "neck": 1.0, "hunch": 0,
     "ears": "round", "earSize": 1.0, "nose": 1.0, "eyes": 1.0, "hair": "spiky", "beard": 0, "sleeves": 1, "pants": 2, "boots": 1,
@@ -8,6 +15,7 @@
     "accentOn": ["cloth", "trim", "belt"]
   },
   "heroine": {
+    "race": "human", "sex": "female", "bust": 0.6,
     "concept": "a young adventurer heroine, a graceful ranger, confident stance",
     "height": 1.72, "heads": 8.0, "build": 0.85, "shoulders": 0.95, "waist": 0.72, "hips": 1.08, "belly": 0.0, "hands": 1.0, "feet": 0.95, "legs": 1.1, "neck": 1.05, "hunch": 0,
     "ears": "round", "earSize": 0.95, "nose": 0.8, "eyes": 1.15, "hair": "long", "beard": 0, "sleeves": 2, "pants": 2, "boots": 2,
@@ -15,6 +23,7 @@
     "accentOn": ["trim", "cloth", "belt"]
   },
   "dwarf": {
+    "race": "dwarf", "sex": "male", "bust": 0,
     "concept": "a stocky dwarf blacksmith, broad and sturdy",
     "height": 1.35, "heads": 5.0, "build": 1.4, "shoulders": 1.3, "waist": 1.05, "hips": 1.05, "belly": 0.4, "hands": 1.1, "feet": 1.1, "legs": 0.8, "neck": 1.2, "hunch": 0,
     "ears": "round", "earSize": 1.0, "nose": 1.5, "eyes": 0.9, "hair": "short", "beard": 1.0, "sleeves": 2, "pants": 2, "boots": 1,
@@ -22,6 +31,7 @@
     "accentOn": ["belt", "trim"]
   },
   "kid": {
+    "race": "human", "sex": "male", "bust": 0,
     "concept": "a cheerful village child, curious and playful",
     "height": 1.2, "heads": 5.5, "build": 0.9, "shoulders": 0.85, "waist": 0.95, "hips": 0.9, "belly": 0.1, "hands": 1.05, "feet": 1.05, "legs": 0.95, "neck": 0.85, "hunch": 0,
     "ears": "round", "earSize": 1.05, "nose": 0.75, "eyes": 1.2, "hair": "bob", "beard": 0, "sleeves": 1, "pants": 1, "boots": 0,
@@ -29,6 +39,7 @@
     "accentOn": ["cloth", "shoes"]
   },
   "elder": {
+    "race": "human", "sex": "female", "bust": 0.25,
     "concept": "an old village elder, slightly hunched, wise and kind",
     "height": 1.68, "heads": 7.25, "build": 0.88, "shoulders": 0.92, "waist": 0.95, "hips": 0.95, "belly": 0.1, "hands": 1.05, "feet": 1.0, "legs": 1.0, "neck": 0.95, "hunch": 14,
     "ears": "round", "earSize": 1.15, "nose": 1.25, "eyes": 0.9, "hair": "bun", "beard": 0, "sleeves": 2, "pants": 2, "boots": 0,
@@ -36,6 +47,7 @@
     "accentOn": ["trim", "cloth"]
   },
   "merchant": {
+    "race": "human", "sex": "male", "bust": 0,
     "concept": "a well-fed traveling merchant with a round belly, friendly grin",
     "height": 1.74, "heads": 7.0, "build": 1.2, "shoulders": 1.0, "waist": 1.15, "hips": 1.05, "belly": 1.0, "hands": 1.05, "feet": 1.0, "legs": 0.95, "neck": 1.1, "hunch": 0,
     "ears": "round", "earSize": 1.0, "nose": 1.2, "eyes": 0.95, "hair": "short", "beard": 0.45, "sleeves": 2, "pants": 2, "boots": 0,
@@ -43,6 +55,7 @@
     "accentOn": ["cloth", "belt"]
   },
   "goblin": {
+    "race": "goblin", "sex": "male", "bust": 0,
     "concept": "a small mischievous goblin, wiry and hunched",
     "height": 1.05, "heads": 4.5, "build": 0.8, "shoulders": 0.85, "waist": 0.8, "hips": 0.85, "belly": 0.3, "hands": 1.1, "feet": 1.1, "legs": 0.9, "neck": 0.8, "hunch": 12,
     "ears": "pointy", "earSize": 1.7, "nose": 1.7, "eyes": 1.15, "hair": "bald", "beard": 0, "sleeves": 0, "pants": 0, "boots": 0,

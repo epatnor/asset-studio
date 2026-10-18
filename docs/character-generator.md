@@ -73,7 +73,7 @@ Spelaren väljer det som receptet redan beskriver: ras eller kropp, man eller kv
 
 ## Ordning
 1. **Klart:** skelett, kroppsfält och mesh; alla arketyper klarar kontrollerna (`skeleton.mjs`, `body.mjs`, `gen_character.mjs`, `make_character.py`).
-2. Kroppen i regioner med gemensamma sömmar; mallmesh per ras med fast topologi (varianter projiceras på sina fält); kön och byst; sockets och Eye- och Jaw-ben; formatet med en nod per del. Förhandsbild med regionerna i olika färger.
+2. Kroppen i regioner med gemensamma sömmar; mallmesh per ras med fast topologi (varianter projiceras på sina fält); kön och byst; sockets och Eye- och Jaw-ben; formatet med en nod per del. Förhandsbild med regionerna i olika färger. **Klart:** `regions.mjs` (15 regioner ur närmaste bensegment, städning av öar, kontroll av sömmar), `template.mjs` (mjuk bindning till de tre närmaste segmenten, projicering och avslappning längs quad-kanterna), mallens cellstorlek ur en grov provmeshning (cirka 45 000 trianglar). Människor delar hero-mallen; dvärg och goblin har egna. Alla arketyper klarar kontrollerna, med exakt symmetri.
 3. Ansiktsvärden och förval; huvuddelar (nivå B): ögon, ögonbryn, hår per stil, skägg, hårfärg; vertexfärg och material.
 4. Tajta plagg (nivå C) ur `parts.json`: tunika, skjorta, byxor, stövlar, handskar, bälte; täckning, döljning, lager, accent. Arketypernas `sleeves`, `pants` och `boots` blir standardutrustning.
 5. Skinning och klippen; genomstickskontroll i poser; lineup-sida med utbyte av delar och reglage som morph targets (början på karaktärsskapandet).
