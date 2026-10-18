@@ -4,6 +4,10 @@ Samma mönster som trädgeneratorn: ett skelett först, allt annat byggs från s
 
 **Karaktärerna byggs i delar.** En spelkaraktär är en kropp plus utbytbara delar: kläder, rustning, frisyr, skägg, huvudbonad och vapen. Delarna delar skelett och kan bytas i spelet. Kroppar är data (arketyper eller raser i `characters.json`), och delar är också data (recept i `parts.json`), inte färdiga meshar.
 
+## Kroppens källa: MakeHuman hm08
+
+Primitivkroppen (`body.mjs`) såg ut som lera: smooth-min av bollar och koner ger inga plan, inga skarpa kanter och inga anatomiska markeringar, och anatomi går inte att skulptera med siffror. Människokroppar tas därför från **MakeHumans basmesh hm08** (CC0, `third_party/makehuman/`, se SOURCE.md): anatomiskt grundad, bara quads, 13 380 hörn i kroppen (26 800 trianglar), med targets för kön, ålder, muskler, vikt, längd och proportioner och "joint cubes" som skelettet placeras i. `hm08.mjs` läser meshen och blandar macro-targets, `gen_hm08.mjs` skriver en kropp. Stilen (cirka 8 huvuden, längre ben, större händer, fötter och ögon) läggs på som egna targets. hm08 blir mallen för människorasen; regioner, sömmar, sockets och delar byggs ovanpå. Primitivkroppen finns kvar för varelser utan mänsklig bas.
+
 ## Grundidé: delar som recept, inte meshar
 
 Kläderna genereras mot kroppens avståndsfält: ett plagg är ett område på kroppen (vilka kroppsdelar det täcker och hur långt) plus ett lager utanpå (uppblåsning, veck, bårder, material). Därför passar varje plagg på varje kropp av sig självt, och att byta ras är att generera samma recept mot en ny kropp. En tunika på en ork och på en gnom är samma recept men två meshar. Det fungerar inte för färdiga, handgjorda meshar (importerade rustningar); de behöver en variant per kroppstyp eller anpassning i efterhand (se "Senare").
