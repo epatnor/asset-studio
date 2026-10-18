@@ -21,3 +21,12 @@ och kopiera sedan till den här mappen: `LICENSE*`, `src/mpfb/data/3dobjs/base.o
 | `mesh_metadata/` | vertexgrupper per kroppsdel, spegeltabell (`hm08.mirror`), tabeller mellan ytor och hörn |
 | `rigs/standard/` | skelett (`rig.default`, `rig.game_engine`, `rig.mixamo` ...) och vikter per skelett |
 | `targets/` | 1 258 targets (`.target.gz`): kön, ålder, vikt, muskler och proportioner (`macrodetails`) samt huvud, ansikte, bål, armar, ben, byst och uttryck |
+
+## Systempaketet (`system_assets/`)
+
+`makehuman_system_assets_cc0.zip` (281 MB), hämtat 2026-10-18 från
+https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip
+och uppackat här. **Licens: CC0** för varje tillgång enligt `system_assets/packs/makehuman_system_assets.json`.
+
+Innehåll: `proxymeshes/` (lågpolygonkroppar bundna till hm08: male1591, female1605, proxy741, male_generic, female_generic, male_muscle_13290, female_muscle_13442), `eyes/`, `eyebrows/`, `eyelashes/`, `teeth/`, `tongue/`, `hair/`, `clothes/` (MHCLO, bundna till hm08), `skins/`.
+Hämta igen: ladda ner zip-filen och packa upp den till `system_assets/`.
