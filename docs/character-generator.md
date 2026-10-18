@@ -44,7 +44,7 @@ Samma mönster som trädgeneratorn: ett skelett först, allt annat byggs från s
 - Granskning: rendera en lineup (LOD0, standardljus plus motljuset `preview_backlight`), lägg in den i Apparition med `add_image`, kör `compare` mot gruppen och justera arketyperna efter avvikelserna.
 
 ## Ordning
-1. Skelett, kroppsfält och mesh för `hero`; kontroll av fötter och symmetri.
+1. Skelett, kroppsfält och mesh för `hero`; kontroll av fötter och symmetri. **Klart:** `skeleton.mjs`, `body.mjs`, `gen_character.mjs`, `make_character.py`; alla arketyper klarar kontrollerna (fötter, exakt symmetri, en sammanhängande mesh, uppmätt antal huvuden, budget). Heroine saknar ännu kvinnliga former (byst), och huvudena ser små ut tills hår och skägg finns.
 2. Kläder, ansikte, ögon, hår, vertexfärg; alla arketyper.
 3. Skinning och klippen; uppspelning i en lineup-sida under `build/`.
 4. make-skript, MCP-verktyg, katalograd; stilgranskning mot Apparition.

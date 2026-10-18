@@ -1,9 +1,10 @@
 # Körs i Blender: renderar en eller flera GLB-filer på rad i en bild, med standardljuset
 # från docs/style-guide.md avsnitt 6 (värden ur tools/style.json).
 # blender --background --factory-startup --python preview_glb.py -- '<json>'
-# json: {"glbs": [...], "out": png, "style": style.json, "lod": 0, "size": [w, h], "labels": bool}
+# json: {"glbs": [...], "out": png, "style": style.json, "lod": 0, "size": [w, h], "labels": bool, "backlight": bool}
+# backlight: motljus snett bakifrån för karaktärer (style.json character.preview_backlight)
 import bpy, json, math, sys
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 args = json.loads(sys.argv[sys.argv.index("--") + 1])
 style = json.load(open(args["style"]))["preview"]
@@ -29,8 +30,10 @@ def bounds(objs):
 x = 0.0
 everything = []
 for item in args["glbs"]:
-    # Varje post är en sökväg eller {"glb": sökväg, "lod": n} (för att visa LOD-nivåer bredvid varandra)
+    # Varje post är en sökväg eller {"glb": sökväg, "lod": n, "rot": grader} (LOD-nivåer eller vyer bredvid varandra;
+    # rot vrider modellen runt lodlinjen, 90 = profil)
     path, lod = (item, LOD) if isinstance(item, str) else (item["glb"], item.get("lod", LOD))
+    rot = 0 if isinstance(item, str) else item.get("rot", 0)
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=path)
     new = [o for o in bpy.data.objects if o not in before]
@@ -40,6 +43,9 @@ for item in args["glbs"]:
             o.hide_render = True
     shown = [o for o in new if o.type == "MESH" and not o.hide_render]
     roots = [o for o in new if o.parent is None]
+    for r in roots:
+        if rot:
+            r.matrix_world = Matrix.Rotation(math.radians(rot), 4, "Z") @ r.matrix_world
     bpy.context.view_layer.update()
     lo, hi = bounds(shown)
     width = hi.x - lo.x
@@ -70,6 +76,14 @@ sun.data.color = hex_rgb(style["sun"]["color"])
 sun.data.angle = math.radians(3)
 sun.rotation_euler = (math.radians(90 - style["sun"]["elevation_deg"]), 0, math.radians(35))
 scene.collection.objects.link(sun)
+if args.get("backlight"):
+    bl = json.load(open(args["style"]))["character"]["preview_backlight"]
+    back = bpy.data.objects.new("Backlight", bpy.data.lights.new("Backlight", "SUN"))
+    back.data.energy = bl["strength"]
+    back.data.color = hex_rgb(bl["color"])
+    # Azimut räknas från kamerans sida (0 = framljus, 180 = rakt bakifrån); kameran står på -Y
+    back.rotation_euler = (math.radians(90 - bl["elevation_deg"]), 0, math.radians(bl["azimuth_deg"]))
+    scene.collection.objects.link(back)
 world = bpy.data.worlds.new("Sky")
 world.use_nodes = True
 bg = world.node_tree.nodes["Background"]

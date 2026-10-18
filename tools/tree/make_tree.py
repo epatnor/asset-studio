@@ -40,15 +40,29 @@ def blender_cmd():
     return (["host-spawn"] if shutil.which("host-spawn") else []) + flatpak
 
 
-def preview(glbs, out, lod=0, size=(1024, 512)):
+def preview(glbs, out, lod=0, size=(1024, 512), backlight=False):
     # Blender körs i en annan arbetskatalog, så alla sökvägar måste vara absoluta
     absolute = lambda p: str((ROOT / p).resolve())
-    items = [{**g, "glb": absolute(g["glb"])} if isinstance(g, dict) else absolute(g) for g in glbs]
+    # Blenders glTF-importör saknar meshopt-avkodaren: packa upp varje modell till en tillfällig kopia
+    # bredvid originalet (så att de relativa texturvägarna stämmer) och ta bort den efteråt
+    temp, unpacked = [], {}
+    for g in glbs:
+        src = absolute(g["glb"] if isinstance(g, dict) else g)
+        if src not in unpacked:
+            dst = str(Path(src).with_name(Path(src).stem + "_blender.gltf"))
+            subprocess.run(["node", str(ROOT / "tools" / "preview" / "decompress.mjs"), src, dst], check=True, capture_output=True)
+            unpacked[src] = dst
+            temp += [Path(dst), Path(dst).with_suffix(".bin")]
+    items = [{**g, "glb": unpacked[absolute(g["glb"])]} if isinstance(g, dict) else unpacked[absolute(g)] for g in glbs]
     args = {"glbs": items, "out": absolute(out), "style": str(ROOT / "tools" / "style.json"),
-            "lod": lod, "size": list(size)}
-    run = subprocess.run(blender_cmd() + ["--background", "--factory-startup", "--python-exit-code", "1",
-                                          "--python", str(ROOT / "tools" / "preview" / "preview_glb.py"), "--", json.dumps(args)],
-                         capture_output=True, text=True)
+            "lod": lod, "size": list(size), "backlight": backlight}
+    try:
+        run = subprocess.run(blender_cmd() + ["--background", "--factory-startup", "--python-exit-code", "1",
+                                              "--python", str(ROOT / "tools" / "preview" / "preview_glb.py"), "--", json.dumps(args)],
+                             capture_output=True, text=True)
+    finally:
+        for t in temp:
+            t.unlink(missing_ok=True)
     if run.returncode or "TINKER_RESULT" not in run.stdout:
         log = Path(out).with_suffix(".log")
         log.write_text(run.stdout + run.stderr)
