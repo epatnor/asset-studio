@@ -52,6 +52,9 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
   const scalp = clauseField({ scalp: style.scalp }, J, {}, H);
   const chinY = eyeY - (top - eyeY), headH = top - chinY;
   const near = surfaceIndex(collide.points, collide.normals);
+  // Skalets V vid en punkt (samma som outfit.mjs uvMode crown), så att lock och draperi fortsätter texturen där
+  // skalet slutar i stället för att börja om med en mörk rot
+  const capV = (p) => (style.cap.vMax ?? 0.55) * (1 - Math.min(1, Math.max(0, -scalp(p)) / (style.cap.uvDepth ?? 0.09)));
   const Z = zones(color, style.zones);
   const hl = style.highlight ?? { at: 0.86, width: 0.07, strength: 0.6 };
 
@@ -177,6 +180,7 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
       const K = 6, base = pos.length;
       const v0 = r() * 3, shade = 0.9 + r() * 0.15;
       let arc = 0;
+      const total = pts.reduce((acc, q, i) => acc + (i ? len(sub(q, pts[i - 1])) : 0), 0) || 1;
       pts.forEach((c, s) => {
         const t = s / S;
         const { out, side: sideV } = frames[s];
@@ -193,7 +197,9 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
           const a = (k / K) * Math.PI * 2;
           const o = add(mul(sideV, Math.cos(a) * w / 2), mul(out, Math.sin(a) * w * flat / 2));
           pos.push(add(cw, o)); nrm.push(norm(add(mul(sideV, Math.cos(a)), mul(out, Math.sin(a) * 0.8))));
-          uv.push([k / K * (width / (style.texScale ?? 0.1)), v0 + arc / (style.texScale ?? 0.1)]);
+          // U över bredden (upprepas), V från roten (0) till toppen (1): texturens rötter, ljusband och toppar hamnar rätt
+          const vr = capV(root.p);
+          uv.push([v0 + (k / K) * (width / (style.texU ?? 0.35)), vr + (1 - vr) * (arc / total)]);
           // Rot mot topp: skugga till bas; över slingan: mörkare kanter och undersida, ljusast mitt på ovansidan
           const up = Math.sin(a), edge = up >= 0 ? 0.78 + 0.22 * up : 0.7;
           let c = mix(Z.shadow, Z.base, smoothstep(0, 0.45, shadeT)).map((x) => x * edge * shade);
@@ -234,7 +240,9 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
       // lägga sig över dem, längre bak ned längs ryggen
       const [ls, lb] = sh.lengthScale ?? [1, 1];
       const relLen = ls + (lb - ls) * Math.max(0, -norm([root.p[0] - H.cx, 0, root.p[2] - H.cz])[2]);
-      return growGuide(root, flow, sh.length * relLen, S);
+      const g = growGuide(root, flow, sh.length * relLen, S);
+      g[0] = sub(root.p, mul(root.n, sh.rootInset ?? 0.01)); // roten under skalets yta
+      return g;
     });
     // Utjämning i sidled (inte roten) med Taubin (växlande +λ och −μ, så att skivan inte krymper), och ut
     // från ytorna igen
@@ -243,7 +251,7 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
       const next = G.map((g) => g.map((p) => p));
       for (let k = 1; k < G.length - 1; k++) for (let s = 1; s <= S; s++) next[k][s] = add(G[k][s], mul(sub(lerp(G[k - 1][s], G[k + 1][s], 0.5), G[k][s]), w));
       // även längs fallet (inte roten och toppen), så att kollisionen mot axlarna inte ger knyckar
-      for (let k = 0; k < G.length; k++) for (let s = 2; s < S; s++) next[k][s] = add(next[k][s], mul(sub(lerp(G[k][s - 1], G[k][s + 1], 0.5), G[k][s]), w * 0.6));
+      for (let k = 0; k < G.length; k++) for (let s = 2; s < S - 1; s++) next[k][s] = add(next[k][s], mul(sub(lerp(G[k][s - 1], G[k][s + 1], 0.5), G[k][s]), w * 0.6));
       for (let k = 0; k < G.length; k++) for (let s = 1; s <= S; s++) {
         const q = near(next[k][s]);
         if (q) { const d = dot(sub(next[k][s], q.p), q.n); if (d < gap) next[k][s] = add(next[k][s], mul(q.n, gap - d)); }
@@ -259,6 +267,7 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
     for (const layerSide of [1, -1]) {
       for (let k = 0; k < rows; k++) {
         let arc = 0;
+        const total = G[k].reduce((acc, q, i) => acc + (i ? len(sub(q, G[k][i - 1])) : 0), 0) || 1;
         for (let s = 0; s < cols; s++) {
           const t = s / S, p = at(k, s);
           if (s > 0) arc += len(sub(p, at(k, s - 1)));
@@ -266,9 +275,12 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
           const across = norm(sub(at(Math.min(rows - 1, k + 1), s), at(Math.max(0, k - 1), s)));
           let nn = norm(cross(across, along));
           if (dot(nn, sub(p, headC)) < 0) nn = mul(nn, -1);
-          const th = (sh.thickness ?? 0.015) * (1 - 0.6 * t) / 2;
+          const edgeT = Math.min(1, Math.min(k, rows - 1 - k) / 2.5);
+          // Tunn vid roten (glider ut ur skalet), full tjocklek efter en sjättedel, tunnare mot toppen
+          const th = (sh.thickness ?? 0.015) * Math.min(1, 0.2 + t * 5) * (1 - 0.6 * t) * (0.15 + 0.85 * edgeT) / 2;
           pos.push(add(p, mul(nn, th * layerSide))); nrm.push(mul(nn, layerSide));
-          uv.push([(k / (rows - 1)) * (sh.width ?? 0.4) / ts, arc / ts]);
+          const vr = capV(roots[k].p);
+          uv.push([(k / (rows - 1)) * (sh.width ?? 0.4) / (style.texU ?? 0.35), vr + (1 - vr) * (arc / total)]);
           const hh = (p[1] - chinY) / headH;
           const band = hl.strength * (1 - smoothstep(0, hl.width, Math.abs(hh - hl.at))) * (0.7 + 0.3 * Math.sin(ph + k * 0.9));
           let c = mix(Z.shadow, Z.base, smoothstep(0, 0.35, t));
@@ -297,7 +309,7 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
   const acc = pos.map(() => [0, 0, 0]);
   for (const [a, b, c] of tris) { const f = cross(sub(pos[b], pos[a]), sub(pos[c], pos[a])); for (const i of [a, b, c]) acc[i] = add(acc[i], f); }
   return {
-    slot: 'hair', material: 'hair', kind: 'hair', texture: style.texture ?? 'hair_strands', pos, nrm: acc.map(norm), col, uv, src,
+    slot: 'hair', material: 'hair', kind: 'hair', texture: style.texture ?? 'hair_strands', alphaMask: !!style.alphaTips, pos, nrm: acc.map(norm), col, uv, src,
     key: pos.map((_, i) => `hair,${i}`), tris, strip: tris.map(() => false),
     stats: { locks: (style.clumps ?? []).reduce((s2, l) => s2 + (l.ring?.count ?? l.count ?? 0), 0), sheets: (style.sheets ?? []).length, tris: tris.length },
   };

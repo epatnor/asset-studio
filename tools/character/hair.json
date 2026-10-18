@@ -1,5 +1,5 @@
 {
-  "_doc": "Frisyrer för hair.mjs. Förenklad grafik: volymen bärs av ett tjockt, jämnt hårskal (cap) runt skallen, silhuetten av få och stora lock (8–20) som breda, platta skivor med trubbiga toppar, och utseendet av en mjuk målad textur (texture) med färgzoner och glansring. Inga enskilda strån. scalp: hårlinjen i huvudhöjder (0 = hakan, 1 = hjässan) fram, vid sidorna och bak. cap {thickness, boost {front, top}, smooth, darken}: skalet (boost = extra volym framtill och upptill). length, lengthRegion {top, front, side, back}. part.x: benans läge. flow {part, back, down}. fringe {dir, from, mirror, weight}: lugg. frameFace: främre sidolock vinklas utåt längs ansiktet. lift, volume, gravity, wave {amp, freq}. clumps: lager av lock {ring {at = huvudhöjder innanför hårlinjen, count, phase i grader, skip [från, till] i grader där 0 = rakt fram, only [från, till]} eller count (slumpade), width, flatten, tip, segments, lengthVar}. zones {shadow, shadowSat, light}, highlight {at, width, strength}. texture och texScale: målad textur och meter per upprepning (på skal och lock). sheets: draperier, sammanhängande skivor för långt hår [{from, to (grader, 0 = rakt fram, genom bak), at (tal eller [vid sidorna, bak]), guides, segments, length, thickness, radial, down, back, smooth (utjämning i sidled), width (för texturens U), lengthScale [vid sidorna, bak] (längdfaktor runt huvudet)}].",
+  "_doc": "Frisyrer för hair.mjs. Förenklad grafik: volymen bärs av ett tjockt, jämnt hårskal (cap) runt skallen, silhuetten av få och stora lock (8–20) som breda, platta skivor med trubbiga toppar, och utseendet av en mjuk målad textur (texture) med färgzoner och glansring. Inga enskilda strån. scalp: hårlinjen i huvudhöjder (0 = hakan, 1 = hjässan) fram, vid sidorna och bak. cap {thickness, boost {front, top}, smooth, darken}: skalet (boost = extra volym framtill och upptill). length, lengthRegion {top, front, side, back}. part.x: benans läge. flow {part, back, down}. fringe {dir, from, mirror, weight}: lugg. frameFace: främre sidolock vinklas utåt längs ansiktet. lift, volume, gravity, wave {amp, freq}. clumps: lager av lock {ring {at = huvudhöjder innanför hårlinjen, count, phase i grader, skip [från, till] i grader där 0 = rakt fram, only [från, till]} eller count (slumpade), width, flatten, tip, segments, lengthVar}. zones {shadow, shadowSat, light}, highlight {at, width, strength}. texture och texScale: målad textur och meter per upprepning (på skal och lock). sheets: draperier, sammanhängande skivor för långt hår [{from, to (grader, 0 = rakt fram, genom bak), at (tal eller [vid sidorna, bak]), guides, segments, length, thickness, radial, down, back, smooth (utjämning i sidled), width (för texturens U), lengthScale [vid sidorna, bak] (längdfaktor runt huvudet)}]. texture med alphaTips: målad textur (tools/texture/paint_hair.py) med rötter, ljusband och toppar på fasta höjder; V går från roten (0) till toppen (1) på lock och draperi och från hjässan till hårlinjen (cap.vMax) på skalet; texU = meter per upprepning i sidled. Hörnfärgerna (zones, highlight) är då mildare, eftersom texturen bär strukturen. cap.noise {amp, scale}: mjuka fåror i skalets yta (kort hår kan vara bara skal). sheets[].rootInset: hur djupt under skalet draperiets rötter börjar.",
   "short_swept": {
     "scalp": {
       "front": 0.8,
@@ -7,13 +7,19 @@
       "back": 0.3
     },
     "cap": {
-      "thickness": 0.016,
+      "thickness": 0.018,
       "boost": {
-        "front": 0.9,
-        "top": 0.5
+        "front": 1.1,
+        "top": 0.6
       },
       "smooth": 18,
-      "darken": 0.85
+      "darken": 0.92,
+      "vMax": 0.55,
+      "uvDepth": 0.09,
+      "noise": {
+        "amp": 0.004,
+        "scale": 0.05
+      }
     },
     "length": 0.08,
     "lengthRegion": {
@@ -40,7 +46,7 @@
       "weight": 1.0
     },
     "frameFace": 0.3,
-    "lift": 0.12,
+    "lift": 0.05,
     "volume": 0.004,
     "gravity": 0.25,
     "wave": {
@@ -48,44 +54,21 @@
       "freq": 1.0
     },
     "gap": 0.004,
-    "clumps": [
-      {
-        "ring": {
-          "at": 0.06,
-          "count": 10,
-          "phase": 0
-        },
-        "width": 0.07,
-        "flatten": 0.22,
-        "tip": 0.45,
-        "segments": 6,
-        "lengthVar": 0.1
-      },
-      {
-        "ring": {
-          "at": 0.28,
-          "count": 6,
-          "phase": 30
-        },
-        "width": 0.08,
-        "flatten": 0.2,
-        "tip": 0.4,
-        "segments": 6,
-        "lengthVar": 0.1
-      }
-    ],
+    "clumps": [],
     "zones": {
-      "shadow": 0.6,
-      "shadowSat": 1.3,
-      "light": 1.3
+      "shadow": 0.82,
+      "shadowSat": 1.2,
+      "light": 1.1
     },
     "highlight": {
-      "at": 0.9,
-      "width": 0.07,
-      "strength": 0.5
+      "at": 0.86,
+      "width": 0.06,
+      "strength": 0.15
     },
-    "texture": "hair_soft",
-    "texScale": 0.18
+    "texture": "hair_painted",
+    "texScale": 0.18,
+    "alphaTips": true,
+    "texU": 0.35
   },
   "long_flowing": {
     "scalp": {
@@ -100,7 +83,9 @@
         "top": 0.5
       },
       "smooth": 18,
-      "darken": 0.85
+      "darken": 0.85,
+      "vMax": 0.55,
+      "uvDepth": 0.09
     },
     "length": 0.42,
     "lengthRegion": {
@@ -138,16 +123,16 @@
     "gap": 0.006,
     "clumps": [],
     "zones": {
-      "shadow": 0.62,
-      "shadowSat": 1.25,
-      "light": 1.25
+      "shadow": 0.82,
+      "shadowSat": 1.2,
+      "light": 1.1
     },
     "highlight": {
-      "at": 0.84,
-      "width": 0.07,
-      "strength": 0.55
+      "at": 0.86,
+      "width": 0.06,
+      "strength": 0.15
     },
-    "texture": "hair_soft",
+    "texture": "hair_painted",
     "texScale": 0.22,
     "sheets": [
       {
@@ -169,8 +154,11 @@
         "lengthScale": [
           0.66,
           0.85
-        ]
+        ],
+        "rootInset": 0.012
       }
-    ]
+    ],
+    "alphaTips": true,
+    "texU": 0.35
   }
 }

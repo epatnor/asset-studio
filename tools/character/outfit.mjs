@@ -223,12 +223,22 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
   const meshes = new Map();
   const meshOf = (slot, material, texture = null) => {
     const k = `${slot}|${material}|${texture ?? ''}`;
-    if (!meshes.has(k)) meshes.set(k, { slot, material, texture, pos: [], col: [], src: [], key: [], uv: texture ? [] : null, kind: material === 'skin' ? 'skin' : 'cloth', tris: [], strip: [], idx: new Map() });
+    if (!meshes.has(k)) meshes.set(k, { slot, material, texture, alphaMask: false, pos: [], col: [], src: [], key: [], uv: texture ? [] : null, kind: material === 'skin' ? 'skin' : 'cloth', tris: [], strip: [], idx: new Map() });
     return meshes.get(k);
   };
-  // UV för lager med textur på huvudet: V nedåt från hjässan, U runt huvudet (söm bak, hanteras per triangel)
+  // UV för lager med textur på huvudet: U runt huvudet (söm bak, hanteras per triangel). uvMode "crown": V från
+  // hjässan (0) till lagrets gräns (vMax), räknat ur hur djupt innanför gränsen punkten ligger, så att en målad
+  // hårtextur får rötter och ljusband men inga toppar på skalet; annars V nedåt från hjässan i meter.
   const circ = 2 * Math.PI * 0.09;
-  const headUV = (p, ts) => [Math.atan2(p[0] - H.cx, p[2] - H.cz) / (2 * Math.PI) * circ / ts, (H.top - p[1]) / ts];
+  const uScale = (li) => L[li].spec.texU ?? L[li].spec.texScale ?? 0.15;
+  const headUV = (p, li) => {
+    const sp = L[li].spec, u = (Math.atan2(p[0] - H.cx, p[2] - H.cz) / (2 * Math.PI)) * circ / uScale(li);
+    if (sp.uvMode === 'crown') {
+      const depth = -Math.max(...L[li].fields.map((f) => f(p)));
+      return [u, (sp.vMax ?? 0.55) * (1 - Math.min(1, Math.max(0, depth) / (sp.uvDepth ?? 0.09)))];
+    }
+    return [u, (H.top - p[1]) / (sp.texScale ?? 0.15)];
+  };
   const materialOf = (li) => (li < 0 ? 'skin' : L[li].spec.material ?? 'cloth');
   const colorOf = (li, trim) => (li < 0 ? skinCol : linear(trim ? (L[li].trim ?? L[li].color) : L[li].color));
   const vert = (m, tag, p, col, src, key, uv) => {
@@ -244,10 +254,11 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
     const { li, trim } = zone[ti];
     const tex = texOf(li);
     const m = meshOf(M.slot[ti], materialOf(li), tex);
+    if (tex && L[li].spec.alphaTips) m.alphaMask = true;
     let uvs = null, wrap = [false, false, false];
     if (tex) {
-      const ts = L[li].spec.texScale ?? 0.15;
-      uvs = t.map((v) => headUV(M.pos[v], ts));
+      const ts = uScale(li);
+      uvs = t.map((v) => headUV(M.pos[v], li));
       // Triangel över sömmen bak: flytta de negativa u ett varv, med egna hörnkopior
       const us = uvs.map((q) => q[0]);
       if (Math.max(...us) - Math.min(...us) > circ / ts / 2) wrap = us.map((u) => u < 0);
@@ -301,7 +312,7 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
     const col = colorOf(lo, trim);
     const P = (li, v) => shellPos.get(`${li},${v}`);
     const bead = (v) => add(add(P(lo, v), mul(M.nrm[v], hem.bead)), mul(outDir(lo, lin, v), hem.overhang));
-    const vv = (tag, p, v) => vert(m, `f${lo},${lin},${tag},${v}`, p, col, M.src[v], `f${lo},${lin},${tag},${v}`, m.uv ? headUV(M.pos[v], L[lo].spec.texScale ?? 0.15) : null);
+    const vv = (tag, p, v) => vert(m, `f${lo},${lin},${tag},${v}`, p, col, M.src[v], `f${lo},${lin},${tag},${v}`, m.uv ? headUV(M.pos[v], lo) : null);
     const oa = vv('o', P(lo, a), a), ob = vv('o', P(lo, b), b), ba = vv('b', bead(a), a), bb = vv('b', bead(b), b);
     const ia = vv('i', P(lin, a), a), ib = vv('i', P(lin, b), b);
     const quad = (q, expect) => {

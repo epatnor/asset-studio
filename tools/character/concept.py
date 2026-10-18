@@ -18,8 +18,12 @@ NAMES = {
     "emerald green": "#2FA866", "teal": "#3E859C",
 }
 SKIN = {"fair": "#F0C29E", "light": "#E9B48A", "tan": "#C98E64", "brown": "#8D5A3B", "green": "#6E8C4A"}
-HAIR = {"bald": "bald head", "short": "short {} hair", "spiky": "short spiky swept-back {} hair", "bob": "{} bob haircut",
-        "bun": "{} hair tied up in a bun", "long": "long flowing {} hair"}
+# Förenklat hår: några få stora, släta former (som hårgeneratorn bygger), inga enskilda strån
+HAIR = {"bald": "bald head", "short": "short simplified {} hair in a few smooth chunky shapes",
+        "spiky": "short simplified {} hair swept back in a few large smooth chunky locks",
+        "bob": "simplified {} bob haircut as one smooth rounded shape",
+        "bun": "simplified {} hair in a smooth shape tied up in a round bun",
+        "long": "shoulder-length simplified {} hair as one smooth draped shape framing the face"}
 SLEEVES = ["sleeveless tunic", "short-sleeved tunic", "long-sleeved tunic"]
 PANTS = ["shorts", "knee-length breeches", "trousers"]
 BOOTS = ["simple shoes", "mid-calf leather boots", "knee-high leather boots"]

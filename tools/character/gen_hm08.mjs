@@ -91,7 +91,7 @@ if (recipe.kit) {
     const hs = JSON.parse(fs.readFileSync(new URL('./hair.json', import.meta.url)))[recipe.hair.style];
     if (!hs) throw new Error(`okänd frisyr ${recipe.hair.style}`);
     const dark = '#' + [1, 3, 5].map((i) => Math.round(parseInt(recipe.hair.color.slice(i, i + 2), 16) * hs.cap.darken).toString(16).padStart(2, '0')).join('');
-    items.push({ name: 'hair_cap', spec: { ...lib.hair_cap, thickness: hs.cap.thickness, boost: hs.cap.boost, smooth: hs.cap.smooth ?? lib.hair_cap.smooth, texture: hs.texture, texScale: hs.texScale, cover: [{ scalp: hs.scalp }] }, color: dark, trim: dark });
+    items.push({ name: 'hair_cap', spec: { ...lib.hair_cap, thickness: hs.cap.thickness, boost: hs.cap.boost, smooth: hs.cap.smooth ?? lib.hair_cap.smooth, texture: hs.texture, texScale: hs.texScale, texU: hs.texU, uvMode: 'crown', vMax: hs.cap.vMax ?? 0.55, uvDepth: hs.cap.uvDepth ?? 0.09, alphaTips: hs.alphaTips, noise: hs.cap.noise, cover: [{ scalp: hs.scalp }] }, color: dark, trim: dark });
   }
   const r = buildOutfit({ verts, normals, quads, tris, joints: J, cubes: body.cubes, eyes: body.eyes }, kitData, items, { skin: skinHex });
   meshes = r.meshes;
@@ -109,7 +109,7 @@ if (recipe.hair && recipe.kit) {
   const collide = { points: surf.flatMap((m) => m.pos), normals: surf.flatMap((m) => m.nrm) };
   const hair = buildHair({ verts, normals, tris, joints: J, eyes: body.eyes }, headTris, collide, hs, recipe.hair.color, recipe.seed ?? 1);
   checks.hair = hair.stats;
-  meshes.push(hair);
+  if (hair.tris.length) meshes.push(hair); // kort hår kan vara bara skal
 }
 // Ögonen (egna meshar som följer huvudet)
 if (recipe.eyes !== false) meshes.push(...buildEyes({ verts, eyes: body.eyes }, { iris: recipe.eyes ?? '#4C7A9E' }));
@@ -132,7 +132,7 @@ async function writeDoc(out, P, N) {
   const mats = {};
   const aniso = doc.createExtension(KHRMaterialsAnisotropy);
   // Material per (material, textur). Håret får strängtexturen och anisotrop glans längs strängarna (V-led).
-  const matOf = (m, tex) => (mats[`${m}|${tex ?? ''}`] ??= (() => {
+  const matOf = (m, tex, alpha) => (mats[`${m}|${tex ?? ''}|${alpha ? 'a' : ''}`] ??= (() => {
     const mat = doc.createMaterial(m[0].toUpperCase() + m.slice(1))
       .setRoughnessFactor((style.character.materials[m] ?? style.character.materials.cloth).roughness)
       .setMetallicFactor(style.character.materials[m]?.metalness ?? 0);
@@ -140,6 +140,8 @@ async function writeDoc(out, P, N) {
       const file = path.resolve(path.dirname(new URL(import.meta.url).pathname), `../../assets/textures/${tex}.png`);
       mat.setBaseColorTexture(sharedTexture(doc, file, tex, out));
       if (m === 'hair') mat.setExtension('KHR_materials_anisotropy', aniso.createAnisotropy().setAnisotropyStrength(0.6).setAnisotropyRotation(Math.PI / 2));
+      // Målad hårtextur med alfa i topparna: alfamask (inga sorteringsproblem som med blend)
+      if (alpha) mat.setAlphaMode('MASK').setAlphaCutoff(0.5);
     }
     return mat;
   })());
@@ -157,7 +159,7 @@ async function writeDoc(out, P, N) {
         .setAttribute('NORMAL', acc('VEC3', Float32Array.from(N[mi].flat())))
         .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(col.flat())))
         .setIndices(acc('SCALAR', Uint32Array.from(m.tris.flat())))
-        .setMaterial(matOf(m.material, m.texture));
+        .setMaterial(matOf(m.material, m.texture, m.alphaMask));
       if (m.uv) prim.setAttribute('TEXCOORD_0', acc('VEC2', Float32Array.from(m.uv.flat())));
       mesh.addPrimitive(prim);
       for (const p of P[mi]) { c = add(c, p); n++; }

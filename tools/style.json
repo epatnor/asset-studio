@@ -9,8 +9,8 @@
     },
     "surface_view": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field",
     "surface_style": "stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting",
-    "character_art": "Stylized fantasy character key art, polished game concept art, premium fantasy splash art, painterly box-art illustration, semi-realism, bold clean shapes, clean readable silhouette, elegant exaggerated proportions, appealing stylized face, smooth painterly rendering with no line art and no outlines, crisp edges and soft gradients, dramatic cinematic lighting with strong rim light, muted base colors with one rich saturated accent, glossy metal and leather with broad highlights, detailed fabrics, expressive environment, atmospheric depth, premium game promotional artwork, no text.",
-    "character_remove": "(anime:-1), (line art:-1), (chibi:-1), (photorealistic:-1)",
+    "character_art": "Stylized fantasy character key art, polished game concept art, premium fantasy splash art, painterly box-art illustration, semi-realism, bold clean shapes, clean readable silhouette, elegant exaggerated proportions, appealing stylized face, smooth painterly rendering with no line art and no outlines, crisp edges and soft gradients, dramatic cinematic lighting with strong rim light, muted base colors with one rich saturated accent, glossy metal and leather with broad highlights, simplified stylized hair made of a few large smooth chunky shapes with soft painted strands and one broad glossy highlight band, detailed fabrics, expressive environment, atmospheric depth, premium game promotional artwork, no text.",
+    "character_remove": "(anime:-1), (line art:-1), (chibi:-1), (photorealistic:-1), (detailed hair strands:-1), (flyaway wispy hair:-1)",
     "_character_doc": "Konceptbilder av karaktärer: motivet först, sedan character_art, sist character_remove. Krea-2 kör cfg 1 och ignorerar negativa prompter; krea2.py använder Krea2PromptWeight när prompten har (ord:vikt). Nämn aldrig befintliga spel eller studior."
   },
   "palette": {
@@ -130,7 +130,7 @@
         "metalness": 1.0
       },
       "hair": {
-        "roughness": 0.4
+        "roughness": 0.62
       },
       "eye": {
         "roughness": 0.08
