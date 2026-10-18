@@ -6,7 +6,8 @@
 // ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB), kit (true: en meshnod per naken del enligt
 // sömkontraktet i hm08_kit.json), explode (dra isär delarna, t.ex. 0,15), debug ("parts": en färg per del),
 // outfit ({plats: del i parts.json}, kräver kit; delen ersätter de nakna delarna på sina platser),
-// colors ({cloth, accent} för plaggen).
+// colors ({cloth, accent} för plaggen), poses (true: posetest med hm08:s vikter i testposerna, se posetest.mjs),
+// posed_out (mapp: skriv varje pose som en statisk glTF för förhandsbilder).
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
@@ -14,6 +15,8 @@ import { sub, add, cross, dot, norm } from '../tree/vec.mjs';
 import { BONES } from './skeleton.mjs';
 import { buildHm08 } from './hm08.mjs';
 import { buildGarment, garmentChecks, offsetFn } from './garment.mjs';
+import { hm08Weights } from './skin.mjs';
+import { runPoseTest } from './posetest.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const style = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -166,5 +169,36 @@ for (const { slot, partName, spec, g } of garments) {
 root.setExtras({ source: 'makehuman hm08 (CC0)', macro: recipe.macro, joints: J });
 doc.createScene(name).addChild(root);
 await writeGltf(doc, recipe.out);
+
+// Posetest: kroppen och plaggen skinnade i testposerna
+if (recipe.poses) {
+  const weights = hm08Weights(body.sourceIndex);
+  const exposedParts = Object.fromEntries(Object.entries(kit).map(([pn, faces]) => [pn, faces.flatMap((f) => [tris[2 * f], tris[2 * f + 1]])]));
+  const exposedTris = Object.values(exposedParts).flat();
+  const { results, posed } = runPoseTest({ verts, normals, tris, weights }, exposedParts, garments.map((x) => ({ name: x.partName, g: x.g })), J);
+  checks.poses = results;
+  checks.ok = checks.ok && Object.values(results).every((r) => r.seam_gap_mm < 0.01 && r.collapsed <= 0.02);
+  if (recipe.posed_out) {
+    fs.mkdirSync(recipe.posed_out, { recursive: true });
+    for (const [pname, { body: B, garments: G }] of Object.entries(posed)) {
+      const pd = new Document();
+      const pbuf = pd.createBuffer();
+      const pacc = (type, array) => pd.createAccessor().setType(type).setArray(array).setBuffer(pbuf);
+      const proot = pd.createNode(`${name}_${pname}`);
+      const addMesh = (nm, P, T, C, rough) => {
+        const N = P.map(() => [0, 0, 0]);
+        for (const [a, b, c] of T) { const f = cross(sub(P[b], P[a]), sub(P[c], P[a])); for (const i of [a, b, c]) N[i] = add(N[i], f); }
+        const prim = pd.createPrimitive().setAttribute('POSITION', pacc('VEC3', Float32Array.from(P.flat())))
+          .setAttribute('NORMAL', pacc('VEC3', Float32Array.from(N.map(norm).flat()))).setAttribute('COLOR_0', pacc('VEC3', Float32Array.from(C.flat())))
+          .setIndices(pacc('SCALAR', Uint32Array.from(T.flat()))).setMaterial(pd.createMaterial(nm).setRoughnessFactor(rough).setMetallicFactor(0));
+        proot.addChild(pd.createNode(nm).setMesh(pd.createMesh(nm).addPrimitive(prim)));
+      };
+      addMesh('skin', B, exposedTris, B.map(() => skin), style.character.materials.skin.roughness);
+      garments.forEach((x, gi) => addMesh(x.partName, G[gi].P, x.g.tris, x.g.colors, style.character.materials.cloth.roughness));
+      pd.createScene(pname).addChild(proot);
+      await writeGltf(pd, `${recipe.posed_out}/${name}_${pname}.gltf`);
+    }
+  }
+}
 
 console.log(JSON.stringify({ name, out: recipe.out, verts: verts.length, tris: tris.length, checks }));

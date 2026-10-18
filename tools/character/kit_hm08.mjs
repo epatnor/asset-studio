@@ -13,7 +13,7 @@ import { buildHm08 } from './hm08.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const body = buildHm08({});
-const { verts: V, quads: Q, joints: J, tips: T } = body;
+const { verts: V, quads: Q, joints: J, tips: T, cubes } = body;
 
 // Kanter -> ytor, och grannar per hörn
 const ek = (a, b) => (a < b ? `${a},${b}` : `${b},${a}`);
@@ -47,7 +47,7 @@ function walkLoop(a0, b0) {
 const S = (name, point, axis, reach) => ({ name, point, axis: norm(axis), reach });
 const seams = [
   S('neck', lerp(J.Neck, J.Head, 0.3), sub(J.Head, J.Neck), 0.12),
-  S('waist', lerp(J.Hips, J.Spine, 0.55), sub(J.Spine, J.Hips), 0.3),
+  S('waist', lerp(J.Hips, cubes['joint-spine-3'], 0.55), sub(cubes['joint-spine-3'], J.Hips), 0.3),
 ];
 for (const [s, c] of [['Left', 'L'], ['Right', 'R']]) {
   seams.push(

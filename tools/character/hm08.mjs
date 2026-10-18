@@ -80,9 +80,9 @@ export function applyTargets(verts, list) {
 const center = (verts, vs) => [0, 1, 2].map((k) => vs.reduce((s, i) => s + verts[i][k], 0) / vs.length);
 const groupVerts = (base, g) => [...new Set(base.groups[g].flatMap((fi) => base.faces[fi]))];
 
-// Våra ben -> hm08:s joint cubes (samma koppling som MPFB:s rig.game_engine)
+// Våra ben -> hm08:s joint cubes (samma pivåer som MPFB:s rig.game_engine: Spine = spine_01, Chest = spine_03)
 const JOINTS = {
-  Hips: 'joint-pelvis', Spine: 'joint-spine-3', Chest: 'joint-spine-1', Neck: 'joint-neck', Head: 'joint-head',
+  Hips: 'joint-pelvis', Spine: 'joint-spine-4', Chest: 'joint-spine-2', Neck: 'joint-neck', Head: 'joint-head',
   Jaw: 'joint-jaw', LeftEye: 'joint-l-eye', RightEye: 'joint-r-eye',
 };
 for (const [s, c] of [['Left', 'l'], ['Right', 'r']]) {
@@ -109,5 +109,6 @@ export function buildHm08(macro, ethnic) {
   const quads = bodyFaces.map((f) => f.map((i) => remap.get(i)));
   const joints = Object.fromEntries(Object.entries(JOINTS).map(([b, g]) => [b, toM(center(raw, groupVerts(base, g)))]));
   const tips = Object.fromEntries(Object.entries(TIPS).map(([b, g]) => [b, toM(center(raw, groupVerts(base, g)))]));
-  return { verts, quads, joints, tips, targets: list.length, missing, sourceIndex: used };
+  const cubes = Object.fromEntries(Object.keys(base.groups).filter((g) => g.startsWith('joint-')).map((g) => [g, toM(center(raw, groupVerts(base, g)))]));
+  return { verts, quads, joints, tips, cubes, targets: list.length, missing, sourceIndex: used };
 }

@@ -59,13 +59,13 @@ export function buildGarment(body, kit, spec, { openSeams = {} } = {}) {
   }
 
   // Hörn och ytor
-  const P = [], C = [], tris = [];
+  const P = [], C = [], S = [], tris = []; // S: kroppshörnet som hörnet ärver vikter från
   const cloth = spec.color, trim = spec.trimColor ?? spec.color;
   const vid = new Map();
   // Bården: fållsömmarnas hörn och hem.band hörnrader inåt får bårdens färg (inte öppna sömmar mot plagg)
   const band = new Set(seams.filter(([n]) => !openSeams[n]).flatMap(([, l]) => l));
   for (let r = 0; r < (spec.hem.band ?? 0); r++) for (const v of [...band]) for (const u of nb.get(v)) band.add(u);
-  for (const v of vset) { vid.set(v, P.length); P.push(shell.get(v)); C.push(band.has(v) ? trim : cloth); }
+  for (const v of vset) { vid.set(v, P.length); P.push(shell.get(v)); C.push(band.has(v) ? trim : cloth); S.push(v); }
   for (const f of faces) {
     const [a, b, c, d] = Q[f].map((v) => vid.get(v));
     tris.push([a, b, c], [a, c, d]);
@@ -83,8 +83,8 @@ export function buildGarment(body, kit, spec, { openSeams = {} } = {}) {
       const t = sub(V[v], c);
       return norm(sub(t, mul(N[v], dot(t, N[v]))));
     });
-    const bead = loop.map((v, k) => { const i = P.length; P.push(add(add(shell.get(v), mul(N[v], hem.bead)), mul(outDir[k], hem.overhang))); C.push(trim); return i; });
-    const skin = loop.map((v) => { const i = P.length; P.push([...V[v]]); C.push(trim); return i; });
+    const bead = loop.map((v, k) => { const i = P.length; P.push(add(add(shell.get(v), mul(N[v], hem.bead)), mul(outDir[k], hem.overhang))); C.push(trim); S.push(v); return i; });
+    const skin = loop.map((v) => { const i = P.length; P.push([...V[v]]); C.push(trim); S.push(v); return i; });
     const ring = (A, B, expect) => {
       for (let k = 0; k < n; k++) {
         const k2 = (k + 1) % n;
@@ -107,7 +107,7 @@ export function buildGarment(body, kit, spec, { openSeams = {} } = {}) {
   }
   const out = normals.map(norm);
   for (const v of openOff.keys()) out[vid.get(v)] = [...N[v]];
-  return { positions: P, normals: out, colors: C, tris, seams: seams.map(([name]) => name), open: seams.filter(([n]) => openSeams[n]).map(([n]) => n), shellOf: vid };
+  return { positions: P, normals: out, colors: C, source: S, tris, seams: seams.map(([name]) => name), open: seams.filter(([n]) => openSeams[n]).map(([n]) => n), shellOf: vid };
 }
 
 // Genomstick: skalhörn som ligger innanför huden (mot sitt kroppshörns normal eller närmaste kroppshörn)
