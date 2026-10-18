@@ -3,7 +3,8 @@
   python3 -I tools/tripo/make_tripo.py '{"name": "male_ref", "views": {"front": "a.png", "left": "b.png", "right": "c.png"}, "face_limit": 8000, "dry_run": true}'
 
 Receptfält: name, views (front krävs, plus left/back/right; PNG eller JPEG upp till 20 MB), face_limit (50–20000),
-texture (standard true), pbr (standard true), texture_quality (standard "standard"), model (standard "P1-20260311"),
+texture (standard true), pbr (standard true), texture_quality (standard "standard"), model (standard "P1-20260311";
+"P2-20260801" för P2), quad (bara P2: riktigt quadnät, face_limit räknas i quads),
 dry_run (true: visa beräknat pris och kontots saldo, skicka ingenting).
 
 Nyckeln läses ur TRIPO_API_KEY i miljön eller i projektets .env och skrivs aldrig ut. Bilderna laddas upp till
@@ -24,6 +25,8 @@ API = "https://openapi.tripo3d.ai"
 # Pris enligt Tripos prislista (docs.tripo3d.ai/get-started/pricing.html): P1 multiview 40 utan textur, 50 med;
 # texture_quality standard +10, detailed +20, extreme +30
 PRICE = {"base": {False: 40, True: 50}, "quality": {"fast": 0, "standard": 10, "detailed": 20, "extreme": 30}}
+# P2 (developers.tripo3d.com changelog): 100 utan textur; med textur standard/detailed/extreme 110/120/130
+PRICE_P2 = {"base": {False: 100, True: 100}, "quality": {"fast": 0, "standard": 10, "detailed": 20, "extreme": 30}}
 
 
 def api_key():
@@ -74,7 +77,9 @@ def main():
         sys.exit(json.dumps({"ok": False, "error": "front krävs, och minst två vyer"}))
     texture = bool(r.get("texture", True) or r.get("pbr", True))
     quality = r.get("texture_quality", "standard")
-    cost = PRICE["base"][texture] + (PRICE["quality"].get(quality, 0) if texture else 0)
+    model = r.get("model", "P1-20260311")
+    pr = PRICE_P2 if model.upper().startswith("P2") else PRICE
+    cost = pr["base"][texture] + (pr["quality"].get(quality, 0) if texture else 0)
     key = api_key()
     if not key:
         sys.exit(json.dumps({"ok": False, "error": "TRIPO_API_KEY saknas (miljön eller .env)"}))
@@ -82,10 +87,12 @@ def main():
         print(json.dumps({"ok": True, "dry_run": True, "name": name, "views": sorted(views), "estimated_credits": cost, "balance": balance(key)}))
         return
     tokens = {v: upload(key, ROOT / p if not os.path.isabs(p) else p) for v, p in views.items()}
-    body = {"inputs": [{v: t} for v, t in tokens.items()], "model": r.get("model", "P1-20260311"), "texture": texture,
+    body = {"inputs": [{v: t} for v, t in tokens.items()], "model": model, "texture": texture,
             "pbr": bool(r.get("pbr", True)), "texture_quality": quality}
     if r.get("face_limit"):
         body["face_limit"] = int(r["face_limit"])
+    if r.get("quad"):
+        body["quad"] = True  # bara P2; face_limit räknas då i quads (48–25000)
     sub = request("POST", "/v3/generation/multiview-to-model", key, json.dumps(body).encode(), {"Content-Type": "application/json"})
     if sub.get("code") != 0:
         sys.exit(json.dumps({"ok": False, "error": sub}))
@@ -104,9 +111,12 @@ def main():
     url = out.get("model_url") or out.get("pbr_model") or out.get("model")
     out_dir = ROOT / "build" / "tripo" / name
     out_dir.mkdir(parents=True, exist_ok=True)
-    glb = out_dir / f"{name}.glb"
     with urllib.request.urlopen(url, timeout=120) as resp:
-        glb.write_bytes(resp.read())
+        blob = resp.read()
+    # P2 med quads levererar FBX (glTF har inga quads); välj ändelse efter innehållet
+    ext = ".fbx" if blob[:18] == b"Kaydara FBX Binary" else ".glb" if blob[:4] == b"glTF" else ".bin"
+    glb = out_dir / f"{name}{ext}"
+    glb.write_bytes(blob)
     if out.get("rendered_image_url"):
         try:
             with urllib.request.urlopen(out["rendered_image_url"], timeout=60) as resp:
