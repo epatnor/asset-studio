@@ -9,7 +9,21 @@
 import { add, sub, mul, dot, cross, norm, len, lerp, rng } from '../tree/vec.mjs';
 import { clauseField } from './outfit.mjs';
 
-const linear = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+const toLin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const srgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+// Färgzoner (sRGB, HSV): skuggan mörkare och mer mättad, högdagern ljusare och lite mindre mättad
+function zones(hex, z = {}) {
+  const [r, g, b] = srgb(hex), mx = Math.max(r, g, b), mn = Math.min(r, g, b), v = mx, sat = mx ? (mx - mn) / mx : 0;
+  const h = mx === mn ? 0 : mx === r ? ((g - b) / (mx - mn) + 6) % 6 : mx === g ? (b - r) / (mx - mn) + 2 : (r - g) / (mx - mn) + 4;
+  const hsv = (hh, ss, vv) => { const c = vv * ss, x = c * (1 - Math.abs((hh % 2) - 1)), m = vv - c; const [a, bb, cc] = hh < 1 ? [c, x, 0] : hh < 2 ? [x, c, 0] : hh < 3 ? [0, c, x] : hh < 4 ? [0, x, c] : hh < 5 ? [x, 0, c] : [c, 0, x]; return [a + m, bb + m, cc + m].map(toLin); };
+  return {
+    shadow: hsv(h, Math.min(1, sat * (z.shadowSat ?? 1.3) + 0.05), v * (z.shadow ?? 0.55)),
+    base: hsv(h, sat, v),
+    light: hsv(h, sat * 0.8, Math.min(1, v * (z.light ?? 1.3) + 0.08)),
+  };
+}
+const mix = (a, b, t) => a.map((x, i) => x + (b[i] - x) * t);
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const tangential = (d, n) => sub(d, mul(n, dot(d, n)));
 
 // Närmaste ytpunkt med normal (rutnät över hörnen)
@@ -38,7 +52,8 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
   const scalp = clauseField({ scalp: style.scalp }, J, {}, H);
   const chinY = eyeY - (top - eyeY), headH = top - chinY;
   const near = surfaceIndex(collide.points, collide.normals);
-  const tint = linear(color);
+  const Z = zones(color, style.zones);
+  const hl = style.highlight ?? { at: 0.86, width: 0.07, strength: 0.6 };
 
   // Hårbottnens trianglar (inom hårlinjen) med area, för slumpade rötter
   const scalpTris = headTris.filter((ti) => T[ti].every((v) => scalp(V[v]) <= 0));
@@ -77,6 +92,9 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
       // Startriktning: bort från bena, bakåt, lugg fram; lyft från huvudet
       const side = Math.sign(root.p[0] - (part.x ?? 0)) || 1;
       let flow = add(add(mul([side, 0, 0], style.flow?.part ?? 0.5), mul([0, 0, -1], style.flow?.back ?? 0.5)), mul([0, -1, 0], style.flow?.down ?? 0.3));
+      // Rama in ansiktet: främre slingor vid sidorna vinklas utåt längs ansiktet i stället för framåt
+      const sideAmt = Math.min(1, Math.abs(rel[0]) / 0.05);
+      flow = add(flow, mul([Math.sign(rel[0]) || 1, 0, -0.3], (style.frameFace ?? 0) * front * sideAmt));
       if (fr) {
         const f = Math.max(0, (front - (fr.from ?? 0.6)) / (1 - (fr.from ?? 0.6)));
         const fd = [fr.dir[0] * (fr.mirror ? side : 1), fr.dir[1], fr.dir[2]];
@@ -133,13 +151,19 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
         const tipW = layer.tip ?? 0.2;
         const w = width * (0.85 + 0.3 * Math.sin(Math.min(1, t / 0.35) * Math.PI / 2)) * (tipW + (1 - tipW) * Math.pow(1 - t, 0.8));
         const shadeT = Math.pow(t, 0.7);
+        // Glansring: ett brutet ljusband runt huvudet i höjd hl.at (huvudhöjder), där ljuset träffar
+        const hh = (cw[1] - chinY) / headH;
+        const band = hl.strength * (1 - smoothstep(0, hl.width, Math.abs(hh - hl.at))) * (0.6 + 0.4 * Math.sin(ph * 3 + t * 5));
         for (let k = 0; k <= K; k++) {
           const a = (k / K) * Math.PI * 2;
           const o = add(mul(sideV, Math.cos(a) * w / 2), mul(out, Math.sin(a) * w * flat / 2));
           pos.push(add(cw, o)); nrm.push(norm(add(mul(sideV, Math.cos(a)), mul(out, Math.sin(a) * 0.8))));
           uv.push([k / K * (width / (style.texScale ?? 0.1)), v0 + arc / (style.texScale ?? 0.1)]);
-          const g = (0.55 + 0.6 * shadeT) * shade;
-          col.push(tint.map((x) => Math.min(1, x * g)));
+          // Rot mot topp: skugga till bas; över slingan: mörkare kanter och undersida, ljusast mitt på ovansidan
+          const up = Math.sin(a), edge = up >= 0 ? 0.78 + 0.22 * up : 0.7;
+          let c = mix(Z.shadow, Z.base, smoothstep(0, 0.45, shadeT)).map((x) => x * edge * shade);
+          if (up > 0.2) c = mix(c, Z.light, band * up);
+          col.push(c.map((x) => Math.min(1, x)));
           src.push([[root.src, 1]]);
         }
       });
