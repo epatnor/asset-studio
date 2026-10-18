@@ -7,8 +7,10 @@
 // ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB),
 // kit (true: ytan delas per byggsatsplats enligt hm08_kit.json, en nod per plats; false: en kroppsmesh),
 // outfit ({namn: del i parts.json, eller {part, color, trim}}; kräver kit), explode (dra isär platserna),
-// debug ("parts": en färg per plats), poses (true: posetest i testposerna, se posetest.mjs),
-// posed_out (mapp: skriv varje pose som en statisk glTF för förhandsbilder).
+// stylize (överstyr style.json character.stylize, false = realistisk hm08), face (MakeHuman-targets för ansiktet,
+// läggs till style.json character.face; false = inget förval), debug ("parts": en färg per plats), poses (true: posetest i testposerna, se posetest.mjs),
+// posed_out (mapp: skriv varje pose som en statisk glTF för förhandsbilder), eyes (irisfärg, false = inga ögon),
+// only ([platser]: skriv bara dessa, t.ex. ["head", "eye_L", "eye_R"] för närbilder).
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
@@ -16,12 +18,20 @@ import { sub, add, cross, dot, norm } from '../tree/vec.mjs';
 import { BONES } from './skeleton.mjs';
 import { buildHm08 } from './hm08.mjs';
 import { buildOutfit } from './outfit.mjs';
+import { buildEyes } from './face.mjs';
 import { hm08Weights } from './skin.mjs';
 import { runPoseTest } from './posetest.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const style = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
-const body = buildHm08(recipe.macro ?? {}, recipe.ethnic);
+// Stilisering: style.json character.stylize blandad efter kön, eller recipe.stylize (false = ingen)
+const st = style.character.stylize, g = recipe.macro?.gender ?? 0.5;
+const stylize = recipe.stylize === false ? null : { ...Object.fromEntries(Object.keys(st.male).map((k) => [k, st.female[k] + (st.male[k] - st.female[k]) * g])), ...(recipe.stylize ?? {}) };
+// Ansiktsförval: style.json character.face blandad efter kön, plus recipe.face (false = inget)
+const fc = style.character.face;
+const face = recipe.face === false ? {} : { ...Object.fromEntries([...new Set([...Object.keys(fc.male), ...Object.keys(fc.female)])]
+  .map((k) => [k, (fc.female[k] ?? 0) + ((fc.male[k] ?? 0) - (fc.female[k] ?? 0)) * g])), ...(recipe.face ?? {}) };
+const body = buildHm08(recipe.macro ?? {}, recipe.ethnic, stylize, face);
 const { verts, quads, joints: J } = body;
 
 // Quads till trianglar längs den kortare diagonalen (två per quad i ordning); hm08:s quads pekar utåt
@@ -72,13 +82,15 @@ if (recipe.kit) {
     if (!lib[o.part]) throw new Error(`okänd del ${o.part}`);
     return { name: o.part, spec: lib[o.part], color: o.color ?? '#3F5443', trim: o.trim ?? '#D9A423' };
   });
-  const r = buildOutfit({ verts, normals, quads, tris, joints: J, cubes: body.cubes }, kitData, items, { skin: skinHex });
+  const r = buildOutfit({ verts, normals, quads, tris, joints: J, cubes: body.cubes, eyes: body.eyes }, kitData, items, { skin: skinHex });
   meshes = r.meshes;
   checks.outfit = r.checks;
   checks.ok = checks.ok && r.checks.shell_inside === 0;
 } else {
   meshes = [{ slot: 'body', material: 'skin', kind: 'skin', pos: verts, nrm: normals, col: verts.map(() => linear(skinHex)), src: verts.map((_, i) => [[i, 1]]), key: verts.map((_, i) => `-1,${i}`), tris, strip: tris.map(() => false) }];
 }
+// Ögonen (egna meshar som följer huvudet)
+if (recipe.eyes !== false) meshes.push(...buildEyes({ verts, eyes: body.eyes }, { iris: recipe.eyes ?? '#4C7A9E' }));
 checks.tris = meshes.reduce((s, m) => s + m.tris.length, 0);
 checks.within_budget = checks.tris >= bmin * 0.8 && checks.tris <= bmax;
 checks.ok = checks.ok && checks.within_budget;
@@ -100,7 +112,7 @@ async function writeDoc(out, P, N) {
     .setRoughnessFactor((style.character.materials[m] ?? style.character.materials.cloth).roughness)
     .setMetallicFactor(style.character.materials[m]?.metalness ?? 0));
   const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8', '#9B6BE0', '#E07A1F', '#2FA866', '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
-  const slots = [...new Set(meshes.map((m) => m.slot))];
+  const slots = [...new Set(meshes.map((m) => m.slot))].filter((sl) => !recipe.only || recipe.only.includes(sl));
   const lo = [0, 1, 2].map((k) => Math.min(...verts.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...verts.map((p) => p[k])));
   for (const slot of slots) {
     const mesh = doc.createMesh(`body_${slot}`);

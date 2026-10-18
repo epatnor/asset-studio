@@ -1,32 +1,249 @@
 {
-  "_doc": "Plagg som lager (outfit.mjs). layer: högre ligger utanpå; i varje punkt vinner det översta plagget som täcker. slots: platserna (hm08_kit.json parts) plagget får finnas på. cover: gränser i meter, alla måste vara uppfyllda: above [höjd, höjd, t] (täcker ovanför en linje mellan två namngivna höjder), below [...] (nedanför), limb [ben, t] (UpperArm, LowerArm, UpperLeg, LowerLeg: från leden till t av benets längd), vneck {depth, width, back}, band [höjd, bredd]. Höjder: neckSeam, neck, chest, waist, hip, crotch, knee, ankle. thickness: tygets tjocklek; loose: extra vidd; looseProfile: waist (vidden ökar nedåt mot midjan och hänger kvar under) eller uniform; smooth: varv utjämning; minGap: minsta avstånd till lagret under; hem: fållen mot lagret under (bead = vulstens höjd, overhang = hur långt den når över kanten); trim.width: bård i accentfärgen längs gränserna; material: cloth, leather, metal.",
+  "_doc": "Plagg som lager (outfit.mjs). layer: högre ligger utanpå; i varje punkt vinner det översta plagget som täcker. slots: platserna (hm08_kit.json parts) plagget får finnas på. cover: gränser i meter, alla måste vara uppfyllda: above [höjd, höjd, t] (täcker ovanför en linje mellan två namngivna höjder), below [...] (nedanför), limb [ben, t] (UpperArm, LowerArm, UpperLeg, LowerLeg: från leden till t av benets längd), vneck {depth, width, back}, band [höjd, bredd], scalp {front, side, back} (hårlinje i huvudhöjder, 0 = hakan, 1 = hjässan), brow {width, height, lift, arch} (ögonbryn i meter). Höjder: neckSeam, neck, chest, waist, hip, crotch, knee, ankle. thickness: tygets tjocklek; loose: extra vidd; looseProfile: waist (vidden ökar nedåt mot midjan och hänger kvar under) eller uniform; smooth: varv utjämning; minGap: minsta avstånd till lagret under; hem: fållen mot lagret under (bead = vulstens höjd, overhang = hur långt den når över kanten); trim.width: bård i accentfärgen längs gränserna; material: cloth, leather, metal. taper: tjockleken avtar mot gränserna inom så många meter. noise {amp, scale}: slingor i meter. hair_short och hair_bob är platshållare: hår behöver en egen generator med slingor (volym och silhuett), inte ett lager på huden.",
   "tunic": {
-    "layer": 1, "slots": ["torso", "pelvis"],
-    "cover": [{ "above": ["hip", "crotch", 0.55] }, { "vneck": { "depth": 0.12, "width": 0.075, "back": 0.015 } }],
-    "thickness": 0.007, "loose": 0.03, "looseProfile": "waist", "smooth": 20, "minGap": 0.004,
-    "hem": { "bead": 0.006, "overhang": 0.008 }, "trim": { "width": 0.022 }, "material": "cloth"
+    "layer": 1,
+    "slots": [
+      "torso",
+      "pelvis"
+    ],
+    "cover": [
+      {
+        "above": [
+          "hip",
+          "crotch",
+          0.55
+        ]
+      },
+      {
+        "vneck": {
+          "depth": 0.12,
+          "width": 0.075,
+          "back": 0.015
+        }
+      }
+    ],
+    "thickness": 0.007,
+    "loose": 0.03,
+    "looseProfile": "waist",
+    "smooth": 20,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.006,
+      "overhang": 0.008
+    },
+    "trim": {
+      "width": 0.022
+    },
+    "material": "cloth"
   },
   "sleeve_short": {
-    "layer": 1, "slots": ["upperarm_L", "upperarm_R"],
-    "cover": [{ "limb": ["UpperArm", 0.62] }],
-    "thickness": 0.007, "loose": 0.0, "smooth": 12, "minGap": 0.004,
-    "hem": { "bead": 0.006, "overhang": 0.008 }, "trim": { "width": 0.02 }, "material": "cloth"
+    "layer": 1,
+    "slots": [
+      "upperarm_L",
+      "upperarm_R"
+    ],
+    "cover": [
+      {
+        "limb": [
+          "UpperArm",
+          0.62
+        ]
+      }
+    ],
+    "thickness": 0.007,
+    "loose": 0.0,
+    "smooth": 12,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.006,
+      "overhang": 0.008
+    },
+    "trim": {
+      "width": 0.02
+    },
+    "material": "cloth"
   },
   "trousers": {
-    "layer": 0, "slots": ["pelvis", "thigh_L", "thigh_R", "shin_L", "shin_R"],
-    "thickness": 0.007, "loose": 0.014, "smooth": 14, "minGap": 0.004,
-    "hem": { "bead": 0.005, "overhang": 0.006 }, "material": "cloth"
+    "layer": 0,
+    "slots": [
+      "pelvis",
+      "thigh_L",
+      "thigh_R",
+      "shin_L",
+      "shin_R"
+    ],
+    "thickness": 0.007,
+    "loose": 0.014,
+    "smooth": 14,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.005,
+      "overhang": 0.006
+    },
+    "material": "cloth"
   },
   "boots_high": {
-    "layer": 2, "slots": ["foot_L", "foot_R", "shin_L", "shin_R"],
-    "cover": [{ "below": ["ankle", "knee", 0.8] }],
-    "thickness": 0.009, "loose": 0.006, "smooth": 8, "minGap": 0.004,
-    "hem": { "bead": 0.007, "overhang": 0.007 }, "material": "leather"
+    "layer": 2,
+    "slots": [
+      "foot_L",
+      "foot_R",
+      "shin_L",
+      "shin_R"
+    ],
+    "cover": [
+      {
+        "below": [
+          "ankle",
+          "knee",
+          0.8
+        ]
+      }
+    ],
+    "thickness": 0.009,
+    "loose": 0.006,
+    "smooth": 8,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.007,
+      "overhang": 0.007
+    },
+    "material": "leather"
   },
   "belt": {
-    "layer": 3, "slots": ["torso", "pelvis"],
-    "cover": [{ "band": ["waist", 0.045] }],
-    "thickness": 0.006, "loose": 0.0, "smooth": 4, "minGap": 0.003,
-    "hem": { "bead": 0.003, "overhang": 0.003 }, "material": "leather"
+    "layer": 3,
+    "slots": [
+      "torso",
+      "pelvis"
+    ],
+    "cover": [
+      {
+        "band": [
+          "waist",
+          0.045
+        ]
+      }
+    ],
+    "thickness": 0.006,
+    "loose": 0.0,
+    "smooth": 4,
+    "minGap": 0.003,
+    "hem": {
+      "bead": 0.003,
+      "overhang": 0.003
+    },
+    "material": "leather"
+  },
+  "hair_short": {
+    "layer": 5,
+    "slots": [
+      "head"
+    ],
+    "cover": [
+      {
+        "scalp": {
+          "front": 0.8,
+          "side": 0.6,
+          "back": 0.3
+        }
+      }
+    ],
+    "thickness": 0.012,
+    "loose": 0.0,
+    "taper": 0.015,
+    "smooth": 12,
+    "minGap": 0.001,
+    "noise": {
+      "amp": 0.006,
+      "scale": 0.025
+    },
+    "hem": {
+      "bead": 0.0005,
+      "overhang": 0.001
+    },
+    "material": "hair"
+  },
+  "hair_bob": {
+    "layer": 5,
+    "slots": [
+      "head"
+    ],
+    "cover": [
+      {
+        "scalp": {
+          "front": 0.8,
+          "side": 0.3,
+          "back": 0.02
+        }
+      }
+    ],
+    "thickness": 0.022,
+    "loose": 0.012,
+    "taper": 0.03,
+    "smooth": 18,
+    "minGap": 0.001,
+    "noise": {
+      "amp": 0.007,
+      "scale": 0.03
+    },
+    "hem": {
+      "bead": 0.001,
+      "overhang": 0.002
+    },
+    "material": "hair"
+  },
+  "brows": {
+    "layer": 4,
+    "slots": [
+      "head"
+    ],
+    "cover": [
+      {
+        "brow": {
+          "width": 0.034,
+          "height": 0.0075,
+          "lift": 0.019,
+          "arch": 0.0035
+        }
+      }
+    ],
+    "thickness": 0.0022,
+    "loose": 0.0,
+    "taper": 0.0015,
+    "smooth": 2,
+    "minGap": 0.0005,
+    "hem": {
+      "bead": 0.0003,
+      "overhang": 0.0005
+    },
+    "material": "hair"
+  },
+  "sleeve_long": {
+    "layer": 1,
+    "slots": [
+      "upperarm_L",
+      "upperarm_R",
+      "forearm_L",
+      "forearm_R"
+    ],
+    "cover": [
+      {
+        "limb": [
+          "LowerArm",
+          0.93
+        ]
+      }
+    ],
+    "thickness": 0.007,
+    "loose": 0.0,
+    "smooth": 12,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.006,
+      "overhang": 0.008
+    },
+    "trim": {
+      "width": 0.02
+    },
+    "material": "cloth"
   }
 }

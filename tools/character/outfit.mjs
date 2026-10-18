@@ -22,8 +22,8 @@ function heights(J, cubes) {
   };
 }
 
-// En gräns som fält i meter: ≤ 0 där plagget täcker
-function clauseField(c, J, Hs) {
+// En gräns som fält i meter: ≤ 0 där plagget täcker. H: huvudet (top, eyeY, cx, cz) och ögonen.
+function clauseField(c, J, Hs, H) {
   const y = (a, b, t) => Hs[a] + (Hs[b] - Hs[a]) * t;
   if (c.above) { const line = y(...c.above); return (p) => line - p[1]; }
   if (c.below) { const line = y(...c.below); return (p) => p[1] - line; }
@@ -41,6 +41,27 @@ function clauseField(c, J, Hs) {
     return (p) => {
       const line = p[2] > J.Neck[2] ? top - depth + Math.abs(p[0]) * (depth / width) : top - back;
       return p[1] - line;
+    };
+  }
+  if (c.scalp) {
+    // Hårlinje i huvudhöjder (0 = hakan, 1 = hjässan), hög fram, lägre vid sidorna och i nacken
+    const { front, side, back } = c.scalp, chinY = H.eyeY - (H.top - H.eyeY), hh = H.top - chinY;
+    return (p) => {
+      const dx = p[0] - H.cx, dz = p[2] - H.cz, r = Math.hypot(dx, dz) || 1, cs = dz / r;
+      const t = cs > 0 ? side + (front - side) * cs ** 1.5 : side + (back - side) * (-cs) ** 1.5;
+      return chinY + t * hh - p[1];
+    };
+  }
+  if (c.brow) {
+    // Ett välvt band ovanför varje öga, tjockare inåt; bara framtill
+    const { width, height, lift, arch } = c.brow;
+    return (p) => {
+      const e = H.eyes[p[0] >= 0 ? 0 : 1].center;
+      if (p[2] < e[2] - 0.01) return 1;
+      const u = (Math.abs(p[0]) - Math.abs(e[0])) / (width / 2);
+      const yc = e[1] + lift + arch * (1 - u * u);
+      const h = height * (1.15 - 0.35 * (u + 1) / 2);
+      return Math.max(Math.abs(u) - 1, Math.abs(p[1] - yc) / (h / 2) - 1) * (height / 2);
     };
   }
   throw new Error(`okänd gräns ${JSON.stringify(c)}`);
@@ -82,7 +103,7 @@ function cutMesh(M, f) {
   M.tris = tris; M.slot = slot;
 }
 
-// body: { verts, normals, quads, tris, joints, cubes }, kit: hm08_kit.json, items: [{ name, spec, color, trim }]
+// body: { verts, normals, quads, tris, joints, cubes, eyes }, kit: hm08_kit.json, items: [{ name, spec, color, trim }]
 // (spec ur parts.json). Ger meshar per (plats, material) och kontroller. Utan plagg blir det den nakna
 // kroppen delad per plats.
 export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
@@ -92,7 +113,9 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
   const M = { pos: V.map((p) => [...p]), nrm: N.map((n) => [...n]), src: V.map((_, i) => [[i, 1]]), tris: T.map((t) => [...t]), slot: T.map((_, ti) => faceSlot.get(ti >> 1)) };
 
   // Lager i ordning nedifrån: lägre layer först, sedan ordningen i outfit
-  const L = items.map((it, k) => ({ ...it, k, fields: (it.spec.cover ?? []).map((c) => clauseField(c, J, Hs)), slots: new Set(it.spec.slots) }))
+  const eyeY = (body.eyes?.[0]?.center[1] ?? J.Head[1]);
+  const H = { top: Math.max(...V.map((p) => p[1])), eyeY, cx: J.Head[0], cz: J.Head[2], eyes: body.eyes ?? [] };
+  const L = items.map((it, k) => ({ ...it, k, fields: (it.spec.cover ?? []).map((c) => clauseField(c, J, Hs, H)), slots: new Set(it.spec.slots) }))
     .sort((a, b) => (a.spec.layer ?? 0) - (b.spec.layer ?? 0) || a.k - b.k);
   // Skär längs varje gräns, och längs bårdens inre kant så att bården blir en rak rand
   for (const it of L) for (const f of it.fields) {
@@ -128,7 +151,9 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
     const key = `${li},${v}`;
     if (memo.has(key)) return memo.get(key);
     const it = L[li];
-    const r = under(li, v) + it.spec.thickness + looseOf(it, M.pos[v]);
+    // taper: tjockleken avtar mot gränserna (hårlinjen tunnas ut i stället för att sluta i en kant)
+    const tp = it.spec.taper ? Math.min(1, Math.max(0, -Math.max(...it.fields.map((f) => f(M.pos[v]))) / it.spec.taper)) : 1;
+    const r = under(li, v) + (it.spec.thickness + looseOf(it, M.pos[v])) * (tp * tp * (3 - 2 * tp)) + (it.spec.taper ? 0.0005 : 0);
     memo.set(key, r);
     return r;
   };
@@ -172,6 +197,18 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
         next.set(key, p);
       }
       for (const [k2, p] of next) shellPos.set(k2, p);
+    }
+  }
+  // Slingor: lågfrekventa fåror längs normalen efter utjämningen (för hår), mest lodräta
+  for (const [li, tis] of zoneTris) {
+    if (li < 0 || !L[li].spec.noise) continue;
+    const { amp, scale } = L[li].spec.noise;
+    const waves = [[1, 0.15, 0.3], [0.4, 0.1, 1], [-0.7, 0.2, 0.7], [0.9, -0.1, -0.5]].map(([x, y, z], k) => ({ k: norm([x, y, z]).map((c) => c / scale), ph: k * 1.7 }));
+    for (const v of new Set(tis.flatMap((ti) => M.tris[ti]))) {
+      const key = `${li},${v}`, p = M.pos[v];
+      const n = waves.reduce((sacc, w) => sacc + Math.sin(dot(w.k, p) * 2 * Math.PI + w.ph), 0) / waves.length;
+      const tp = L[li].spec.taper ? Math.min(1, Math.max(0, -Math.max(...L[li].fields.map((f) => f(p))) / L[li].spec.taper)) : 1;
+      shellPos.set(key, add(shellPos.get(key), mul(M.nrm[v], amp * (0.5 + 0.5 * n) * tp)));
     }
   }
   // Sulor och annat som hamnat under marken lyfts till marken
