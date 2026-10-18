@@ -91,7 +91,7 @@ if (recipe.kit) {
     const hs = JSON.parse(fs.readFileSync(new URL('./hair.json', import.meta.url)))[recipe.hair.style];
     if (!hs) throw new Error(`okänd frisyr ${recipe.hair.style}`);
     const dark = '#' + [1, 3, 5].map((i) => Math.round(parseInt(recipe.hair.color.slice(i, i + 2), 16) * hs.cap.darken).toString(16).padStart(2, '0')).join('');
-    items.push({ name: 'hair_cap', spec: { ...lib.hair_cap, thickness: hs.cap.thickness, cover: [{ scalp: hs.scalp }] }, color: dark, trim: dark });
+    items.push({ name: 'hair_cap', spec: { ...lib.hair_cap, thickness: hs.cap.thickness, boost: hs.cap.boost, smooth: hs.cap.smooth ?? lib.hair_cap.smooth, texture: hs.texture, texScale: hs.texScale, cover: [{ scalp: hs.scalp }] }, color: dark, trim: dark });
   }
   const r = buildOutfit({ verts, normals, quads, tris, joints: J, cubes: body.cubes, eyes: body.eyes }, kitData, items, { skin: skinHex });
   meshes = r.meshes;

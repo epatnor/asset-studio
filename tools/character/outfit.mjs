@@ -153,7 +153,10 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
     const it = L[li];
     // taper: tjockleken avtar mot gränserna (hårlinjen tunnas ut i stället för att sluta i en kant)
     const tp = it.spec.taper ? Math.min(1, Math.max(0, -Math.max(...it.fields.map((f) => f(M.pos[v]))) / it.spec.taper)) : 1;
-    const r = under(li, v) + (it.spec.thickness + looseOf(it, M.pos[v])) * (tp * tp * (3 - 2 * tp)) + (it.spec.taper ? 0.0005 : 0);
+    // boost: extra volym framtill och upptill på huvudet (luggens och hjässans volym i ett hårskal)
+    const pv = M.pos[v], b = it.spec.boost;
+    const bst = b ? 1 + (b.front ?? 0) * Math.min(1, Math.max(0, (pv[2] - H.cz) / 0.08)) + (b.top ?? 0) * Math.min(1, Math.max(0, ((pv[1] - H.eyeY) / (H.top - H.eyeY) - 0.4) / 0.6)) : 1;
+    const r = under(li, v) + (it.spec.thickness * bst + looseOf(it, pv)) * (tp * tp * (3 - 2 * tp)) + (it.spec.taper ? 0.0005 : 0);
     memo.set(key, r);
     return r;
   };
@@ -218,24 +221,39 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
   const linear = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   const skinCol = linear(skin);
   const meshes = new Map();
-  const meshOf = (slot, material) => {
-    const k = `${slot}|${material}`;
-    if (!meshes.has(k)) meshes.set(k, { slot, material, pos: [], col: [], src: [], key: [], kind: material === 'skin' ? 'skin' : 'cloth', tris: [], strip: [], idx: new Map() });
+  const meshOf = (slot, material, texture = null) => {
+    const k = `${slot}|${material}|${texture ?? ''}`;
+    if (!meshes.has(k)) meshes.set(k, { slot, material, texture, pos: [], col: [], src: [], key: [], uv: texture ? [] : null, kind: material === 'skin' ? 'skin' : 'cloth', tris: [], strip: [], idx: new Map() });
     return meshes.get(k);
   };
+  // UV för lager med textur på huvudet: V nedåt från hjässan, U runt huvudet (söm bak, hanteras per triangel)
+  const circ = 2 * Math.PI * 0.09;
+  const headUV = (p, ts) => [Math.atan2(p[0] - H.cx, p[2] - H.cz) / (2 * Math.PI) * circ / ts, (H.top - p[1]) / ts];
   const materialOf = (li) => (li < 0 ? 'skin' : L[li].spec.material ?? 'cloth');
   const colorOf = (li, trim) => (li < 0 ? skinCol : linear(trim ? (L[li].trim ?? L[li].color) : L[li].color));
-  const vert = (m, tag, p, col, src, key) => {
+  const vert = (m, tag, p, col, src, key, uv) => {
     if (m.idx.has(tag)) return m.idx.get(tag);
     const i = m.pos.length;
     m.pos.push(p); m.col.push(col); m.src.push(src); m.key.push(key);
+    if (m.uv) m.uv.push(uv ?? [0, 0]);
     m.idx.set(tag, i);
     return i;
   };
+  const texOf = (li) => (li < 0 ? null : L[li].spec.texture ?? null);
   M.tris.forEach((t, ti) => {
     const { li, trim } = zone[ti];
-    const m = meshOf(M.slot[ti], materialOf(li));
-    m.tris.push(t.map((v) => vert(m, `s${li},${trim ? 1 : 0},${v}`, shellPos.get(`${li},${v}`), colorOf(li, trim), M.src[v], `${li},${v}`)));
+    const tex = texOf(li);
+    const m = meshOf(M.slot[ti], materialOf(li), tex);
+    let uvs = null, wrap = [false, false, false];
+    if (tex) {
+      const ts = L[li].spec.texScale ?? 0.15;
+      uvs = t.map((v) => headUV(M.pos[v], ts));
+      // Triangel över sömmen bak: flytta de negativa u ett varv, med egna hörnkopior
+      const us = uvs.map((q) => q[0]);
+      if (Math.max(...us) - Math.min(...us) > circ / ts / 2) wrap = us.map((u) => u < 0);
+      uvs = uvs.map((q, k) => (wrap[k] ? [q[0] + circ / ts, q[1]] : q));
+    }
+    m.tris.push(t.map((v, k) => vert(m, `s${li},${trim ? 1 : 0},${v}${wrap[k] ? 'w' : ''}`, shellPos.get(`${li},${v}`), colorOf(li, trim), M.src[v], `${li},${v}`, uvs?.[k])));
   });
 
   // Fållar där två lager möts: yttre kant -> vulst -> inre kant
@@ -279,11 +297,11 @@ export function buildOutfit(body, kit, items, { skin = '#E9B48A' } = {}) {
   for (const { a, b, to, ti } of boundary) {
     const lo = zone[to].li, lin = zone[ti].li, trim = zone[to].trim;
     const hem = L[lo].spec.hem ?? { bead: 0.004, overhang: 0.005 };
-    const m = meshOf(M.slot[to], materialOf(lo));
+    const m = meshOf(M.slot[to], materialOf(lo), texOf(lo));
     const col = colorOf(lo, trim);
     const P = (li, v) => shellPos.get(`${li},${v}`);
     const bead = (v) => add(add(P(lo, v), mul(M.nrm[v], hem.bead)), mul(outDir(lo, lin, v), hem.overhang));
-    const vv = (tag, p, v) => vert(m, `f${lo},${lin},${tag},${v}`, p, col, M.src[v], `f${lo},${lin},${tag},${v}`);
+    const vv = (tag, p, v) => vert(m, `f${lo},${lin},${tag},${v}`, p, col, M.src[v], `f${lo},${lin},${tag},${v}`, m.uv ? headUV(M.pos[v], L[lo].spec.texScale ?? 0.15) : null);
     const oa = vv('o', P(lo, a), a), ob = vv('o', P(lo, b), b), ba = vv('b', bead(a), a), bb = vv('b', bead(b), b);
     const ia = vv('i', P(lin, a), a), ib = vv('i', P(lin, b), b);
     const quad = (q, expect) => {

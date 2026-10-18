@@ -71,15 +71,75 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
     return { p, n, src: a };
   };
 
+  // Styrkurva från en rot: startriktning längs flödet med lyft, gravitation som ökar längs längden (och tar
+  // över när kurvan lämnat hårbotten), ut från närmaste yta; över hårbotten dras kurvan mot huvudet och
+  // följer dess rundning, mot ansikte, hals och kropp bara kollision så att den faller fritt.
+  const growGuide = (root, flow, L, S) => {
+    let dir = norm(add(norm(tangential(flow, root.n)), mul(root.n, style.lift ?? 0.3)));
+    const step = L / S;
+    const pts = [sub(root.p, mul(root.n, 0.003))];
+    let p = root.p, free = false;
+    for (let s = 1; s <= S; s++) {
+      const t = s / S;
+      dir = norm(add(dir, mul([0, -1, 0], (style.gravity ?? 0.5) * (free ? 0.9 : t * 0.6))));
+      p = add(p, mul(dir, step));
+      pushOut: for (let it = 0; it < 3; it++) {
+        const q = near(p);
+        if (!q) break;
+        const d = dot(sub(p, q.p), q.n), g = gap * (1 + t * 0.5);
+        const want = g + (style.volume ?? 0.01) * (1 - 0.5 * t);
+        if (d < g) {
+          p = add(p, mul(q.n, g - d));
+          dir = norm(add(tangential(dir, q.n), mul(q.n, 0.05)));
+        } else if (scalp(q.p) <= 0.01 && d > want && q.d < want + 0.04) {
+          p = sub(p, mul(q.n, (d - want) * 0.85));
+          dir = norm(add(tangential(dir, q.n), mul(q.n, -0.02)));
+        } else { if (scalp(q.p) > 0.01) free = true; break pushOut; }
+      }
+      pts.push(p);
+    }
+    return pts;
+  };
+  // Rötter i en ring innanför hårlinjen vid givna vinklar (grader, 0 = rakt fram)
+  const ringRoot = (at, th, cands) => {
+    let best = -1, bd = Infinity;
+    for (const v of cands) {
+      const a2 = (Math.atan2(V[v][0] - H.cx, V[v][2] - H.cz) * 180) / Math.PI;
+      const d = Math.abs(((a2 - th + 540) % 360) - 180);
+      if (d < bd) { bd = d; best = v; }
+    }
+    return best < 0 ? null : { p: V[best], n: N[best], src: best };
+  };
+  const ringCands = (at) => [...new Set(scalpTris.flatMap((ti) => T[ti]))].filter((v) => Math.abs(-scalp(V[v]) - at * headH) < 0.035 * headH);
+
   const pos = [], nrm = [], col = [], uv = [], src = [], tris = [];
   const gap = style.gap ?? 0.006, part = style.part ?? { x: 0 }, fr = style.fringe;
-  for (const layer of style.clumps) {
-    // Rötter med ett minsta avstånd (pilkastning), så att slingorna fördelas jämnt
-    const minD = Math.sqrt(total / layer.count) * 0.75;
+  for (const layer of style.clumps ?? []) {
     const roots = [];
-    for (let tries = 0; roots.length < layer.count && tries < layer.count * 60; tries++) {
-      const q = sampleRoot();
-      if (roots.every((o) => len(sub(o.p, q.p)) > minD)) roots.push(q);
+    if (layer.ring) {
+      // Lock i en ring innanför hårlinjen: jämnt fördelade runt huvudet, at huvudhöjder innanför linjen.
+      // skip: [från, till] i grader (0 = rakt fram) där ringen inte har lock (t.ex. ansiktet); only: bara där.
+      const { at, count, phase = 0, skip, only } = layer.ring;
+      const cands = [...new Set(scalpTris.flatMap((ti) => T[ti]))].filter((v) => Math.abs(-scalp(V[v]) - at * headH) < 0.035 * headH);
+      for (let k = 0; k < count; k++) {
+        const th = ((phase + (360 * k) / count + 540) % 360) - 180;
+        if (skip && th >= skip[0] && th <= skip[1]) continue;
+        if (only && (th < only[0] || th > only[1])) continue;
+        let best = -1, bd = Infinity;
+        for (const v of cands) {
+          const a2 = (Math.atan2(V[v][0] - H.cx, V[v][2] - H.cz) * 180) / Math.PI;
+          const d = Math.abs(((a2 - th + 540) % 360) - 180);
+          if (d < bd) { bd = d; best = v; }
+        }
+        if (best >= 0) roots.push({ p: V[best], n: N[best], src: best });
+      }
+    } else {
+      // Rötter med ett minsta avstånd (pilkastning), så att slingorna fördelas jämnt
+      const minD = Math.sqrt(total / layer.count) * 0.75;
+      for (let tries = 0; roots.length < layer.count && tries < layer.count * 60; tries++) {
+        const q = sampleRoot();
+        if (roots.every((o) => len(sub(o.p, q.p)) > minD)) roots.push(q);
+      }
     }
     for (const root of roots) {
       // Region: fram, uppe, sidor, bak (för längd och lugg)
@@ -100,33 +160,8 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
         const fd = [fr.dir[0] * (fr.mirror ? side : 1), fr.dir[1], fr.dir[2]];
         flow = add(mul(flow, 1 - f), mul(fd, f * (fr.weight ?? 1) * 2));
       }
-      let dir = norm(add(norm(tangential(flow, root.n)), mul(root.n, style.lift ?? 0.3)));
-      // Väx styrkurvan
-      const S = layer.segments ?? 10, step = L / S;
-      const pts = [sub(root.p, mul(root.n, 0.003))];
-      let p = root.p;
-      let free = false; // lämnat hårbotten: gravitationen tar över direkt
-      for (let s = 1; s <= S; s++) {
-        const t = s / S;
-        dir = norm(add(dir, mul([0, -1, 0], (style.gravity ?? 0.5) * (free ? 0.9 : t * 0.6))));
-        p = add(p, mul(dir, step));
-        // Ut från närmaste yta; över hårbotten dras slingan också mot huvudet (ligger an mot skallen med lite
-        // volym) och följer dess rundning. Mot ansikte, hals och kropp bara kollision, så att den faller fritt.
-        for (let it = 0; it < 3; it++) {
-          const q = near(p);
-          if (!q) break;
-          const d = dot(sub(p, q.p), q.n), g = gap * (1 + t * 0.5);
-          const want = g + (style.volume ?? 0.01) * (1 - 0.5 * t);
-          if (d < g) {
-            p = add(p, mul(q.n, g - d));
-            dir = norm(add(tangential(dir, q.n), mul(q.n, 0.05)));
-          } else if (scalp(q.p) <= 0.01 && d > want && q.d < want + 0.04) {
-            p = sub(p, mul(q.n, (d - want) * 0.85));
-            dir = norm(add(tangential(dir, q.n), mul(q.n, -0.02)));
-          } else { if (scalp(q.p) > 0.01) free = true; break; }
-        }
-        pts.push(p);
-      }
+      const S = layer.segments ?? 10;
+      const pts = growGuide(root, flow, L, S);
       // Våg i sidled längs slingan
       const wave = style.wave ?? { amp: 0, freq: 1 }, ph = r() * Math.PI * 2;
       // Ramar längs kurvan med parallelltransport från roten (den platta sidan mot huvudet där), så att
@@ -174,6 +209,85 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
       }
     }
   }
+  // Draperi: en sammanhängande skiva från en båge av hårlinjen (vinklar from..to i grader, 0 = rakt fram,
+  // genom 180 = bak). Kurvorna jämnas ut i sidled mot varandra så att skivan hänger ihop, och sys ihop till en
+  // yta med tjocklek, slutna kanter och UV längs fallet. Färg som locken: skugga vid roten, glansring.
+  for (const sh of style.sheets ?? []) {
+    // at: [vid sidorna, bak] i huvudhöjder innanför hårlinjen; bak sitter rötterna högre (mot hjässan)
+    const [atSide, atBack] = Array.isArray(sh.at) ? sh.at : [sh.at, sh.at];
+    const n = sh.guides, S = sh.segments ?? 10;
+    const span = ((sh.to - sh.from) + 360) % 360 || 360;
+    const roots = [];
+    const candCache = new Map();
+    for (let k = 0; k < n; k++) {
+      const th = sh.from + (span * k) / (n - 1);
+      const at = atSide + (atBack - atSide) * Math.max(0, -Math.cos((th * Math.PI) / 180));
+      const key = at.toFixed(2);
+      if (!candCache.has(key)) candCache.set(key, ringCands(at));
+      const q = ringRoot(at, th, candCache.get(key));
+      if (q) roots.push(q);
+    }
+    const G = roots.map((root) => {
+      const rad = norm([root.p[0] - H.cx, 0, root.p[2] - H.cz]);
+      const flow = add(add(mul(rad, sh.radial ?? 0.3), mul([0, -1, 0], sh.down ?? 1)), mul([0, 0, -1], sh.back ?? 0.2));
+      // lengthScale: [vid sidorna, bak]; kortare vid sidorna så att håret slutar vid axlarna i stället för att
+      // lägga sig över dem, längre bak ned längs ryggen
+      const [ls, lb] = sh.lengthScale ?? [1, 1];
+      const relLen = ls + (lb - ls) * Math.max(0, -norm([root.p[0] - H.cx, 0, root.p[2] - H.cz])[2]);
+      return growGuide(root, flow, sh.length * relLen, S);
+    });
+    // Utjämning i sidled (inte roten) med Taubin (växlande +λ och −μ, så att skivan inte krymper), och ut
+    // från ytorna igen
+    for (let it = 0; it < 2 * (sh.smooth ?? 4); it++) {
+      const w = it % 2 ? -0.53 : 0.5;
+      const next = G.map((g) => g.map((p) => p));
+      for (let k = 1; k < G.length - 1; k++) for (let s = 1; s <= S; s++) next[k][s] = add(G[k][s], mul(sub(lerp(G[k - 1][s], G[k + 1][s], 0.5), G[k][s]), w));
+      // även längs fallet (inte roten och toppen), så att kollisionen mot axlarna inte ger knyckar
+      for (let k = 0; k < G.length; k++) for (let s = 2; s < S; s++) next[k][s] = add(next[k][s], mul(sub(lerp(G[k][s - 1], G[k][s + 1], 0.5), G[k][s]), w * 0.6));
+      for (let k = 0; k < G.length; k++) for (let s = 1; s <= S; s++) {
+        const q = near(next[k][s]);
+        if (q) { const d = dot(sub(next[k][s], q.p), q.n); if (d < gap) next[k][s] = add(next[k][s], mul(q.n, gap - d)); }
+        G[k][s] = next[k][s];
+      }
+    }
+    // Ytan: ytter- och innerskikt med tjocklek längs skivans normal (bort från huvudets mitt)
+    const headC = [H.cx, eyeY, H.cz];
+    const base = pos.length, rows = G.length, cols = S + 1;
+    const ts = style.texScale ?? 0.15;
+    const at = (k, s) => G[k][s];
+    const ph = r() * 6;
+    for (const layerSide of [1, -1]) {
+      for (let k = 0; k < rows; k++) {
+        let arc = 0;
+        for (let s = 0; s < cols; s++) {
+          const t = s / S, p = at(k, s);
+          if (s > 0) arc += len(sub(p, at(k, s - 1)));
+          const along = norm(sub(at(k, Math.min(S, s + 1)), at(k, Math.max(0, s - 1))));
+          const across = norm(sub(at(Math.min(rows - 1, k + 1), s), at(Math.max(0, k - 1), s)));
+          let nn = norm(cross(across, along));
+          if (dot(nn, sub(p, headC)) < 0) nn = mul(nn, -1);
+          const th = (sh.thickness ?? 0.015) * (1 - 0.6 * t) / 2;
+          pos.push(add(p, mul(nn, th * layerSide))); nrm.push(mul(nn, layerSide));
+          uv.push([(k / (rows - 1)) * (sh.width ?? 0.4) / ts, arc / ts]);
+          const hh = (p[1] - chinY) / headH;
+          const band = hl.strength * (1 - smoothstep(0, hl.width, Math.abs(hh - hl.at))) * (0.7 + 0.3 * Math.sin(ph + k * 0.9));
+          let c = mix(Z.shadow, Z.base, smoothstep(0, 0.35, t));
+          if (layerSide < 0) c = c.map((x) => x * 0.75);
+          else c = mix(c, Z.light, band);
+          col.push(c.map((x) => Math.min(1, x)));
+          src.push([[roots[k].src, 1]]);
+        }
+      }
+    }
+    const idx = (side, k, s) => base + (side === 1 ? 0 : rows * cols) + k * cols + s;
+    for (let k = 0; k < rows - 1; k++) for (let s = 0; s < S; s++) {
+      tris.push([idx(1, k, s), idx(1, k + 1, s), idx(1, k + 1, s + 1)], [idx(1, k, s), idx(1, k + 1, s + 1), idx(1, k, s + 1)]);
+      tris.push([idx(-1, k, s), idx(-1, k + 1, s + 1), idx(-1, k + 1, s)], [idx(-1, k, s), idx(-1, k, s + 1), idx(-1, k + 1, s + 1)]);
+    }
+    // Kanter: sidorna och nederkanten
+    for (let s = 0; s < S; s++) for (const k of [0, rows - 1]) tris.push([idx(1, k, s), idx(-1, k, s), idx(-1, k, s + 1)], [idx(1, k, s), idx(-1, k, s + 1), idx(1, k, s + 1)]);
+    for (let k = 0; k < rows - 1; k++) tris.push([idx(1, k, S), idx(-1, k, S), idx(-1, k + 1, S)], [idx(1, k, S), idx(-1, k + 1, S), idx(1, k + 1, S)]);
+  }
   // Vänd trianglarna utåt (jämför med hörnnormalerna)
   for (const t of tris) {
     const f = cross(sub(pos[t[1]], pos[t[0]]), sub(pos[t[2]], pos[t[0]]));
@@ -183,8 +297,8 @@ export function buildHair(body, headTris, collide, style, color, seed = 1) {
   const acc = pos.map(() => [0, 0, 0]);
   for (const [a, b, c] of tris) { const f = cross(sub(pos[b], pos[a]), sub(pos[c], pos[a])); for (const i of [a, b, c]) acc[i] = add(acc[i], f); }
   return {
-    slot: 'hair', material: 'hair', kind: 'hair', texture: 'hair_strands', pos, nrm: acc.map(norm), col, uv, src,
+    slot: 'hair', material: 'hair', kind: 'hair', texture: style.texture ?? 'hair_strands', pos, nrm: acc.map(norm), col, uv, src,
     key: pos.map((_, i) => `hair,${i}`), tris, strip: tris.map(() => false),
-    stats: { clumps: style.clumps.reduce((s, l) => s + l.count, 0), tris: tris.length },
+    stats: { locks: (style.clumps ?? []).reduce((s2, l) => s2 + (l.ring?.count ?? l.count ?? 0), 0), sheets: (style.sheets ?? []).length, tris: tris.length },
   };
 }
