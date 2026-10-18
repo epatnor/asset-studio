@@ -13,7 +13,7 @@ import { writeGltf } from '../tree/gltf_write.mjs';
 import { sub, add, cross, dot, norm } from '../tree/vec.mjs';
 import { BONES } from './skeleton.mjs';
 import { buildHm08 } from './hm08.mjs';
-import { buildGarment, garmentChecks } from './garment.mjs';
+import { buildGarment, garmentChecks, offsetFn } from './garment.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const style = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -82,19 +82,54 @@ const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8',
   '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
 const kitData = recipe.kit ? JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url))) : null;
 const kit = kitData ? { ...kitData.parts } : { body: quads.map((_, f) => f) };
-// Plaggen: varje del i outfit ersätter de nakna delarna på sina platser
+// Plaggen: varje del i outfit ersätter de nakna delarna på sina platser. outfit: { plats: del } eller
+// { plats: { part, color, trim } }. En söm mot ett annat plagg blir öppen: ingen fåll, och båda plaggen
+// lägger kanten på samma avstånd (det största av deras två) så att de möts i samma hörn.
 const partsLib = JSON.parse(fs.readFileSync(new URL('./parts.json', import.meta.url)));
+const owner = {};
+const entries = Object.entries(recipe.outfit ?? {}).map(([slot, e]) => {
+  const o = typeof e === 'string' ? { part: e } : e;
+  const spec = partsLib[o.part];
+  for (const s of spec.slots) owner[s] = slot;
+  return { slot, partName: o.part, spec, color: o.color ?? recipe.colors?.cloth ?? '#3F5443', trim: o.trim ?? recipe.colors?.accent ?? '#D9A423' };
+});
+// Vilka delar varje söm skiljer (ur första kanten i slingan)
+const partOfFace = new Map();
+if (kitData) for (const [pn, fs2] of Object.entries(kitData.parts)) for (const f of fs2) partOfFace.set(f, pn);
+const edgeFacesAll = new Map();
+quads.forEach((q, fi) => q.forEach((a, k) => { const b = q[(k + 1) % 4], key = a < b ? `${a},${b}` : `${b},${a}`; (edgeFacesAll.get(key) ?? edgeFacesAll.set(key, []).get(key)).push(fi); }));
+const seamSides = kitData ? Object.fromEntries(Object.entries(kitData.seams).map(([n, l]) => {
+  const key = l[0] < l[1] ? `${l[0]},${l[1]}` : `${l[1]},${l[0]}`;
+  return [n, [...new Set(edgeFacesAll.get(key).map((f) => partOfFace.get(f)))]];
+})) : {};
+const offsets = Object.fromEntries(entries.map((e) => [e.slot, offsetFn(e.spec, J)]));
 const garments = [];
-for (const [slot, partName] of Object.entries(recipe.outfit ?? {})) {
-  const spec = partsLib[partName];
+for (const e of entries) {
+  const openSeams = {};
+  for (const [n, sides] of Object.entries(seamSides)) {
+    const [a, b] = sides.map((p) => owner[p]);
+    if (!a || !b || a === b || (a !== e.slot && b !== e.slot)) continue;
+    const fa = offsets[a], fb = offsets[b];
+    openSeams[n] = (v) => Math.max(fa(verts[v]), fb(verts[v]));
+  }
   const g = buildGarment({ verts, normals, quads, joints: J }, kitData, {
-    ...spec, color: linear(recipe.colors?.cloth ?? '#3F5443'), trimColor: spec.trim ? linear(recipe.colors?.accent ?? '#D9A423') : null,
-  });
-  checks[`part_${slot}_${partName}`] = garmentChecks({ verts, normals }, g, kitData);
-  for (const s of spec.slots) delete kit[s];
-  garments.push({ slot, partName, spec, g });
+    ...e.spec, color: linear(e.color), trimColor: e.spec.trim ? linear(e.trim) : null,
+  }, { openSeams });
+  checks[`part_${e.slot}_${e.partName}`] = garmentChecks({ verts, normals }, g, kitData);
+  for (const s of e.spec.slots) delete kit[s];
+  garments.push({ ...e, g });
 }
-checks.ok = checks.ok && garments.every(({ slot, partName }) => {
+// Öppna sömmar: båda plaggens kanthörn ska ligga på samma ställe
+let clothSeamError = 0;
+for (const A of garments) for (const B of garments) {
+  if (A === B) continue;
+  for (const n of A.g.open.filter((x) => B.g.open.includes(x))) for (const v of kitData.seams[n]) {
+    const pa = A.g.positions[A.g.shellOf.get(v)], pb = B.g.positions[B.g.shellOf.get(v)];
+    clothSeamError = Math.max(clothSeamError, Math.hypot(pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]));
+  }
+}
+if (garments.length) checks.cloth_seam_error_mm = +(clothSeamError * 1000).toFixed(4);
+checks.ok = checks.ok && clothSeamError < 1e-5 && garments.every(({ slot, partName }) => {
   const c = checks[`part_${slot}_${partName}`];
   return c.shell_inside === 0 && c.seam_error_mm < 0.01;
 });

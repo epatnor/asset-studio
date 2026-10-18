@@ -1,5 +1,5 @@
 {
-  "_doc": "Byggsatsdelar (garment.mjs). slots: platserna delen ersätter (hm08_kit.json parts); delen slutar i sömmarna mot andra platser. thickness: tygets tjocklek i meter; loose: extra vidd nedåt mot midjan; smooth: varv utjämning (tyget visar inte varje muskel); minGap: minsta avstånd till huden; hem: invikt fåll (bead = vulstens höjd, overhang = hur långt vulsten når förbi sömmen, band = antal hörnrader ovanför sömmen i bårdens färg); trim: fållen i accentfärgen; material: Cloth, Leather, Metal (roughness ur style.json character.materials).",
+  "_doc": "Byggsatsdelar (garment.mjs). slots: platserna delen ersätter (hm08_kit.json parts); delen slutar i sömmarna mot andra platser. thickness: tygets tjocklek i meter; loose: extra vidd; looseProfile: waist (vidden ökar nedåt mot midjan) eller uniform; smooth: varv utjämning (tyget visar inte varje muskel); minGap: minsta avstånd till huden; hem: invikt fåll (bead = vulstens höjd, overhang = hur långt vulsten når förbi sömmen, band = antal hörnrader ovanför sömmen i bårdens färg); trim: fållen i accentfärgen; material: Cloth, Leather, Metal (roughness ur style.json character.materials). Mellan två plagg viks ingen fåll: kanterna möts i samma hörn (öppen söm), och bården sitter bara vid fållar mot hud.",
   "tunic": {
     "slots": [
       "torso"
@@ -14,6 +14,46 @@
       "band": 1
     },
     "trim": true,
+    "material": "cloth",
+    "looseProfile": "waist"
+  },
+  "sleeve_short": {
+    "slots": [
+      "upperarm_L",
+      "upperarm_R"
+    ],
+    "thickness": 0.007,
+    "loose": 0.008,
+    "looseProfile": "uniform",
+    "smooth": 12,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.006,
+      "overhang": 0.008,
+      "band": 1
+    },
+    "trim": true,
+    "material": "cloth"
+  },
+  "trousers": {
+    "slots": [
+      "pelvis",
+      "thigh_L",
+      "thigh_R",
+      "shin_L",
+      "shin_R"
+    ],
+    "thickness": 0.007,
+    "loose": 0.012,
+    "looseProfile": "uniform",
+    "smooth": 14,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.005,
+      "overhang": 0.006,
+      "band": 0
+    },
+    "trim": false,
     "material": "cloth"
   }
 }

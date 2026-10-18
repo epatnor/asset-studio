@@ -89,6 +89,9 @@ Spelaren väljer det som receptet redan beskriver: ras eller kropp, man eller kv
 3. **Klart:** människokroppar ur MakeHuman hm08 (`hm08.mjs`, `gen_hm08.mjs`); macro-targets ger tydligt olika kroppar ur samma mesh.
 4. **Klart:** byggsatsens sömkontrakt på hm08 (`kit_hm08.mjs` → `hm08_kit.json`): 14 sömmar som kantslingor, 15 nakna delar, en meshnod per del.
 5. Första klädvarianten för en plats: en tunika för bålen som slutar exakt i sömmarna, med invikt fåll; byte mellan naken och tunika i samma bild. **Klart:** `garment.mjs` och `parts.json` (`tunic`): skal ur bålens egna quads, utjämnat och minst 4 mm från huden, invikt fåll med bård i accentfärgen, sömfel 0 mm. Midjesömmen ligger under naveln, så att fållen inte faller in i navelgropen.
+5b. **Klart:** korta ärmar och byxor (`sleeve_short`, `trousers`). Sömmar mellan två plagg är öppna: ingen fåll, båda kanterna på samma hörn med kroppens normal; bården sitter bara vid fållar mot hud.
+5c. Ägarskap och fåll var som helst: sömmarna avgör vem som äger en kroppsdel, inte var tyget slutar (en kort ärm kan sluta mitt på överarmen, resten av delen är hud). Föremål tar delar i prioritetsordning (stövlar, handskar och rustning före byxor och skjorta), och inre plagg genereras för det som är kvar, så att byxor ser nedstoppade ut i höga stövlar utan två lager. Hero som i konceptet: tunika över höfterna, bälte, V-ringning, stövlar.
+5d. Posetest i `checks`: skinna med hm08:s vikter (plaggen kopierar vikterna från sina kroppshörn) i några poser och mät genomstick och öppna sömmar.
 6. Egna targets: stilisering mot konceptet, köpmansmage, dvärgproportioner.
 7. Ansikte och huvuddelar (nivå B): ögon (hm08:s hjälpgeometri), ögonbryn, hår, skägg, hårfärg; vertexfärg och material.
 8. Skinning (hm08:s vikter för `game_engine` som grund) och klippen; sockets; lineup-sida med byte av delar och reglage.
