@@ -47,7 +47,7 @@ function walkLoop(a0, b0) {
 const S = (name, point, axis, reach) => ({ name, point, axis: norm(axis), reach });
 const seams = [
   S('neck', lerp(J.Neck, J.Head, 0.3), sub(J.Head, J.Neck), 0.12),
-  S('waist', lerp(J.Hips, J.Spine, 0.75), sub(J.Spine, J.Hips), 0.3),
+  S('waist', lerp(J.Hips, J.Spine, 0.55), sub(J.Spine, J.Hips), 0.3),
 ];
 for (const [s, c] of [['Left', 'L'], ['Right', 'R']]) {
   seams.push(

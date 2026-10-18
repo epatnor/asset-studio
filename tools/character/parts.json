@@ -1,0 +1,19 @@
+{
+  "_doc": "Byggsatsdelar (garment.mjs). slots: platserna delen ersätter (hm08_kit.json parts); delen slutar i sömmarna mot andra platser. thickness: tygets tjocklek i meter; loose: extra vidd nedåt mot midjan; smooth: varv utjämning (tyget visar inte varje muskel); minGap: minsta avstånd till huden; hem: invikt fåll (bead = vulstens höjd, overhang = hur långt vulsten når förbi sömmen, band = antal hörnrader ovanför sömmen i bårdens färg); trim: fållen i accentfärgen; material: Cloth, Leather, Metal (roughness ur style.json character.materials).",
+  "tunic": {
+    "slots": [
+      "torso"
+    ],
+    "thickness": 0.007,
+    "loose": 0.03,
+    "smooth": 20,
+    "minGap": 0.004,
+    "hem": {
+      "bead": 0.006,
+      "overhang": 0.008,
+      "band": 1
+    },
+    "trim": true,
+    "material": "cloth"
+  }
+}

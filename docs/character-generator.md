@@ -88,7 +88,7 @@ Spelaren väljer det som receptet redan beskriver: ras eller kropp, man eller kv
 2. **Klart:** regioner, mall per ras och sockets på primitivkroppen (`regions.mjs`, `template.mjs`); idéerna förs över till hm08.
 3. **Klart:** människokroppar ur MakeHuman hm08 (`hm08.mjs`, `gen_hm08.mjs`); macro-targets ger tydligt olika kroppar ur samma mesh.
 4. **Klart:** byggsatsens sömkontrakt på hm08 (`kit_hm08.mjs` → `hm08_kit.json`): 14 sömmar som kantslingor, 15 nakna delar, en meshnod per del.
-5. Första klädvarianten för en plats: en tunika för bålen som slutar exakt i sömmarna, med invikt fåll; byte mellan naken och tunika i samma bild.
+5. Första klädvarianten för en plats: en tunika för bålen som slutar exakt i sömmarna, med invikt fåll; byte mellan naken och tunika i samma bild. **Klart:** `garment.mjs` och `parts.json` (`tunic`): skal ur bålens egna quads, utjämnat och minst 4 mm från huden, invikt fåll med bård i accentfärgen, sömfel 0 mm. Midjesömmen ligger under naveln, så att fållen inte faller in i navelgropen.
 6. Egna targets: stilisering mot konceptet, köpmansmage, dvärgproportioner.
 7. Ansikte och huvuddelar (nivå B): ögon (hm08:s hjälpgeometri), ögonbryn, hår, skägg, hårfärg; vertexfärg och material.
 8. Skinning (hm08:s vikter för `game_engine` som grund) och klippen; sockets; lineup-sida med byte av delar och reglage.

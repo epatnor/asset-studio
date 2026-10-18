@@ -4,13 +4,16 @@
 //
 // Receptfält: macro (gender 1 = man, age 0,5 = 25 år, muscle, weight, height, proportions; 0–1, 0,5 = medel),
 // ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB), kit (true: en meshnod per naken del enligt
-// sömkontraktet i hm08_kit.json), explode (dra isär delarna, t.ex. 0,15), debug ("parts": en färg per del).
+// sömkontraktet i hm08_kit.json), explode (dra isär delarna, t.ex. 0,15), debug ("parts": en färg per del),
+// outfit ({plats: del i parts.json}, kräver kit; delen ersätter de nakna delarna på sina platser),
+// colors ({cloth, accent} för plaggen).
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
 import { sub, add, cross, dot, norm } from '../tree/vec.mjs';
 import { BONES } from './skeleton.mjs';
 import { buildHm08 } from './hm08.mjs';
+import { buildGarment, garmentChecks } from './garment.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const style = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -77,7 +80,24 @@ const mat = doc.createMaterial('Skin').setRoughnessFactor(style.character.materi
 // på båda sidor. Varje quad gav två trianglar i ordning (tris[2f], tris[2f + 1]).
 const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8', '#9B6BE0', '#E07A1F', '#2FA866',
   '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
-const kit = recipe.kit ? JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url))).parts : { body: quads.map((_, f) => f) };
+const kitData = recipe.kit ? JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url))) : null;
+const kit = kitData ? { ...kitData.parts } : { body: quads.map((_, f) => f) };
+// Plaggen: varje del i outfit ersätter de nakna delarna på sina platser
+const partsLib = JSON.parse(fs.readFileSync(new URL('./parts.json', import.meta.url)));
+const garments = [];
+for (const [slot, partName] of Object.entries(recipe.outfit ?? {})) {
+  const spec = partsLib[partName];
+  const g = buildGarment({ verts, normals, quads, joints: J }, kitData, {
+    ...spec, color: linear(recipe.colors?.cloth ?? '#3F5443'), trimColor: spec.trim ? linear(recipe.colors?.accent ?? '#D9A423') : null,
+  });
+  checks[`part_${slot}_${partName}`] = garmentChecks({ verts, normals }, g, kitData);
+  for (const s of spec.slots) delete kit[s];
+  garments.push({ slot, partName, spec, g });
+}
+checks.ok = checks.ok && garments.every(({ slot, partName }) => {
+  const c = checks[`part_${slot}_${partName}`];
+  return c.shell_inside === 0 && c.seam_error_mm < 0.01;
+});
 const lo = [0, 1, 2].map((k) => Math.min(...verts.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...verts.map((p) => p[k])));
 const mid = lo.map((v, k) => (v + hi[k]) / 2);
 Object.entries(kit).forEach(([part, faces], pi) => {
@@ -97,6 +117,17 @@ Object.entries(kit).forEach(([part, faces], pi) => {
   if (recipe.explode) node.setTranslation([(c[0] - mid[0]) * recipe.explode, (c[1] - lo[1]) * recipe.explode, 0]);
   root.addChild(node);
 });
+for (const { slot, partName, spec, g } of garments) {
+  const m = style.character.materials[spec.material] ?? style.character.materials.cloth;
+  const gmat = doc.createMaterial(spec.material[0].toUpperCase() + spec.material.slice(1)).setRoughnessFactor(m.roughness).setMetallicFactor(m.metalness ?? 0);
+  const prim = doc.createPrimitive()
+    .setAttribute('POSITION', acc('VEC3', Float32Array.from(g.positions.flat())))
+    .setAttribute('NORMAL', acc('VEC3', Float32Array.from(g.normals.flat())))
+    .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(g.colors.flat())))
+    .setIndices(acc('SCALAR', Uint32Array.from(g.tris.flat())))
+    .setMaterial(gmat);
+  root.addChild(doc.createNode(`part_${slot}_${partName}`).setMesh(doc.createMesh(`part_${slot}_${partName}`).addPrimitive(prim)));
+}
 root.setExtras({ source: 'makehuman hm08 (CC0)', macro: recipe.macro, joints: J });
 doc.createScene(name).addChild(root);
 await writeGltf(doc, recipe.out);
