@@ -36,8 +36,12 @@ const ys = verts.map((p) => p[1]);
 checks.missing_targets = body.missing.length;
 checks.targets = body.targets;
 checks.height = +Math.max(...ys).toFixed(3);
-// Hakan: lägsta punkten framtill på huvudet nära mittlinjen
-const chin = Math.min(...verts.filter((p) => Math.abs(p[0]) < 0.02 && p[2] > J.Head[2] && p[1] > J.Neck[1]).map((p) => p[1]));
+// Hakan: i profilen längs mittlinjen hoppar framkanten från halsen ut till hakan. Hakans underkant är
+// den lägsta punkten som ligger längre fram än mitten mellan halsens framkant och hm08:s Jaw-led
+// (som sitter vid hakspetsen).
+const midline = verts.filter((p) => Math.abs(p[0]) < 0.02 && p[2] > J.Neck[2]);
+const throatZ = Math.max(...midline.filter((p) => Math.abs(p[1] - J.Neck[1]) < 0.01).map((p) => p[2]));
+const chin = Math.min(...midline.filter((p) => p[1] > J.Neck[1] && p[2] > (throatZ + J.Jaw[2]) / 2).map((p) => p[1]));
 checks.heads_measured = +(checks.height / (checks.height - chin)).toFixed(2);
 // Symmetri: varje hörn ska ha en spegling i x inom 1 mm
 const keys = new Set(verts.map((p) => p.map((v) => Math.round(v * 1000)).join(',')));
