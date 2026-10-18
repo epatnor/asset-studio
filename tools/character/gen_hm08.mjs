@@ -1,12 +1,13 @@
-// Kropp ur MakeHumans hm08 (hm08.mjs): recept in, glTF ut, en rad JSON med kontroller.
+// Kropp ur MakeHumans hm08 (hm08.mjs) med outfit (outfit.mjs): recept in, glTF ut, en rad JSON med kontroller.
 //
-//   node gen_hm08.mjs '{"name":"hero_hm","out":"/abs/hero_hm.gltf","macro":{"gender":1,"age":0.5,"muscle":0.8,"weight":0.55,"height":0.8,"proportions":1}}'
+//   node gen_hm08.mjs '{"name":"hero","out":"/abs/hero.gltf","macro":{"gender":1,"age":0.5,"muscle":0.8,"weight":0.55,"height":0.6,"proportions":1},
+//                       "kit":true,"outfit":{"top":{"part":"tunic","color":"#3F5443","trim":"#D9A423"},"legs":"trousers"}}'
 //
 // Receptfält: macro (gender 1 = man, age 0,5 = 25 år, muscle, weight, height, proportions; 0–1, 0,5 = medel),
-// ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB), kit (true: en meshnod per naken del enligt
-// sömkontraktet i hm08_kit.json), explode (dra isär delarna, t.ex. 0,15), debug ("parts": en färg per del),
-// outfit ({plats: del i parts.json}, kräver kit; delen ersätter de nakna delarna på sina platser),
-// colors ({cloth, accent} för plaggen), poses (true: posetest med hm08:s vikter i testposerna, se posetest.mjs),
+// ethnic ({african, asian, caucasian}, summa 1), skin (#RRGGBB),
+// kit (true: ytan delas per byggsatsplats enligt hm08_kit.json, en nod per plats; false: en kroppsmesh),
+// outfit ({namn: del i parts.json, eller {part, color, trim}}; kräver kit), explode (dra isär platserna),
+// debug ("parts": en färg per plats), poses (true: posetest i testposerna, se posetest.mjs),
 // posed_out (mapp: skriv varje pose som en statisk glTF för förhandsbilder).
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
@@ -14,7 +15,7 @@ import { writeGltf } from '../tree/gltf_write.mjs';
 import { sub, add, cross, dot, norm } from '../tree/vec.mjs';
 import { BONES } from './skeleton.mjs';
 import { buildHm08 } from './hm08.mjs';
-import { buildGarment, garmentChecks, offsetFn } from './garment.mjs';
+import { buildOutfit } from './outfit.mjs';
 import { hm08Weights } from './skin.mjs';
 import { runPoseTest } from './posetest.mjs';
 
@@ -23,182 +24,121 @@ const style = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.ur
 const body = buildHm08(recipe.macro ?? {}, recipe.ethnic);
 const { verts, quads, joints: J } = body;
 
-// Quads till trianglar längs den kortare diagonalen; hm08:s quads pekar redan utåt
+// Quads till trianglar längs den kortare diagonalen (två per quad i ordning); hm08:s quads pekar utåt
 const tris = [];
 for (const [a, b, c, d] of quads) {
   const ac = sub(verts[c], verts[a]), bd = sub(verts[d], verts[b]);
   if (dot(ac, ac) <= dot(bd, bd)) tris.push([a, b, c], [a, c, d]); else tris.push([a, b, d], [b, c, d]);
 }
-// Hörnnormaler viktade med triangelarea
-const normals = verts.map(() => [0, 0, 0]);
-for (const [a, b, c] of tris) {
-  const n = cross(sub(verts[b], verts[a]), sub(verts[c], verts[a]));
-  for (const i of [a, b, c]) normals[i] = add(normals[i], n);
-}
-for (let i = 0; i < normals.length; i++) normals[i] = norm(normals[i]);
+const triNormals = (P, T) => {
+  const n = P.map(() => [0, 0, 0]);
+  for (const [a, b, c] of T) { const f = cross(sub(P[b], P[a]), sub(P[c], P[a])); for (const i of [a, b, c]) n[i] = add(n[i], f); }
+  return n.map(norm);
+};
+const normals = triNormals(verts, tris);
 
-// Kontroller
+// Kontroller för kroppen
 const checks = {};
 const ys = verts.map((p) => p[1]);
 checks.missing_targets = body.missing.length;
 checks.targets = body.targets;
 checks.height = +Math.max(...ys).toFixed(3);
-// Hakan: i profilen längs mittlinjen hoppar framkanten från halsen ut till hakan. Hakans underkant är
-// den lägsta punkten som ligger längre fram än mitten mellan halsens framkant och hm08:s Jaw-led
-// (som sitter vid hakspetsen).
+// Hakan: i profilen längs mittlinjen hoppar framkanten från halsen ut till hakan. Hakans underkant är den
+// lägsta punkten som ligger längre fram än mitten mellan halsens framkant och hm08:s Jaw-led (vid hakspetsen).
 const midline = verts.filter((p) => Math.abs(p[0]) < 0.02 && p[2] > J.Neck[2]);
 const throatZ = Math.max(...midline.filter((p) => Math.abs(p[1] - J.Neck[1]) < 0.01).map((p) => p[2]));
 const chin = Math.min(...midline.filter((p) => p[1] > J.Neck[1] && p[2] > (throatZ + J.Jaw[2]) / 2).map((p) => p[1]));
 checks.heads_measured = +(checks.height / (checks.height - chin)).toFixed(2);
-// Symmetri: varje hörn ska ha en spegling i x inom 1 mm
 const keys = new Set(verts.map((p) => p.map((v) => Math.round(v * 1000)).join(',')));
 checks.symmetry = +(verts.filter((p) => {
   const [x, y, z] = p.map((v) => Math.round(v * 1000));
   for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) if (keys.has(`${-x + dx},${y + dy},${z + dz}`)) return true;
   return false;
 }).length / verts.length).toFixed(4);
-// Lederna i rätt ordning uppifrån och ned, och vänster på +x
 checks.joint_order = J.Head[1] > J.Neck[1] && J.Neck[1] > J.Chest[1] && J.Chest[1] > J.Spine[1] && J.Spine[1] > J.Hips[1]
   && J.Hips[1] > J.LeftLowerLeg[1] && J.LeftLowerLeg[1] > J.LeftFoot[1] && J.LeftUpperArm[0] > 0 && J.LeftHand[0] > J.LeftLowerArm[0];
-checks.tris = tris.length;
 const [bmin, bmax] = style.budgets_tris.character;
-checks.within_budget = tris.length >= bmin * 0.8 && tris.length <= bmax;
-checks.ok = !checks.missing_targets && checks.symmetry > 0.99 && checks.joint_order && checks.within_budget;
+checks.ok = !checks.missing_targets && checks.symmetry > 0.99 && checks.joint_order;
 
-// glTF: skelettnoder med våra namn och en kroppsmesh
-const doc = new Document();
-const buffer = doc.createBuffer();
-const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
-const name = recipe.name ?? 'hm08';
-const root = doc.createNode(name);
-const nodes = {};
-for (const [bone, par] of BONES) {
-  nodes[bone] = doc.createNode(bone).setTranslation(sub(J[bone], par ? J[par] : [0, 0, 0]));
-  (par ? nodes[par] : root).addChild(nodes[bone]);
-}
+// Ytan: hela kroppen som en mesh, eller per byggsatsplats med outfit
+const skinHex = recipe.skin ?? '#E9B48A';
 const linear = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-const skin = linear(recipe.skin ?? '#E9B48A');
-const mat = doc.createMaterial('Skin').setRoughnessFactor(style.character.materials.skin.roughness).setMetallicFactor(0);
-// En mesh per del. Normalerna räknades på hela kroppen, så hörnen i en söm har samma läge och normal
-// på båda sidor. Varje quad gav två trianglar i ordning (tris[2f], tris[2f + 1]).
-const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8', '#9B6BE0', '#E07A1F', '#2FA866',
-  '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
-const kitData = recipe.kit ? JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url))) : null;
-const kit = kitData ? { ...kitData.parts } : { body: quads.map((_, f) => f) };
-// Plaggen: varje del i outfit ersätter de nakna delarna på sina platser. outfit: { plats: del } eller
-// { plats: { part, color, trim } }. En söm mot ett annat plagg blir öppen: ingen fåll, och båda plaggen
-// lägger kanten på samma avstånd (det största av deras två) så att de möts i samma hörn.
-const partsLib = JSON.parse(fs.readFileSync(new URL('./parts.json', import.meta.url)));
-const owner = {};
-const entries = Object.entries(recipe.outfit ?? {}).map(([slot, e]) => {
-  const o = typeof e === 'string' ? { part: e } : e;
-  const spec = partsLib[o.part];
-  for (const s of spec.slots) owner[s] = slot;
-  return { slot, partName: o.part, spec, color: o.color ?? recipe.colors?.cloth ?? '#3F5443', trim: o.trim ?? recipe.colors?.accent ?? '#D9A423' };
-});
-// Vilka delar varje söm skiljer (ur första kanten i slingan)
-const partOfFace = new Map();
-if (kitData) for (const [pn, fs2] of Object.entries(kitData.parts)) for (const f of fs2) partOfFace.set(f, pn);
-const edgeFacesAll = new Map();
-quads.forEach((q, fi) => q.forEach((a, k) => { const b = q[(k + 1) % 4], key = a < b ? `${a},${b}` : `${b},${a}`; (edgeFacesAll.get(key) ?? edgeFacesAll.set(key, []).get(key)).push(fi); }));
-const seamSides = kitData ? Object.fromEntries(Object.entries(kitData.seams).map(([n, l]) => {
-  const key = l[0] < l[1] ? `${l[0]},${l[1]}` : `${l[1]},${l[0]}`;
-  return [n, [...new Set(edgeFacesAll.get(key).map((f) => partOfFace.get(f)))]];
-})) : {};
-const offsets = Object.fromEntries(entries.map((e) => [e.slot, offsetFn(e.spec, J)]));
-const garments = [];
-for (const e of entries) {
-  const openSeams = {};
-  for (const [n, sides] of Object.entries(seamSides)) {
-    const [a, b] = sides.map((p) => owner[p]);
-    if (!a || !b || a === b || (a !== e.slot && b !== e.slot)) continue;
-    const fa = offsets[a], fb = offsets[b];
-    openSeams[n] = (v) => Math.max(fa(verts[v]), fb(verts[v]));
-  }
-  const g = buildGarment({ verts, normals, quads, joints: J }, kitData, {
-    ...e.spec, color: linear(e.color), trimColor: e.spec.trim ? linear(e.trim) : null,
-  }, { openSeams });
-  checks[`part_${e.slot}_${e.partName}`] = garmentChecks({ verts, normals }, g, kitData);
-  for (const s of e.spec.slots) delete kit[s];
-  garments.push({ ...e, g });
+let meshes;
+if (recipe.kit) {
+  const kitData = JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url)));
+  const lib = JSON.parse(fs.readFileSync(new URL('./parts.json', import.meta.url)));
+  const items = Object.entries(recipe.outfit ?? {}).map(([, e]) => {
+    const o = typeof e === 'string' ? { part: e } : e;
+    if (!lib[o.part]) throw new Error(`okänd del ${o.part}`);
+    return { name: o.part, spec: lib[o.part], color: o.color ?? '#3F5443', trim: o.trim ?? '#D9A423' };
+  });
+  const r = buildOutfit({ verts, normals, quads, tris, joints: J, cubes: body.cubes }, kitData, items, { skin: skinHex });
+  meshes = r.meshes;
+  checks.outfit = r.checks;
+  checks.ok = checks.ok && r.checks.shell_inside === 0;
+} else {
+  meshes = [{ slot: 'body', material: 'skin', kind: 'skin', pos: verts, nrm: normals, col: verts.map(() => linear(skinHex)), src: verts.map((_, i) => [[i, 1]]), key: verts.map((_, i) => `-1,${i}`), tris, strip: tris.map(() => false) }];
 }
-// Öppna sömmar: båda plaggens kanthörn ska ligga på samma ställe
-let clothSeamError = 0;
-for (const A of garments) for (const B of garments) {
-  if (A === B) continue;
-  for (const n of A.g.open.filter((x) => B.g.open.includes(x))) for (const v of kitData.seams[n]) {
-    const pa = A.g.positions[A.g.shellOf.get(v)], pb = B.g.positions[B.g.shellOf.get(v)];
-    clothSeamError = Math.max(clothSeamError, Math.hypot(pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]));
-  }
-}
-if (garments.length) checks.cloth_seam_error_mm = +(clothSeamError * 1000).toFixed(4);
-checks.ok = checks.ok && clothSeamError < 1e-5 && garments.every(({ slot, partName }) => {
-  const c = checks[`part_${slot}_${partName}`];
-  return c.shell_inside === 0 && c.seam_error_mm < 0.01;
-});
-const lo = [0, 1, 2].map((k) => Math.min(...verts.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...verts.map((p) => p[k])));
-const mid = lo.map((v, k) => (v + hi[k]) / 2);
-Object.entries(kit).forEach(([part, faces], pi) => {
-  const local = new Map(), idx = [];
-  for (const f of faces) for (const t of [tris[2 * f], tris[2 * f + 1]]) for (const v of t) { if (!local.has(v)) local.set(v, local.size); idx.push(local.get(v)); }
-  const vs = [...local.keys()];
-  const col = recipe.debug === 'parts' ? linear(DEBUG[pi % DEBUG.length]) : skin;
-  const prim = doc.createPrimitive()
-    .setAttribute('POSITION', acc('VEC3', Float32Array.from(vs.flatMap((v) => verts[v]))))
-    .setAttribute('NORMAL', acc('VEC3', Float32Array.from(vs.flatMap((v) => normals[v]))))
-    .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(vs.flatMap(() => col))))
-    .setIndices(acc('SCALAR', Uint32Array.from(idx)))
-    .setMaterial(mat);
-  const c = [0, 1, 2].map((k) => vs.reduce((s, v) => s + verts[v][k], 0) / vs.length);
-  const node = doc.createNode(`body_${part}`).setMesh(doc.createMesh(`body_${part}`).addPrimitive(prim));
-  // Isärdragning i x och y; allt lyfts så att den lägsta delen står kvar på marken
-  if (recipe.explode) node.setTranslation([(c[0] - mid[0]) * recipe.explode, (c[1] - lo[1]) * recipe.explode, 0]);
-  root.addChild(node);
-});
-for (const { slot, partName, spec, g } of garments) {
-  const m = style.character.materials[spec.material] ?? style.character.materials.cloth;
-  const gmat = doc.createMaterial(spec.material[0].toUpperCase() + spec.material.slice(1)).setRoughnessFactor(m.roughness).setMetallicFactor(m.metalness ?? 0);
-  const prim = doc.createPrimitive()
-    .setAttribute('POSITION', acc('VEC3', Float32Array.from(g.positions.flat())))
-    .setAttribute('NORMAL', acc('VEC3', Float32Array.from(g.normals.flat())))
-    .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(g.colors.flat())))
-    .setIndices(acc('SCALAR', Uint32Array.from(g.tris.flat())))
-    .setMaterial(gmat);
-  root.addChild(doc.createNode(`part_${slot}_${partName}`).setMesh(doc.createMesh(`part_${slot}_${partName}`).addPrimitive(prim)));
-}
-root.setExtras({ source: 'makehuman hm08 (CC0)', macro: recipe.macro, joints: J });
-doc.createScene(name).addChild(root);
-await writeGltf(doc, recipe.out);
+checks.tris = meshes.reduce((s, m) => s + m.tris.length, 0);
+checks.within_budget = checks.tris >= bmin * 0.8 && checks.tris <= bmax;
+checks.ok = checks.ok && checks.within_budget;
 
-// Posetest: kroppen och plaggen skinnade i testposerna
+// glTF: skelettnoder med våra namn och en nod per plats (med en primitiv per material)
+async function writeDoc(out, P, N) {
+  const doc = new Document();
+  const buffer = doc.createBuffer();
+  const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
+  const name = recipe.name ?? 'hm08';
+  const root = doc.createNode(name);
+  const nodes = {};
+  for (const [bone, par] of BONES) {
+    nodes[bone] = doc.createNode(bone).setTranslation(sub(J[bone], par ? J[par] : [0, 0, 0]));
+    (par ? nodes[par] : root).addChild(nodes[bone]);
+  }
+  const mats = {};
+  const matOf = (m) => (mats[m] ??= doc.createMaterial(m[0].toUpperCase() + m.slice(1))
+    .setRoughnessFactor((style.character.materials[m] ?? style.character.materials.cloth).roughness)
+    .setMetallicFactor(style.character.materials[m]?.metalness ?? 0));
+  const DEBUG = ['#E6B8A2', '#4F7BE0', '#3F5443', '#D9A423', '#B3263A', '#5FD3C8', '#9B6BE0', '#E07A1F', '#2FA866', '#C9C2B5', '#6B4A2E', '#F2A23A', '#3E859C', '#8A4FD8', '#7FAE4A'];
+  const slots = [...new Set(meshes.map((m) => m.slot))];
+  const lo = [0, 1, 2].map((k) => Math.min(...verts.map((p) => p[k]))), hi = [0, 1, 2].map((k) => Math.max(...verts.map((p) => p[k])));
+  for (const slot of slots) {
+    const mesh = doc.createMesh(`body_${slot}`);
+    let c = [0, 0, 0], n = 0;
+    meshes.forEach((m, mi) => {
+      if (m.slot !== slot || !m.tris.length) return;
+      const col = recipe.debug === 'parts' && m.kind === 'skin' ? m.pos.map(() => linear(DEBUG[slots.indexOf(slot) % DEBUG.length])) : m.col;
+      mesh.addPrimitive(doc.createPrimitive()
+        .setAttribute('POSITION', acc('VEC3', Float32Array.from(P[mi].flat())))
+        .setAttribute('NORMAL', acc('VEC3', Float32Array.from(N[mi].flat())))
+        .setAttribute('COLOR_0', acc('VEC3', Float32Array.from(col.flat())))
+        .setIndices(acc('SCALAR', Uint32Array.from(m.tris.flat())))
+        .setMaterial(matOf(m.material)));
+      for (const p of P[mi]) { c = add(c, p); n++; }
+    });
+    const node = doc.createNode(`body_${slot}`).setMesh(mesh);
+    // Isärdragning i x och y; allt lyfts så att den lägsta delen står kvar på marken
+    if (recipe.explode && n) { c = c.map((x) => x / n); node.setTranslation([(c[0] - (lo[0] + hi[0]) / 2) * recipe.explode, (c[1] - lo[1]) * recipe.explode, 0]); }
+    root.addChild(node);
+  }
+  root.setExtras({ source: 'makehuman hm08 (CC0)', macro: recipe.macro, outfit: recipe.outfit ?? null, joints: J });
+  doc.createScene(name).addChild(root);
+  await writeGltf(doc, out);
+}
+await writeDoc(recipe.out, meshes.map((m) => m.pos), meshes.map((m) => m.nrm));
+
+// Posetest: ytan skinnad med hm08:s vikter i testposerna
 if (recipe.poses) {
   const weights = hm08Weights(body.sourceIndex);
-  const exposedParts = Object.fromEntries(Object.entries(kit).map(([pn, faces]) => [pn, faces.flatMap((f) => [tris[2 * f], tris[2 * f + 1]])]));
-  const exposedTris = Object.values(exposedParts).flat();
-  const { results, posed } = runPoseTest({ verts, normals, tris, weights }, exposedParts, garments.map((x) => ({ name: x.partName, g: x.g })), J);
+  const { results, posed } = runPoseTest({ verts, tris, weights }, meshes, J);
   checks.poses = results;
   checks.ok = checks.ok && Object.values(results).every((r) => r.seam_gap_mm < 0.01 && r.collapsed <= 0.02);
   if (recipe.posed_out) {
     fs.mkdirSync(recipe.posed_out, { recursive: true });
-    for (const [pname, { body: B, garments: G }] of Object.entries(posed)) {
-      const pd = new Document();
-      const pbuf = pd.createBuffer();
-      const pacc = (type, array) => pd.createAccessor().setType(type).setArray(array).setBuffer(pbuf);
-      const proot = pd.createNode(`${name}_${pname}`);
-      const addMesh = (nm, P, T, C, rough) => {
-        const N = P.map(() => [0, 0, 0]);
-        for (const [a, b, c] of T) { const f = cross(sub(P[b], P[a]), sub(P[c], P[a])); for (const i of [a, b, c]) N[i] = add(N[i], f); }
-        const prim = pd.createPrimitive().setAttribute('POSITION', pacc('VEC3', Float32Array.from(P.flat())))
-          .setAttribute('NORMAL', pacc('VEC3', Float32Array.from(N.map(norm).flat()))).setAttribute('COLOR_0', pacc('VEC3', Float32Array.from(C.flat())))
-          .setIndices(pacc('SCALAR', Uint32Array.from(T.flat()))).setMaterial(pd.createMaterial(nm).setRoughnessFactor(rough).setMetallicFactor(0));
-        proot.addChild(pd.createNode(nm).setMesh(pd.createMesh(nm).addPrimitive(prim)));
-      };
-      addMesh('skin', B, exposedTris, B.map(() => skin), style.character.materials.skin.roughness);
-      garments.forEach((x, gi) => addMesh(x.partName, G[gi].P, x.g.tris, x.g.colors, style.character.materials.cloth.roughness));
-      pd.createScene(pname).addChild(proot);
-      await writeGltf(pd, `${recipe.posed_out}/${name}_${pname}.gltf`);
+    for (const [pname, P] of Object.entries(posed)) {
+      await writeDoc(`${recipe.posed_out}/${recipe.name ?? 'hm08'}_${pname}.gltf`, P, P.map((pp, mi) => triNormals(pp, meshes[mi].tris)));
     }
   }
 }
 
-console.log(JSON.stringify({ name, out: recipe.out, verts: verts.length, tris: tris.length, checks }));
+console.log(JSON.stringify({ name: recipe.name, out: recipe.out, verts: verts.length, checks }));
