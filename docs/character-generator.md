@@ -84,6 +84,12 @@ Spelaren väljer det som receptet redan beskriver: ras eller kropp, man eller kv
 - Konceptbilder per arketyp med `tools/character/concept.py` (gruppen "Tinkertown character concepts" i Apparition).
 - Varje steg får en egen grupp i Apparition med skärmbilder ("Character generator N: ...").
 
+## Läge 2026-10-19 (öppen fråga)
+Kropparna ska vara rätt innan kläder och hår byggs vidare. Referens: Apparition-gruppen "Patriks 3D game character reference" (stiliserat, 6 000–12 000 trianglar, förenklade plan, handmålad textur). Provat:
+- MakeHuman-proxy (male1591/female1605) med stilisering anpassad mot referensens mått (`fit_style.mjs`, `fits.json`): rätt proportioner men ser ut som en provdocka.
+- Tripo P1 (50 krediter) och P2 med quads (110 krediter) ur referensens vyer (`tools/tripo/make_tripo.py`): ligger nära referensen i form, ansikte, hår och textur. Plattan under fötterna måste bort. Modellerna ligger i `build/tripo/` och `assets/imported/tripo_*` (inte committade).
+**Beslut att ta:** väg A (vår topologi passas in på Tripos form och texturen bakas till vår UV, så att reglage, sömmar och kläder behålls) eller väg B (Tripo-modellerna som de är, med Tripos riggning).
+
 ## Ordning
 1. **Klart:** skelett, kroppsfält och mesh (primitivkroppen, finns kvar för varelser utan mänsklig bas).
 2. **Klart:** regioner, mall per ras och sockets på primitivkroppen (`regions.mjs`, `template.mjs`); idéerna förs över till hm08.
