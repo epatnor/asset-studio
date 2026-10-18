@@ -5,3 +5,6 @@ __pycache__/
 # Tredjepartsdata som hämtas enligt sin SOURCE.md (för stort för git)
 third_party/*/*
 !third_party/*/SOURCE.md
+
+# Hemliga nycklar (Tripo m.fl.)
+.env

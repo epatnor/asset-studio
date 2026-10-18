@@ -46,8 +46,21 @@ def preview(glbs, out, lod=0, size=(1024, 512), backlight=False):
     # Blenders glTF-importör saknar meshopt-avkodaren: packa upp varje modell till en tillfällig kopia
     # bredvid originalet (så att de relativa texturvägarna stämmer) och ta bort den efteråt
     temp, unpacked = [], {}
+
+    def meshopt(path):
+        # Bara meshopt-komprimerade filer behöver packas upp (andra, t.ex. med inbäddade texturer, läses direkt)
+        data = Path(path).read_bytes()
+        if data[:4] == b"glTF":
+            n = int.from_bytes(data[12:16], "little")
+            info = json.loads(data[20:20 + n])
+        else:
+            info = json.loads(data)
+        return "EXT_meshopt_compression" in info.get("extensionsUsed", [])
+
     for g in glbs:
         src = absolute(g["glb"] if isinstance(g, dict) else g)
+        if src not in unpacked and not meshopt(src):
+            unpacked[src] = src
         if src not in unpacked:
             dst = str(Path(src).with_name(Path(src).stem + "_blender.gltf"))
             subprocess.run(["node", str(ROOT / "tools" / "preview" / "decompress.mjs"), src, dst], check=True, capture_output=True)

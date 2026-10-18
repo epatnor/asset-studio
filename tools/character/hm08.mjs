@@ -99,7 +99,8 @@ const TIPS = { HeadTop: 'joint-head-2', LeftHandTip: 'joint-l-finger-3-4', Right
 // i meter med fötterna på marken, och lederna ur joint cubes
 // Stilisering som egna procedurtargets: förskjutningar som räknas ur hm08:s vikter (game_engine, ihopslagna
 // till våra ben) och joint cubes, applicerade på HELA meshen (även leder och ögonhjälpare), så att skelettet
-// och ögonen följer med. s: { legs, hands, feet, eyes, head, waist, shoulders } där 1 = oförändrat.
+// och ögonen följer med. s: { legs, hands, feet, eyes, head, waist, shoulders, hips, arms, thighs, calves }
+// där 1 = oförändrat (arms, thighs, calves = tjocklek runt benens axel).
 // Allt räknas från lägena efter macro-targets (decimeter).
 function stylizeRaw(raw, base, s) {
   const W = hm08Weights(raw.map((_, i) => i)).map((ws) => Object.fromEntries(ws));
@@ -140,14 +141,70 @@ function stylizeRaw(raw, base, s) {
     for (let k = 0; k < 3; k++) o[k] += head * (s.head - 1) * (p[k] - headC[k]);
     const waist = w(i, 'Spine');
     o[0] += waist * (s.waist - 1) * (p[0] - spine[0]); o[2] += waist * (s.waist - 1) * (p[2] - spine[2]);
+    // Höfter: bäckenet och lårens överdel breddas runt bäckenets mitt (avtar ned mot knät)
+    if (s.hips && s.hips !== 1) {
+      const pel = cube('joint-pelvis'), knee = cube('joint-l-knee')[1];
+      const hw = w(i, 'Hips') + w(i, `${S}UpperLeg`) * smooth(knee, pel[1], p[1]);
+      o[0] += hw * (s.hips - 1) * (p[0] - pel[0]); o[2] += hw * (s.hips - 1) * 0.5 * (p[2] - pel[2]);
+    }
+    // Tjocklek på armar och ben: ut från benets axel (närmaste punkt på segmentet mellan lederna)
+    const thick = (bones, segA, segB, f) => {
+      const ww = w(i, ...bones);
+      if (!ww || f === 1) return;
+      const A = cube(segA), B = cube(segB), ab = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+      const t = Math.min(1, Math.max(0, ((p[0] - A[0]) * ab[0] + (p[1] - A[1]) * ab[1] + (p[2] - A[2]) * ab[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2)));
+      for (let k = 0; k < 3; k++) o[k] += ww * (f - 1) * (p[k] - (A[k] + ab[k] * t));
+    };
+    const c1 = S[0].toLowerCase();
+    thick([`${S}UpperArm`], `joint-${c1}-shoulder`, `joint-${c1}-elbow`, s.arms ?? 1);
+    thick([`${S}LowerArm`], `joint-${c1}-elbow`, `joint-${c1}-hand`, s.arms ?? 1);
+    thick([`${S}UpperLeg`], `joint-${c1}-upper-leg`, `joint-${c1}-knee`, s.thighs ?? 1);
+    thick([`${S}LowerLeg`], `joint-${c1}-knee`, `joint-${c1}-ankle`, s.calves ?? 1);
     const arm = w(i, `${S}Shoulder`, `${S}UpperArm`, `${S}LowerArm`, `${S}Hand`);
     o[0] += arm * (s.shoulders - 1) * Math.abs(clav[0]) * Math.sign(p[0]);
     return [p[0] + o[0], p[1] + o[1], p[2] + o[2]];
   });
 }
 
+// Proxy: en lågpolygonkropp (third_party/makehuman/system_assets/proxymeshes, CC0) bunden till hm08. Varje
+// proxyhörn är en viktad blandning av tre hm08-hörn plus en förskjutning som skalas med kroppens mått
+// (x_scale, y_scale, z_scale: avståndet mellan två hm08-hörn delat med ett referensavstånd), så att proxyn
+// följer alla targets och stiliseringen. Ytorna och UV kommer från proxyns obj-fil.
+export function loadProxy(name) {
+  const dir = path.join(MH, 'system_assets/proxymeshes', name);
+  const refs = [], scale = {};
+  let inVerts = false;
+  for (const line of fs.readFileSync(path.join(dir, `${name}.proxy`), 'utf8').split('\n')) {
+    const t = line.trim().split(/\s+/);
+    if (/^[xyz]_scale$/.test(t[0])) scale[t[0][0]] = [+t[1], +t[2], +t[3]];
+    else if (t[0] === 'verts') inVerts = true;
+    else if (inVerts && t.length === 9 && /^\d+$/.test(t[0])) refs.push(t.map(Number));
+    else if (inVerts && t.length === 1 && /^\d+$/.test(t[0])) refs.push([+t[0], +t[0], +t[0], 1, 0, 0, 0, 0, 0]); // exakt på ett hm08-hörn
+    else if (inVerts && t[0] && !/^\d/.test(t[0])) inVerts = false;
+  }
+  const vt = [], faces = [], fuv = [];
+  for (const line of fs.readFileSync(path.join(dir, `${name}.obj`), 'utf8').split('\n')) {
+    if (line.startsWith('vt ')) vt.push(line.split(/\s+/).slice(1, 3).map(Number));
+    else if (line.startsWith('f ')) {
+      const c = line.trim().split(/\s+/).slice(1).map((x) => x.split('/').map((n) => parseInt(n, 10) - 1));
+      faces.push(c.map((x) => x[0])); fuv.push(c.map((x) => x[1]));
+    }
+  }
+  return { name, refs, scale, vt, faces, fuv };
+}
+
+function fitProxy(raw, proxy) {
+  const s = Object.fromEntries(['x', 'y', 'z'].map((ax, k) => {
+    const [a, b, ref] = proxy.scale[ax];
+    return [ax, Math.abs(raw[a][k] - raw[b][k]) / ref];
+  }));
+  return proxy.refs.map(([i, j, k, wi, wj, wk, dx, dy, dz]) => [0, 1, 2].map((c) =>
+    wi * raw[i][c] + wj * raw[j][c] + wk * raw[k][c] + [dx * s.x, dy * s.y, dz * s.z][c]));
+}
+
 // extra: { 'eyes/{s}-eye-scale-incr': 0.7, ... } (ansiktsförval och andra MakeHuman-targets med vikter)
-export function buildHm08(macro, ethnic, stylize = null, extra = {}) {
+// opts.proxy: namn på en proxy (t.ex. male1591); då är meshen proxyns i stället för hm08:s egen kropp
+export function buildHm08(macro, ethnic, stylize = null, extra = {}, opts = {}) {
   const base = loadBase();
   const list = macroTargets(macro, ethnic);
   for (const [t, w] of Object.entries(extra)) for (const name of t.includes('{s}') ? ['l', 'r'].map((c) => t.replace('{s}', c)) : [t]) list.push([`${name}.target.gz`, w]);
@@ -172,5 +229,14 @@ export function buildHm08(macro, ethnic, stylize = null, extra = {}) {
     const d = [t[0] - ctr[0], t[1] - ctr[1], t[2] - ctr[2]], L = Math.hypot(...d);
     return { center: toM(ctr), radius: r * 0.1, dir: d.map((x) => x / L) };
   });
-  return { verts, quads, joints, tips, cubes, eyes, targets: list.length, missing, sourceIndex: used };
+  const out = { verts, quads, joints, tips, cubes, eyes, targets: list.length, missing, sourceIndex: used };
+  if (opts.proxy) {
+    // Lågpolygonkroppen: läge ur bindningen till hm08, ytor och UV ur proxyns obj; src = hm08-hörnen med vikter
+    const px = typeof opts.proxy === 'string' ? loadProxy(opts.proxy) : opts.proxy;
+    Object.assign(out, {
+      verts: fitProxy(raw, px).map(toM), quads: px.faces, hm08Quads: quads, proxyUV: { vt: px.vt, fuv: px.fuv },
+      src: px.refs.map(([i, j, k, wi, wj, wk]) => [[i, wi], [j, wj], [k, wk]]), sourceIndex: null, proxy: px.name,
+    });
+  }
+  return out;
 }

@@ -1,0 +1,15 @@
+{
+  "_doc": "Stilisering anpassad mot uppmätta proportioner i referensbilderna (Apparition, gruppen \"Patriks 3D game character reference\", framvyerna i vändbilderna) med fit_style.mjs och measure_body.mjs: bredder och grenens höjd som andel av kroppshöjden, armarna 14° från lodlinjen. Alla mått inom 2 % av referensen.",
+  "male": {
+    "proxy": "male1591",
+    "macro": { "gender": 1, "age": 0.5, "muscle": 1.0, "weight": 0.65, "height": 0.55, "proportions": 1 },
+    "ref": { "shoulders_H": 0.334, "waist_H": 0.171, "hips_H": 0.241, "crotch_from_floor_H": 0.444, "arm_H": 0.067, "thigh_H": 0.112, "calf_H": 0.084 },
+    "stylize": { "legs": 0.835, "shoulders": 0.895, "waist": 1, "hips": 1.09, "arms": 1.09, "thighs": 0.94, "calves": 1.15 }
+  },
+  "female": {
+    "proxy": "female1605",
+    "macro": { "gender": 0, "age": 0.5, "muscle": 0.75, "weight": 0.6, "height": 0.55, "proportions": 1 },
+    "ref": { "shoulders_H": 0.253, "waist_H": 0.113, "hips_H": 0.232, "crotch_from_floor_H": 0.477, "arm_H": 0.049, "thigh_H": 0.097, "calf_H": 0.075 },
+    "stylize": { "legs": 0.985, "shoulders": 0.895, "waist": 0.79, "hips": 1.06, "arms": 1.135, "thighs": 1.12, "calves": 1.36, "head": 1.08 }
+  }
+}

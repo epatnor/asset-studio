@@ -11,7 +11,8 @@
 // läggs till style.json character.face; false = inget förval), debug ("parts": en färg per plats), poses (true: posetest i testposerna, se posetest.mjs),
 // posed_out (mapp: skriv varje pose som en statisk glTF för förhandsbilder), eyes (irisfärg, false = inga ögon),
 // only ([platser]: skriv bara dessa, t.ex. ["head", "eye_L", "eye_R"] för närbilder),
-// hair ({style: frisyr i hair.json, color}: hårfäste plus slingor, kräver kit), seed.
+// hair ({style: frisyr i hair.json, color}: hårfäste plus slingor, kräver kit), seed,
+// proxy (lågpolygonkropp, t.ex. male1591; utan kit), underwear (#RRGGBB), armDeg (armarnas vinkel från lodlinjen), flat.
 import fs from 'node:fs';
 import { Document } from '@gltf-transform/core';
 import { writeGltf, sharedTexture } from '../tree/gltf_write.mjs';
@@ -23,7 +24,7 @@ import { buildHm08 } from './hm08.mjs';
 import { buildOutfit } from './outfit.mjs';
 import { buildEyes } from './face.mjs';
 import { buildHair } from './hair.mjs';
-import { hm08Weights } from './skin.mjs';
+import { hm08Weights, poseBones, skinPoint } from './skin.mjs';
 import { runPoseTest } from './posetest.mjs';
 
 const recipe = JSON.parse(process.argv[2] ?? '{}');
@@ -35,7 +36,7 @@ const stylize = recipe.stylize === false ? null : { ...Object.fromEntries(Object
 const fc = style.character.face;
 const face = recipe.face === false ? {} : { ...Object.fromEntries([...new Set([...Object.keys(fc.male), ...Object.keys(fc.female)])]
   .map((k) => [k, (fc.female[k] ?? 0) + ((fc.male[k] ?? 0) - (fc.female[k] ?? 0)) * g])), ...(recipe.face ?? {}) };
-const body = buildHm08(recipe.macro ?? {}, recipe.ethnic, stylize, face);
+const body = buildHm08(recipe.macro ?? {}, recipe.ethnic, stylize, face, { proxy: recipe.proxy });
 const { verts, quads, joints: J } = body;
 
 // Quads till trianglar längs den kortare diagonalen (två per quad i ordning); hm08:s quads pekar utåt
@@ -113,6 +114,51 @@ if (recipe.hair && recipe.kit) {
 }
 // Ögonen (egna meshar som följer huvudet)
 if (recipe.eyes !== false) meshes.push(...buildEyes({ verts, eyes: body.eyes }, { iris: recipe.eyes ?? '#4C7A9E' }));
+// Lågpolygonkropp (proxy): grå underkläder som hörnfärg (bäckenet, och för kvinnor ett band över bröstet,
+// via hm08-regionerna i hm08_kit.json), pose med armarna i vinkeln armDeg från lodlinjen (som i
+// referensbilderna) och platt skuggning (flat: en normal per yta, som en facetterad spelmodell)
+if (recipe.proxy) {
+  const kitData = JSON.parse(fs.readFileSync(new URL('./hm08_kit.json', import.meta.url)));
+  const partOfV = new Map();
+  for (const [pn, fl] of Object.entries(kitData.parts)) for (const f of fl) for (const v of body.hm08Quads[f]) partOfV.set(v, pn);
+  const bm = meshes[0];
+  if (recipe.underwear) {
+    const uw = linear(recipe.underwear), g = recipe.macro?.gender ?? 0.5;
+    const braLo = J.Chest[1] - 0.06, braHi = J.Neck[1] - 0.09;
+    bm.col = verts.map((p, i) => {
+      const main = body.src[i].filter(([v]) => v < 13380).sort((x, y) => y[1] - x[1])[0]?.[0];
+      const part = partOfV.get(main);
+      const bra = g < 0.5 && part === 'torso' && p[1] > braLo && p[1] < braHi;
+      return part === 'pelvis' || bra ? uw : bm.col[i];
+    });
+  }
+  if (recipe.armDeg !== undefined) {
+    const W = hm08Weights([...Array(19158).keys()]);
+    const blend = (src) => { const m = new Map(); for (const [v, a] of src) for (const [bn, w] of W[v]) m.set(bn, (m.get(bn) ?? 0) + a * w); return [...m]; };
+    const d = [J.LeftLowerArm[0] - J.LeftUpperArm[0], J.LeftLowerArm[1] - J.LeftUpperArm[1]];
+    const rot = Math.atan2(d[0], -d[1]) * 180 / Math.PI - recipe.armDeg;
+    const rz = (deg) => { const a = deg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a); return [[c, -sn, 0], [sn, c, 0], [0, 0, 1]]; };
+    const pose = poseBones(J, { LeftUpperArm: rz(-rot), RightUpperArm: rz(rot) });
+    const posedBody = verts.map((p, i) => skinPoint(p, blend(body.src[i]), J, pose));
+    // Ögonen (och annat med src i kroppens hörn) följer sina kroppshörn
+    for (const m of meshes) m.pos = m === bm ? posedBody : m.pos.map((p, k) => skinPoint(p, blend(body.src[m.src[k][0][0]]), J, pose));
+    const minY = Math.min(...posedBody.map((p) => p[1]));
+    for (const m of meshes) { m.pos = m.pos.map((p) => [p[0], p[1] - minY, p[2]]); m.nrm = triNormals(m.pos, m.tris); }
+  }
+  if (recipe.flat) {
+    // En normal per yta: hörnen dupliceras per triangel
+    for (const m of meshes) {
+      const P = [], N = [], C = [], T = [];
+      m.tris.forEach(([a, b, c]) => {
+        const n = norm(cross(sub(m.pos[b], m.pos[a]), sub(m.pos[c], m.pos[a])));
+        const base = P.length;
+        for (const v of [a, b, c]) { P.push(m.pos[v]); N.push(n); C.push(m.col[v]); }
+        T.push([base, base + 1, base + 2]);
+      });
+      Object.assign(m, { pos: P, nrm: N, col: C, tris: T, src: P.map(() => [[0, 1]]), key: P.map((_, i) => `flat${i}`), strip: T.map(() => false), uv: null });
+    }
+  }
+}
 checks.tris = meshes.reduce((s, m) => s + m.tris.length, 0);
 checks.within_budget = checks.tris >= bmin * 0.8 && checks.tris <= bmax;
 checks.ok = checks.ok && checks.within_budget;
