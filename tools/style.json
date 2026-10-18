@@ -8,7 +8,10 @@
       "raw": ""
     },
     "surface_view": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field",
-    "surface_style": "stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting"
+    "surface_style": "stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting",
+    "character_art": "Stylized fantasy character key art, polished game concept art, premium fantasy splash art, painterly box-art illustration, semi-realism, bold clean shapes, clean readable silhouette, elegant exaggerated proportions, appealing stylized face, smooth painterly rendering with no line art and no outlines, crisp edges and soft gradients, dramatic cinematic lighting with strong rim light, muted base colors with one rich saturated accent, glossy metal and leather with broad highlights, detailed fabrics, expressive environment, atmospheric depth, premium game promotional artwork, no text.",
+    "character_remove": "(anime:-1), (line art:-1), (chibi:-1), (photorealistic:-1)",
+    "_character_doc": "Konceptbilder av karaktärer: motivet först, sedan character_art, sist character_remove. Krea-2 kör cfg 1 och ignorerar negativa prompter; krea2.py använder Krea2PromptWeight när prompten har (ord:vikt). Nämn aldrig befintliga spel eller studior."
   },
   "palette": {
     "foliage_light": "#8FCB4A",
@@ -89,5 +92,64 @@
     },
     "sky_color": "#6FA6EE",
     "sky_strength": 1.15
+  },
+  "character": {
+    "_doc": "Bildstilen (prompt.character_art) översatt till 3D. Förklaring i docs/style-guide.md avsnitt 6.",
+    "heads_tall": {
+      "hero": [
+        7.5,
+        8.0
+      ],
+      "min": 4.5
+    },
+    "hands_feet_scale_max": 1.1,
+    "eye_scale": 1.25,
+    "colors": {
+      "_doc": "RGB 0–1. Kroma = max − min (HSV-mättnad överdriver mörka toner). Basfärger (cloth, pants, shoes) dämpade; exakt en accentregion per karaktär. Hår och hud är fria.",
+      "base_chroma_max": 0.22,
+      "base_value": [
+        0.12,
+        0.75
+      ],
+      "accent_chroma_min": 0.45,
+      "accent_value_min": 0.55,
+      "accent_regions": 1
+    },
+    "materials": {
+      "skin": {
+        "roughness": 0.55
+      },
+      "cloth": {
+        "roughness": 0.85
+      },
+      "leather": {
+        "roughness": 0.42
+      },
+      "metal": {
+        "roughness": 0.3,
+        "metalness": 1.0
+      },
+      "hair": {
+        "roughness": 0.4
+      },
+      "eye": {
+        "roughness": 0.08
+      }
+    },
+    "clothing_inflate_m": [
+      0.004,
+      0.012
+    ],
+    "rim": {
+      "color": "#CFE0FF",
+      "strength": 0.4,
+      "power": 3.0
+    },
+    "preview_backlight": {
+      "color": "#FFE2C2",
+      "strength": 2.0,
+      "elevation_deg": 35,
+      "azimuth_deg": 150
+    }
   }
 }

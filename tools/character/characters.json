@@ -1,33 +1,45 @@
 {
-  "_doc": "Arketyper för gen_character.mjs. Proportioner är multiplikatorer runt en stiliserad hjälte (1 = normalt). height i meter. hair: bald, short, spiky, bob, bun, long. ears: round eller pointy. sleeves: 0 ärmlöst, 1 till armbågen, 2 hela vägen. pants: 0 shorts, 1 till knät, 2 hela vägen. beard 0–1. colors: listor att välja ur med seed (palettnamn i style.json eller #RRGGBB). Stilen (chunky, stort huvud, händer och fötter) följer stilguiden.",
+  "_doc": "Arketyper för gen_character.mjs. Stilen är halvrealistisk med eleganta överdrivna proportioner (docs/style-guide.md avsnitt 6, style.json character). height i meter. heads: kroppshöjd i huvudhöjder (hjälte 7,5–8, minst 4,5). Övriga proportioner är multiplikatorer runt en realistisk vuxen (1 = normalt): build, shoulders, waist, hips, belly (0–1), hands, feet, legs (benlängd), neck. hunch i grader. hair: bald, short, spiky, bob, bun, long. ears: round eller pointy. eyes 1 = stiliserat stora mandelögon. sleeves: 0 ärmlöst, 1 till armbågen, 2 hela vägen. pants: 0 shorts, 1 till knät, 2 hela vägen. boots: 0 skor, 1 halvhöga, 2 till knät. beard 0–1. colors: listor att välja ur med seed (#RRGGBB). Basfärgerna (cloth, pants, shoes) är dämpade; accent hamnar på exakt en av regionerna i accentOn.",
   "hero": {
-    "height": 1.8, "head": 1.0, "build": 1.0, "shoulders": 1.1, "belly": 0.0, "hands": 1.15, "feet": 1.1, "legs": 1.0, "neck": 1.0, "hunch": 0,
-    "ears": "round", "earSize": 1.0, "nose": 1.0, "eyes": 1.0, "hair": "spiky", "beard": 0, "sleeves": 1, "pants": 2,
-    "colors": { "skin": ["#E9B48A", "#C98E64", "#8D5A3B"], "hair": ["#5A3A22", "#2E2420", "#C9893B"], "shirt": ["#3E78B5", "#B5473E", "#4E9A3A"], "pants": ["#4A4E63", "#6B4A2E"], "shoes": ["#3B2A20", "#5A3A22"] }
+    "height": 1.85, "heads": 7.75, "build": 1.0, "shoulders": 1.15, "waist": 0.85, "hips": 0.95, "belly": 0.0, "hands": 1.08, "feet": 1.05, "legs": 1.06, "neck": 1.0, "hunch": 0,
+    "ears": "round", "earSize": 1.0, "nose": 1.0, "eyes": 1.0, "hair": "spiky", "beard": 0, "sleeves": 1, "pants": 2, "boots": 1,
+    "colors": { "skin": ["#E9B48A", "#C98E64", "#8D5A3B"], "hair": ["#4A3020", "#2E2420", "#A8743A"], "eyes": ["#4C7A9E", "#5E7A3E", "#5A3A22"], "cloth": ["#4D6478", "#3F5443", "#5B595D"], "pants": ["#3A3B44", "#4A3428"], "shoes": ["#3B2A20", "#5A3F2C"], "accent": ["#B3263A", "#D9A423", "#3FC6CF"] },
+    "accentOn": ["cloth", "trim", "belt"]
+  },
+  "heroine": {
+    "height": 1.72, "heads": 8.0, "build": 0.85, "shoulders": 0.95, "waist": 0.72, "hips": 1.08, "belly": 0.0, "hands": 1.0, "feet": 0.95, "legs": 1.1, "neck": 1.05, "hunch": 0,
+    "ears": "round", "earSize": 0.95, "nose": 0.8, "eyes": 1.15, "hair": "long", "beard": 0, "sleeves": 2, "pants": 2, "boots": 2,
+    "colors": { "skin": ["#EBC0A0", "#C98E64", "#8D5A3B"], "hair": ["#332320", "#6D3D2F", "#B9ACA3"], "eyes": ["#3E859C", "#5E7A3E", "#6D3D2F"], "cloth": ["#332320", "#1C3453", "#3F5443"], "pants": ["#33343A", "#4A3428"], "shoes": ["#332320", "#5A3F2C"], "accent": ["#B3263A", "#3FC6CF", "#D9A423", "#8A4FD8"] },
+    "accentOn": ["trim", "cloth", "belt"]
   },
   "dwarf": {
-    "height": 1.35, "head": 1.12, "build": 1.35, "shoulders": 1.25, "belly": 0.4, "hands": 1.35, "feet": 1.25, "legs": 0.82, "neck": 1.25, "hunch": 0,
-    "ears": "round", "earSize": 1.0, "nose": 1.5, "eyes": 0.9, "hair": "short", "beard": 1.0, "sleeves": 2, "pants": 2,
-    "colors": { "skin": ["#E0A47E", "#C98E64"], "hair": ["#B5602B", "#8A4A22", "#D9D2C5"], "shirt": ["#7A4E2D", "#5F9447", "#6B6F80"], "pants": ["#4A2E22", "#3B3F4F"], "shoes": ["#2E2420"] }
+    "height": 1.35, "heads": 5.0, "build": 1.4, "shoulders": 1.3, "waist": 1.05, "hips": 1.05, "belly": 0.4, "hands": 1.1, "feet": 1.1, "legs": 0.8, "neck": 1.2, "hunch": 0,
+    "ears": "round", "earSize": 1.0, "nose": 1.5, "eyes": 0.9, "hair": "short", "beard": 1.0, "sleeves": 2, "pants": 2, "boots": 1,
+    "colors": { "skin": ["#E0A47E", "#C98E64"], "hair": ["#9A5228", "#6D3D2F", "#C9C2B5"], "eyes": ["#4C7A9E", "#5A3A22"], "cloth": ["#5A4636", "#3F5443", "#5B595D"], "pants": ["#4A3428", "#3A3B44"], "shoes": ["#2E2420"], "accent": ["#D9A423", "#B3263A", "#E07A1F"] },
+    "accentOn": ["belt", "trim"]
   },
   "kid": {
-    "height": 1.15, "head": 1.32, "build": 0.9, "shoulders": 0.9, "belly": 0.15, "hands": 1.2, "feet": 1.15, "legs": 0.9, "neck": 0.85, "hunch": 0,
-    "ears": "round", "earSize": 1.1, "nose": 0.8, "eyes": 1.3, "hair": "bob", "beard": 0, "sleeves": 1, "pants": 1,
-    "colors": { "skin": ["#F0C29E", "#C98E64", "#8D5A3B"], "hair": ["#C9893B", "#5A3A22", "#2E2420"], "shirt": ["#F2A23A", "#9B6BE0", "#5FD3C8"], "pants": ["#3E78B5", "#4E9A3A"], "shoes": ["#D9402E", "#3B2A20"] }
+    "height": 1.2, "heads": 5.5, "build": 0.9, "shoulders": 0.85, "waist": 0.95, "hips": 0.9, "belly": 0.1, "hands": 1.05, "feet": 1.05, "legs": 0.95, "neck": 0.85, "hunch": 0,
+    "ears": "round", "earSize": 1.05, "nose": 0.75, "eyes": 1.2, "hair": "bob", "beard": 0, "sleeves": 1, "pants": 1, "boots": 0,
+    "colors": { "skin": ["#F0C29E", "#C98E64", "#8D5A3B"], "hair": ["#A8743A", "#4A3020", "#2E2420"], "eyes": ["#4C7A9E", "#5E7A3E", "#5A3A22"], "cloth": ["#B9ACA3", "#4D6478", "#5A4636"], "pants": ["#3A3B44", "#4A3428"], "shoes": ["#5A3F2C", "#3B2A20"], "accent": ["#E07A1F", "#2FA866", "#3FC6CF"] },
+    "accentOn": ["cloth", "shoes"]
   },
   "elder": {
-    "height": 1.66, "head": 1.02, "build": 0.88, "shoulders": 0.95, "belly": 0.1, "hands": 1.15, "feet": 1.05, "legs": 0.97, "neck": 0.95, "hunch": 14,
-    "ears": "round", "earSize": 1.2, "nose": 1.3, "eyes": 0.85, "hair": "bun", "beard": 0, "sleeves": 2, "pants": 2,
-    "colors": { "skin": ["#E7B595", "#B98260"], "hair": ["#D9D2C5", "#B8B2A8"], "shirt": ["#9B6BE0", "#6B4A2E", "#4F7BE0"], "pants": ["#4A4E63", "#5A3A22"], "shoes": ["#3B2A20"] }
+    "height": 1.68, "heads": 7.25, "build": 0.88, "shoulders": 0.92, "waist": 0.95, "hips": 0.95, "belly": 0.1, "hands": 1.05, "feet": 1.0, "legs": 1.0, "neck": 0.95, "hunch": 14,
+    "ears": "round", "earSize": 1.15, "nose": 1.25, "eyes": 0.9, "hair": "bun", "beard": 0, "sleeves": 2, "pants": 2, "boots": 0,
+    "colors": { "skin": ["#E7B595", "#B98260"], "hair": ["#D2CBC0", "#B0AAA2"], "eyes": ["#5A7A8E", "#5A4636"], "cloth": ["#5B595D", "#4A3428", "#1C3453"], "pants": ["#3A3B44", "#4A3428"], "shoes": ["#3B2A20"], "accent": ["#8A4FD8", "#3FC6CF", "#D9A423"] },
+    "accentOn": ["trim", "cloth"]
   },
   "merchant": {
-    "height": 1.72, "head": 1.05, "build": 1.2, "shoulders": 1.0, "belly": 1.0, "hands": 1.15, "feet": 1.05, "legs": 0.92, "neck": 1.1, "hunch": 0,
-    "ears": "round", "earSize": 1.0, "nose": 1.25, "eyes": 0.95, "hair": "short", "beard": 0.45, "sleeves": 2, "pants": 2,
-    "colors": { "skin": ["#E9B48A", "#C98E64"], "hair": ["#2E2420", "#5A3A22"], "shirt": ["#B5473E", "#F2A23A", "#3E78B5"], "pants": ["#6B4A2E", "#4A4E63"], "shoes": ["#3B2A20"] }
+    "height": 1.74, "heads": 7.0, "build": 1.2, "shoulders": 1.0, "waist": 1.15, "hips": 1.05, "belly": 1.0, "hands": 1.05, "feet": 1.0, "legs": 0.95, "neck": 1.1, "hunch": 0,
+    "ears": "round", "earSize": 1.0, "nose": 1.2, "eyes": 0.95, "hair": "short", "beard": 0.45, "sleeves": 2, "pants": 2, "boots": 0,
+    "colors": { "skin": ["#E9B48A", "#C98E64"], "hair": ["#2E2420", "#4A3020"], "eyes": ["#5A3A22", "#5E7A3E"], "cloth": ["#5A4636", "#4D6478", "#B9ACA3"], "pants": ["#4A3428", "#3A3B44"], "shoes": ["#3B2A20"], "accent": ["#B3263A", "#D9A423", "#2FA866"] },
+    "accentOn": ["cloth", "belt"]
   },
   "goblin": {
-    "height": 1.05, "head": 1.3, "build": 0.85, "shoulders": 0.9, "belly": 0.35, "hands": 1.4, "feet": 1.35, "legs": 0.88, "neck": 0.8, "hunch": 10,
-    "ears": "pointy", "earSize": 1.6, "nose": 1.8, "eyes": 1.15, "hair": "bald", "beard": 0, "sleeves": 0, "pants": 0,
-    "colors": { "skin": ["#7FAE4A", "#8DBF45", "#6E9A3E"], "hair": ["#2E2420"], "shirt": ["#6B4A2E", "#7A4E2D"], "pants": ["#4A2E22", "#5A3A22"], "shoes": ["#3B2A20"] }
+    "height": 1.05, "heads": 4.5, "build": 0.8, "shoulders": 0.85, "waist": 0.8, "hips": 0.85, "belly": 0.3, "hands": 1.1, "feet": 1.1, "legs": 0.9, "neck": 0.8, "hunch": 12,
+    "ears": "pointy", "earSize": 1.7, "nose": 1.7, "eyes": 1.15, "hair": "bald", "beard": 0, "sleeves": 0, "pants": 0, "boots": 0,
+    "colors": { "skin": ["#6E8C4A", "#7A9A52", "#5E7A44"], "hair": ["#2E2420"], "eyes": ["#D9A423", "#B3263A"], "cloth": ["#5A4636", "#4A3428"], "pants": ["#4A3428", "#3A3B44"], "shoes": ["#3B2A20"], "accent": ["#E07A1F", "#D9A423", "#3FC6CF"] },
+    "accentOn": ["belt", "trim"]
   }
 }

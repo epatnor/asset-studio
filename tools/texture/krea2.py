@@ -1,5 +1,7 @@
-"""Krea-2 Turbo via ComfyUI: python3 -I krea2.py "<prompt>" <bredd> <höjd> <utfil.png> [seed]"""
-import json, random, sys, time, urllib.parse, urllib.request
+"""Krea-2 Turbo via ComfyUI: python3 -I krea2.py "<prompt>" <bredd> <höjd> <utfil.png> [seed]
+
+(ord:vikt) i prompten, t.ex. (anime:-1), går via Krea2PromptWeight: vanliga vikter och negativa prompter gör inget vid cfg 1."""
+import json, random, re, sys, time, urllib.parse, urllib.request
 
 COMFY = "http://127.0.0.1:8188"
 prompt, w, h, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
@@ -17,6 +19,10 @@ g = {
     "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["3", 0]}},
     "9": {"class_type": "SaveImage", "inputs": {"images": ["8", 0], "filename_prefix": "tree_tool"}},
 }
+if re.search(r"\([^()]+:-?\d+(\.\d+)?\)", prompt):
+    g["4"] = {"class_type": "Krea2PromptWeight", "inputs": {"model": ["1", 0], "clip": ["2", 0], "text": prompt, "strength": 1.0}}
+    g["5"]["inputs"]["conditioning"] = ["4", 1]
+    g["7"]["inputs"].update(model=["4", 0], positive=["4", 1])
 
 def get(url):
     return json.load(urllib.request.urlopen(url, timeout=30))

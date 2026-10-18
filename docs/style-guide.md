@@ -9,6 +9,7 @@ Gäller allt som skapas i Tinkertown och Azshara Island, oavsett om det görs av
 - Det är **stiliserad PBR, inte cel-shading.** Ytor reagerar på riktigt ljus, med mjuka övergångar, reflektioner och skuggor. Det stiliserade sitter i former, färger och texturer, inte i en toon-shader.
 - **Läsbarhet går före detalj.** Ett objekt ska kunna kännas igen på sin silhuett på 30 meters avstånd.
 - **Mid-poly.** Vi optimerar inte för gamla integrerade grafikkort. Polygoner läggs där de syns: på silhuetter och rundade kanter, inte på platta ytor.
+- **Karaktärer har egna proportioner.** Världen är chunky och tung; karaktärerna är eleganta och halvrealistiska (avsnitt 6). Kontrasten är avsiktlig: figurerna ska sticka ut mot miljön.
 
 ## Huvudreferens för helheten
 
@@ -24,7 +25,7 @@ Det betyder för generatorerna:
 | Regel | Praktiskt |
 |---|---|
 | Tydlig formhierarki | Stor–medel–liten i ungefär 60/30/10. En stor huvudform, några medelstora, få små detaljer. |
-| Överdrivna proportioner | Tjockare, kortare och tyngre än verkligheten. Stammar, stolpar och handtag är kraftiga. Toppar ofta bredare än baser (eller tvärtom) för att få karaktär. |
+| Överdrivna proportioner | Gäller miljö och props (karaktärer: avsnitt 6). Tjockare, kortare och tyngre än verkligheten. Stammar, stolpar och handtag är kraftiga. Toppar ofta bredare än baser (eller tvärtom) för att få karaktär. |
 | Inga perfekt raka linjer | Lätt lutning, svag kurva, liten asymmetri. Planka, tak och staket "lutar" något, men aldrig så mycket att det ser trasigt ut. |
 | Generösa avfasningar | Alla hårda kanter får bevel som fångar ljus. Tumregel: 2–4 % av objektets minsta mått, 2–3 segment. |
 | Weighted normals | Platta ytor ska skuggas platt, avfasningarna rundat. I Blender: Bevel-modifierare följd av **Weighted Normal** (läge Face Area, Keep Sharp). Det är tekniken bakom "chunky"-utseendet. |
@@ -78,14 +79,35 @@ Grundpaletten finns i `style.json` under `palette`.
 | Stammar | Tjocka, tydlig avsmalning, få men karaktärsfulla grenar. Bark med låg frekvens och tydliga, målade fåror. |
 | Barrträd | Barrträd har egna barr-kluster, inte lövkluster. |
 
-## 6. Ljus (förhandsvisning och spel)
+## 6. Karaktärer
+
+Målbilden är målad fantasy key art: halvrealism, eleganta överdrivna proportioner, ett tilltalande stiliserat ansikte, tydlig silhuett, mjuk målad rendering utan konturer, krispiga kanter och mjuka gradienter, dramatiskt ljus med starkt kantljus, dämpade basfärger med en mättad accent, blank metall och läder med breda högdagrar. Referensen finns i Apparition (board `untitled-board`, gruppen "Stylized female fantasy characters"), och bildprompten för konceptbilder i `style.json` (`prompt.character_art`).
+
+Bildprompten beskriver en målning. Så här översätts den till 3D:
+
+| I bildprompten | I 3D-generatorn |
+|---|---|
+| Halvrealism, eleganta överdrivna proportioner | Verklig anatomi med förskjutna förhållanden, inte tecknad. Hjältar cirka 7,5–8 huvuden höga (heroiska proportioner), långa ben, breda axlar och smal midja (V-form) eller smal midja och bredare höfter. Händer och fötter högst 5–10 % större än verkligt. Även dvärgar och goblins har riktig anatomi, bara andra förhållanden (minst cirka 4,5 huvuden). |
+| Tilltalande stiliserat ansikte | Stora mandelformade ögon (cirka 25 % större än verkligt), liten näsa, tydlig käke och haka, ögonen lite lägre i huvudet. Ögonen är egna delar med iris och blank hornhinna som fångar en högdager; det är det viktigaste för att ansiktet ska kännas levande. |
+| Fet, ren form, läsbar silhuett | Få stora former i fältet (60/30/10 som för allt annat). Luft mellan armar och kropp i A-pose. Varje arketyp ska kunna kännas igen på silhuetten (höjd, huvudstorlek, axlar, mage, frisyr, öron). |
+| Mjuk målad rendering, inga konturer | Stiliserad PBR, ingen outline-shader, ingen cel-shading. Släta normaler ur fältets gradient. Det "målade" ligger i vertexfärg: ljusare uppåt, mörkare i veck (AO ur fältet), varmare hud vid öron, näsa, kinder och händer. |
+| Krispiga kanter, mjuka gradienter | Stora former smälts ihop mjukt (stort k i smooth-min); kläder ligger som ett uppblåst lager med skarpt steg vid kanter (ärmslut, stövelkant, bälte). Krispigt där plagg slutar, mjukt där kroppen böjer. |
+| Detaljerade tyger | Inom budget: några få stora veck (armbåge, knä, midja), vågor i fållar, bårder och bälten i annan färg. Ingen mikrodetalj i geometrin; söm och mönster blir målade texturer senare. |
+| Hår i stora volymer med tydliga slingor | Håret byggs av stora klumpar som följer en flödesriktning, med fåror mellan klumparna. Blankt (låg roughness) så att högdagern visar formen. |
+| Dämpade basfärger, en mättad accent | Basfärger (kläder, läder, skor) har låg kroma och medelmörkt värde; exakt en region per karaktär får accentfärgen (tröja, bårder, bälte eller skärp). Värden i `style.json` (`character.colors`) och kontrolleras av generatorn. |
+| Blank metall och läder med breda högdagrar | Ett undantag från "hög roughness": läder cirka 0,4, metall polerad (metalness 1, roughness cirka 0,3), hår cirka 0,4. Breda högdagrar betyder släta ytor och inte för låg roughness; inga mikro-normalkartor. Tyg 0,8–0,9, hud cirka 0,55. |
+| Dramatiskt ljus, starkt kantljus | Karaktärsmaterialet har ett kantljus (fresnel) i klienten, så att figurerna lossnar från bakgrunden även i världens vanliga ljus. Förhandsvisningen av karaktärer använder ett motljus snett bakifrån utöver standardljuset. |
+
+Undvik för karaktärer: anime (jättelika ögon, platt ansikte), chibi (huvudet en tredjedel av kroppen), konturer och line art, fotorealism (porer, hårstrån, realistiska tyger).
+
+## 7. Ljus (förhandsvisning och spel)
 
 - Klar himmel som ger mycket ambient ljus, så att skuggor aldrig blir svarta.
 - Varm sol, cirka 45° höjd, med mjuka skuggor.
-- Svag kall fyllning från himlen, gärna kantljus på karaktärer.
+- Svag kall fyllning från himlen. Karaktärer får kantljus (avsnitt 6).
 - Tonemapping: AgX med medel- till hög kontrast. Inga utbrända högdagrar.
 
-## 7. Undvik
+## 8. Undvik
 
 - Fotorealism, skannade texturer, fotobrus.
 - Cel-shading eller tjocka svarta konturer (det är en annan stil).
@@ -94,7 +116,7 @@ Grundpaletten finns i `style.json` under `palette`.
 - Grått, smutsigt eller brunt "realistiskt" färgschema.
 - Tunna, spretiga former som försvinner på avstånd.
 
-## 8. Checklista per verktyg
+## 9. Checklista per verktyg
 
 Varje generator ska uppfylla detta innan den räknas som klar:
 
@@ -102,7 +124,7 @@ Varje generator ska uppfylla detta innan den räknas som klar:
 - [ ] Former följer formreglerna: avfasade kanter med weighted normals där det finns hårda kanter.
 - [ ] Inom polygonbudgeten för sin typ.
 - [ ] Texturer följer texturreglerna och exporteras med rätt alfaläge.
-- [ ] Har en förhandsvisning med standardljuset i avsnitt 6, för jämförelse mellan verktyg.
+- [ ] Har en förhandsvisning med standardljuset i avsnitt 7, för jämförelse mellan verktyg.
 
 ## Status för befintliga verktyg
 
