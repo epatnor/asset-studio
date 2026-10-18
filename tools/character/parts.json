@@ -1,5 +1,5 @@
 {
-  "_doc": "Plagg som lager (outfit.mjs). layer: högre ligger utanpå; i varje punkt vinner det översta plagget som täcker. slots: platserna (hm08_kit.json parts) plagget får finnas på. cover: gränser i meter, alla måste vara uppfyllda: above [höjd, höjd, t] (täcker ovanför en linje mellan två namngivna höjder), below [...] (nedanför), limb [ben, t] (UpperArm, LowerArm, UpperLeg, LowerLeg: från leden till t av benets längd), vneck {depth, width, back}, band [höjd, bredd], scalp {front, side, back} (hårlinje i huvudhöjder, 0 = hakan, 1 = hjässan), brow {width, height, lift, arch} (ögonbryn i meter). Höjder: neckSeam, neck, chest, waist, hip, crotch, knee, ankle. thickness: tygets tjocklek; loose: extra vidd; looseProfile: waist (vidden ökar nedåt mot midjan och hänger kvar under) eller uniform; smooth: varv utjämning; minGap: minsta avstånd till lagret under; hem: fållen mot lagret under (bead = vulstens höjd, overhang = hur långt den når över kanten); trim.width: bård i accentfärgen längs gränserna; material: cloth, leather, metal. taper: tjockleken avtar mot gränserna inom så många meter. noise {amp, scale}: slingor i meter. hair_short och hair_bob är platshållare: hår behöver en egen generator med slingor (volym och silhuett), inte ett lager på huden.",
+  "_doc": "Plagg som lager (outfit.mjs). layer: högre ligger utanpå; i varje punkt vinner det översta plagget som täcker. slots: platserna (hm08_kit.json parts) plagget får finnas på. cover: gränser i meter, alla måste vara uppfyllda: above [höjd, höjd, t] (täcker ovanför en linje mellan två namngivna höjder), below [...] (nedanför), limb [ben, t] (UpperArm, LowerArm, UpperLeg, LowerLeg: från leden till t av benets längd), vneck {depth, width, back}, band [höjd, bredd], scalp {front, side, back} (hårlinje i huvudhöjder, 0 = hakan, 1 = hjässan), brow {width, height, lift, arch} (ögonbryn i meter). Höjder: neckSeam, neck, chest, waist, hip, crotch, knee, ankle. thickness: tygets tjocklek; loose: extra vidd; looseProfile: waist (vidden ökar nedåt mot midjan och hänger kvar under) eller uniform; smooth: varv utjämning; minGap: minsta avstånd till lagret under; hem: fållen mot lagret under (bead = vulstens höjd, overhang = hur långt den når över kanten); trim.width: bård i accentfärgen längs gränserna; material: cloth, leather, metal. taper: tjockleken avtar mot gränserna inom så många meter. noise {amp, scale}: slingor i meter. hair_cap är hårfästet under hårgeneratorns slingor (hair.mjs, hair.json); gen_hm08 lägger till det med frisyrens hårlinje. hair_short och hair_bob är gamla platshållare.",
   "tunic": {
     "layer": 1,
     "slots": [
@@ -245,5 +245,30 @@
       "width": 0.02
     },
     "material": "cloth"
+  },
+  "hair_cap": {
+    "layer": 5,
+    "slots": [
+      "head"
+    ],
+    "cover": [
+      {
+        "scalp": {
+          "front": 0.8,
+          "side": 0.6,
+          "back": 0.3
+        }
+      }
+    ],
+    "thickness": 0.005,
+    "loose": 0.0,
+    "taper": 0.012,
+    "smooth": 10,
+    "minGap": 0.001,
+    "hem": {
+      "bead": 0.0005,
+      "overhang": 0.001
+    },
+    "material": "hair"
   }
 }

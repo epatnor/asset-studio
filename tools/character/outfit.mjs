@@ -23,7 +23,7 @@ function heights(J, cubes) {
 }
 
 // En gräns som fält i meter: ≤ 0 där plagget täcker. H: huvudet (top, eyeY, cx, cz) och ögonen.
-function clauseField(c, J, Hs, H) {
+export function clauseField(c, J, Hs, H) {
   const y = (a, b, t) => Hs[a] + (Hs[b] - Hs[a]) * t;
   if (c.above) { const line = y(...c.above); return (p) => line - p[1]; }
   if (c.below) { const line = y(...c.below); return (p) => p[1] - line; }
