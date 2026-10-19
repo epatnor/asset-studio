@@ -6,8 +6,9 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
 import { createMaterialPatcher } from './materials.js';
+import { createAtmosphere } from './atmosphere.js';
 
-export function createWorld(container, { fog = [60, 220] } = {}) {
+export function createWorld(container, { fog = [60, 220], time = 10, weather = 'klart', atmosphere = true } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -21,13 +22,15 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   const scene = new THREE.Scene();
   const SKY = new THREE.Color('#8fbdf0'), HORIZON = new THREE.Color('#d9ecff');
   scene.fog = new THREE.Fog(HORIZON, fog[0], fog[1]);
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
+  const skyMesh = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
     uniforms: { top: { value: SKY }, bottom: { value: HORIZON } },
     vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
     fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(normalize(vP).y * 1.6, 0., 1.); gl_FragColor = vec4(mix(bottom, top, h), 1.); }',
-  })));
-  scene.add(new THREE.HemisphereLight('#cfe6ff', '#5d7a3a', 1.1));
+  }));
+  scene.add(skyMesh); // enkel gradient; atmosfären (atmosphere.js) ersätter den
+  const hemi = new THREE.HemisphereLight('#cfe6ff', '#5d7a3a', 1.1);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight('#ffe9c7', 3.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -36,14 +39,21 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   scene.add(sun, sun.target);
   // Solen står alltid i samma riktning; skuggområdet flyttas. I förstapersonsläget följer det spelaren
   // (en mindre yta ger skarpare skuggor för samma kartstorlek), annars täcker det hela området.
-  const SUN_DIR = new THREE.Vector3(0.6, 1.1, 0.8);
+  const SUN_DIR = new THREE.Vector3(0.6, 1.1, 0.8).normalize(); // ändras av atmosfären (tid på dygnet)
   let baseArea = null;
   const placeShadow = (center, radius) => {
-    sun.position.copy(center).addScaledVector(SUN_DIR, radius);
+    lastArea = { center: center.clone(), radius };
+    sun.position.copy(center).addScaledVector(SUN_DIR, radius * 2);
     sun.target.position.copy(center);
     Object.assign(sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: 1, far: radius * 4 });
     sun.shadow.camera.updateProjectionMatrix();
     renderer.shadowMap.needsUpdate = true;
+  };
+  let lastArea = null;
+  const setSunDir = (d) => {
+    if (SUN_DIR.angleTo(d) < 0.002) return;
+    SUN_DIR.copy(d).normalize();
+    if (lastArea) placeShadow(lastArea.center, lastArea.radius);
   };
   const setShadowArea = (center, radius) => { baseArea = { center: center.clone(), radius }; placeShadow(center, radius); };
   const FOLLOW_R = 32, followAt = new THREE.Vector3(Infinity, 0, 0);
@@ -65,7 +75,8 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   const wind = { uTime: { value: 0 }, uWind: { value: 0.6 } };
   // Generatorernas material får vind, platta stjälkar, lövens genomlysning och stenarnas mossa (materials.js)
   const foliage = { uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() } };
-  const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir: foliage.uSunDir });
+  const snow = { value: 0 }; // snömängd, sätts av atmosfären
+  const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir: foliage.uSunDir, snow });
   const addWind = (material, url = location.href) => patchMaterial(material, url);
 
   const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)) // geometrin är meshopt-komprimerad;
@@ -188,5 +199,7 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   // Mätningar kan stoppa loopen och rita själva (runFrameHooks uppdaterar LOD och gräsrutor först)
   const setRunning = (on) => renderer.setAnimationLoop(on ? tick : null);
 
-  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
+  const W = { snow, THREE, renderer, scene, camera, controls, sun, hemi, skyMesh, setSunDir, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
+  if (atmosphere) W.atmo = createAtmosphere(W, { time, weather });
+  return W;
 }

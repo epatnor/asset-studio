@@ -54,12 +54,16 @@
 </div>
 <script type="module">
 import { createWorld } from './world.js';
+import { createMenu } from './menu.js';
 import { createGrassField, instancePlants } from './grass.js';
 import { carveWater, createWaterMeshes } from './water.js';
 import { createGround } from './ground.js';
 const W = createWorld(document.getElementById('app'), { fog: [80, 280] });
 const { THREE, scene, camera, controls, fp } = W;
 window.__tinker = W; // för felsökning och automatiska tester
+const menu = createMenu(W, { level: 'parken' });
+menu.adoptPanel(document.querySelector('.panel'));
+
 const status = document.getElementById('status');
 
 // Seedad slump, så att parken ser likadan ut varje gång

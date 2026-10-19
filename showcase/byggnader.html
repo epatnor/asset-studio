@@ -16,7 +16,7 @@
   .panel select { flex: 1; }
   .panel a { color: #2f6b2a; }
   #status { font-size: 12px; opacity: 0.7; }
-  body.clean .panel { display: none; }
+  body.clean .panel, body.clean #tt-ui { display: none; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -36,6 +36,7 @@
 </div>
 <script type="module">
 import { createWorld } from './world.js';
+import { createMenu } from './menu.js';
 // Vilka hus: ?m=namn1,namn2 (mappar i assets/buildings), annars katalogens rad "Byggnader".
 // ?clean döljer panelen (skärmbilder), ?cols=n antal per rad.
 const params = new URLSearchParams(location.search);
@@ -43,6 +44,9 @@ if (params.has('clean')) document.body.classList.add('clean');
 const W = createWorld(document.getElementById('app'), { fog: [120, 400] });
 const { THREE, scene, camera, controls } = W;
 window.__tinker = W;
+const menu = createMenu(W, { level: 'byggnader' });
+menu.adoptPanel(document.querySelector('.panel'));
+
 const EXAMPLES = ['fantasy_house_wow', 'fantasy_cottage', 'fantasy_tavern', 'fantasy_tower', 'fantasy_townhouse', 'fantasy_house_overwatch', 'fantasy_house_realistic',
   'rpg_cottage', 'steam_house', 'modern_house', 'future_house', 'cyber_shop'];
 let names = params.get('m')?.split(',').filter(Boolean);

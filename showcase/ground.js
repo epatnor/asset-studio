@@ -46,14 +46,14 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
   const mat = new THREE.MeshStandardMaterial({ map: tGrass, normalMap: nGrass, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 1 });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath },
-      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, uTime: W.wind.uTime,
+      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, uTime: W.wind.uTime, uSnow: W.snow ?? { value: 0 },
       nMeadow: { value: nMeadow }, nForest: { value: nForest }, nPath: { value: nPath }, nBed0: { value: nBeds[0] }, nBed1: { value: nBeds[1] }, nBed2: { value: nBeds[2] } });
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 splat;\nattribute vec2 water;\nattribute vec3 bed;\nvarying vec4 vSplat;\nvarying vec2 vWater;\nvarying vec3 vBed;\nvarying float vWY;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vWater = water; vBed = bed; vWY = position.y;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
         uniform sampler2D tMeadow, tForest, tPath, tBed0, tBed1, tBed2, nMeadow, nForest, nPath, nBed0, nBed1, nBed2;
-        uniform float uTime;
+        uniform float uTime, uSnow;
         varying vec4 vSplat; varying vec2 vWater; varying vec3 vBed; varying float vWY;
         // Kaustik: ljusa, slingrande nät som rör sig över botten
         float caustic(vec2 p, float t) {
@@ -78,11 +78,16 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
         diffuseColor.rgb = diffuseColor.rgb * mix(vec3(1.0), absorb, under)
           + caustic(vMapUv * 3.6, uTime) * under * exp(-max(d, 0.0) * 2.2) * vec3(0.32, 0.38, 0.34);
         float bedW = wet * smoothstep(-0.15, 0.05, d) * step(0.5, vBed.x + vBed.y + vBed.z);`)
-      // Normalkartor: samma blandning som färgen, så att reliefen följer ytan (och botten under vattnet)
+      // Normalkartor: samma blandning som färgen, så att reliefen följer ytan (och botten under vattnet).
+      // Chunken packas upp först; annars finns raden inte att ersätta än (includes löses efter onBeforeCompile)
+      .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps)
       .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `
         vec3 nSurf = TEX2(normalMap, 1.0) * vSplat.x + TEX2(nMeadow, 0.9) * vSplat.y + TEX2(nForest, 1.1) * vSplat.z + TEX2(nPath, 1.3) * vSplat.w;
         vec3 nBedC = TEX2(nBed0, 0.8) * vBed.x + TEX2(nBed1, 0.8) * vBed.y + TEX2(nBed2, 0.9) * vBed.z;
-        vec3 mapN = mix(nSurf, nBedC, bedW) * 2.0 - 1.0;`);
+        vec3 mapN = mix(nSurf, nBedC, bedW) * 2.0 - 1.0;`)
+      // Snö på marken, inte i vattnet
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.98), uSnow * (1.0 - wet) * smoothstep(0.4, 0.8, (vec4(normal, 0.0) * viewMatrix).y));`);
   };
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;

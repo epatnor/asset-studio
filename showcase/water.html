@@ -39,10 +39,13 @@
 </div>
 <script type="module">
 import { createWorld } from './world.js';
+import { createMenu } from './menu.js';
 import { carveWater, createWaterMeshes } from './water.js';
 import { createGround } from './ground.js';
 import { createGrassField, instancePlants } from './grass.js';
 const W = createWorld(document.getElementById('app'), { fog: [120, 360] });
+const menu = createMenu(W, { level: 'vattnet' });
+menu.adoptPanel(document.querySelector('.panel'));
 const { THREE, camera, controls, fp } = W;
 window.__tinker = W;
 const status = document.getElementById('status');

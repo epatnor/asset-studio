@@ -8,7 +8,7 @@
 //   mängd, extras.mossTexture = fil relativt modellen, extras.mossTint). Samma teknik som "world aligned
 //   blend" i spelmotorer. Utan klienten ser stenen fortfarande rätt ut, bara utan mossa.
 
-export function createMaterialPatcher(THREE, { wind, sunDir }) {
+export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 } }) {
   const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 } };
   const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
   const textures = new Map();
@@ -35,6 +35,11 @@ export function createMaterialPatcher(THREE, { wind, sunDir }) {
       shader.uniforms.uTime = wind.uTime;
       shader.uniforms.uWind = wind.uWind;
       Object.assign(shader.uniforms, foliage, rock ?? {});
+      // Snö (atmosphere.js): uppåtvända ytor vitnar
+      shader.uniforms.uSnow = snow;
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uSnow;')
+        .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n      { float upW = (vec4(normal, 0.0) * viewMatrix).y; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.98), uSnow * smoothstep(0.25, 0.75, upW)); }');
       if (leafy) shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary;\nvarying vec3 vVary;')
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), vVary, uVary);')

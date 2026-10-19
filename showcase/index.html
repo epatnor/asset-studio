@@ -45,6 +45,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
 import { createMaterialPatcher } from './materials.js';
+import { createMenu } from './menu.js';
 
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -266,9 +267,14 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
+// Spelmenyn (menu.js); raderna har ingen atmosfär, bara banor, grafik och kontroller
+const frameHooks = [];
+const menu = createMenu({ renderer, scene, sun, fp, onFrame: (fn) => frameHooks.push(fn) }, { level: 'raderna' });
+menu.adoptPanel(document.querySelector('.panel'));
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
+  for (const fn of frameHooks) fn(dt);
   windUniforms.uTime.value = clock.elapsedTime;
   if (fp.active) updateFp(dt); else controls.update();
   renderer.render(scene, camera);

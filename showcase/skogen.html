@@ -39,6 +39,7 @@
 </div>
 <script type="module">
 import { createWorld } from './world.js';
+import { createMenu } from './menu.js';
 import { createGrassField, instancePlants } from './grass.js';
 import { createGround } from './ground.js';
 import { instanceModel, heightTexture } from './instancing.js';
@@ -51,6 +52,9 @@ const FAR = 190;
 const W = createWorld(document.getElementById('app'), { fog: [45, FAR] });
 const { THREE, scene, camera, controls, fp } = W;
 window.__tinker = W; // för felsökning och automatiska tester
+const menu = createMenu(W, { level: 'skogen' });
+menu.adoptPanel(document.querySelector('.panel'));
+
 const status = document.getElementById('status');
 document.getElementById('size').value = String(K);
 document.getElementById('mode').value = MODE;
@@ -328,7 +332,7 @@ const loadMs = performance.now() - T0;
 status.textContent = `${SIZE} × ${SIZE} m: ${trees.length} träd, ${modelCount} modeller, ${flatCount} marktäcken, ${plantCount} växter och ${Math.round(field.blades / 1000)} 000 grässtrån · laddat på ${(loadMs / 1000).toFixed(1)} s`;
 
 // Översikten ser hela banan: sikt och LOD-avstånd växer med banans storlek (i förstaperson gäller FAR)
-W.onFrame(() => { W.lodScale = fp.active ? 1 : K; scene.fog.near = 45 * W.lodScale; scene.fog.far = FAR * W.lodScale; });
+W.onFrame(() => { W.lodScale = fp.active ? 1 : K; W.fogBase = { near: 45 * W.lodScale, far: FAR * W.lodScale }; }); // atmosfären lägger vädret ovanpå
 W.lodScale = 1;
 document.getElementById('wind').oninput = (e) => (W.wind.uWind.value = Number(e.target.value));
 // Prestandamätare: bilder per sekund, ritanrop och trianglar (skuggpasset inräknat)

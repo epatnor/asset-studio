@@ -19,7 +19,7 @@ vec3 groundAt(vec2 xz, vec4 s) {
   #define GT(t, sc) mix(textureLod(t, uv * sc, 2.0).rgb, textureLod(t, uvB * sc, 2.0).rgb, k * 0.55)
   return GT(tGround0, 1.0) * s.x + GT(tGround1, 0.9) * s.y + GT(tGround2, 1.1) * s.z + GT(tGround3, 1.3) * s.w;
 }
-uniform float uTime, uWind;
+uniform float uTime, uWind, uSnow;
 uniform vec2 uWindDir, uGust; // byarnas vågtal (rad/m) och fart
 // Vindbyar: breda vågor som vandrar längs vindriktningen, uppbrutna på tvären så att de inte blir raka linjer
 float gustAt(vec2 xz) {
@@ -34,7 +34,7 @@ float gustAt(vec2 xz) {
 function sharedUniforms(W, textures) {
   return (W.grassUniforms ??= {
     tGround0: { value: textures[0] }, tGround1: { value: textures[1] }, tGround2: { value: textures[2] }, tGround3: { value: textures[3] },
-    uTime: W.wind.uTime, uWind: W.wind.uWind, uWindDir: { value: new W.THREE.Vector2(0.8, 0.6) }, uGust: { value: new W.THREE.Vector2(0.45, 1.6) },
+    uTime: W.wind.uTime, uWind: W.wind.uWind, uSnow: W.snow ?? { value: 0 }, uWindDir: { value: new W.THREE.Vector2(0.8, 0.6) }, uGust: { value: new W.THREE.Vector2(0.45, 1.6) },
   });
 }
 
@@ -101,14 +101,15 @@ export function createGrassField(W, opts) {
           + vec3(off.x * t * t * h, t * h * drop, off.y * t * t * h);
         vGround = groundAt(iPos.xz, iSplat); vT = t; vWave = gust * t * uWind; vVar = iShape.w;`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uTipA, uTipB;\nuniform float uGroundMix, uBright;\nvarying vec3 vGround; varying float vT, vWave, vVar;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uTipA, uTipB;\nuniform float uGroundMix, uBright, uSnow;\nvarying vec3 vGround; varying float vT, vWave, vVar;')
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz); // båda sidor skuggas som marken')
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 tip = mix(mix(uTipA, uTipB, vVar), vGround * 1.25, uGroundMix);
         vec3 col = mix(vGround * 0.92, tip, smoothstep(0.0, 0.8, vT));
-        diffuseColor.rgb = col * uBright * (1.0 + vWave * 0.55);`);
+        diffuseColor.rgb = mix(col * uBright * (1.0 + vWave * 0.55), vec3(0.9, 0.93, 0.98), uSnow * smoothstep(0.1, 0.7, vT));`);
   };
 
+  (W.grassFields ??= []).push(uniforms); // menyns kvalitetsval styr tätheten
   const group = new THREE.Group();
   const chunks = [];
   let total = 0;
@@ -198,6 +199,8 @@ export function instancePlants(W, root, places, { textures, lodDist = [12, 28, 6
           float bend = _wind * _wind;
           transformed.xz += (vec2(sway, sway * 0.6) * 0.06 + ld.xz * gustAt(root.xz) * 0.22) * uWind * bend;
           vGround = groundAt(root.xz, iSplat); vGroundW = _ground;`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSnow;')
+        .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n{ float upW = (vec4(normal, 0.0) * viewMatrix).y; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.98), uSnow * smoothstep(0.25, 0.75, upW)); }');
       if (tint) sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vGround; varying float vGroundW;')
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vGround, vGroundW);');

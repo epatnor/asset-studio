@@ -59,6 +59,8 @@ build/            mellanfiler (OBJ m.m.), ignoreras av git
 
 ## Visningssidor
 
+Alla banor delar en spelmeny (`showcase/menu.js`, Esc eller M): banor, tid på dygnet och väder, grafikkvalitet, banans egna inställningar och kontroller. Atmosfären (`showcase/atmosphere.js`) ger varje bana himmel med sol, måne, stjärnor och volymetriska moln, dag och natt, dimma, regn, snö och storm med blixtar; den är överförd från Azshara Island.
+
 `showcase/park.html` placerar allt i en liten park med stigar och blandad mark.
 
 `showcase/byggnader.html` visar byggnadsgeneratorns hus på rad (`?m=namn1,namn2` väljer vilka).
