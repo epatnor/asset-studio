@@ -195,6 +195,42 @@ def create_plant(name: str, preset: str = "grass_tuft", seed: int = 0, params: d
     return json.loads(_run([sys.executable, "-I", "tools/plants/make_plant.py", json.dumps(recipe)], 300))
 
 
+def building_data() -> dict:
+    return json.loads((ROOT / "tools" / "building" / "buildings.json").read_text())
+
+
+@mcp.tool()
+def create_building(name: str, preset: str = "house", style: str = "fantasy", stylization: str | float = "overwatch",
+                    seed: int = 0, params: dict | None = None, style_params: dict | None = None, textures: bool = True) -> dict:
+    """Skapa en byggnad som glTF (3 LOD, delade texturer) i assets/buildings/<name>/.
+
+    Alla hus byggs av samma delar: grund, väggar per våning, tak, torn, flygel, skorsten, fönster, dörr med
+    trappa (efter grundens höjd) och litet tak, lykta, blomlådor, rankor och props.
+    preset: cottage, house, tavern, townhouse, tower, shop (tools/building/buildings.json).
+    style: fantasy, rpg, steampunk, modern (vanlig tid), future, cyberpunk.
+    stylization: "realistic", "overwatch", "wow" eller ett tal 0..1 (0.5 = Overwatch, 1 = WoW).
+    params: överstyr typen, t.ex. {"floors": [3, 3], "roof": "hip"}; style_params överstyr stilen,
+      t.ex. {"vines": 1.0, "tints": {"roof": ["#C0503A"]}}.
+    textures: saknade texturer för stilen genereras med Krea-2 (ca 3 min styck, bara första gången).
+    Svaret har "checks" (dörr, trappa, öppningar krockar inte, skorsten genom taket, står på marken, budget, LOD).
+    """
+    _check_name(name)
+    data = building_data()
+    presets = [k for k in data if not k.startswith("_")]
+    if preset not in presets:
+        raise ValueError(f"okänd typ, välj bland: {', '.join(presets)}")
+    if style not in data["_styles"]:
+        raise ValueError(f"okänd stil, välj bland: {', '.join(data['_styles'])}")
+    recipe = {"name": name, "preset": preset, "style": style, "stylization": stylization, "seed": seed, "textures": textures}
+    if params:
+        recipe["params"] = params
+    if style_params:
+        recipe["style_params"] = style_params
+    result = json.loads(_run([sys.executable, "-I", "tools/building/make_building.py", json.dumps(recipe)], 3600))
+    _run([sys.executable, "-I", "tools/showcase/build_catalog.py"], 60)
+    return result
+
+
 @mcp.tool()
 def import_model(name: str, source: str, height: float | None = None, scale: float | None = None,
                  max_texture: int = 1024, category: str = "prop_medium") -> dict:
@@ -245,12 +281,13 @@ def generate_surface(name: str, preset: str | None = None, prompt: str | None = 
 
 @mcp.tool()
 def list_assets() -> dict:
-    """Lista genererade träd och texturer (bara namn)."""
+    """Lista genererade träd, props, växter, byggnader och texturer (bara namn)."""
     a = ROOT / "assets"
     return {
         "trees": sorted(p.name for p in (a / "trees").iterdir() if p.is_dir()) if (a / "trees").exists() else [],
         "props": sorted(p.name for p in (a / "props").iterdir() if p.is_dir()) if (a / "props").exists() else [],
         "plants": sorted(p.name for p in (a / "plants").iterdir() if p.is_dir()) if (a / "plants").exists() else [],
+        "buildings": sorted(p.name for p in (a / "buildings").iterdir() if p.is_dir()) if (a / "buildings").exists() else [],
         "imported": sorted(p.name for p in (a / "imported").iterdir() if p.is_dir()) if (a / "imported").exists() else [],
         "textures": sorted(p.stem for p in (a / "textures").glob("*.png")),
     }

@@ -179,7 +179,8 @@ def normal_map(rgb, strength):
 def main():
     recipe = json.loads(sys.argv[1])
     name = recipe["name"]
-    sp = {**SURFACES[recipe.get("preset", name)], **recipe.get("params", {})}
+    # Ett eget material behöver inget preset: prompt (och view) i params räcker
+    sp = {**SURFACES.get(recipe.get("preset", name), {}), **recipe.get("params", {})}
     if recipe.get("reprocess"):
         tex = ROOT / "assets" / "textures" / f"surface_{name}.png"
         out = np.asarray(Image.open(tex).convert("RGB"))
@@ -195,7 +196,8 @@ def main():
     seed = int(recipe.get("seed", random.randint(0, 2**31)))
     # Vyn först (den väger tyngst): rakt uppifrån, så att ytan ser rätt ut från alla håll när den läggs på marken.
     # Husets ljusgradient uppifrån utelämnas för ytor; den ger ojämn ton i en sömlös textur.
-    prompt = ", ".join([STYLE["surface_view"], sp["prompt"], STYLE["surface_style"], STYLE["kinds"]["tile"], "uniform density across the whole image, no vignette, no focal point"])
+    # view: "surface" (mark, uppifrån) eller "facade" (vägg och tak rakt framifrån, för byggnader)
+    prompt = ", ".join([STYLE[f"{sp.get('view', 'surface')}_view"], sp["prompt"], STYLE["surface_style"], STYLE["kinds"]["tile"], "uniform density across the whole image, no vignette, no focal point"])
 
     base = np.asarray(txt2img(prompt, size, seed))
     shifted = np.roll(base, (size // 2, size // 2), axis=(0, 1))

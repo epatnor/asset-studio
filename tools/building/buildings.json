@@ -1,0 +1,818 @@
+{
+  "_doc": "Data för byggnadsgeneratorn (gen_building.mjs). Ett hus = preset (typ: storlek, våningar, tak, torn, flygel) + style (spelstil: material, fönster, detaljer, props) + stylization (0 = nästan realistiskt, 0.5 = som Overwatch, 1 = som WoW). Alla hus byggs av samma delar: grund (base), väggar (wall) per våning, tak (roof), detaljer i trim (bjälkar, ramar, list), dörr med trappa och litet tak, fönster, skorsten, torn, blomlådor, lyktor, rankor och props. Längder i meter. Intervall [min, max] slumpas med seed. textures: material -> textur i assets/textures (surface_<namn>.png); saknas den genereras den med make_surface.py (prompt + view) om textures inte är avstängt, annars blir materialet enfärgat. tints: färg per material (#RRGGBB) som multipliceras med texturen; en lista slumpas. roof: pitch (multiplicerar typens lutning), flare (utsvängd takfot), shingles (takrader i relief), tips (spetsiga nockändar). dormers: sannolikhet för takkupor. chimneyPlacement: gable (utvändig skorsten på gaveln) eller ridge (genom taket). quoins: hörnkedjor i sten. rubble: kullersten i sockeln. window.lit: andel tända fönster (varmt sken, litColor). window.lattice: blyinfattade rutor (diagonala spröjsar). chimneyCap: sannolikhet för en liten huv på skorstenen.",
+  "_stylization": {
+    "_doc": "Namngivna nivåer för stylization; ett tal 0..1 går också. Värdena härleds i gen_building.mjs: avfasning, skevhet (lutning, buktning, svackor), takutsprång, takets lutning, tjocklek på detaljer och överdrivna öppningar.",
+    "realistic": 0.15,
+    "overwatch": 0.5,
+    "wow": 1.0
+  },
+  "_styles": {
+    "fantasy": {
+      "label": "Fantasy (sagoby)",
+      "textures": {
+        "base": {
+          "name": "bld_fantasy_base",
+          "prompt": "chunky rounded fieldstones in thick light mortar, cool gray-blue stone, irregular sizes",
+          "view": "facade"
+        },
+        "wall": {
+          "name": "bld_fantasy_wall",
+          "prompt": "smooth cream white plaster wall with soft uneven painted patches",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_fantasy_roof",
+          "prompt": "rows of overlapping rounded slate roof shingles, slightly uneven, cool blue-gray",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_fantasy_trim",
+          "prompt": "dark brown timber beam with long straight wood grain running horizontally",
+          "view": "facade"
+        },
+        "door": {
+          "name": "planks",
+          "preset": "planks"
+        }
+      },
+      "tints": {
+        "base": [
+          "#C8CCD8",
+          "#D8D2C4"
+        ],
+        "wall": [
+          "#FFF6E4",
+          "#F6E9D0",
+          "#FFF0D8"
+        ],
+        "roof": [
+          "#5C7FD0",
+          "#C0503A",
+          "#5C9A58",
+          "#7A5CB0"
+        ],
+        "trim": [
+          "#6E4A30",
+          "#5A3A26"
+        ],
+        "door": [
+          "#B07040",
+          "#8A5A36"
+        ]
+      },
+      "metal": "#3E3C42",
+      "roofs": [
+        "gable",
+        "gable",
+        "gable",
+        "hip"
+      ],
+      "roof": {
+        "pitch": 1.22,
+        "flare": 0.55,
+        "shingles": true,
+        "tips": true
+      },
+      "dormers": 0.7,
+      "window": {
+        "shape": "arch",
+        "shutters": 0.6,
+        "mullions": true,
+        "glass": "#2E3E58",
+        "glow": 0.0,
+        "sill": true,
+        "lit": 0.55,
+        "litColor": "#FFB65A",
+        "lattice": true
+      },
+      "door": {
+        "shape": "arch"
+      },
+      "timber": true,
+      "jetty": 0.35,
+      "canopy": "gable",
+      "lantern": {
+        "kind": "iron",
+        "light": "#FFC46A",
+        "glow": 2.2
+      },
+      "flowerboxes": 0.6,
+      "vines": 0.55,
+      "chimney": "stone",
+      "chimneyPlacement": "gable",
+      "quoins": true,
+      "rubble": true,
+      "tower": {
+        "chance": 0.5,
+        "roof": "cone",
+        "material": "base"
+      },
+      "props": [
+        "pots",
+        "barrel",
+        "crate",
+        "bench",
+        "sign"
+      ],
+      "chimneyCap": 0.5
+    },
+    "rpg": {
+      "label": "RPG (medeltida by)",
+      "textures": {
+        "base": {
+          "name": "stone",
+          "preset": "stone"
+        },
+        "wall": {
+          "name": "bld_rpg_wall",
+          "prompt": "horizontal weathered wooden log planks with dark gaps, warm brown",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_rpg_roof",
+          "prompt": "thick golden straw thatch roof, bundled straw strands running downward",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_fantasy_trim",
+          "prompt": "dark brown timber beam with long straight wood grain running horizontally",
+          "view": "facade"
+        },
+        "door": {
+          "name": "planks",
+          "preset": "planks"
+        }
+      },
+      "tints": {
+        "base": [
+          "#C8C4BC"
+        ],
+        "wall": [
+          "#E8D2B0",
+          "#D8C0A0"
+        ],
+        "roof": [
+          "#E8C878",
+          "#D8B868"
+        ],
+        "trim": [
+          "#6E4A30"
+        ],
+        "door": [
+          "#A06A40"
+        ]
+      },
+      "metal": "#4A4644",
+      "roofs": [
+        "gable",
+        "hip"
+      ],
+      "roof": {
+        "pitch": 1.1,
+        "flare": 0.25,
+        "shingles": true,
+        "tips": false
+      },
+      "dormers": 0.3,
+      "window": {
+        "shape": "rect",
+        "shutters": 0.8,
+        "mullions": false,
+        "glass": "#2A3442",
+        "glow": 0.0,
+        "sill": true,
+        "lit": 0.45,
+        "litColor": "#FFB65A"
+      },
+      "door": {
+        "shape": "rect"
+      },
+      "timber": false,
+      "jetty": 0.0,
+      "canopy": "shed",
+      "lantern": {
+        "kind": "iron",
+        "light": "#FFB85A",
+        "glow": 2.0
+      },
+      "flowerboxes": 0.3,
+      "vines": 0.35,
+      "chimney": "stone",
+      "chimneyPlacement": "gable",
+      "quoins": false,
+      "rubble": true,
+      "tower": {
+        "chance": 0.15,
+        "roof": "cone",
+        "material": "base"
+      },
+      "props": [
+        "pots",
+        "barrel",
+        "crate",
+        "woodpile",
+        "sign"
+      ]
+    },
+    "steampunk": {
+      "label": "Steampunk",
+      "textures": {
+        "base": {
+          "name": "bld_steampunk_base",
+          "prompt": "large dark sooty granite blocks in even courses",
+          "view": "facade"
+        },
+        "wall": {
+          "name": "bld_steampunk_wall",
+          "prompt": "red-brown brick wall in running bond with light mortar",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_steampunk_roof",
+          "prompt": "riveted copper roof panels with soft green patina streaks",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_steampunk_trim",
+          "prompt": "polished brass metal band with round rivets",
+          "view": "facade"
+        },
+        "door": {
+          "name": "planks",
+          "preset": "planks"
+        }
+      },
+      "tints": {
+        "base": [
+          "#B0A8A0"
+        ],
+        "wall": [
+          "#E0A080",
+          "#D89070"
+        ],
+        "roof": [
+          "#9CD0B0",
+          "#C89060"
+        ],
+        "trim": [
+          "#E8C070"
+        ],
+        "door": [
+          "#7A4A2A"
+        ]
+      },
+      "metal": "#D0A050",
+      "roofs": [
+        "hip",
+        "gable"
+      ],
+      "roof": {
+        "pitch": 1.0,
+        "flare": 0.15,
+        "shingles": true,
+        "tips": false
+      },
+      "dormers": 0.4,
+      "window": {
+        "shape": "round",
+        "shutters": 0.0,
+        "mullions": true,
+        "glass": "#3A5048",
+        "glow": 0.35,
+        "sill": true,
+        "lit": 0.5
+      },
+      "door": {
+        "shape": "arch"
+      },
+      "timber": false,
+      "jetty": 0.0,
+      "canopy": "flat",
+      "lantern": {
+        "kind": "gas",
+        "light": "#FFD08A",
+        "glow": 2.4
+      },
+      "flowerboxes": 0.15,
+      "vines": 0.15,
+      "chimney": "metal",
+      "chimneyPlacement": "ridge",
+      "quoins": true,
+      "rubble": false,
+      "tower": {
+        "chance": 0.45,
+        "roof": "dome",
+        "material": "wall"
+      },
+      "props": [
+        "pipes",
+        "gear",
+        "barrel",
+        "crate"
+      ]
+    },
+    "modern": {
+      "label": "Vanlig tid (nutid)",
+      "textures": {
+        "base": {
+          "name": "bld_modern_base",
+          "prompt": "smooth light gray poured concrete with faint form lines",
+          "view": "facade"
+        },
+        "wall": {
+          "name": "bld_modern_wall",
+          "prompt": "horizontal painted wooden siding boards, clean and even",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_modern_roof",
+          "prompt": "rows of dark gray concrete roof tiles",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_modern_trim",
+          "prompt": "smooth white painted wood board, faint grain",
+          "view": "facade"
+        },
+        "door": {
+          "name": "bld_modern_trim",
+          "prompt": "smooth white painted wood board, faint grain",
+          "view": "facade"
+        }
+      },
+      "tints": {
+        "base": [
+          "#C8C8C8"
+        ],
+        "wall": [
+          "#E8D8A8",
+          "#C84A3A",
+          "#F0F0E8",
+          "#8AB0D0"
+        ],
+        "roof": [
+          "#707478",
+          "#5A4A44"
+        ],
+        "trim": [
+          "#F4F4F0"
+        ],
+        "door": [
+          "#2E4A6A",
+          "#7A2E2E",
+          "#F4F4F0"
+        ]
+      },
+      "metal": "#5A5E64",
+      "roofs": [
+        "gable",
+        "hip"
+      ],
+      "roof": {
+        "pitch": 0.9,
+        "flare": 0.0,
+        "shingles": true,
+        "tips": false
+      },
+      "dormers": 0.15,
+      "window": {
+        "shape": "rect",
+        "shutters": 0.0,
+        "mullions": true,
+        "glass": "#3A5068",
+        "glow": 0.0,
+        "sill": true,
+        "lit": 0.3,
+        "litColor": "#FFB65A"
+      },
+      "door": {
+        "shape": "rect"
+      },
+      "timber": false,
+      "jetty": 0.0,
+      "canopy": "flat",
+      "lantern": {
+        "kind": "modern",
+        "light": "#FFF0D0",
+        "glow": 1.6
+      },
+      "flowerboxes": 0.25,
+      "vines": 0.1,
+      "chimney": "brick",
+      "chimneyPlacement": "ridge",
+      "quoins": false,
+      "rubble": false,
+      "tower": {
+        "chance": 0.0,
+        "roof": "cone",
+        "material": "wall"
+      },
+      "props": [
+        "mailbox",
+        "ac",
+        "bin",
+        "bench"
+      ]
+    },
+    "future": {
+      "label": "Framtid",
+      "textures": {
+        "base": {
+          "name": "bld_future_base",
+          "prompt": "smooth light gray composite panels with thin dark seams",
+          "view": "facade"
+        },
+        "wall": {
+          "name": "bld_future_wall",
+          "prompt": "clean white ceramic composite panels with thin panel lines",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_future_base",
+          "prompt": "smooth light gray composite panels with thin dark seams",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_future_trim",
+          "prompt": "brushed pale silver metal, soft horizontal brushing",
+          "view": "facade"
+        },
+        "door": {
+          "name": "bld_future_trim",
+          "prompt": "brushed pale silver metal, soft horizontal brushing",
+          "view": "facade"
+        }
+      },
+      "tints": {
+        "base": [
+          "#D8DCE0"
+        ],
+        "wall": [
+          "#F4F6F8",
+          "#E8F0F4"
+        ],
+        "roof": [
+          "#C8D0D8"
+        ],
+        "trim": [
+          "#B8C4D0"
+        ],
+        "door": [
+          "#9AB0C8"
+        ]
+      },
+      "metal": "#D0D8E0",
+      "roofs": [
+        "flat",
+        "flat",
+        "dome"
+      ],
+      "roof": {
+        "pitch": 1.0,
+        "flare": 0.0,
+        "shingles": false,
+        "tips": false
+      },
+      "dormers": 0.0,
+      "window": {
+        "shape": "strip",
+        "shutters": 0.0,
+        "mullions": false,
+        "glass": "#4AB8E0",
+        "glow": 0.9,
+        "sill": false,
+        "lit": 0.6
+      },
+      "door": {
+        "shape": "rect"
+      },
+      "timber": false,
+      "jetty": 0.0,
+      "canopy": "flat",
+      "lantern": {
+        "kind": "led",
+        "light": "#8AE8FF",
+        "glow": 3.0
+      },
+      "flowerboxes": 0.2,
+      "vines": 0.0,
+      "chimney": "none",
+      "chimneyPlacement": "ridge",
+      "quoins": false,
+      "rubble": false,
+      "tower": {
+        "chance": 0.35,
+        "roof": "dome",
+        "material": "wall"
+      },
+      "props": [
+        "antenna",
+        "solar",
+        "planter"
+      ]
+    },
+    "cyberpunk": {
+      "label": "Cyberpunk",
+      "textures": {
+        "base": {
+          "name": "bld_cyber_base",
+          "prompt": "stained dark gray concrete with rust drips and grime",
+          "view": "facade"
+        },
+        "wall": {
+          "name": "bld_cyber_wall",
+          "prompt": "grimy dark concrete wall with bolted metal panels and streaks",
+          "view": "facade"
+        },
+        "roof": {
+          "name": "bld_cyber_base",
+          "prompt": "stained dark gray concrete with rust drips and grime",
+          "view": "facade"
+        },
+        "trim": {
+          "name": "bld_cyber_trim",
+          "prompt": "dark gunmetal metal plate with scratches and bolts",
+          "view": "facade"
+        },
+        "door": {
+          "name": "bld_cyber_trim",
+          "prompt": "dark gunmetal metal plate with scratches and bolts",
+          "view": "facade"
+        }
+      },
+      "tints": {
+        "base": [
+          "#9A9AA4"
+        ],
+        "wall": [
+          "#A4A8B4",
+          "#B4A8B0"
+        ],
+        "roof": [
+          "#808088"
+        ],
+        "trim": [
+          "#8A8E9A"
+        ],
+        "door": [
+          "#7A8090"
+        ]
+      },
+      "metal": "#3A3E48",
+      "roofs": [
+        "flat"
+      ],
+      "roof": {
+        "pitch": 1.0,
+        "flare": 0.0,
+        "shingles": false,
+        "tips": false
+      },
+      "dormers": 0.0,
+      "window": {
+        "shape": "rect",
+        "shutters": 0.0,
+        "mullions": true,
+        "glass": "#FF4AB0",
+        "glow": 1.4,
+        "sill": false,
+        "glassAlt": [
+          "#4AE0FF",
+          "#FFB84A",
+          "#FF4AB0"
+        ],
+        "lit": 0.7
+      },
+      "door": {
+        "shape": "rect"
+      },
+      "timber": false,
+      "jetty": 0.0,
+      "canopy": "flat",
+      "lantern": {
+        "kind": "neon",
+        "light": "#4AE0FF",
+        "glow": 3.5
+      },
+      "flowerboxes": 0.0,
+      "vines": 0.1,
+      "chimney": "none",
+      "chimneyPlacement": "ridge",
+      "quoins": false,
+      "rubble": false,
+      "tower": {
+        "chance": 0.0,
+        "roof": "flat",
+        "material": "wall"
+      },
+      "props": [
+        "ac",
+        "neon",
+        "cables",
+        "bin",
+        "antenna"
+      ]
+    }
+  },
+  "cottage": {
+    "label": "Stuga",
+    "footprint": [
+      [
+        6,
+        7.5
+      ],
+      [
+        4.5,
+        5.5
+      ]
+    ],
+    "floors": [
+      1,
+      1
+    ],
+    "floorHeight": 2.8,
+    "plinth": [
+      0.3,
+      0.55
+    ],
+    "roofPitch": [
+      38,
+      46
+    ],
+    "chimneys": [
+      1,
+      1
+    ],
+    "wing": 0.0,
+    "towerScale": 0.8,
+    "bay": 2.4
+  },
+  "house": {
+    "label": "Hus",
+    "footprint": [
+      [
+        7,
+        9
+      ],
+      [
+        5.5,
+        7
+      ]
+    ],
+    "floors": [
+      2,
+      2
+    ],
+    "floorHeight": 2.9,
+    "plinth": [
+      0.4,
+      0.7
+    ],
+    "roofPitch": [
+      36,
+      44
+    ],
+    "chimneys": [
+      1,
+      2
+    ],
+    "wing": 0.35,
+    "towerScale": 1.0,
+    "bay": 2.4
+  },
+  "tavern": {
+    "label": "Värdshus",
+    "footprint": [
+      [
+        10,
+        12
+      ],
+      [
+        7,
+        8.5
+      ]
+    ],
+    "floors": [
+      2,
+      3
+    ],
+    "floorHeight": 3.0,
+    "plinth": [
+      0.6,
+      0.9
+    ],
+    "roofPitch": [
+      34,
+      42
+    ],
+    "chimneys": [
+      2,
+      2
+    ],
+    "wing": 0.7,
+    "towerScale": 1.15,
+    "bay": 2.6
+  },
+  "townhouse": {
+    "label": "Stadshus (smalt)",
+    "footprint": [
+      [
+        4.5,
+        5.5
+      ],
+      [
+        7,
+        8.5
+      ]
+    ],
+    "floors": [
+      3,
+      4
+    ],
+    "floorHeight": 2.9,
+    "plinth": [
+      0.5,
+      0.9
+    ],
+    "roofPitch": [
+      42,
+      50
+    ],
+    "chimneys": [
+      1,
+      1
+    ],
+    "wing": 0.0,
+    "towerScale": 0.0,
+    "bay": 2.2,
+    "frontAxis": "x"
+  },
+  "tower": {
+    "label": "Torn",
+    "footprint": [
+      [
+        5,
+        5.5
+      ],
+      [
+        5,
+        5.5
+      ]
+    ],
+    "floors": [
+      3,
+      4
+    ],
+    "floorHeight": 3.0,
+    "plinth": [
+      0.5,
+      0.8
+    ],
+    "roofPitch": [
+      50,
+      56
+    ],
+    "chimneys": [
+      0,
+      0
+    ],
+    "wing": 0.0,
+    "towerScale": 0.0,
+    "bay": 2.4,
+    "round": true
+  },
+  "shop": {
+    "label": "Butik",
+    "footprint": [
+      [
+        7,
+        8.5
+      ],
+      [
+        5.5,
+        6.5
+      ]
+    ],
+    "floors": [
+      2,
+      2
+    ],
+    "floorHeight": 3.0,
+    "plinth": [
+      0.25,
+      0.4
+    ],
+    "roofPitch": [
+      34,
+      40
+    ],
+    "chimneys": [
+      1,
+      1
+    ],
+    "wing": 0.0,
+    "towerScale": 0.0,
+    "bay": 2.6,
+    "shopfront": true
+  }
+}

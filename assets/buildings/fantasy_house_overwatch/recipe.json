@@ -1,0 +1,8 @@
+{
+  "name": "fantasy_house_overwatch",
+  "preset": "house",
+  "style": "fantasy",
+  "stylization": "overwatch",
+  "seed": 2,
+  "textures": true
+}

@@ -1,0 +1,8 @@
+{
+  "name": "steam_house",
+  "preset": "house",
+  "style": "steampunk",
+  "stylization": "overwatch",
+  "seed": 3,
+  "textures": false
+}

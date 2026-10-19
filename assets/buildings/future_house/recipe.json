@@ -1,0 +1,8 @@
+{
+  "name": "future_house",
+  "preset": "house",
+  "style": "future",
+  "stylization": "overwatch",
+  "seed": 5,
+  "textures": false
+}

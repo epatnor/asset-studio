@@ -1,0 +1,8 @@
+{
+  "name": "modern_house",
+  "preset": "house",
+  "style": "modern",
+  "stylization": "realistic",
+  "seed": 4,
+  "textures": false
+}

@@ -1,0 +1,8 @@
+{
+  "name": "fantasy_house_wow",
+  "preset": "house",
+  "style": "fantasy",
+  "stylization": "wow",
+  "seed": 2,
+  "textures": true
+}

@@ -1,0 +1,8 @@
+{
+  "name": "cyber_shop",
+  "preset": "shop",
+  "style": "cyberpunk",
+  "stylization": "overwatch",
+  "seed": 6,
+  "textures": false
+}

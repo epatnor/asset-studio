@@ -1,0 +1,8 @@
+{
+  "name": "rpg_cottage",
+  "preset": "cottage",
+  "style": "rpg",
+  "stylization": "overwatch",
+  "seed": 2,
+  "textures": false
+}

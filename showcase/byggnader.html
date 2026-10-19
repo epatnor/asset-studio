@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – byggnader</title>
+<style>
+  :root { --ink: #1f2a1c; --panel: rgba(255, 255, 255, 0.82); }
+  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  .panel { position: fixed; top: 16px; left: 16px; max-width: min(340px, calc(100vw - 32px)); background: var(--panel);
+           backdrop-filter: blur(6px); border-radius: 12px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); }
+  .panel h1 { margin: 0 0 4px; font-size: 18px; }
+  .panel p { margin: 0 0 8px; font-size: 13px; opacity: 0.85; }
+  .panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+  .panel select { flex: 1; }
+  .panel a { color: #2f6b2a; }
+  #status { font-size: 12px; opacity: 0.7; }
+  body.clean .panel { display: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Tinkertown · byggnader</h1>
+  <p>Byggnadsgeneratorns hus på rad, alla från recept (typ, spelstil, stiliseringsgrad, seed). <a href="index.html">Raderna</a> · <a href="park.html">Parken</a> · <a href="skogen.html">Skogen</a></p>
+  <label>Detaljnivå <select id="lod"><option value="0">LOD0 (nära)</option><option value="1">LOD1</option><option value="2">LOD2 (långt bort)</option></select></label>
+  <label><input id="labels" type="checkbox" checked> Visa skyltar</label>
+  <div id="status">Laddar…</div>
+</div>
+<script type="module">
+import { createWorld } from './world.js';
+// Vilka hus: ?m=namn1,namn2 (mappar i assets/buildings), annars katalogens rad "Byggnader".
+// ?clean döljer panelen (skärmbilder), ?cols=n antal per rad.
+const params = new URLSearchParams(location.search);
+if (params.has('clean')) document.body.classList.add('clean');
+const W = createWorld(document.getElementById('app'), { fog: [120, 400] });
+const { THREE, scene, camera, controls } = W;
+window.__tinker = W;
+const EXAMPLES = ['fantasy_house_wow', 'fantasy_cottage', 'fantasy_tavern', 'fantasy_tower', 'fantasy_townhouse', 'fantasy_house_overwatch', 'fantasy_house_realistic',
+  'rpg_cottage', 'steam_house', 'modern_house', 'future_house', 'cyber_shop'];
+let names = params.get('m')?.split(',').filter(Boolean);
+if (!names) {
+  const cat = await (await fetch('catalog.json', { cache: 'no-cache' })).json().catch(() => ({ rows: [] }));
+  names = (cat.rows.find((r) => r.title === 'Byggnader')?.items ?? []).map((i) => i.name);
+  if (!names.length) names = EXAMPLES; // katalogen byggs om av create_building; annars exemplen
+}
+const cols = Number(params.get('cols') ?? Math.ceil(Math.sqrt(names.length)));
+const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#7fa65a', roughness: 1 }));
+ground.receiveShadow = true;
+scene.add(ground);
+const roots = await Promise.all(names.map((n) => W.loadModel(`../assets/buildings/${n}/${n}.gltf`)));
+const sizes = roots.map((r) => W.measure(r).size);
+const cell = Math.max(...sizes.map((s) => Math.max(s.x, s.z))) + 6;
+const rows = Math.ceil(names.length / cols);
+roots.forEach((root, i) => {
+  const x = ((i % cols) - (cols - 1) / 2) * cell, z = (Math.floor(i / cols) - (rows - 1) / 2) * cell;
+  root.position.set(x, 0, z);
+  scene.add(root);
+  const s = W.makeSign(names[i], null, 2.2);
+  s.position.set(x - sizes[i].x * 0.35, 0, z + sizes[i].z / 2 + 2.6);
+  scene.add(s);
+});
+const span = Math.max(cols, rows) * cell;
+W.setShadowArea(new THREE.Vector3(0, 0, 0), span * 0.75 + 10);
+camera.position.set(span * 0.35, span * 0.45 + 6, span * 0.85 + 10);
+controls.target.set(0, 4, 0);
+document.getElementById('status').textContent = `${names.length} byggnader`;
+document.getElementById('lod').onchange = (e) => W.setLod(Number(e.target.value));
+document.getElementById('labels').onchange = (e) => W.signs.forEach((s) => (s.visible = e.target.checked));
+// För skärmbilder: __frame(i) ställer kameran snett framför hus i (alla om i < 0)
+window.__frame = (i, lod = 0) => {
+  W.setLod(lod);
+  if (i < 0) { camera.position.set(span * 0.35, span * 0.45 + 6, span * 0.85 + 10); controls.target.set(0, 4, 0); }
+  else {
+    const r = roots[i], s = sizes[i], d = Math.max(s.x, s.y, s.z) * 1.35 + 4;
+    controls.target.set(r.position.x, s.y * 0.42, r.position.z);
+    camera.position.set(r.position.x + d * 0.55, s.y * 0.55 + 2, r.position.z + d);
+  }
+  controls.update();
+  W.renderer.shadowMap.needsUpdate = true;
+};
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

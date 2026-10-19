@@ -20,18 +20,19 @@ ROWS = [
     ("Gräs, vass och säd", ["grass_tuft", "grass_tall", "grass_seeded", "feather_grass", "reed", "cattail", "wheat", "barley"]),
     ("Blommor", ["daisy", "poppy", "buttercup", "tulip", "cornflower", "lavender", "lupine"]),
     ("Vattenväxter", ["water_lily", "pondweed"]),
+    ("Byggnader", ["cottage", "house", "tavern", "townhouse", "tower", "shop"]),
     ("Importerat", ["imported"]),
 ]
 
 items = []
-dirs = [d for kind in ("trees", "props", "plants", "imported") if (ROOT / "assets" / kind).exists() for d in sorted((ROOT / "assets" / kind).iterdir())]
+dirs = [d for kind in ("trees", "props", "plants", "buildings", "imported") if (ROOT / "assets" / kind).exists() for d in sorted((ROOT / "assets" / kind).iterdir())]
 for d in dirs:
     rec, glb = d / "recipe.json", d / f"{d.name}.gltf"
     if not (rec.exists() and glb.exists()):
         continue
     r = json.loads(rec.read_text())
     preset = r.get("preset", "")
-    species = "imported" if d.parent.name == "imported" else preset if d.parent.name in ("props", "plants") else preset.split("_")[0]
+    species = "imported" if d.parent.name == "imported" else preset if d.parent.name in ("props", "plants", "buildings") else preset.split("_")[0]
     items.append({"name": d.name, "species": species, "label": d.name, "tint": r.get("leaf_tint"), "height": r.get("height"),
                   "model": f"../assets/{d.parent.name}/{d.name}/{d.name}.gltf"})
 

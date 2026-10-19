@@ -1,0 +1,8 @@
+{
+  "name": "fantasy_tavern",
+  "preset": "tavern",
+  "style": "fantasy",
+  "stylization": "wow",
+  "seed": 1,
+  "textures": true
+}

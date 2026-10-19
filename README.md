@@ -38,6 +38,7 @@ Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem o
 | Träd | Egen generator (`tools/tree/`): skelett, bark, lövverk | v3: allt växer ur ett skelett och kontrolleras (anslutna grenar, fäst lövverk). Arter som data i `species.json`; 3 LOD → GLB |
 | Ytor | `tools/texture/make_surface.py` | Sömlösa marktexturer + normalkartor (`generate_surface`) |
 | Naturprops | Egen generator (`tools/props/`) | Stenar, bumlingar, mossa, svampar, stubbar, lövhögar, krypväxter → GLB (`create_prop`) |
+| Byggnader | Egen generator (`tools/building/`) | Hus, värdshus, torn, stadshus och butiker i sex spelstilar och tre stiliseringsgrader, från recept; texturer genereras vid behov (`create_building`) |
 | Texturer | Krea-2 Turbo via lokal ComfyUI | Fungerar: bark (sömlös), lövsprite (alfa) |
 | MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `generate_leaf_atlas`, `list_assets` |
 | Terräng, vatten, vegetation, props, karaktärer | – | Ej påbörjat |
@@ -59,6 +60,8 @@ build/            mellanfiler (OBJ m.m.), ignoreras av git
 ## Visningssidor
 
 `showcase/park.html` placerar allt i en liten park med stigar och blandad mark.
+
+`showcase/byggnader.html` visar byggnadsgeneratorns hus på rad (`?m=namn1,namn2` väljer vilka).
 
 `showcase/skogen.html` är banan Skogen: en tät granskog med stig och gläntor, ritad instansierat med LOD per avstånd (`showcase/instancing.js`). Storleken kan ökas (`?size=2` ger 4× yta). Se [prestandarapporten](docs/skogen-prestanda.md).
 

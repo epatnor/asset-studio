@@ -1,0 +1,8 @@
+{
+  "name": "fantasy_house_realistic",
+  "preset": "house",
+  "style": "fantasy",
+  "stylization": "realistic",
+  "seed": 2,
+  "textures": true
+}

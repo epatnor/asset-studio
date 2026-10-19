@@ -52,6 +52,8 @@ Trädgeneratorn är till för alla större växter (träd och buskar; gräs och 
 
 Propsgeneratorn (`tools/props/`, MCP `create_prop`) gör naturprops för skog, stig och fält: stenar, bumlingar, mossa, svampar, stubbar, lövhögar och krypväxter. Samma regel som för träden: nya varianter görs som data i `props.json` eller i generatorns kod, aldrig för hand.
 
+Byggnadsgeneratorn (`tools/building/`, MCP `create_building`) gör hus, värdshus, torn, stadshus och butiker från recept: typ (`preset`), spelstil (`style`: fantasy, rpg, steampunk, modern, future, cyberpunk) och stiliseringsgrad (`stylization`: realistic, overwatch, wow eller 0..1). Alla hus byggs av samma delar (grund, väggar per våning, tak, torn, flygel, skorsten, fönster, dörr med trappa och litet tak, lykta, blomlådor, rankor, props). Typer och stilar är data i `buildings.json`. Saknade texturer för en stil genereras första gången (Krea-2, cirka 3 minuter styck); `textures: false` hoppar över det. Kontrollera `checks.ok`, och bygg aldrig hus för hand.
+
 Växtgeneratorn (`tools/plants/`, MCP `create_plant`) gör gräsknippen, vass, säd och blommor som data i `plants.json`. Vanligt gräs i stora mängder är inte modeller utan klientens gräsfält i `showcase/grass.js` (instansierade strån som tar rotfärgen från marken).
 
 Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna.
@@ -64,6 +66,7 @@ Kommandoradsvarianter:
 | `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin) |
 | `python3 -I tools/plants/make_plant.py '<recept>'` | Växt → `assets/plants/<name>/<name>.gltf` (+ .bin) |
 | `python3 -I tools/character/make_character.py '<recept>'` | Karaktär → `assets/characters/<name>/<name>.gltf` (+ .bin), under arbete |
+| `python3 -I tools/building/make_building.py '<recept>'` | Byggnad → `assets/buildings/<name>/<name>.gltf` (+ .bin), texturer genereras vid behov |
 | `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |
