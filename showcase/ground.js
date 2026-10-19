@@ -1,7 +1,7 @@
 // Marken: ett rutnät med fyra marktexturer som blandas per hörn (splat), plus vattnets botten.
 // Ren klientkod (ingen Node). Används av parken och vattensidan.
 //
-// surfaceAt(x, z) -> { y, splat: [gräs, äng, skog, stig] } beskriver marken; terrain (från carveWater)
+// surfaceAt(x, z) -> { y, splat: [gräs, äng, skog, stig], splat2: [sand, klippa] } beskriver marken (splat2 valfritt); terrain (från carveWater)
 // ger vattnet: under ytan blir marken botten (pondbed, riverbed eller sand), kanten mörk och våt, och
 // rörlig kaustik lyser på botten. Gräsfältet läser samma fyra texturer med samma blandning (grass.js).
 import { BEDS } from './water.js';
@@ -26,35 +26,38 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
   const geo = new THREE.PlaneGeometry(size, size, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const P = geo.attributes.position, N = P.count, uv = geo.attributes.uv;
-  const splat = new Float32Array(N * 4), water = new Float32Array(N * 2), bed = new Float32Array(N * 3);
+  const splat = new Float32Array(N * 4), splat2 = new Float32Array(N * 2), water = new Float32Array(N * 2), bed = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     const x = P.getX(i), z = P.getZ(i), s = surfaceAt(x, z);
     P.setY(i, s.y);
     uv.setXY(i, x / 3, z / 3); // en texturupprepning per 3 m
     splat.set(s.splat, i * 4);
+    if (s.splat2) splat2.set(s.splat2, i * 2);
     const w = terrain?.waterAt(x, z);
     if (w) { water.set([w.wet, w.level], i * 2); bed[i * 3 + Math.max(0, BEDS.indexOf(w.body.b.bed))] = 1; }
   }
   geo.computeVertexNormals();
   geo.setAttribute('splat', new THREE.BufferAttribute(splat, 4));
+  geo.setAttribute('splat2', new THREE.BufferAttribute(splat2, 2));
   geo.setAttribute('water', new THREE.BufferAttribute(water, 2));
   geo.setAttribute('bed', new THREE.BufferAttribute(bed, 3));
 
   const [[tGrass, tMeadow, tForest, tPath, ...beds], [nGrass, nMeadow, nForest, nPath, ...nBeds]] = await Promise.all([
-    loadSurfaces(W, [...SURFACES, ...BEDS]), loadSurfaces(W, [...SURFACES, ...BEDS], { normal: true })]);
+    loadSurfaces(W, [...SURFACES, ...BEDS, 'cliff']), loadSurfaces(W, [...SURFACES, ...BEDS], { normal: true })]);
+  const tCliff = beds.pop(); // klippa: bara färg (ytterligare en normalkarta skulle gå över 16 texturer)
   // normalMap slår på normalkartsvägen i shadern; själva normalen blandas av alla ytor nedan
   const mat = new THREE.MeshStandardMaterial({ map: tGrass, normalMap: nGrass, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 1 });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath },
-      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, uTime: W.wind.uTime, uSnow: W.snow ?? { value: 0 },
+      tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, tCliff: { value: tCliff }, uTime: W.wind.uTime, uSnow: W.snow ?? { value: 0 },
       nMeadow: { value: nMeadow }, nForest: { value: nForest }, nPath: { value: nPath }, nBed0: { value: nBeds[0] }, nBed1: { value: nBeds[1] }, nBed2: { value: nBeds[2] } });
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 splat;\nattribute vec2 water;\nattribute vec3 bed;\nvarying vec4 vSplat;\nvarying vec2 vWater;\nvarying vec3 vBed;\nvarying float vWY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vWater = water; vBed = bed; vWY = position.y;');
+      .replace('#include <common>', '#include <common>\nattribute vec4 splat;\nattribute vec2 splat2, water;\nattribute vec3 bed;\nvarying vec4 vSplat;\nvarying vec2 vSplat2, vWater;\nvarying vec3 vBed;\nvarying float vWY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSplat = splat; vSplat2 = splat2; vWater = water; vBed = bed; vWY = position.y;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-        uniform sampler2D tMeadow, tForest, tPath, tBed0, tBed1, tBed2, nMeadow, nForest, nPath, nBed0, nBed1, nBed2;
+        uniform sampler2D tMeadow, tForest, tPath, tBed0, tBed1, tBed2, tCliff, nMeadow, nForest, nPath, nBed0, nBed1, nBed2;
         uniform float uTime, uSnow;
-        varying vec4 vSplat; varying vec2 vWater; varying vec3 vBed; varying float vWY;
+        varying vec4 vSplat; varying vec2 vSplat2, vWater; varying vec3 vBed; varying float vWY;
         // Kaustik: ljusa, slingrande nät som rör sig över botten
         float caustic(vec2 p, float t) {
           vec2 q = p + vec2(sin(p.y * 0.8 + t * 0.7), cos(p.x * 0.9 - t * 0.6)) * 0.6;
@@ -67,7 +70,7 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
         float k = 0.5 + 0.5 * sin(vMapUv.x * 0.7 + sin(vMapUv.y * 0.53) * 1.7);
         #define TEX2(t, s) mix(texture2D(t, vMapUv * s).rgb, texture2D(t, uvB * s).rgb, k * 0.55)
         vec3 cG = TEX2(map, 1.0), cM = TEX2(tMeadow, 0.9), cF = TEX2(tForest, 1.1), cP = TEX2(tPath, 1.3);
-        diffuseColor.rgb *= cG * vSplat.x + cM * vSplat.y + cF * vSplat.z + cP * vSplat.w;
+        diffuseColor.rgb *= cG * vSplat.x + cM * vSplat.y + cF * vSplat.z + cP * vSplat.w + TEX2(tBed2, 0.8) * vSplat2.x + TEX2(tCliff, 0.45) * vSplat2.y;
         // Vatten: botten under ytan, mörk våt kant, kall ton och kaustik som avtar med djupet
         float wet = smoothstep(0.0, 1.0, vWater.x), d = vWater.y - vWY, under = clamp(d / 0.35, 0.0, 1.0) * wet;
         vec3 bedCol = TEX2(tBed0, 0.8) * vBed.x + TEX2(tBed1, 0.8) * vBed.y + TEX2(tBed2, 0.9) * vBed.z;
@@ -82,7 +85,7 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
       // Chunken packas upp först; annars finns raden inte att ersätta än (includes löses efter onBeforeCompile)
       .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps)
       .replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', `
-        vec3 nSurf = TEX2(normalMap, 1.0) * vSplat.x + TEX2(nMeadow, 0.9) * vSplat.y + TEX2(nForest, 1.1) * vSplat.z + TEX2(nPath, 1.3) * vSplat.w;
+        vec3 nSurf = TEX2(normalMap, 1.0) * vSplat.x + TEX2(nMeadow, 0.9) * vSplat.y + TEX2(nForest, 1.1) * vSplat.z + TEX2(nPath, 1.3) * (vSplat.w + vSplat2.y) + TEX2(nBed2, 0.8) * vSplat2.x;
         vec3 nBedC = TEX2(nBed0, 0.8) * vBed.x + TEX2(nBed1, 0.8) * vBed.y + TEX2(nBed2, 0.9) * vBed.z;
         vec3 mapN = mix(nSurf, nBedC, bedW) * 2.0 - 1.0;`)
       // Snö på marken, inte i vattnet

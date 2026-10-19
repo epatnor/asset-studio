@@ -65,6 +65,8 @@ Alla banor delar en spelmeny (`showcase/menu.js`, Esc eller M): banor, tid på d
 
 `showcase/byggnader.html` visar byggnadsgeneratorns hus på rad (`?m=namn1,namn2` väljer vilka).
 
+`showcase/azshara.html` är banan Azshara Island: två öar från det tidigare Godot-projektet, med Tinkertowns växter, hus och vatten (se [docs/azshara](docs/azshara/README.md)).
+
 `showcase/skogen.html` är banan Skogen: en tät granskog med stig och gläntor, ritad instansierat med LOD per avstånd (`showcase/instancing.js`). Storleken kan ökas (`?size=2` ger 4× yta). Se [prestandarapporten](docs/skogen-prestanda.md).
 
 ## Visningssida

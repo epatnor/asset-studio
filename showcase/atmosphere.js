@@ -225,7 +225,8 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
     for (const key of Object.keys(target)) state[key] += (target[key] - state[key]) * k;
     const s = sunDirection(state.time), day = smooth(-0.1, 0.12, s.y), night = 1 - day;
     moonDir.copy(s).multiplyScalar(-1);
-    const low = 1 - smooth(0.05, 0.45, s.y), storm = state.storm;
+    // Banor kan lägga till väder efter plats (atmo.zone): Azshara stormar över den mörka ön
+    const zs = atmo.zone.storm ?? 0, low = 1 - smooth(0.05, 0.45, s.y), storm = Math.max(state.storm, zs);
     const sunVis = Math.min(1, Math.max(0.05, 1 - 0.85 * state.clouds - 0.3 * state.rain));
     const lightFactor = 1 - 0.55 * state.clouds - 0.1 * state.rain;
     // Himlens färger: dag/natt, solnedgång och storm
@@ -234,7 +235,7 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
     lerpColor(U.sunColor.value, pal.sun, pal.sunset, low * 0.7);
     U.sunDir.value.copy(s); U.moonDir.value.copy(moonDir);
     U.sunStrength.value = day; U.moonStrength.value = night; U.sunVis.value = sunVis;
-    U.cloudCover.value = state.clouds; U.cloudType.value = state.cloudKind; U.storm.value = storm;
+    U.cloudCover.value = Math.max(state.clouds, zs * 0.85); U.cloudType.value = state.cloudKind; U.storm.value = storm;
     U.uTime.value += dt;
     const wd = W.grassUniforms?.uWindDir?.value ?? new THREE.Vector2(0.8, 0.6);
     drift.addScaledVector(wd, (0.002 + 0.018 * state.wind) * dt); U.cloudDrift.value.copy(drift);
@@ -258,7 +259,7 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
     if (scene.fog) {
       lerpColor(scene.fog.color, pal.fog, pal.nightFog, night).lerp(pal.sunset, low * 0.2 * day).lerp(pal.stormFog, storm * 0.8).lerp(pal.hazeFog, state.haze * 0.5 * day);
       W.fogBase ??= { near: scene.fog.near, far: scene.fog.far };
-      const thick = 1 - 0.55 * state.haze - 0.25 * state.rain - 0.2 * state.snow;
+      const thick = 1 - 0.55 * Math.max(state.haze, (atmo.zone.haze ?? 0)) - 0.25 * state.rain - 0.2 * state.snow;
       scene.fog.near = W.fogBase.near * thick; scene.fog.far = W.fogBase.far * Math.max(0.35, thick);
       U.horizon.value.lerp(scene.fog.color, 0.5);
     }
@@ -276,12 +277,12 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
     sky.position.copy(cam);
     sky.scale.setScalar(camera.far * 0.9);
   }
-  W.onFrame(update);
   const atmo = {
-    state, target, sky,
+    zone: {}, state, target, sky,
     setTime: (h) => { state.time = ((h % 24) + 24) % 24; },
     setWeather: (name, now = false) => { Object.assign(target, WEATHER[name]); state.weather = name; if (now) Object.assign(state, WEATHER[name]); },
     sunDirection: () => sunDir.clone(),
   };
+  W.onFrame(update);
   return atmo;
 }

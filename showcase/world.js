@@ -200,6 +200,6 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
   const setRunning = (on) => renderer.setAnimationLoop(on ? tick : null);
 
   const W = { snow, THREE, renderer, scene, camera, controls, sun, hemi, skyMesh, setSunDir, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
-  if (atmosphere) W.atmo = createAtmosphere(W, { time, weather });
+  if (atmosphere) W.atmo = createAtmosphere(W, { time, weather, ...(typeof atmosphere === 'object' ? atmosphere : {}) });
   return W;
 }

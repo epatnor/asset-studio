@@ -1,0 +1,11 @@
+{
+  "name": "azshara_house_2",
+  "preset": "cottage",
+  "style": "fantasy",
+  "stylization": "wow",
+  "seed": 12,
+  "params": {
+    "roof": "gable"
+  },
+  "textures": false
+}

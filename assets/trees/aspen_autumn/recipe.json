@@ -1,0 +1,11 @@
+{
+  "name": "aspen_autumn",
+  "preset": "aspen_medium",
+  "seed": 23,
+  "height": 12.0,
+  "preview": false,
+  "leaf_tint": "#E8862A",
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}

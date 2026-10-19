@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – Azshara Island</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #9cc4ec; overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+// Azshara Island: två öar i havet (den lummiga huvudön i öster, höst mot väster, den mörka ön bortom
+// kanalen), med by, bäck från källan, sjö, stig med lyktor och en gammal stenbro över kanalen.
+// Terrängen kommer från Azshara Islands generator (bakad till assets/levels/azshara, se
+// tools/levels/azshara/); växtligheten, husen och vattnet från Tinkertowns generatorer.
+// Ett zonvärde (0 öster, ~0.6 väster, 1 på den mörka ön) styr växter, mark och väder.
+import { createWorld } from './world.js';
+import { createMenu } from './menu.js';
+import { createGround } from './ground.js';
+import { createGrassField, instancePlants } from './grass.js';
+import { instanceModel, heightTexture } from './instancing.js';
+import { carveWater, createWaterMeshes } from './water.js';
+
+const FAR = 260;
+const W = createWorld(document.getElementById('app'), { fog: [60, FAR], time: 10, weather: 'klart', atmosphere: { noonElevation: 40 } });
+const { THREE, scene, camera, controls, fp } = W;
+window.__tinker = W;
+const menu = createMenu(W, { level: 'azshara' });
+menu.setStatus('Laddar ön…');
+const T0 = performance.now();
+
+// ---------- Banans data: höjder (uint16) och masker (PNG, en per tre kanaler) ----------
+const BASE = '../assets/levels/azshara/';
+const L = await (await fetch(BASE + 'level.json')).json();
+const N = L.n, SIZE = L.world_size, HALF = SIZE / 2, CS = SIZE / (N - 1);
+const H = new Float32Array(N * N);
+{
+  const u = new Uint16Array(await (await fetch(BASE + L.heights)).arrayBuffer());
+  for (let i = 0; i < u.length; i++) H[i] = L.height_min + (u[i] / 65535) * (L.height_max - L.height_min);
+}
+const M = {};
+await Promise.all(L.masks.map(async (names, gi) => {
+  const img = new Image(); img.src = `${BASE}masks_${gi}.png`; await img.decode();
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, N, N).data;
+  // path_mask -> path, rock_cover -> rock
+  names.forEach((name, ch) => { const a = new Uint8Array(N * N); for (let i = 0; i < N * N; i++) a[i] = d[i * 4 + ch]; M[name.replace(/_(mask|cover)$/, '')] = a; });
+}));
+// Bilinjär läsning i världskoordinater (rutnätet går från -HALF till HALF)
+function sample(arr, x, z, scale = 1) {
+  const fx = Math.min(N - 1.0001, Math.max(0, (x + HALF) / CS)), fz = Math.min(N - 1.0001, Math.max(0, (z + HALF) / CS));
+  const i = fx | 0, j = fz | 0, tx = fx - i, tz = fz - j, k = j * N + i;
+  return ((arr[k] * (1 - tx) + arr[k + 1] * tx) * (1 - tz) + (arr[k + N] * (1 - tx) + arr[k + N + 1] * tx) * tz) * scale;
+}
+const outside = (x, z) => Math.abs(x) > HALF || Math.abs(z) > HALF;
+const baseHeight = (x, z) => (outside(x, z) ? L.height_min : sample(H, x, z));
+const mask = (name, x, z) => (outside(x, z) ? 0 : sample(M[name], x, z, 1 / 255));
+const zoneAt = (x, z) => mask('zone', x, z);
+const slopeAt = (x, z) => Math.hypot(baseHeight(x + 1, z) - baseHeight(x - 1, z), baseHeight(x, z + 1) - baseHeight(x, z - 1)) / 2;
+
+// ---------- Vatten: hav, bäcken från källan och sjön (terrängen är redan formad) ----------
+const terrain = carveWater([
+  { type: 'ocean', level: L.sea_level, size: 1500, carve: false },
+  { type: 'stream', points: L.stream.points.map((p) => [p[0], p[2], p[1]]), width: L.stream.half_width * 1.15, surface: L.stream.water_depth, into: 0, carve: false },
+  { type: 'lake', center: L.lake.center, radius: L.lake.radius * 1.35, level: L.lake.level, wobble: 0, carve: false },
+], baseHeight);
+const heightAt = terrain.heightAt;
+fp.heightAt = (x, z) => { const w = terrain.waterAt(x, z), h = heightAt(x, z); return w?.inside ? Math.max(h, w.level - 0.55) : h; };
+const dry = (x, z) => terrain.wetAt(x, z) === 0 && heightAt(x, z) > L.sea_level + 0.6;
+
+// Brons korridor över kanalen: inget växer där bron landar
+const bridge = L.bridge, bx0 = bridge.start[0] - 6, bx1 = bridge.start[0] + bridge.span + 6;
+const onBridgeLine = (x, z) => x > bx0 && x < bx1 && Math.abs(z) < 7;
+
+// ---------- Platsen avgör stämningen: stormigt över den mörka ön ----------
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+W.lodScale = 1;
+W.onFrame(() => {
+  // Översikten ser hela ön: längre sikt och LOD-avstånd än i förstaperson
+  W.lodScale = fp.active ? 1 : 2.4; W.fogBase = { near: 60 * W.lodScale, far: FAR * W.lodScale };
+  const x = fp.active ? camera.position.x : controls.target.x;
+  const past = L.channel_x + 20 - x;
+  W.atmo.zone.storm = smooth(0, 90, past);
+  W.atmo.zone.haze = smooth(0, 90, past) * 0.55;
+});
+
+// ---------- Modeller ----------
+const A = (kind, name) => `../assets/${kind}/${name}/${name}.gltf`;
+const SETS = {
+  lush: ['oak_v2', 'maple_v2', 'ash_v2', 'cherry_v2', 'birch_v2'].map((n) => A('trees', n)),
+  autumn: ['oak_autumn', 'maple_autumn', 'birch_autumn', 'aspen_autumn'].map((n) => A('trees', n)),
+  conifer: ['spruce_tall', 'spruce_mid', 'pine_v2', 'fir_small'].map((n) => A('trees', n)),
+  dark: ['deadtree_v2', 'deadtree_v2', 'spruce_young'].map((n) => A('trees', n)),
+  bushes: ['bush1_v2', 'bush2_v2', 'moundbush_v2', 'ballbush_small', 'shrub_v2'].map((n) => A('trees', n)),
+  rocks: ['boulder1', 'mossy_boulder1', 'stones1', 'mossy_stone1', 'stone1'].map((n) => A('props', n)),
+  floor: ['stump1', 'mossy_stump1', 'log1', 'mossy_log1', 'fly_agaric1', 'porcini1', 'chanterelle1'].map((n) => A('props', n)),
+  flat: ['leafpile1', 'creeper1'].map((n) => A('props', n)),
+  houses: [1, 2, 3, 4].map((i) => A('buildings', `azshara_house_${i}`)),
+  bridge: [A('imported', 'azshara_bridge')], lantern: [A('imported', 'azshara_lantern')], jetty: [A('imported', 'azshara_jetty')],
+};
+const PLANTS = { fern: 'fern1', grass_tall: 'grass_tall1', grass_tuft: 'grass_tuft1', feather_grass: 'feather_grass1', reed: 'reed1', cattail: 'cattail1', water_lily: 'water_lily1',
+  daisy: 'daisy1', buttercup: 'buttercup1', poppy: 'poppy1', lupine: 'lupine1', cornflower: 'cornflower1', lavender: 'lavender1' };
+const models = new Map();
+const urls = [...new Set(Object.values(SETS).flat())];
+let loadedN = 0;
+await Promise.all(urls.map(async (u) => {
+  const root = await W.loadModel(u);
+  models.set(u, { root, ...W.measure(root), url: u });
+  menu.setStatus(`Laddar modeller ${++loadedN} / ${urls.length}`);
+}));
+const plantModels = new Map();
+await Promise.all(Object.entries(PLANTS).map(async ([sp, n]) => plantModels.set(sp, await W.loadModel(A('plants', n)))));
+
+// Bron: Azshara Islands egen modell, i sten med mossa (triplanart i världskoordinater, materials.js)
+{
+  const m = models.get(SETS.bridge[0]), url = SETS.bridge[0];
+  const tex = new THREE.TextureLoader().load('../assets/textures/surface_bld_fantasy_base.webp');
+  tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  m.root.traverse((o) => {
+    if (!o.isMesh) return;
+    o.material = new THREE.MeshStandardMaterial({ map: tex, color: '#C9C4BA', roughness: 0.92, name: 'Stone' });
+    o.material.userData = { triplanar: true, moss: 0.32, mossTexture: '../../textures/moss_painted.webp', stoneScale: 0.45, mossScale: 3 };
+    W.addWind(o.material, url);
+  });
+}
+
+// ---------- Placering ----------
+let seed = 20261012;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const noise2 = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.045 + Math.sin(z * 0.037) * 2) + 0.25 * Math.sin(z * 0.041 - x * 0.019 + 1.7);
+const occ = new Map(), OCC = 4, occKey = (i, j) => i * 100003 + j;
+const occupy = (x, z, r) => { const k = occKey(Math.floor(x / OCC), Math.floor(z / OCC)); if (!occ.has(k)) occ.set(k, []); occ.get(k).push({ x, z, r }); };
+function free(x, z, r, factor = 1) {
+  const R = Math.ceil((r + 6) / OCC), ci = Math.floor(x / OCC), cj = Math.floor(z / OCC);
+  for (let i = ci - R; i <= ci + R; i++) for (let j = cj - R; j <= cj + R; j++)
+    for (const o of occ.get(occKey(i, j)) ?? []) if ((o.x - x) ** 2 + (o.z - z) ** 2 < ((o.r + r) * factor) ** 2) return false;
+  return true;
+}
+const placements = new Map();
+const place = (m, x, z, { yaw = rnd() * Math.PI * 2, scale = 1, y = heightAt(x, z), collide = true, occR } = {}) => {
+  if (!placements.has(m.url)) placements.set(m.url, []);
+  placements.get(m.url).push({ x, y, z, yaw, scale });
+  const foot = Math.max(m.size.x, m.size.z) * 0.5 * scale;
+  occupy(x, z, occR ?? foot * (m.hasTrunk ? 0.45 : 0.8));
+  if (collide) W.colliders.push({ x, z, r: m.hasTrunk ? THREE.MathUtils.clamp(m.size.y * 0.035, 0.25, 0.7) * scale : foot * 0.8 });
+};
+const pick = (list) => models.get(list[Math.floor(rnd() * list.length)]);
+// Byn: generatorns hus på Azsharas tomter, vända mot stigen
+L.houses.forEach((h, i) => {
+  const m = models.get(SETS.houses[i % SETS.houses.length]);
+  place(m, h.pos[0], h.pos[2], { yaw: h.yaw, y: baseHeight(h.pos[0], h.pos[2]) - 0.05, occR: Math.max(m.size.x, m.size.z) * 0.62 });
+  W.colliders.push({ x: h.pos[0], z: h.pos[2], r: Math.min(m.size.x, m.size.z) * 0.5 });
+});
+// Lyktstolpar längs stigen; de närmaste lyser upp omgivningen på natten (fyra punktljus som flyttas med spelaren)
+const lanternModel = models.get(SETS.lantern[0]);
+for (const l of L.lanterns) place(lanternModel, l.pos[0], l.pos[2], { yaw: l.yaw, y: l.pos[1] - 0.3, occR: 0.6 });
+const lampLights = Array.from({ length: 4 }, () => { const p = new THREE.PointLight('#FFB866', 0, 14, 1.6); scene.add(p); return p; });
+W.onFrame(() => {
+  const night = 1 - smooth(-0.1, 0.12, W.atmo.sunDirection().y), cp = camera.position;
+  const near = L.lanterns.map((l) => ({ l, d: (l.pos[0] - cp.x) ** 2 + (l.pos[2] - cp.z) ** 2 })).sort((a, b) => a.d - b.d).slice(0, lampLights.length);
+  near.forEach(({ l }, i) => {
+    lampLights[i].position.set(l.pos[0] + Math.cos(l.yaw) * 0.55, l.pos[1] + 2.0, l.pos[2] - Math.sin(l.yaw) * 0.55);
+    lampLights[i].intensity = night * 9;
+  });
+});
+// Bryggan vid sjöns östra strand (som i Azshara: ut mot sjöns mitt)
+{
+  const dir = [Math.cos((10 * Math.PI) / 180), Math.sin((10 * Math.PI) / 180)], c = L.lake.center;
+  let shore = c;
+  for (let s = 0; s < 400; s++) { shore = [c[0] + dir[0] * s * 0.25, c[1] + dir[1] * s * 0.25]; if (baseHeight(shore[0], shore[1]) > L.lake.level + 0.15) break; }
+  const base = [shore[0] + dir[0] * 1.5, shore[1] + dir[1] * 1.5], yaw = Math.atan2(dir[0], dir[1]);
+  // Modellen är centrerad vid importen; landänden låg i Azshara på lokal z = +4.6, däcket 2.6 m över botten
+  const off = new THREE.Vector3(0, 2.6, 4.6).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+  place(models.get(SETS.jetty[0]), base[0] - off.x, base[1] - off.z, { yaw, y: L.lake.level + 0.55 - off.y, collide: false, occR: 1 });
+}
+// Bron över kanalen
+{
+  const m = models.get(SETS.bridge[0]);
+  place(m, bridge.start[0] + bridge.span / 2, 0, { yaw: 0, y: bridge.start[1] - 27, collide: false, occR: 0 });
+}
+
+// Allmänna regler för växtlighet: torr mark, inte på stigar, bäck, sjö, strand, klippor eller tomter
+const blockedGround = (x, z) => mask('path', x, z) > 0.08 || mask('stream', x, z) > 0.05 || mask('lake', x, z) > 0.05 || mask('plot', x, z) > 0.05 || onBridgeLine(x, z);
+const randomLand = () => {
+  for (let k = 0; k < 40; k++) { const x = (rnd() - 0.5) * SIZE, z = (rnd() - 0.5) * SIZE; if (baseHeight(x, z) > 0.8) return [x, z]; }
+  return null;
+};
+let trees = 0;
+// Träd: lövskog i öster, höst västerut, granar i fläckar på kullarna, döda träd på den mörka ön
+for (let tries = 0; trees < 950 && tries < 60000; tries++) {
+  const p = randomLand(); if (!p) continue;
+  const [x, z] = p, zn = zoneAt(x, z), n = noise2(x, z);
+  if (!dry(x, z) || blockedGround(x, z) || mask('beach', x, z) > 0.2 || mask('cliff', x, z) > 0.3 || slopeAt(x, z) > 0.75) continue;
+  const pathNear = mask('path', x + 4, z) + mask('path', x - 4, z) + mask('path', x, z + 4) + mask('path', x, z - 4);
+  if (pathNear > 0.1 && rnd() < 0.7) continue;
+  const density = zn > 0.85 ? 0.35 : 0.25 + 0.75 * smooth(0.42, 0.62, n);
+  if (rnd() > density) continue;
+  const set = zn > 0.85 ? SETS.dark : n > 0.66 && zn > 0.25 ? SETS.conifer : zn > 0.4 + (rnd() - 0.5) * 0.25 ? SETS.autumn : SETS.lush;
+  const m = pick(set), scale = 0.85 + rnd() * 0.35, r = Math.max(m.size.x, m.size.z) * 0.5 * scale;
+  if (!free(x, z, r * 0.45)) continue;
+  place(m, x, z, { scale });
+  trees++;
+}
+// Buskar, stenar, bumlingar och skogsbotten
+const scatter = (set, count, rule, scale = [0.85, 1.2], opts = {}) => {
+  for (let made = 0, tries = 0; made < count && tries < count * 50; tries++) {
+    const p = randomLand(); if (!p) continue;
+    const [x, z] = p;
+    if (!dry(x, z) || blockedGround(x, z) || !rule(x, z)) continue;
+    const m = pick(set), s = scale[0] + rnd() * (scale[1] - scale[0]);
+    if (!free(x, z, Math.max(m.size.x, m.size.z) * 0.35 * s)) continue;
+    place(m, x, z, { scale: s, collide: m.size.y > 0.35, ...opts });
+    made++;
+  }
+};
+scatter(SETS.bushes, 420, (x, z) => zoneAt(x, z) < 0.85 && mask('beach', x, z) < 0.3);
+scatter(SETS.rocks, 260, (x, z) => mask('rock', x, z) > 0.2 || mask('ledge', x, z) > 0.2 || mask('cliff', x, z) > 0.15 || rnd() < 0.08, [0.8, 1.8]);
+scatter(SETS.floor, 380, (x, z) => noise2(x, z) > 0.5 && mask('beach', x, z) < 0.2);
+const flat = new Set(SETS.flat);
+scatter(SETS.flat, 160, (x, z) => zoneAt(x, z) > 0.3 && noise2(x, z) > 0.45, [0.9, 1.2], { collide: false });
+
+// ---------- Rita: instansierat med LOD och rutor (instancing.js) ----------
+const drapeTex = heightTexture(W, heightAt, SIZE, 2);
+let modelCount = 0;
+for (const [url, places] of placements) {
+  const m = models.get(url);
+  modelCount += places.length;
+  const big = m.size.y > 3;
+  instanceModel(W, m.root, places, flat.has(url) ? { lodDist: [14, 32, 60], shadowLods: [], drape: drapeTex }
+    : { lodDist: big ? [26, 70, FAR] : [16, 36, 80], shadowLods: big ? [0, 1] : [0], chunk: 40 });
+}
+
+// ---------- Marken: gräs, äng, skogsbotten, stig, sand och klippa efter zon och masker ----------
+const treeShade = (x, z) => (noise2(x, z) > 0.55 ? 1 : 0);
+function splatAt(x, z) {
+  const zn = zoneAt(x, z), path = Math.min(1, mask('path', x, z) * 1.6), beach = mask('beach', x, z), cliff = Math.max(mask('cliff', x, z), mask('rock', x, z) * 0.85);
+  const forest = Math.min(1, smooth(0.5, 0.66, noise2(x, z)) * 0.7 + smooth(0.45, 0.9, zn) * 0.8);
+  const meadow = smooth(0.48, 0.62, noise2(x * 1.7 + 30, z * 1.7)) * (1 - zn) * 0.8;
+  let s = [Math.max(0, 1 - forest - meadow), meadow, forest, path], s2 = [beach, cliff];
+  const rest = Math.max(0, 1 - path - beach - cliff);
+  s = [s[0] * rest, s[1] * rest, s[2] * rest, path];
+  const sum = s.reduce((a, b) => a + b, 0) + s2[0] + s2[1];
+  return { s: s.map((v) => v / sum), s2: s2.map((v) => v / sum) };
+}
+const groundObj = await createGround(W, { size: SIZE, seg: 392, terrain, surfaceAt: (x, z) => {
+  const { s, s2 } = splatAt(x, z);
+  return { y: heightAt(x, z) - s[3] * 0.05, splat: s, splat2: s2 };
+} });
+// Havsbotten utanför rutnätet: en stor sandplatta, så att havet inte blir genomskinligt mot ingenting
+{
+  const g = new THREE.PlaneGeometry(1500, 1500).rotateX(-Math.PI / 2);
+  const floor = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: '#2B5A6E', roughness: 1 }));
+  floor.position.y = L.height_min - 0.2; scene.add(floor);
+}
+createWaterMeshes(W, terrain);
+
+// ---------- Gräs och växter ----------
+const groundTex = groundObj.textures;
+const field = createGrassField(W, {
+  size: SIZE - 4, cell: 0.36, heightAt, textures: groundTex,
+  splatAt: (x, z) => splatAt(x, z).s,
+  densityAt: (x, z, s) => {
+    if (baseHeight(x, z) < 0.7 || !free(x, z, 0, 0.55)) return 0;
+    const shore = 1 - smooth(0.02, 0.5, terrain.wetAt(x, z));
+    if (shore <= 0) return 0;
+    const zn = zoneAt(x, z);
+    return (s[0] + s[1] * 0.95 + s[2] * 0.2) * shore * (1 - 0.8 * smooth(0.8, 0.95, zn));
+  },
+  heightScaleAt: (x, z, s) => (0.24 + s[1] * 0.24) * (0.85 + 0.3 * noise2(x * 3, z * 3)) * (1 - 0.3 * zoneAt(x, z)),
+});
+const plantPlaces = new Map();
+const addPlant = (sp, x, z, scale = 1) => {
+  if (!plantModels.has(sp) || !free(x, z, 0, 0.6)) return;
+  const w = terrain.waterAt(x, z), wet = sp === 'reed' || sp === 'cattail', aquatic = sp === 'water_lily';
+  if (aquatic) { if (!w?.inside || w.depth < 0.4) return; }
+  else if (wet ? !w || w.wet < 0.05 || w.depth > 0.45 : !dry(x, z) || blockedGround(x, z)) return;
+  if (!plantPlaces.has(sp)) plantPlaces.set(sp, []);
+  plantPlaces.get(sp).push({ x, y: aquatic ? w.level : heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z).s });
+};
+// Vass och kaveldun längs bäcken och sjöns strand
+for (const p of L.stream.points) for (let k = 0; k < 6; k++) {
+  const a = rnd() * Math.PI * 2, d = L.stream.half_width * (1.1 + rnd() * 1.4);
+  addPlant(rnd() < 0.65 ? 'reed' : 'cattail', p[0] + Math.cos(a) * d, p[2] + Math.sin(a) * d, 0.9);
+}
+for (let k = 0; k < 220; k++) {
+  const a = rnd() * Math.PI * 2, d = L.lake.radius * (0.75 + rnd() * 0.5);
+  addPlant(k % 3 ? 'reed' : 'cattail', L.lake.center[0] + Math.cos(a) * d, L.lake.center[1] + Math.sin(a) * d);
+}
+for (let k = 0; k < 60; k++) { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * L.lake.radius * 0.8; addPlant('water_lily', L.lake.center[0] + Math.cos(a) * d, L.lake.center[1] + Math.sin(a) * d); }
+// Blomsterdrivor i ängarna i öster, högt gräs vid stigkanterna, ormbunkar i skogen
+const flowers = ['daisy', 'buttercup', 'poppy', 'lupine', 'cornflower', 'lavender'];
+for (let d = 0; d < 40; d++) {
+  const p = randomLand(); if (!p) continue;
+  const [cx, cz] = p;
+  if (zoneAt(cx, cz) > 0.45 || splatAt(cx, cz).s[1] < 0.3) continue;
+  const main = flowers[d % flowers.length], r = 4 + rnd() * 6;
+  for (let i = 0; i < r * r * 2.2; i++) { const a = rnd() * Math.PI * 2, dd = Math.sqrt(rnd()) * r; addPlant(rnd() < 0.85 ? main : flowers[(d + 2) % flowers.length], cx + Math.cos(a) * dd, cz + Math.sin(a) * dd, 1.1); }
+}
+for (const p of L.path.points) for (let k = 0; k < 2; k++) {
+  const a = rnd() * Math.PI * 2, d = L.path.half_width + 1 + rnd() * 1.6;
+  addPlant(['grass_tall', 'grass_tuft', 'feather_grass'][k + (rnd() < 0.5 ? 0 : 1)], p[0] + Math.cos(a) * d, p[2] + Math.sin(a) * d);
+}
+for (let c = 0; c < 260; c++) {
+  const p = randomLand(); if (!p) continue;
+  const [cx, cz] = p;
+  if (splatAt(cx, cz).s[2] < 0.4 || zoneAt(cx, cz) > 0.9) continue;
+  const r = 2 + rnd() * 3;
+  for (let i = 0; i < r * r * 1.5; i++) { const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r; addPlant('fern', cx + Math.cos(a) * d, cz + Math.sin(a) * d, 1.3 + rnd() * 0.4); }
+}
+let plantCount = 0;
+for (const [sp, places] of plantPlaces) { instancePlants(W, plantModels.get(sp), places, { textures: groundTex, lodDist: [12, 30, 65] }); plantCount += places.length; }
+
+// ---------- Start: på stigen vid byn, med blicken längs stigen ----------
+const P0 = L.path.points[0], P1 = L.path.points[14];
+fp.pos.set(P0[0], heightAt(P0[0], P0[2]), P0[2]);
+fp.yaw = Math.atan2(-(P1[0] - P0[0]), -(P1[2] - P0[2]));
+camera.position.set(L.main_center[0] + 40, 130, 190);
+controls.target.set(L.main_center[0] - 20, 0, 0);
+W.setShadowArea(new THREE.Vector3(L.main_center[0], 0, 0), 160);
+const summary = `${trees} träd, ${modelCount} modeller, ${plantCount} växter och ${Math.round(field.blades / 1000)} 000 grässtrån · laddat på ${((performance.now() - T0) / 1000).toFixed(1)} s`;
+menu.addLevelControls(`<div class="tt-note">Två öar i havet, från Azshara Islands terränggenerator: den lummiga huvudön i öster med by, källa, bäck och sjö, höst västerut, och den mörka ön bortom kanalen och stenbron, där det alltid stormar. ${summary}</div>`, 'Om banan');
+menu.ready();
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

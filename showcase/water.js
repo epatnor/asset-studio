@@ -2,11 +2,13 @@
 //
 // Ett vattendrag är ett recept: { type, ...överstyrningar }. Typen ger standardvärden (WATER_TYPES).
 //   basin   (pond, lake): center [x, z], radius, depth. Skål med oregelbunden kant; nivån sätts strax under kanten.
-//   channel (stream, brook, river): points [[x, z], ...] i flödesriktningen, width (halva bredden), depth. Gräver en fåra;
+//   channel (stream, brook, river): points [[x, z], ...] i flödesriktningen (eller [x, z, botten]: fårans höjd är given,
+//           vattnet ligger surface m ovanför), width (halva bredden), depth. Gräver en fåra;
 //           vattenytan sluttar nedströms och stiger aldrig. into: index till ett vattendrag som kanalen
 //           mynnar i (nivån planar ut mot dess nivå).
 //   sea     (ocean): level. Hav där terrängen ligger under nivån.
 //
+// carve: false (alla typer): terrängen är redan formad (t.ex. Azshara Island), vattnet läggs bara ovanpå.
 // carveWater(recept, baseHeight) ger en terräng: heightAt (med gropar och fåror), waterAt (vatten på en
 // plats: nivå, djup, ström) och wetAt (0 torrt, 1 i vattnet, däremellan våt strand). createWaterMeshes
 // bygger ytorna med samma shader för alla typer.
@@ -58,17 +60,17 @@ function channel(b, baseHeight, bodies) {
     for (let j = 0; j < n; j++) {
       const t = j / n, t2 = t * t, t3 = t2 * t;
       const f = (k) => 0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3);
-      S.push({ x: f(0), z: f(1) });
+      S.push({ x: f(0), z: f(1), y: p1.length > 2 ? p1[2] + (p2[2] - p1[2]) * t : null });
     }
   }
-  S.push({ x: P.at(-1)[0], z: P.at(-1)[1] });
+  S.push({ x: P.at(-1)[0], z: P.at(-1)[1], y: P.at(-1)[2] ?? null });
   // Riktning, bredd (lite bredare nedströms) och en nivå som aldrig stiger nedströms
   const into = b.into != null ? bodies[b.into] : null;
   let level = Infinity;
   S.forEach((s, i) => {
     const a = S[Math.max(0, i - 1)], c = S[Math.min(S.length - 1, i + 1)], dx = c.x - a.x, dz = c.z - a.z, l = Math.hypot(dx, dz) || 1;
     s.tx = dx / l; s.tz = dz / l; s.u = i / (S.length - 1); s.w = b.width * (0.85 + 0.3 * s.u) * (1 + 0.15 * Math.sin(i * 0.37));
-    level = Math.min(level - 0.004, baseHeight(s.x, s.z) - b.bank - b.depth * 0.15);
+    level = Math.min(level - 0.004, s.y != null ? s.y + (b.surface ?? 0.35) : baseHeight(s.x, s.z) - b.bank - b.depth * 0.15);
     s.level = level;
   });
   if (into) { // mynnar i ett annat vatten: sista biten planar ut mot dess nivå
@@ -129,7 +131,9 @@ export function carveWater(recipes, baseHeight) {
   for (const r of recipes) {
     if (!WATER_TYPES[r.type]) throw new Error(`okänd vattentyp ${r.type}; finns: ${Object.keys(WATER_TYPES).join(', ')}`);
     const b = { ...WATER_TYPES[r.type], ...r, colors: { ...WATER_TYPES[r.type].colors, ...(r.colors ?? {}) } };
-    bodies.push(b.shape === 'basin' ? basin(b, baseHeight) : b.shape === 'channel' ? channel(b, baseHeight, bodies) : sea(b, baseHeight));
+    const body = b.shape === 'basin' ? basin(b, baseHeight) : b.shape === 'channel' ? channel(b, baseHeight, bodies) : sea(b, baseHeight);
+    if (r.carve === false) body.carve = (x, z, h) => h;
+    bodies.push(body);
   }
   const heightAt = (x, z) => { let h = baseHeight(x, z); for (const w of bodies) h = w.carve(x, z, h); return h; };
   // Vattnet som täcker platsen (det med högst våthet); null på torr mark

@@ -1,0 +1,11 @@
+{
+  "name": "maple_autumn",
+  "preset": "maple_medium",
+  "seed": 21,
+  "height": 10.0,
+  "preview": false,
+  "leaf_tint": "#D9662E",
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}

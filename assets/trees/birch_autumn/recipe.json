@@ -1,0 +1,11 @@
+{
+  "name": "birch_autumn",
+  "preset": "birch_medium",
+  "seed": 22,
+  "height": 11.0,
+  "preview": false,
+  "leaf_tint": "#E8B83A",
+  "bark": "bark_painted",
+  "leaves": "leaflet_atlas",
+  "leaf_mass": "foliage_painted"
+}
