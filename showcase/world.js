@@ -172,7 +172,8 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
   const frameHooks = [];
   let frame = 0;
   const onFrame = (fn) => frameHooks.push(fn);
-  renderer.setAnimationLoop(() => {
+  const runFrameHooks = (dt) => { for (const fn of frameHooks) fn(dt); };
+  const tick = () => {
     const dt = Math.min(clock.getDelta(), 0.05);
     wind.uTime.value = clock.elapsedTime;
     if (fp.active) updateFp(dt); else controls.update();
@@ -180,9 +181,12 @@ export function createWorld(container, { fog = [60, 220] } = {}) {
     // Skuggkartan ritas om var tredje bild (20 gånger/s räcker för träd som svajar), eller när området flyttats
     if (++frame % 3 === 0) renderer.shadowMap.needsUpdate = true;
     foliage.uSunDir.value.subVectors(sun.position, sun.target.position).normalize();
-    for (const fn of frameHooks) fn(dt);
+    runFrameHooks(dt);
     renderer.render(scene, camera);
-  });
+  };
+  renderer.setAnimationLoop(tick);
+  // Mätningar kan stoppa loopen och rita själva (runFrameHooks uppdaterar LOD och gräsrutor först)
+  const setRunning = (on) => renderer.setAnimationLoop(on ? tick : null);
 
-  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, foliage };
+  return { THREE, renderer, scene, camera, controls, sun, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
 }

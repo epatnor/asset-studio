@@ -1165,5 +1165,69 @@
         "segments": 6
       }
     ]
+  },
+  "fern": {
+    "colors": {
+      "stalk": "foliage_mid",
+      "leaf": "foliage_mid"
+    },
+    "groundTint": [
+      "stalk"
+    ],
+    "layers": [
+      {
+        "type": "stalks",
+        "color": "stalk",
+        "count": [
+          7,
+          10
+        ],
+        "length": [
+          0.75,
+          1.05
+        ],
+        "radius": 0.007,
+        "spread": 0.05,
+        "lean": [
+          30,
+          58
+        ],
+        "bend": [
+          0.45,
+          0.75
+        ],
+        "segments": 8,
+        "leaves": {
+          "count": [
+            16,
+            20
+          ],
+          "at": [
+            0.18,
+            0.96
+          ],
+          "length": [
+            0.17,
+            0.23
+          ],
+          "width": [
+            0.045,
+            0.06
+          ],
+          "lean": [
+            25,
+            25
+          ],
+          "bend": [
+            0.15,
+            0.3
+          ],
+          "shape": "leaf",
+          "side": 90,
+          "jitter": 0.3,
+          "taper": 0.75
+        }
+      }
+    ]
   }
 }

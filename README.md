@@ -60,6 +60,8 @@ build/            mellanfiler (OBJ m.m.), ignoreras av git
 
 `showcase/park.html` placerar allt i en liten park med stigar och blandad mark.
 
+`showcase/skogen.html` är banan Skogen: en tät granskog med stig och gläntor, ritad instansierat med LOD per avstånd (`showcase/instancing.js`). Storleken kan ökas (`?size=2` ger 4× yta). Se [prestandarapporten](docs/skogen-prestanda.md).
+
 ## Visningssida
 
 `showcase/index.html` visar allt generatorerna har gjort, på rader i en Three.js-scen med skuggor, vind (från `_WIND`) och LOD-växling. Bygg katalogen och starta en lokal server:

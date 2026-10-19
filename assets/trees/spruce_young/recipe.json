@@ -1,0 +1,10 @@
+{
+  "name": "spruce_young",
+  "preset": "pine_small",
+  "seed": 5,
+  "height": 4.0,
+  "preview": false,
+  "bark": "bark_painted",
+  "leaves": "frond_atlas",
+  "leaf_mass": "leaf_mass"
+}

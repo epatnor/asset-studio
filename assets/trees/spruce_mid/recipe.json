@@ -1,0 +1,10 @@
+{
+  "name": "spruce_mid",
+  "preset": "pine_medium",
+  "seed": 23,
+  "height": 11.0,
+  "preview": false,
+  "bark": "bark_painted",
+  "leaves": "frond_atlas",
+  "leaf_mass": "leaf_mass"
+}

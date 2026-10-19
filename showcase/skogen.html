@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – skogen</title>
+<style>
+  :root { --ink: #1f2a1c; --panel: rgba(255, 255, 255, 0.82); }
+  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  .panel { position: fixed; top: 16px; left: 16px; max-width: min(340px, calc(100vw - 32px)); background: var(--panel);
+           backdrop-filter: blur(6px); border-radius: 12px; padding: 14px 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); }
+  .panel h1 { margin: 0 0 4px; font-size: 18px; }
+  .panel p { margin: 0 0 8px; font-size: 13px; opacity: 0.85; }
+  .panel label { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0; }
+  .panel select, .panel input[type=range] { flex: 1; }
+  .panel a { color: #2f6b2a; }
+  #status { font-size: 12px; opacity: 0.7; }
+  #perf { font: 12px ui-monospace, monospace; opacity: 0.75; margin-top: 4px; white-space: pre; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Tinkertown · skogen</h1>
+  <p>En tät granskog med inslag av björk och asp, en slingrande stig och några gläntor. Allt är genererat. Banor: <a href="park.html">Parken</a> · <b>Skogen</b> · <a href="water.html">Vattnet</a> · <a href="index.html">Raderna</a></p>
+  <p>Klicka för att gå runt: <b>WASD</b>, <b>Shift</b> spring, <b>Space</b> hopp, <b>mus</b> titta. <b>Esc</b> släpper musen, <b>Tab</b> växlar till översikt.</p>
+  <label>Storlek <select id="size"><option value="1">120 m (som parken)</option><option value="2">240 m (4× yta)</option><option value="4">480 m (16× yta)</option></select></label>
+  <label>Ritsätt <select id="mode"><option value="instanced">Instansierat med LOD</option><option value="clone">En kopia per modell (som parken)</option></select></label>
+  <label>Vind <input id="wind" type="range" min="0" max="2" step="0.05" value="0.6"></label>
+  <div id="status">Laddar…</div>
+  <div id="perf"></div>
+</div>
+<script type="module">
+import { createWorld } from './world.js';
+import { createGrassField, instancePlants } from './grass.js';
+import { createGround } from './ground.js';
+import { instanceModel, heightTexture } from './instancing.js';
+const T0 = performance.now();
+const params = new URLSearchParams(location.search);
+const K = [1, 2, 4].includes(Number(params.get('size'))) ? Number(params.get('size')) : 1; // sidans längd i förhållande till parken
+const MODE = params.get('mode') === 'clone' ? 'clone' : 'instanced';
+// Lika lång sikt i båda storlekarna: det man ser från en plats kostar lika mycket, bara världen växer
+const FAR = 190;
+const W = createWorld(document.getElementById('app'), { fog: [45, FAR] });
+const { THREE, scene, camera, controls, fp } = W;
+window.__tinker = W; // för felsökning och automatiska tester
+const status = document.getElementById('status');
+document.getElementById('size').value = String(K);
+document.getElementById('mode').value = MODE;
+for (const id of ['size', 'mode']) document.getElementById(id).onchange = () => {
+  const p = new URLSearchParams({ size: document.getElementById('size').value, mode: document.getElementById('mode').value });
+  location.search = p.toString();
+};
+
+// Seedad slump, så att skogen ser likadan ut varje gång (samma seed i båda storlekarna)
+let seed = 4711;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// --- Terräng: mjuka, breda kullar (Pure Nature), som höjs mot kanten ---
+const SIZE = 120 * K, SEG = 240 * K, HALF = SIZE / 2;
+function heightAt(x, z) {
+  const r = Math.max(Math.abs(x), Math.abs(z)) / HALF;
+  const hills = 2.2 * Math.sin(x * 0.031 + 0.7) * Math.cos(z * 0.027 - 1.2) + 0.9 * Math.sin(x * 0.07 + z * 0.05) + 0.3 * Math.sin(x * 0.17 - z * 0.13);
+  return hills + Math.max(0, r - 0.82) * 30; // kanten stiger som en vall, så att banan sluter sig
+}
+
+// --- Avståndsfält i ett rutnät, så att reglerna går fort även i den stora banan ---
+function grid(res, init, combine) {
+  const n = Math.ceil(SIZE / res) + 1, a = new Float32Array(n * n).fill(init);
+  const idx = (x, z) => [(x + HALF) / res, (z + HALF) / res];
+  return {
+    // Stämpla en punkt: f(avstånd) kombineras med det som redan står i rutorna inom reach meter
+    stamp(x, z, reach, f) {
+      const [gx, gz] = idx(x, z), R = reach / res;
+      for (let j = Math.max(0, Math.floor(gz - R)); j <= Math.min(n - 1, Math.ceil(gz + R)); j++)
+        for (let i = Math.max(0, Math.floor(gx - R)); i <= Math.min(n - 1, Math.ceil(gx + R)); i++) {
+          const d = Math.hypot(i - gx, j - gz) * res;
+          if (d <= reach) a[j * n + i] = combine(a[j * n + i], f(d));
+        }
+    },
+    at(x, z) {
+      const [gx, gz] = idx(x, z), i = Math.min(n - 2, Math.max(0, Math.floor(gx))), j = Math.min(n - 2, Math.max(0, Math.floor(gz)));
+      const fx = Math.min(1, Math.max(0, gx - i)), fz = Math.min(1, Math.max(0, gz - j));
+      const A = a[j * n + i], B = a[j * n + i + 1], C = a[(j + 1) * n + i], D = a[(j + 1) * n + i + 1];
+      return (A * (1 - fx) + B * fx) * (1 - fz) + (C * (1 - fx) + D * fx) * fz;
+    },
+  };
+}
+
+// --- Stigen: en slingrande spline genom skogen (skalad med banan), i den stora banan med en gren till ---
+const pathDefs = [[[-55, -20], [-35, -31], [-15, -17], [2, -28], [22, -20], [36, -4], [30, 18], [12, 29], [-8, 19], [-26, 31], [-46, 23], [-55, 5]]];
+if (K >= 2) pathDefs.push([[12, 29], [20, 42], [10, 52]], [[2, -28], [-4, -44], [-20, -52]]);
+const pathField = grid(0.5, 20, Math.min);
+const pathPts = [];
+for (const def of pathDefs) {
+  const curve = new THREE.CatmullRomCurve3(def.map(([x, z]) => new THREE.Vector3(x * K, 0, z * K)), false, 'centripetal');
+  for (const p of curve.getSpacedPoints(Math.round(curve.getLength() * 2))) { pathPts.push(p); pathField.stamp(p.x, p.z, 20, (d) => d); }
+}
+const pathDist = (x, z) => pathField.at(x, z);
+
+// --- Gläntor: öppna platser med äng och blommor, en per ungefär 3 600 m² ---
+const clearings = [];
+for (let tries = 0; tries < 4000 && clearings.length < 4 * K * K; tries++) {
+  const x = (rnd() - 0.5) * (SIZE - 30), z = (rnd() - 0.5) * (SIZE - 30), r = 7 + rnd() * 6;
+  if (clearings.some((c) => Math.hypot(c.x - x, c.z - z) < c.r + r + 14)) continue;
+  clearings.push({ x, z, r });
+}
+const clearingField = grid(1, 0, Math.max);
+for (const c of clearings) clearingField.stamp(c.x, c.z, c.r, (d) => 1 - smooth(c.r * 0.55, c.r, d));
+const clearingAt = (x, z) => clearingField.at(x, z);
+const noise2 = (x, z) => 0.5 + 0.25 * Math.sin(x * 0.09 + Math.sin(z * 0.07) * 2) + 0.25 * Math.sin(z * 0.08 - x * 0.03 + 1.7);
+
+W.setShadowArea(new THREE.Vector3(0, 0, 0), HALF + 10);
+
+// --- Modellerna: allt kommer från generatorerna (recept i assets/*/<namn>/recipe.json) ---
+const A = (kind, name) => `../assets/${kind}/${name}/${name}.gltf`;
+const SETS = {
+  spruce: ['spruce_tall', 'spruce_mid', 'pine_v2', 'fir_small'].map((n) => A('trees', n)),
+  young: [A('trees', 'spruce_young')],
+  broadleaf: ['birch_v2', 'aspen_v2'].map((n) => A('trees', n)),
+  bushes: ['bush1_v2', 'bush2_v2', 'moundbush_v2', 'ballbush_small', 'shrub_v2'].map((n) => A('trees', n)),
+  rocks: ['mossy_stone1', 'stones1', 'mossy_boulder1', 'boulder1'].map((n) => A('props', n)),
+  floor: ['stump1', 'mossy_stump1', 'log1', 'mossy_log1', 'fly_agaric1', 'porcini1', 'chanterelle1'].map((n) => A('props', n)),
+  flat: ['leafpile1', 'creeper1'].map((n) => A('props', n)),
+};
+const PLANTS = { fern: 'fern1', grass_tall: 'grass_tall1', grass_tuft: 'grass_tuft1', feather_grass: 'feather_grass1', daisy: 'daisy1', buttercup: 'buttercup1', lupine: 'lupine1' };
+const models = new Map();
+const urls = [...new Set(Object.values(SETS).flat())];
+let n = 0;
+await Promise.all(urls.map(async (u) => {
+  const root = await W.loadModel(u);
+  models.set(u, { root, ...W.measure(root), url: u });
+  status.textContent = `Laddar ${++n} / ${urls.length}`;
+}));
+const plantModels = new Map();
+await Promise.all(Object.entries(PLANTS).map(async ([sp, name]) => plantModels.set(sp, await W.loadModel(A('plants', name)))));
+
+// --- Placering med regler; upptagna platser i en rutnätshash ---
+const occ = new Map(), OCC = 4;
+const occKey = (i, j) => i * 100003 + j;
+function occupy(x, z, r) {
+  const k = occKey(Math.floor(x / OCC), Math.floor(z / OCC));
+  if (!occ.has(k)) occ.set(k, []);
+  occ.get(k).push({ x, z, r });
+}
+function free(x, z, r, factor = 1) {
+  const R = Math.ceil((r + 4) / OCC), ci = Math.floor(x / OCC), cj = Math.floor(z / OCC);
+  for (let i = ci - R; i <= ci + R; i++) for (let j = cj - R; j <= cj + R; j++)
+    for (const o of occ.get(occKey(i, j)) ?? []) if ((o.x - x) ** 2 + (o.z - z) ** 2 < ((o.r + r) * factor) ** 2) return false;
+  return true;
+}
+const placements = new Map(); // url -> [{ x, y, z, yaw, scale }]
+const trees = [];
+const shade = grid(1, 0, Math.max), treeNear = grid(1, 20, Math.min);
+function place(m, x, z, scale, { collide = true } = {}) {
+  const p = { x, y: heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale };
+  if (!placements.has(m.url)) placements.set(m.url, []);
+  placements.get(m.url).push(p);
+  const foot = Math.max(m.size.x, m.size.z) * 0.5 * scale;
+  occupy(x, z, foot * (m.hasTrunk ? 0.45 : 0.8));
+  if (collide) W.colliders.push({ x, z, r: m.hasTrunk ? THREE.MathUtils.clamp(m.size.y * 0.035, 0.25, 0.7) * scale : foot * 0.8 });
+  return { p, foot };
+}
+const pick = (list) => models.get(list[Math.floor(rnd() * list.length)]);
+const randomPoint = (margin = 4) => [(rnd() - 0.5) * (SIZE - margin * 2), (rnd() - 0.5) * (SIZE - margin * 2)];
+// Träd: täta granar, glesare och yngre mot stigen och gläntorna; lövträd i fläckar där bruset är högt
+function scatterTrees(count) {
+  for (let made = 0, tries = 0; made < count && tries < count * 60; tries++) {
+    const [x, z] = randomPoint(3);
+    const open = clearingAt(x, z), pd = pathDist(x, z);
+    if (pd < 3.2 || open > 0.15) continue;
+    const edge = Math.max(1 - smooth(3.2, 9, pd), smooth(0, 0.15, open)); // bryn: unga granar och buskar
+    const leafy = noise2(x * 0.7 + 40, z * 0.7) > 0.68;
+    const m = edge > 0.5 && rnd() < 0.5 ? pick(SETS.young) : leafy && rnd() < 0.7 ? pick(SETS.broadleaf) : pick(SETS.spruce);
+    const scale = 0.85 + rnd() * 0.35, r = Math.max(m.size.x, m.size.z) * 0.5 * scale;
+    if (!free(x, z, r * 0.42)) continue;
+    place(m, x, z, scale);
+    trees.push({ x, z, r });
+    shade.stamp(x, z, r * 1.05, (d) => 1 - smooth(r * 0.35, r * 1.05, d));
+    treeNear.stamp(x, z, 20, (d) => d - r * 0.5);
+    made++;
+  }
+}
+scatterTrees(Math.round(SIZE * SIZE * 0.026));
+const nearTree = (x, z) => treeNear.at(x, z), shadeAt = (x, z) => shade.at(x, z);
+// Buskar i bryn längs stigen och runt gläntorna, några inne i skogen
+for (let made = 0, tries = 0, count = Math.round(SIZE * SIZE * 0.006); made < count && tries < count * 80; tries++) {
+  const [x, z] = randomPoint(), pd = pathDist(x, z), open = clearingAt(x, z);
+  const edge = (pd > 2 && pd < 5.5) || (open > 0.05 && open < 0.5);
+  if (!edge && rnd() > 0.15) continue;
+  if (pd < 2) continue;
+  const m = pick(SETS.bushes), s = 0.8 + rnd() * 0.4;
+  if (!free(x, z, Math.max(m.size.x, m.size.z) * 0.4 * s)) continue;
+  place(m, x, z, s); made++;
+}
+// Stenar och bumlingar, stubbar, lågor och svampar på skogsbotten
+for (const [set, density, minPath, scale] of [[SETS.rocks, 0.0035, 1.6, [0.7, 1.4]], [SETS.floor, 0.009, 1.3, [0.85, 1.2]]])
+  for (let made = 0, tries = 0, count = Math.round(SIZE * SIZE * density); made < count && tries < count * 60; tries++) {
+    const [x, z] = randomPoint();
+    if (pathDist(x, z) < minPath || (set === SETS.floor && nearTree(x, z) > 4)) continue;
+    const m = pick(set), s = scale[0] + rnd() * (scale[1] - scale[0]);
+    if (!free(x, z, Math.max(m.size.x, m.size.z) * 0.35 * s)) continue;
+    place(m, x, z, s, { collide: m.size.y > 0.35 }); made++;
+  }
+// Platt marktäcke (lövhögar, krypväxter) följer marken: instansierat draperas det i shadern, som kopia
+// får varje exemplar en egen, böjd geometri (som i parken)
+const flat = new Set();
+let flatCount = 0;
+for (let made = 0, tries = 0, count = Math.round(SIZE * SIZE * 0.0025); made < count && tries < count * 60; tries++) {
+  const [x, z] = randomPoint();
+  if (pathDist(x, z) < 1.5 || nearTree(x, z) > 3) continue;
+  const m = pick(SETS.flat);
+  if (!free(x, z, Math.max(m.size.x, m.size.z) * 0.3)) continue;
+  place(m, x, z, 0.9 + rnd() * 0.3, { collide: false }); flat.add(m.url); made++; flatCount++;
+}
+const _v = new THREE.Vector3(), _inv = new THREE.Matrix4();
+function drape(obj) {
+  obj.updateMatrixWorld(true);
+  const base = obj.position.y;
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry = o.geometry.clone();
+    const pos = o.geometry.attributes.position;
+    _inv.copy(o.matrixWorld).invert();
+    for (let i = 0; i < pos.count; i++) {
+      _v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      _v.y += heightAt(_v.x, _v.z) - base;
+      _v.applyMatrix4(_inv);
+      pos.setXYZ(i, _v.x, _v.y, _v.z);
+    }
+    pos.needsUpdate = true;
+    o.geometry.computeBoundingSphere(); o.geometry.computeBoundingBox();
+  });
+}
+
+// --- Rita: instansierat med LOD per avstånd, eller en kopia per modell som i parken ---
+let instanced = [];
+const drapeTex = MODE === 'instanced' ? heightTexture(W, heightAt, SIZE) : null;
+let modelCount = 0;
+for (const [url, places] of placements) {
+  const m = models.get(url);
+  modelCount += places.length;
+  if (MODE === 'instanced') {
+    const big = m.size.y > 3; // träd syns längre bort än stenar och svampar
+    instanced.push(instanceModel(W, m.root, places, flat.has(url) ? { lodDist: [14, 32, 60], shadowLods: [], drape: drapeTex }
+      : { lodDist: big ? [22, 55, FAR] : [14, 32, 70], shadowLods: big ? [0, 1] : [0] }));
+  } else for (const p of places) {
+    const obj = m.root.clone();
+    obj.position.set(p.x, p.y, p.z); obj.rotation.y = p.yaw; obj.scale.setScalar(p.scale);
+    scene.add(obj);
+    if (flat.has(url)) drape(obj);
+  }
+}
+
+// --- Marken: skogsbotten under träden, äng i gläntorna, gräs i bryn, stig överst ---
+function splatAt(x, z, p = 1 - smooth(1.0, 2.0, pathDist(x, z))) {
+  const forest = (1 - smooth(1.5, 6, nearTree(x, z))) * (1 - clearingAt(x, z) * 0.8);
+  const meadow = Math.max(clearingAt(x, z), smooth(0.55, 0.7, noise2(x, z)) * 0.5) * (1 - forest);
+  const grass = Math.max(0, 1 - forest - meadow);
+  return [grass * (1 - p), meadow * (1 - p), forest * (1 - p), p];
+}
+const groundObj = await createGround(W, { size: SIZE, seg: SEG, surfaceAt: (x, z) => {
+  const p = 1 - smooth(1.0, 2.0, pathDist(x, z));
+  return { y: heightAt(x, z) - p * 0.06, splat: splatAt(x, z, p) };
+} });
+fp.heightAt = heightAt;
+
+// --- Gräsfält: glest inne i skogen, tätt i gläntor och bryn ---
+const groundTex = groundObj.textures;
+const field = createGrassField(W, {
+  size: SIZE - 8, heightAt, splatAt, textures: groundTex,
+  densityAt: (x, z, s) => {
+    if (Math.max(Math.abs(x), Math.abs(z)) > HALF - 5 || !free(x, z, 0, 0.55)) return 0;
+    return (s[0] + s[1] * 0.95 + s[2] * 0.12) * (1 - 0.85 * shadeAt(x, z));
+  },
+  heightScaleAt: (x, z, s) => (0.26 + s[1] * 0.22) * (0.85 + 0.3 * noise2(x * 2.3, z * 2.3)) * (1 - 0.4 * shadeAt(x, z)),
+});
+
+// --- Växter: ormbunkar i skuggan, högt gräs i bryn, blommor i gläntorna. Instansierade. ---
+const plantPlaces = new Map();
+const addPlant = (sp, x, z, scale = 1) => {
+  if (pathDist(x, z) < 1.3 || !free(x, z, 0, 0.6)) return;
+  if (!plantPlaces.has(sp)) plantPlaces.set(sp, []);
+  plantPlaces.get(sp).push({ x, y: heightAt(x, z), z, yaw: rnd() * Math.PI * 2, scale: scale * (0.85 + rnd() * 0.3), splat: splatAt(x, z) });
+};
+// Ormbunkar i bestånd under träden: täta i mitten, glesa i kanten
+for (let c = 0, count = Math.round(SIZE * SIZE * 0.0022); c < count; c++) {
+  const [cx, cz] = randomPoint(6);
+  if (nearTree(cx, cz) > 3 || clearingAt(cx, cz) > 0.2) continue;
+  const r = 2 + rnd() * 3;
+  for (let i = 0; i < r * r * 1.6; i++) {
+    const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * r;
+    addPlant('fern', cx + Math.cos(a) * d, cz + Math.sin(a) * d, 1.3 + rnd() * 0.5 - d / r * 0.4);
+  }
+}
+const tall = ['grass_tall', 'grass_tuft', 'feather_grass'];
+for (let i = 0, tries = 0, count = Math.round(SIZE * SIZE * 0.02); i < count && tries < count * 30; tries++) {
+  const [x, z] = randomPoint(), d = pathDist(x, z), s = splatAt(x, z);
+  if (!((d > 1.6 && d < 3.5) || (s[2] > 0.2 && s[2] < 0.6) || clearingAt(x, z) > 0.1)) continue;
+  addPlant(tall[Math.floor(rnd() * tall.length)], x, z); i++;
+}
+const flowers = ['daisy', 'buttercup', 'lupine'];
+for (const c of clearings) for (let i = 0; i < c.r * c.r * 1.2; i++) {
+  const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * c.r * 0.85;
+  addPlant(flowers[Math.floor(noise2(c.x + Math.cos(a) * d * 0.5, c.z) * 3 + rnd() * 0.6) % 3], c.x + Math.cos(a) * d, c.z + Math.sin(a) * d, 1.1);
+}
+let plantCount = 0;
+for (const [sp, places] of plantPlaces) {
+  instancePlants(W, plantModels.get(sp), places, { textures: groundTex, lodDist: sp === 'fern' ? [12, 30, 65] : [12, 28, 55] });
+  plantCount += places.length;
+}
+
+// Start: på stigen, tittar in i skogen
+const start = pathPts[0];
+fp.pos.set(start.x, heightAt(start.x, start.z), start.z);
+fp.yaw = Math.atan2(-(pathPts[12].x - start.x), -(pathPts[12].z - start.z));
+camera.position.set(0, 55 * K, 75 * K);
+controls.target.set(0, 0, 0);
+const loadMs = performance.now() - T0;
+status.textContent = `${SIZE} × ${SIZE} m: ${trees.length} träd, ${modelCount} modeller, ${flatCount} marktäcken, ${plantCount} växter och ${Math.round(field.blades / 1000)} 000 grässtrån · laddat på ${(loadMs / 1000).toFixed(1)} s`;
+
+// Översikten ser hela banan: sikt och LOD-avstånd växer med banans storlek (i förstaperson gäller FAR)
+W.onFrame(() => { W.lodScale = fp.active ? 1 : K; scene.fog.near = 45 * W.lodScale; scene.fog.far = FAR * W.lodScale; });
+W.lodScale = 1;
+document.getElementById('wind').oninput = (e) => (W.wind.uWind.value = Number(e.target.value));
+// Prestandamätare: bilder per sekund, ritanrop och trianglar (skuggpasset inräknat)
+const info = W.renderer.info;
+{
+  let frames = 0, t0 = performance.now();
+  const el = document.getElementById('perf');
+  W.onFrame(() => {
+    frames++;
+    const now = performance.now();
+    if (now - t0 < 500) return;
+    const fps = (frames * 1000) / (now - t0);
+    el.textContent = `${fps.toFixed(0)} fps · ${(1000 / fps).toFixed(1)} ms · ${info.render.calls} anrop · ${(info.render.triangles / 1e6).toFixed(2)} M tri`;
+    frames = 0; t0 = now;
+  });
+}
+
+// Mätning för prestandarapporten: kameran ställs på några fasta platser, och varje plats mäts med
+// tvingad synk (readPixels) så att tiden per bild inte begränsas av skärmens uppdatering.
+function gpuBytes() {
+  let geo = 0;
+  const seen = new Set();
+  scene.traverse((o) => {
+    if (!o.geometry) return;
+    for (const g of [o.geometry, o.isInstancedMesh ? { attributes: { m: o.instanceMatrix } } : null]) {
+      if (!g) continue;
+      for (const a of [...Object.values(g.attributes), g.index].filter(Boolean)) if (!seen.has(a)) { seen.add(a); geo += a.array.byteLength; }
+    }
+  });
+  return geo;
+}
+// Fasta kameraplatser för mätningar och skärmbilder
+const VIEWS = {
+  stigen: { fp: [0, 12] },
+  skogen: { fp: [Math.floor(pathPts.length * 0.4), Math.floor(pathPts.length * 0.4) + 10] },
+  översikt: { orbit: true },
+};
+function setView(name) {
+  const v = VIEWS[name];
+  if (v.orbit) { W.setMode(false); camera.position.set(0, 55 * K, 75 * K); camera.lookAt(0, 0, 0); controls.target.set(0, 0, 0); controls.update(); }
+  else {
+    W.setMode(true);
+    const [a, b] = v.fp.map((i) => pathPts[i]);
+    fp.pos.set(a.x, heightAt(a.x, a.z), a.z); fp.yaw = Math.atan2(-(b.x - a.x), -(b.z - a.z)); fp.pitch = -0.05;
+    camera.position.set(a.x, fp.pos.y + 1.65, a.z); camera.rotation.set(fp.pitch, fp.yaw, 0, 'YXZ');
+  }
+  camera.updateMatrixWorld();
+  W.runFrameHooks(0);
+  for (const i of instanced) i.relod(true);
+  W.renderer.shadowMap.needsUpdate = true;
+}
+window.__view = setView;
+window.__bench = async (frames = 60) => {
+  const gl = W.renderer.getContext(), px = new Uint8Array(4);
+  const out = { size: SIZE, mode: MODE, loadMs: Math.round(loadMs), trees: trees.length, models: modelCount, plants: plantCount, blades: field.blades, views: [] };
+  W.setRunning(false);
+  for (const name of Object.keys(VIEWS)) {
+    setView(name);
+    const ts = [];
+    for (let f = 0; f < frames + 5; f++) {
+      if (f % 3 === 0) W.renderer.shadowMap.needsUpdate = true; // som i spelets loop
+      const t = performance.now();
+      W.renderer.render(scene, camera);
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      if (f >= 5) ts.push(performance.now() - t);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+    ts.sort((a, b) => a - b);
+    const avg = ts.reduce((a, b) => a + b, 0) / ts.length;
+    out.views.push({ name, avgMs: +avg.toFixed(2), p95Ms: +ts[Math.floor(ts.length * 0.95)].toFixed(2), fps: Math.round(1000 / avg),
+      calls: info.render.calls, tris: info.render.triangles, lod: instanced.length ? instanced.reduce((s, i) => s.map((x, k) => x + i.stats().lod[k]), [0, 0, 0]) : null });
+  }
+  out.memory = { geometries: info.memory.geometries, textures: info.memory.textures, programs: info.programs?.length,
+    gpuGeoMB: +(gpuBytes() / 1048576).toFixed(1), jsHeapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null };
+  W.setMode(false);
+  W.setRunning(true);
+  return out;
+};
+</script>
+</body>
+</html>

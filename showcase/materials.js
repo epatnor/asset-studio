@@ -79,20 +79,24 @@ export function createMaterialPatcher(THREE, { wind, sunDir }) {
           uniform float uTime, uWind;
           varying vec3 vVary;${tri ? '\nvarying vec3 vTriPos, vTriNormal;' : ''}`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
+          mat4 tkModel = modelMatrix; // med instansiering (skogen) har varje exemplar sin egen matris
+          #ifdef USE_INSTANCING
+            tkModel = modelMatrix * instanceMatrix;
+          #endif
           if (dot(_stem, _stem) > 0.0) {
             vec3 c = transformed - _stem;
-            vec3 toCam = cameraPosition - (modelMatrix * vec4(c, 1.0)).xyz;
+            vec3 toCam = cameraPosition - (tkModel * vec4(c, 1.0)).xyz;
             vec3 sideW = normalize(cross(vec3(0.0, 1.0, 0.0), toCam));
-            vec3 sideL = normalize(transpose(mat3(modelMatrix)) * sideW), perp = cross(sideL, vec3(0.0, 1.0, 0.0));
+            vec3 sideL = normalize(transpose(mat3(tkModel)) * sideW), perp = cross(sideL, vec3(0.0, 1.0, 0.0));
             transformed = c + sideL * length(_stem) * sign(dot(_stem, sideL) * 1000.0 + dot(_stem, perp));
           }
-          vec4 wp = modelMatrix * vec4(position, 1.0);
+          vec4 wp = tkModel * vec4(position, 1.0);
           float ph = wp.x * 0.35 + wp.z * 0.25;
           float sway = sin(uTime * 1.3 + ph) * 0.6 + sin(uTime * 3.1 + ph * 2.3) * 0.25;
           transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;
           float h1 = fract(sin(_cluster * 12.9898 + 1.7) * 43758.5453), h2 = fract(sin(_cluster * 78.233 + 4.1) * 24634.6345);
           vVary = vec3(1.0 + (h2 - 0.5) * 0.1, 1.0, 1.0 - (h2 - 0.5) * 0.12) * (0.9 + h1 * 0.2);
-          ${tri ? 'vTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vTriNormal = normalize(mat3(modelMatrix) * objectNormal);' : ''}`);
+          ${tri ? 'vTriPos = (tkModel * vec4(transformed, 1.0)).xyz; vTriNormal = normalize(mat3(tkModel) * objectNormal);' : ''}`);
     };
     material.needsUpdate = true;
   };

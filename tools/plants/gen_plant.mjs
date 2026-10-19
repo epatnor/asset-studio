@@ -282,7 +282,9 @@ function build(lod) {
         const m = Math.round(range(lv.count, r));
         for (let j = 0; j < m; j++) {
           const t = lv.at[0] + (lv.at[1] - lv.at[0]) * ((j + 0.5) / m) + (r() - 0.5) * 0.05;
-          const lphi = phi + (j % 2 ? Math.PI : 0) + (r() - 0.5) * 1.2, ll = range(lv.length, r), lw = range(lv.width, r), lb = range(lv.bend ?? 0.3, r);
+          // side: bladens vinkel ut från stjälkens plan (90 = åt sidorna, som ormbunkens småblad); taper: kortare mot toppen
+          const lphi = phi + (j % 2 ? Math.PI : 0) + (lv.side ?? 0) * DEG + (r() - 0.5) * 1.2 * (lv.jitter ?? 1);
+          const ll = range(lv.length, r) * (1 - (lv.taper ?? 0) * (j / Math.max(1, m - 1))), lw = range(lv.width, r), lb = range(lv.bend ?? 0.3, r);
           if (!keep) continue;
           const q = at(pts, t), lk = lv.color ?? 'leaf', v0 = part(lk).positions.length / 3;
           const th = clamp(q.th + range(lv.lean, () => 0.5) * DEG, 0, 2.6);
