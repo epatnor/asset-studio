@@ -8,7 +8,9 @@
 //   mängd, extras.mossTexture = fil relativt modellen, extras.mossTint). Samma teknik som "world aligned
 //   blend" i spelmotorer. Utan klienten ser stenen fortfarande rätt ut, bara utan mossa.
 
-export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 } }) {
+import { patchFog } from './effects.js';
+
+export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }, fogU = null }) {
   const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 } };
   const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
   const textures = new Map();
@@ -35,6 +37,7 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
       shader.uniforms.uTime = wind.uTime;
       shader.uniforms.uWind = wind.uWind;
       Object.assign(shader.uniforms, foliage, rock ?? {});
+      patchFog(shader, fogU); // dimma åt solen, markdimma och molnskuggor (effects.js)
       // Snö (atmosphere.js): uppåtvända ytor vitnar
       shader.uniforms.uSnow = snow;
       shader.fragmentShader = shader.fragmentShader

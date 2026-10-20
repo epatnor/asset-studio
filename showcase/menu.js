@@ -207,6 +207,7 @@ export function createMenu(W, { level } = {}) {
     for (const u of W.grassFields ?? []) u.uDensity.value = q.grass;
     W.scene?.traverse((o) => { if (o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
     W.renderer.shadowMap.needsUpdate = true;
+    W.fx?.setQuality(name); // glöd, vinjett och volymetriskt ljus på Hög och Ultra
     for (const [k, b] of Object.entries(qBtns)) b.classList.toggle('on', k === name);
     store.set('quality', name);
   };
@@ -311,7 +312,7 @@ export function createMenu(W, { level } = {}) {
       readyDone = true;
       status.textContent = text ?? 'Klicka för att gå runt · Esc öppnar menyn';
       setTimeout(() => status.classList.add('hide'), 6000);
-      if (startQuality) applyQuality(startQuality); else qBtns['Hög'].classList.add('on');
+      applyQuality(startQuality ?? 'Hög');
     },
   };
   return menu;

@@ -43,6 +43,7 @@ import { createMenu } from './menu.js';
 import { createGrassField, instancePlants } from './grass.js';
 import { createGround } from './ground.js';
 import { instanceModel, heightTexture } from './instancing.js';
+import { createLightShafts } from './effects.js';
 const T0 = performance.now();
 const params = new URLSearchParams(location.search);
 const K = [1, 2, 4].includes(Number(params.get('size'))) ? Number(params.get('size')) : 1; // sidans längd i förhållande till parken
@@ -187,7 +188,7 @@ function scatterTrees(count) {
     const scale = 0.85 + rnd() * 0.35, r = Math.max(m.size.x, m.size.z) * 0.5 * scale;
     if (!free(x, z, r * 0.42)) continue;
     place(m, x, z, scale);
-    trees.push({ x, z, r });
+    trees.push({ x, z, r, y: heightAt(x, z), h: m.size.y * scale });
     shade.stamp(x, z, r * 1.05, (d) => 1 - smooth(r * 0.35, r * 1.05, d));
     treeNear.stamp(x, z, 20, (d) => d - r * 0.5);
     made++;
@@ -321,6 +322,9 @@ for (const [sp, places] of plantPlaces) {
   instancePlants(W, plantModels.get(sp), places, { textures: groundTex, lodDist: sp === 'fern' ? [12, 30, 65] : [12, 28, 55] });
   plantCount += places.length;
 }
+
+// Ljusstrålar mellan kronorna (effects.js)
+createLightShafts(W, trees, { heightAt, count: Math.round(120 * K * K) });
 
 // Start: på stigen, tittar in i skogen
 const start = pathPts[0];

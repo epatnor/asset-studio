@@ -20,6 +20,8 @@
 // - Strömmande vatten: krusningarna flyter med strömmen (flödeskarta i två faser), vitt skum i grunda forsar.
 // - Hav: dyning och vågband som rullar in mot stranden. Skum mot land för alla typer.
 
+import { patchFog } from './effects.js';
+
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 export const WATER_TYPES = {
@@ -222,7 +224,9 @@ function material(W, b) {
   uniforms.uTime = W.wind.uTime; uniforms.uWind = W.wind.uWind; // delade, inte kopior
   const tmp = new THREE.Vector3();
   W.onFrame(() => uniforms.uSunDir.value.copy(tmp.subVectors(W.sun.position, W.sun.target.position).normalize()));
-  return new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, fog: true });
+  const m = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, fog: true });
+  m.onBeforeCompile = (sh) => patchFog(sh, W.fogU, 'vW'); // samma dimma som marken (effects.js)
+  return m;
 }
 
 export function createWaterMeshes(W, terrain) {

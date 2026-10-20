@@ -9,6 +9,8 @@
 // - inga kastade skuggor, men gräset tar emot skuggor från träd
 // Samma vindbyar och rotfärg används för de instansierade växterna (blommor, vass, säd).
 
+import { patchFog } from './effects.js';
+
 // Markfärg på en plats: måste blanda texturerna precis som markshadern i park.html
 const GROUND_GLSL = `
 uniform sampler2D tGround0, tGround1, tGround2, tGround3;
@@ -74,6 +76,7 @@ export function createGrassField(W, opts) {
   const mat = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, uniforms);
+    patchFog(sh, W.fogU);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>
         ${GROUND_GLSL}
@@ -177,6 +180,7 @@ export function instancePlants(W, root, places, { textures, lodDist = [12, 28, 6
     const tint = !!o.material.userData.groundTint;
     mat.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, uniforms);
+      patchFog(sh, W.fogU);
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
           ${GROUND_GLSL}

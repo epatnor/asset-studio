@@ -208,7 +208,8 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
   // Snö på uppåtvända ytor: delad uniform som materialen läser (materials.js, ground.js, grass.js)
   W.snow = W.snow ?? { value: 0 };
   const drift = new THREE.Vector2();
-  let flashT = 0, nextFlash = 2;
+  let flashT = 0, nextFlash = 2, glowScan = 0;
+  const glowMats = [];
   const sunDir = new THREE.Vector3(), moonDir = new THREE.Vector3(), tmp = new THREE.Color();
   const lerpColor = (out, a, b, t) => out.copy(a).lerp(b, t);
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
@@ -264,9 +265,25 @@ export function createAtmosphere(W, { time = 10, weather = 'klart', noonElevatio
       U.horizon.value.lerp(scene.fog.color, 0.5);
     }
     renderer.toneMappingExposure = base.exposure * (0.75 + 0.25 * day);
+    // Det som lyser (tända fönster, lyktor, neon) lyser starkare i mörker; materialen samlas in då och då,
+    // eftersom banor laddar modeller efter hand
+    if ((glowScan -= dt) < 0) { glowScan = 2; glowMats.length = 0; scene.traverse((o) => { const m = o.material; if (m?.emissive && /^(GlassGlow|Light|Neon|Lamp)/.test(m.name)) { m.userData.tkGlow ??= m.emissiveIntensity || 1; glowMats.push(m); } }); }
+    for (const m of glowMats) m.emissiveIntensity = m.userData.tkGlow * (1 + 2.2 * night + 1.2 * storm);
+    // Dimman i materialen (effects.js): varm åt solen, markdimma på platser som vill ha den, molnskuggor
+    if (W.fogU) {
+      const F = W.fogU;
+      F.tkSunDir.value.copy(s.y > -0.05 ? s : moonDir);
+      F.tkSunColor.value.copy(U.sunColor.value).multiplyScalar(0.9 + 0.3 * day);
+      F.tkScatter.value = (s.y > -0.05 ? 0.75 * day : 0.25) * sunVis * (1 - storm * 0.7);
+      const gfz = atmo.zone.groundFog ?? 0;
+      F.tkGround.value.set(Math.min(0.92, gfz + state.haze * 0.35), atmo.zone.groundFogLevel ?? 1, atmo.zone.groundFogThickness ?? 5, 0);
+      F.tkCloud.value.x = 0.38 * Math.max(0, state.clouds - 0.1) * day * (1 - storm * 0.8);
+      F.tkCloud.value.z += wd.x * (0.02 + 0.1 * state.wind) * dt; F.tkCloud.value.w += wd.y * (0.02 + 0.1 * state.wind) * dt;
+    }
     // Färgton: lite mättnad på dagen, gråare i storm, dämpat på natten
     const sat = (1.08 - 0.38 * storm - 0.15 * night).toFixed(3), con = (1.02 + 0.06 * storm).toFixed(3);
-    renderer.domElement.style.filter = `saturate(${sat}) contrast(${con})`;
+    W.grade = { sat: Number(sat), con: Number(con) };
+    renderer.domElement.style.filter = W.fx?.active ? 'none' : `saturate(${sat}) contrast(${con})`;
     // Vind, regn och snö
     W.wind.uWind.value = 0.25 + state.wind * 1.4;
     const cam = camera.position, wv = wd.clone().multiplyScalar(state.wind * 3);

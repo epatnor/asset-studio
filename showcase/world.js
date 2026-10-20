@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
 import { createMaterialPatcher } from './materials.js';
 import { createAtmosphere } from './atmosphere.js';
+import { createEffects, createFogUniforms } from './effects.js';
 
 export function createWorld(container, { fog = [60, 220], time = 10, weather = 'klart', atmosphere = true } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -76,7 +77,8 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
   // Generatorernas material får vind, platta stjälkar, lövens genomlysning och stenarnas mossa (materials.js)
   const foliage = { uSunDir: { value: new THREE.Vector3(0.4, 0.7, 0.5).normalize() } };
   const snow = { value: 0 }; // snömängd, sätts av atmosfären
-  const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir: foliage.uSunDir, snow });
+  const fogU = createFogUniforms(THREE); // dimma, markdimma och molnskuggor (effects.js), sätts av atmosfären
+  const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir: foliage.uSunDir, snow, fogU });
   const addWind = (material, url = location.href) => patchMaterial(material, url);
 
   const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)) // geometrin är meshopt-komprimerad;
@@ -193,13 +195,13 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
     if (++frame % 3 === 0) renderer.shadowMap.needsUpdate = true;
     foliage.uSunDir.value.subVectors(sun.position, sun.target.position).normalize();
     runFrameHooks(dt);
-    renderer.render(scene, camera);
+    if (W.fx) W.fx.render(); else renderer.render(scene, camera);
   };
   renderer.setAnimationLoop(tick);
   // Mätningar kan stoppa loopen och rita själva (runFrameHooks uppdaterar LOD och gräsrutor först)
   const setRunning = (on) => renderer.setAnimationLoop(on ? tick : null);
 
-  const W = { snow, THREE, renderer, scene, camera, controls, sun, hemi, skyMesh, setSunDir, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
-  if (atmosphere) W.atmo = createAtmosphere(W, { time, weather, ...(typeof atmosphere === 'object' ? atmosphere : {}) });
+  const W = { snow, fogU, THREE, renderer, scene, camera, controls, sun, hemi, skyMesh, setSunDir, setShadowArea, wind, addWind, loadModel, setLod, measure, makeSign, signs, colliders, fp, setMode, onFrame, runFrameHooks, setRunning, foliage };
+  if (atmosphere) { W.atmo = createAtmosphere(W, { time, weather, ...(typeof atmosphere === 'object' ? atmosphere : {}) }); W.fx = createEffects(W); }
   return W;
 }

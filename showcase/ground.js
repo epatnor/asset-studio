@@ -5,6 +5,7 @@
 // ger vattnet: under ytan blir marken botten (pondbed, riverbed eller sand), kanten mörk och våt, och
 // rörlig kaustik lyser på botten. Gräsfältet läser samma fyra texturer med samma blandning (grass.js).
 import { BEDS } from './water.js';
+import { patchFog } from './effects.js';
 
 const SURFACES = ['grass', 'meadow', 'forestfloor', 'path'];
 const FALLBACK = { grass: '#6fa046', meadow: '#8ab24f', forestfloor: '#6e5a3a', path: '#b89466', pondbed: '#4d4a38', riverbed: '#7d7a6a', sand: '#dcc79a' };
@@ -48,6 +49,7 @@ export async function createGround(W, { size, seg, surfaceAt, terrain }) {
   // normalMap slår på normalkartsvägen i shadern; själva normalen blandas av alla ytor nedan
   const mat = new THREE.MeshStandardMaterial({ map: tGrass, normalMap: nGrass, normalScale: new THREE.Vector2(0.9, 0.9), roughness: 1 });
   mat.onBeforeCompile = (sh) => {
+    patchFog(sh, W.fogU);
     Object.assign(sh.uniforms, { tMeadow: { value: tMeadow }, tForest: { value: tForest }, tPath: { value: tPath },
       tBed0: { value: beds[0] }, tBed1: { value: beds[1] }, tBed2: { value: beds[2] }, tCliff: { value: tCliff }, uTime: W.wind.uTime, uSnow: W.snow ?? { value: 0 },
       nMeadow: { value: nMeadow }, nForest: { value: nForest }, nPath: { value: nPath }, nBed0: { value: nBeds[0] }, nBed1: { value: nBeds[1] }, nBed2: { value: nBeds[2] } });
