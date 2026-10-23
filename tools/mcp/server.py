@@ -233,12 +233,15 @@ def create_building(name: str, preset: str = "house", style: str = "fantasy", st
 
 @mcp.tool()
 def import_model(name: str, source: str, height: float | None = None, scale: float | None = None,
-                 max_texture: int = 1024, category: str = "prop_medium") -> dict:
+                 max_texture: int = 1024, category: str = "prop_medium", origin: str | None = None,
+                 license: str | None = None, author: str | None = None) -> dict:
     """Importera en färdig modell (GLB/glTF, eller FBX/OBJ/DAE/blend/STL/PLY via Blender) till assets/imported/<name>/.
 
     Normaliseras till meter (cm och mm gissas, eller ange height i meter eller scale), centreras med pivot vid
     marken, komprimeras (WebP-texturer upp till max_texture px, meshopt-geometri) och läggs i katalogen.
     category: budgetkategori i style.json (prop_small, prop_medium, tree, bush, building_module, character).
+    origin (varifrån, gärna URL), license (CC0-1.0, CC-BY-4.0, MIT, egen ...) och author (upphovsperson, krävs
+    för CC-BY) hamnar i assets/CREDITS.md. Utan licens, eller med NC/ND/editorial, blir checks.ok false.
     Svaret har storlek, trianglar mot budget och "checks".
     """
     _check_name(name)
@@ -247,6 +250,9 @@ def import_model(name: str, source: str, height: float | None = None, scale: flo
         recipe["height"] = height
     if scale:
         recipe["scale"] = scale
+    for key, value in (("origin", origin), ("license", license), ("author", author)):
+        if value:
+            recipe[key] = value
     result = json.loads(_run([sys.executable, "-I", "tools/import/make_import.py", json.dumps(recipe)], 600))
     _run([sys.executable, "-I", "tools/showcase/build_catalog.py"], 60)
     return result

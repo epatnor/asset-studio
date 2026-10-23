@@ -8,8 +8,12 @@ Receptfält (name och source krävs):
   scale        fast skalfaktor
   max_texture  största texturstorlek i pixlar (standard 1024)
   category     budgetkategori i style.json (standard prop_medium)
+  origin       varifrån modellen kommer, gärna en URL (krävs för checks.ok)
+  license      t.ex. CC0-1.0, CC-BY-4.0, MIT eller egen (krävs; NC, ND och editorial godtas inte)
+  author       upphovsperson (krävs för CC-BY)
 
-Svarar med en rad JSON: storlek i meter, trianglar mot budget, och "checks" (vilar på marken, centrerad, normaler).
+Svarar med en rad JSON: storlek i meter, trianglar mot budget, och "checks" (vilar på marken, centrerad, normaler,
+licensierad). assets/CREDITS.md skrivs om efter varje import (make_credits.py).
 """
 import json
 import os
@@ -59,6 +63,12 @@ def main():
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
     (out_dir / "recipe.json").write_text(json.dumps(recipe, indent=2, ensure_ascii=False))
+    run = subprocess.run([sys.executable, "-I", str(TOOL / "make_credits.py")], capture_output=True, text=True)
+    license_problems = json.loads(run.stdout.strip().splitlines()[-1])["problems"].get(name, []) if not run.returncode else ["make_credits.py misslyckades"]
+    result["checks"]["licensed"] = not license_problems
+    result["checks"]["ok"] = result["checks"]["ok"] and not license_problems
+    if license_problems:
+        result["license_problems"] = license_problems
     result["model"] = str(model.relative_to(ROOT))
     print(json.dumps(result, ensure_ascii=False))
 

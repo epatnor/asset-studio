@@ -56,7 +56,7 @@ Byggnadsgeneratorn (`tools/building/`, MCP `create_building`) gör hus, värdshu
 
 Växtgeneratorn (`tools/plants/`, MCP `create_plant`) gör gräsknippen, vass, säd och blommor som data i `plants.json`. Vanligt gräs i stora mängder är inte modeller utan klientens gräsfält i `showcase/grass.js` (instansierade strån som tar rotfärgen från marken).
 
-Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna.
+Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna. Ange alltid `origin`, `license` och `author`. De hamnar i den genererade `assets/CREDITS.md` (`tools/import/make_credits.py`, där också `third_party/*/SOURCE.md` ingår). Saknas licens, eller är den NC, ND eller editorial, blir `checks.ok` false.
 
 Kommandoradsvarianter:
 

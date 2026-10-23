@@ -2,5 +2,8 @@
   "name": "azshara_bridge",
   "source": "build/azshara/azshara_bridge.glb",
   "scale": 1,
-  "category": "building_module"
+  "category": "building_module",
+  "origin": "Azshara Island, egen Godot-prototyp (tools/levels/azshara)",
+  "license": "egen",
+  "author": "Patrik"
 }
