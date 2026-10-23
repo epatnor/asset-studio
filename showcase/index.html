@@ -22,8 +22,8 @@
 </style>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
 } }
 </script>
 </head>
@@ -54,7 +54,7 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.AgXToneMapping; // stilguiden: AgX
 renderer.toneMappingExposure = 1.15;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap; // mjuk sedan r182 (PCFSoftShadowMap är borttagen)
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -271,11 +271,12 @@ addEventListener('resize', () => {
 const frameHooks = [];
 const menu = createMenu({ renderer, scene, sun, fp, onFrame: (fn) => frameHooks.push(fn) }, { level: 'raderna' });
 menu.adoptPanel(document.querySelector('.panel'));
-const clock = new THREE.Clock();
-renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.05);
+const timer = new THREE.Timer();
+renderer.setAnimationLoop((t) => {
+  timer.update(t);
+  const dt = Math.min(timer.getDelta(), 0.05);
   for (const fn of frameHooks) fn(dt);
-  windUniforms.uTime.value = clock.elapsedTime;
+  windUniforms.uTime.value = timer.getElapsed();
   if (fp.active) updateFp(dt); else controls.update();
   renderer.render(scene, camera);
 });

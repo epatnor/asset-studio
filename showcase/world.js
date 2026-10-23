@@ -16,7 +16,7 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
   renderer.toneMapping = THREE.AgXToneMapping; // stilguiden: AgX
   renderer.toneMappingExposure = 1.15;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap; // mjuk nog med 2048-karta, och mycket billigare än PCFSoft
+  renderer.shadowMap.type = THREE.PCFShadowMap; // mjuk sedan r182 (PCFSoftShadowMap är borttagen), lika snabb som förr i Skogen
   renderer.shadowMap.autoUpdate = false;        // skuggorna ritas om i takt, se animationsloopen
   container.appendChild(renderer.domElement);
 
@@ -181,14 +181,15 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   });
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
   const frameHooks = [];
   let frame = 0;
   const onFrame = (fn) => frameHooks.push(fn);
   const runFrameHooks = (dt) => { for (const fn of frameHooks) fn(dt); };
-  const tick = () => {
-    const dt = Math.min(clock.getDelta(), 0.05);
-    wind.uTime.value = clock.elapsedTime;
+  const tick = (t) => {
+    timer.update(t);
+    const dt = Math.min(timer.getDelta(), 0.05);
+    wind.uTime.value = timer.getElapsed();
     if (fp.active) updateFp(dt); else controls.update();
     updateShadowArea();
     // Skuggkartan ritas om var tredje bild (20 gånger/s räcker för träd som svajar), eller när området flyttats
