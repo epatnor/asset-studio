@@ -80,11 +80,17 @@ const waterfall = (() => {
   for (let k = 1; k <= 12; k++) { const t = k / 12; pts.push(P(-0.6 - t * t, top + (L.lake.level + 0.05 - top) * t - 0.25)); }
   return pts;
 })();
+// Bäcken börjar vid källans göl (punkterna inuti gölen hoppas över) och ligger 0,2 m över fårans botten: med
+// exportens 0,35 m står ytan över bankarna närmast källan. Bredden följer fåran, där marken når ytan ~1,7 m ut.
+// Sjöns fåra går som längst 32 m ut; en större cirkel ger vattenfläckar i sänkor utanför sjön.
+const POOL_LEVEL = 9.42; // strax under gölens kant (9,45–9,55 m runt om, utom utloppet mot bäcken)
 const terrain = carveWater([
   { type: 'ocean', level: L.sea_level, size: 1500, carve: false },
-  { type: 'stream', points: L.stream.points.map((p) => [p[0], p[2], p[1]]), width: L.stream.half_width * 1.15, surface: L.stream.water_depth, into: 0, carve: false },
-  { type: 'lake', center: L.lake.center, radius: L.lake.radius * 1.35, level: L.lake.level, wobble: 0, carve: false },
+  { type: 'stream', points: L.stream.points.filter((p) => Math.hypot(p[0] - L.spring[0], p[2] - L.spring[1]) > L.spring_pool_radius * 0.9).map((p) => [p[0], p[2], p[1]]),
+    width: L.stream.half_width * 1.6, surface: 0.2, into: 0, carve: false },
+  { type: 'lake', center: L.lake.center, radius: L.lake.radius * 1.1, level: L.lake.level, wobble: 0, carve: false },
   { type: 'brook', points: waterfall, width: 1.6, surface: 0.25, speed: 2.6, turbulence: 1, into: 2, carve: false },
+  { type: 'pond', center: L.spring, radius: L.spring_pool_radius * 1.1, level: POOL_LEVEL, wobble: 0, carve: false },
 ], baseHeight);
 const heightAt = terrain.heightAt;
 fp.heightAt = (x, z) => { const w = terrain.waterAt(x, z), h = heightAt(x, z); return w?.inside ? Math.max(h, w.level - 0.55) : h; };
