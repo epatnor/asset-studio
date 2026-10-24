@@ -4,8 +4,24 @@
     {
       "name": "showcase",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--bind",
+        "127.0.0.1"
+      ],
       "port": 8765
+    },
+    {
+      "name": "showcase-shots",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-I",
+        "tools/preview/shot_server.py",
+        "8766"
+      ],
+      "port": 8766
     }
   ]
 }

@@ -2,7 +2,8 @@
 //
 // - Vind: _WIND (0 vid fästet, 1 i spetsen) gungar hörnen.
 // - Platta stjälkar: _STEM (förskjutning från mittlinjen) vrids runt mittlinjen mot kameran.
-// - Löv (Leaves, LeafMass, Fronds): färgvariation per klump (_CLUSTER) och genomlysning i motljus.
+// - Löv (Leaves, LeafMass, Fronds): färgvariation per klump (_CLUSTER), genomlysning i motljus (starkast i
+//   kronans tunna ytterkant) och dämpad spekular (uLeafSpec), enligt docs/Stiliserad_vegetation_ThreeJS.
 // - Sten (material med extras.triplanar): stentexturen läggs triplanart i världskoordinater, så att det inte
 //   blir sömmar mellan ytor, och mossa växer på uppåtvända ytor med en brusig, mjuk kant (extras.moss =
 //   mängd, extras.mossTexture = fil relativt modellen, extras.mossTint). Samma teknik som "world aligned
@@ -11,7 +12,7 @@
 import { patchFog } from './effects.js';
 
 export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }, fogU = null }) {
-  const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 } };
+  const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 }, uLeafSpec: { value: 0.15 } };
   const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
   const textures = new Map();
   const loader = new THREE.TextureLoader();
@@ -44,13 +45,23 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
         .replace('#include <common>', '#include <common>\nuniform float uSnow;')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n      { float upW = (vec4(normal, 0.0) * viewMatrix).y; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.98), uSnow * smoothstep(0.25, 0.75, upW)); }');
       if (leafy) shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary;\nvarying vec3 vVary;')
+        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary, uLeafSpec;\nvarying vec3 vVary;')
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), vVary, uVary);')
+        // Begränsade högdagrar (vegetationsguiden): löv glänser inte i solen
+        .replace('#include <aomap_fragment>', 'reflectedLight.directSpecular *= uLeafSpec;\nreflectedLight.indirectSpecular *= uLeafSpec;\n#include <aomap_fragment>')
         .replace('#include <opaque_fragment>', `
-          // Genomlysning: ljust och varmt där man ser mot solen genom lövverket
+          // Genomlysning: ljust och varmt där man ser mot solen genom lövverket. En smal glöd runt solen
+          // och en bredare svagare; starkast på sidan som vänder sig bort från solen och i kronans tunna
+          // ytterkant (ljus vertexfärg), svagast i det täta, mörka inre.
           vec3 sunV = normalize((viewMatrix * vec4(uSunDir, 0.0)).xyz);
-          float back = pow(max(dot(-normalize(vViewPosition), sunV), 0.0), 4.0);
-          outgoingLight += diffuseColor.rgb * vec3(1.0, 0.92, 0.7) * back * uTrans;
+          float vdl = max(dot(-normalize(vViewPosition), sunV), 0.0);
+          float back = pow(vdl, 4.0) + 0.25 * pow(vdl, 1.5);
+          float away = mix(0.35, 1.0, clamp(0.5 - 0.5 * dot(normal, sunV), 0.0, 1.0));
+          float thin = 1.0;
+          #ifdef USE_COLOR
+            thin = smoothstep(0.2, 0.85, dot(vColor.rgb, vec3(0.3, 0.5, 0.2)));
+          #endif
+          outgoingLight += diffuseColor.rgb * vec3(1.0, 0.92, 0.7) * back * away * mix(0.4, 1.0, thin) * uTrans;
           #include <opaque_fragment>`);
       if (tri) shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>

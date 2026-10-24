@@ -11,6 +11,7 @@ import { buildCanopy } from './canopy.mjs';
 import { buildConiferFoliage } from './conifer.mjs';
 import { buildCrown } from './crown.mjs';
 import { buildLeafDome } from './leafdome.mjs';
+import { buildCardBalls } from './cardball.mjs';
 
 const SPECIES = JSON.parse(fs.readFileSync(new URL('./species.json', import.meta.url)));
 const STYLE = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -89,6 +90,17 @@ if (fronds) {
   // Kala träd (döda träd): bara stam och grenar
   const none = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] });
   foliage = { lods: [none(), none(), none()], clusters: [] };
+} else if (sp.foliage.type === 'cardball') {
+  // Kortbollar: 6–9 korsade lövkort per boll, bollarna på skelettets kvistar
+  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height });
+  checks.clusters = foliage.clusters.length;
+  checks.cards = foliage.cards;
+  checks.ball_radius_m = foliage.ballM;
+  checks.card_m = foliage.cardM;
+  checks.silhouette_m2 = foliage.silhouetteM2; // kronans yta sedd framifrån: jämför hur fyllig den blir
+  checks.crown_m = foliage.crownM;
+  checks.floating_clusters = foliage.clusters.filter((c) => !sk.twigs.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * c.radii[0])).length;
+  checks.uncovered_twigs = foliage.uncovered;
 } else if (sp.foliage.type === 'crown') {
   // v4: sammanslagen molnlik kronmassa + täta små lövkort
   const opts = { ...sp.foliage, cards: Math.round(sp.foliage.cards * (size.cards ?? 1)), ...(recipe.canopy ?? {}), seed: seedEff, height };

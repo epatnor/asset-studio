@@ -1,0 +1,11 @@
+{
+  "name": "ct_birch_2",
+  "preset": "cardtree_medium",
+  "seed": 46,
+  "height": 8,
+  "leaves": "leaf_birch",
+  "leaf_tint": "#E2B93B",
+  "species": {},
+  "bark": "bark_painted",
+  "leaf_mass": "leaf_mass"
+}

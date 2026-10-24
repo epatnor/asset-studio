@@ -1,0 +1,22 @@
+{
+  "name": "ct_lance_2",
+  "preset": "cardtree_medium",
+  "seed": 43,
+  "height": 8,
+  "leaves": "leaf_lance",
+  "leaf_tint": "#6E9E78",
+  "species": {
+    "trunk": {
+      "radius": 0.085,
+      "gnarl": 0.16,
+      "twist": 2.6,
+      "lobes": 5,
+      "lobeAmp": 0.3,
+      "bulge": 0.1,
+      "bend": 0.14,
+      "bendFreq": 1.6
+    }
+  },
+  "bark": "bark_painted",
+  "leaf_mass": "leaf_mass"
+}

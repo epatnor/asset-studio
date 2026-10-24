@@ -98,7 +98,17 @@ const patchMaterial = createMaterialPatcher(THREE, { wind: windUniforms, sunDir 
 const colliders = [];
 const EYE = 1.65;
 const fp = { active: false, pos: new THREE.Vector3(), yaw: 0, pitch: -0.05, vel: 0, onGround: true, keys: new Set() };
-window.__tinker = { fp, setMode: (a) => setMode(a) }; // för felsökning och automatiska tester
+// För felsökning och automatiska tester. shot(name) renderar en bild och skickar den till
+// tools/preview/shot_server.py, som sparar den i build/shots/<name>.png.
+window.__tinker = {
+  fp, setMode: (a) => setMode(a), camera, controls, scene, sunDir,
+  shot: async (name) => {
+    controls.update();
+    renderer.render(scene, camera);
+    const blob = await new Promise((res) => renderer.domElement.toBlob(res, 'image/png'));
+    return (await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).json();
+  },
+};
 
 function setMode(active) {
   fp.active = active;
@@ -194,7 +204,9 @@ function setLod(n) {
 }
 
 async function main() {
-  const catalog = await (await fetch('catalog.json', { cache: 'no-cache' })).json();
+  // ?catalog=<fil> visar en annan uppställning (t.ex. ../build/cardtrees/catalog.json för testträd)
+  const catalogUrl = new URLSearchParams(location.search).get('catalog') ?? 'catalog.json';
+  const catalog = await (await fetch(catalogUrl, { cache: 'no-cache' })).json();
   // Små växter längst fram, höga träd längst bak
   const rows = [...catalog.rows].reverse();
   let z = 0, total = 0, loaded = 0;

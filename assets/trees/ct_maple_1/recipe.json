@@ -1,0 +1,17 @@
+{
+  "name": "ct_maple_1",
+  "preset": "cardtree_medium",
+  "seed": 54,
+  "height": 8,
+  "leaves": "leaf_maple",
+  "leaf_tint": "#E0782A",
+  "species": {
+    "trunk": {
+      "bend": 0.2,
+      "bendFreq": 0.5,
+      "gnarl": 0.1
+    }
+  },
+  "bark": "bark_painted",
+  "leaf_mass": "leaf_mass"
+}
