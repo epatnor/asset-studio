@@ -82,7 +82,7 @@ async function cleanPreviews() {
 
 // Receptet från studion: bara kända fält går vidare till generatorn
 const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) =>
-  ['preset', 'seed', 'height', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat'].includes(k)));
+  ['preset', 'seed', 'height', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_blend'].includes(k)));
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];
@@ -97,8 +97,8 @@ async function generate({ generator = 'tree', recipe }) {
 
 async function textures(kind) {
   const dir = path.join(ROOT, 'assets/textures');
-  const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/ }[kind] ?? /./;
-  const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw)\b/.test(f)).map((f) => f.slice(0, -4));
+  const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen)/ }[kind] ?? /./;
+  const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw|normal)\b/.test(f)).map((f) => f.slice(0, -4));
   return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png` }));
 }
 

@@ -3,7 +3,8 @@
 // UV i meter (barkRepeat meter per texturupprepning), så barken har samma skala på stam och kvistar.
 import { add, sub, mul, dot, cross, norm, len, basis } from './vec.mjs';
 
-const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], indices: [] });
+const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], blendBase: [], blendTip: [], indices: [] });
+const smooth = (x) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
 
 // Jämna normaler för en grens vertexar (från base) ur dess trianglar (från triStart). Sömmen
 // (första och sista kolumnen i varje ring) får samma normal, så att den inte syns.
@@ -83,6 +84,10 @@ export function barkMesh(sk, o) {
         const tw = o.tipTint && b.level >= o.tipLevel ? Math.min(1, Math.max(0, (t - o.tipFrom) / (1 - o.tipFrom))) ** 1.5 : 0;
         g.colors.push(...[0, 1, 2].map((c) => ao + ((o.tipTint?.[c] ?? ao) - ao) * tw));
         g.wind.push(b.level === 0 ? (nodes[i].p[1] / o.height) ** 2 * 0.15 : Math.min(1, 0.25 * b.level + 0.4 * t));
+        // Texturblandning (bark_blend): påväxt vid foten upp till baseHeight meter, grön textur ytterst på smågrenarna.
+        // Bara vikterna räknas här; texturerna blandas i klientens shader med en brusig kant.
+        g.blendBase.push(o.baseHeight ? 1 - smooth(Math.max(0, g.positions[g.positions.length - 2]) / o.baseHeight) : 0);
+        g.blendTip.push(o.tipBlendLevel != null && b.level >= o.tipBlendLevel ? smooth((t - o.tipBlendFrom) / (1 - o.tipBlendFrom)) : 0);
       }
     }
     const row = segs + 1;
@@ -124,6 +129,8 @@ export function barkMesh(sk, o) {
     g.uvs.push(0.5 * uRep, (vAcc + tip.r) / o.barkRepeat);
     g.colors.push(...(o.tipTint && b.level >= o.tipLevel ? o.tipTint : [1, 1, 1]));
     g.wind.push(1);
+    g.blendBase.push(o.baseHeight ? 1 - smooth(Math.max(0, g.positions[g.positions.length - 2]) / o.baseHeight) : 0);
+    g.blendTip.push(o.tipBlendLevel != null && b.level >= o.tipBlendLevel ? 1 : 0);
     const last = base + (nodes.length - 1) * row;
     for (let s = 0; s < segs; s++) g.indices.push(last + s, last + s + 1, ti);
     if (o.lobes && b.level <= 1) recomputeNormals(g, base, triStart, row);

@@ -11,6 +11,7 @@
     { "id": "drape", "label": "Draperi (björk, palm)" },
     { "id": "color", "label": "Ljus och färg" },
     { "id": "textures", "label": "Texturer", "open": true },
+    { "id": "blend", "label": "Bark och påväxt" },
     { "id": "view", "label": "Visning (ändras direkt)" },
     { "id": "advanced", "label": "Avancerat" }
   ],
@@ -66,6 +67,19 @@
 
     { "path": "recipe.leaves", "group": "textures", "label": "Lövark", "type": "texture", "kind": "leaves" },
     { "path": "recipe.bark", "group": "textures", "label": "Bark", "type": "texture", "kind": "bark" },
+
+    { "path": "recipe.bark_blend.base.strength", "group": "blend", "label": "Påväxt vid foten", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "help": "0 = av. Blandar in en annan textur där stammen kommer upp ur marken" },
+    { "path": "recipe.bark_blend.base.texture", "group": "blend", "label": "Fotens textur", "type": "texture", "kind": "blend", "default": "moss_painted" },
+    { "path": "recipe.bark_blend.base.height", "group": "blend", "label": "Hur högt upp (m)", "type": "number", "min": 0.1, "max": 4, "step": 0.05, "default": 0.8 },
+    { "path": "recipe.bark_blend.base.dark", "group": "blend", "label": "Mörkare vid marken", "type": "number", "min": 0, "max": 0.8, "step": 0.05, "default": 0.3 },
+    { "path": "recipe.bark_blend.base.tint", "group": "blend", "label": "Fotens ton", "type": "color", "default": "#ffffff" },
+    { "path": "recipe.bark_blend.base.scale", "group": "blend", "label": "Fotens texturskala", "type": "number", "min": 0.25, "max": 4, "step": 0.05, "default": 1.5 },
+    { "path": "recipe.bark_blend.tip.strength", "group": "blend", "label": "Gröna grentoppar (textur)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "help": "0 = av. Blandar in en grön textur ytterst på smågrenarna" },
+    { "path": "recipe.bark_blend.tip.texture", "group": "blend", "label": "Topparnas textur", "type": "texture", "kind": "blend", "default": "foliage_painted" },
+    { "path": "recipe.bark_blend.tip.from", "group": "blend", "label": "Börjar längs grenen", "type": "number", "min": 0, "max": 0.95, "step": 0.05, "default": 0.5 },
+    { "path": "recipe.bark_blend.tip.level", "group": "blend", "label": "Från grennivå", "type": "int", "min": 1, "max": 3, "default": 2 },
+    { "path": "recipe.bark_blend.tip.tint", "group": "blend", "label": "Topparnas ton", "type": "color", "default": "#ffffff" },
+    { "path": "recipe.bark_blend.tip.scale", "group": "blend", "label": "Topparnas texturskala", "type": "number", "min": 0.25, "max": 4, "step": 0.05, "default": 2 },
 
     { "path": "view.lod", "group": "view", "label": "Detaljnivå", "type": "select", "options": { "LOD0 (nära)": 0, "LOD1": 1, "LOD2 (långt bort)": 2 }, "default": 0 },
     { "path": "view.wind", "group": "view", "label": "Vind", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.6 },

@@ -11,6 +11,9 @@ Receptfält (alla utom name är valfria):
   leaf_mass               sömlös lövmassa för kronans volymer (standard: <atlas>_mass, annars leaf_mass)
   leaf_tint               "#RRGGBB": tinta löven i materialet (t.ex. höstfärg) med gråskaleatlas
   bark_repeat             meter per upprepning av barktexturen (standard 1,08)
+  bark_blend              texturblandning på barken (standard enligt arten), blandas i klientens shader:
+                          {"base": {"texture", "height" (m), "strength" 0–1, "dark", "tint", "scale"},
+                           "tip": {"texture", "from" 0–1 längs grenen, "level", "strength", "tint", "scale"}}
   canopy                  överstyr lövkronan: clusters, cards, flattenY, fill, union, normalBlend
   conifer                 överstyr granens barr: width, lobes, lobeDepth, chunk, asymmetry, dryShare
   frond_texture           för granar: målad barratlas (standard enligt arten), false = solida grenar utan alfa
@@ -119,6 +122,10 @@ def main():
     mass = recipe.get("leaf_mass") or next((m for m in (sp.get("mass"), leaves.replace("_atlas", "") + "_mass", "leaf_mass") if m and (TEX / f"{m}.png").exists()), None)
     if mass:
         gen["leafMass"] = str(TEX / f"{mass}.png")
+    blend = recipe.get("bark_blend", sp.get("bark_blend"))
+    if blend:
+        gen["barkBlend"] = {k: {**v, "file": str(TEX / f"{v['texture']}.png")} for k, v in blend.items()
+                            if isinstance(v, dict) and v.get("texture") and (TEX / f"{v['texture']}.png").exists()}
     gen |= {"name": name, "out": str(glb), "bark": str(TEX / f"{bark}.png"), "leaves": str(TEX / f"{leaves}.png"),
             "barkRepeat": recipe.get("bark_repeat", 1.08)}
     # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.
@@ -148,7 +155,7 @@ def main():
         sys.exit(json.dumps({"error": run.stderr.strip()[-500:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
 
-    (out_dir / "recipe.json").write_text(json.dumps({**recipe, "bark": bark, "leaves": leaves, "leaf_mass": mass}, indent=2))
+    (out_dir / "recipe.json").write_text(json.dumps({**{k: v for k, v in recipe.items() if k != "out_root"}, "bark": bark, "leaves": leaves, "leaf_mass": mass, **({"bark_blend": blend} if blend else {})}, indent=2))
     if recipe.get("preview"):
         preview([glb], out_dir / f"{name}_preview.png")
         result["preview"] = str((out_dir / f"{name}_preview.png").relative_to(ROOT))

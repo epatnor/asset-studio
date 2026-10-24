@@ -82,7 +82,7 @@ const setPath = (obj, p, v) => {
 // Värde för en spak: det som är satt, annars artens värde (recipe.leaves m.fl. finns som leaves i arten), annars standard
 function valueOf(p) {
   let v = getPath(state, p.path);
-  if (v === undefined && p.path.startsWith('recipe.')) v = state.spec[p.path.slice(7)];
+  if (v === undefined && p.path.startsWith('recipe.')) v = getPath(state.spec, p.path.slice(7));
   if (v === undefined && p.fallback) v = valueOf(P.params.find((q) => q.path === p.fallback) ?? { path: p.fallback });
   if (Array.isArray(v) && p.type === 'intrange') v = v[0];
   return v ?? p.default ?? (p.type === 'bool' ? false : p.min ?? 0);
@@ -96,13 +96,21 @@ function setValue(p, v) {
 function resetSpecies(preset) {
   state.spec = structuredClone(G.species[preset]);
   const height = state.recipe.height ?? 8, seed = state.recipe.seed ?? 47;
-  state.recipe = { preset, height, seed };
+  state.recipe = { preset, height, seed, bark_blend: structuredClone(state.spec.bark_blend ?? {}) };
 }
 const recipeNow = () => ({
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height,
   leaves: valueOf({ path: 'recipe.leaves' }), bark: valueOf({ path: 'recipe.bark' }), leaf_tint: valueOf({ path: 'recipe.leaf_tint' }),
   species: { trunk: state.spec.trunk, levels: state.spec.levels }, canopy: state.spec.foliage,
+  bark_blend: blendNow(),
 });
+
+// Texturblandningen: artens värden, ändrade spakar ovanpå, och spakarnas standard där arten saknar värde
+function blendNow() {
+  const out = {};
+  for (const p of P.params.filter((q) => q.path.startsWith('recipe.bark_blend.'))) setPath(out, p.path.slice(18), valueOf(p));
+  return out;
+}
 
 // --- Modellerna: den aktuella i mitten, fästa till vänster för jämförelse ---
 let current = null;
@@ -199,7 +207,7 @@ const folders = Object.fromEntries(P.groups.map((g) => {
 }));
 const ui = {};
 const controllers = [];
-const texLists = { leaves: await api('/api/textures?kind=leaves'), bark: await api('/api/textures?kind=bark') };
+const texLists = Object.fromEntries(await Promise.all(['leaves', 'bark', 'blend'].map(async (k) => [k, await api(`/api/textures?kind=${k}`)])));
 for (const p of P.params) {
   const key = p.path;
   ui[key] = valueOf(p);
@@ -294,6 +302,8 @@ async function save() {
   $('lamp').className = 'lamp ' + (res.error ? 'bad' : 'ok');
   $('msg').textContent = res.error ? `Sparades inte: ${res.error}` : `Sparad i biblioteket: ${res.entry.model}`;
 }
+
+window.__studio = { camera, controls, state, frame: () => frame(current, ...pinned) }; // för felsökning och automatiska tester
 
 // Start: första arten
 resetSpecies(P.species[0]);

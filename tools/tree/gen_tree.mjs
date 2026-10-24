@@ -37,6 +37,8 @@ const merge = (dst, src) => {
   return dst;
 };
 const sp = merge(structuredClone(SPECIES[spName]), recipe.species);
+// Texturblandning på barken (make_tree.py löser texturnamnen till filer): en del är på när styrkan > 0
+const blendOn = (part) => (recipe.barkBlend?.[part]?.strength ?? 0) > 0 && !!recipe.barkBlend[part].file;
 const size = SPECIES._sizes[sizeKey] ?? SPECIES._sizes.medium;
 const fronds = sp.foliage.type === 'fronds';
 const kind = fronds ? 'conifer' : spName === 'bush' ? 'bush' : 'deciduous';
@@ -63,6 +65,9 @@ const barkLods = [
   // barkTip (kortbollar m.fl.): barken tonas mot lövfärgen ytterst på smågrenarna, så att stumpar smälter in
   tipTint: (recipe.canopy?.barkTip ?? sp.foliage.barkTip) && recipe.leafTint ? (() => { const c = lin(recipe.leafTint), m = Math.max(...c); return c.map((x) => x / m); })() : null,
   tipFrom: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.from ?? 0.4, tipLevel: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.level ?? 2,
+  // barkBlend: vikter för påväxt vid foten och grön textur i grentopparna (blandas i klienten)
+  baseHeight: blendOn('base') ? recipe.barkBlend.base.height ?? 0.8 : 0,
+  tipBlendLevel: blendOn('tip') ? recipe.barkBlend.tip.level ?? 2 : null, tipBlendFrom: recipe.barkBlend?.tip?.from ?? 0.5,
   topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
   sinkDepth: Math.max(0.3, height * (sp.trunk.sinkDepth ?? 0.12)), // stammen går ner under marken
 }));
@@ -162,6 +167,17 @@ const texture = (file, name) => sharedTexture(doc, file, name, out);
 const barkMat = doc.createMaterial('Bark').setBaseColorTexture(texture(bark, 'bark')).setRoughnessFactor(0.9).setMetallicFactor(0);
 // barkTint (björk, palm, dött träd): barken är då gråskala och färgas här
 if (recipe.barkTint) barkMat.setBaseColorFactor([...lin(recipe.barkTint), 1]);
+// Texturblandning: klienten läser extras.blend (texturer relativt modellen, tint, styrka) och vikterna i
+// attributen _BLENDBASE och _BLENDTIP, på samma sätt som stenarnas mossa (extras.triplanar)
+if (blendOn('base') || blendOn('tip')) {
+  const part = (k) => {
+    if (!blendOn(k)) return null;
+    const { file, strength, tint, scale, dark } = recipe.barkBlend[k];
+    const use = fs.existsSync(file.replace(/\.png$/, '.webp')) ? file.replace(/\.png$/, '.webp') : file;
+    return { texture: path.relative(path.dirname(out), use).split(path.sep).join('/'), strength, tint: tint ?? '#ffffff', scale: scale ?? 1, dark: dark ?? 0 };
+  };
+  barkMat.setExtras({ ...barkMat.getExtras(), blend: { base: part('base'), tip: part('tip') } });
+}
 let leafMat;
 if (fronds && recipe.frondTexture) {
   // Målad barrtextur (gråskala) med alfa bara i kanten: solid kärna, spretiga barr i silhuetten
@@ -234,7 +250,8 @@ const tris = [], alphaTris = [];
 let stemMat;
 foliage.lods.forEach((lod, i) => {
   const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i });
-  if (barkLods[i].indices.length) lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat)));
+  const blendAttrs = blendOn('base') || blendOn('tip') ? { _BLENDBASE: barkLods[i].blendBase, _BLENDTIP: barkLods[i].blendTip } : {};
+  if (barkLods[i].indices.length) lodNode.addChild(doc.createNode(`${name}_trunk_LOD${i}`).setMesh(mesh(`bark_LOD${i}`, barkLods[i], barkMat, blendAttrs)));
   if (lod.indices.length) lodNode.addChild(doc.createNode(`${name}_leaves_LOD${i}`).setMesh(mesh(`leaves_LOD${i}`, lod, leafMat, { _CLUSTER: lod.cluster })));
   let volTris = 0;
   if (lod.volume && massMat) {

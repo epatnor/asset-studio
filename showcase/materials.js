@@ -5,6 +5,7 @@
 // - Löv (Leaves, LeafMass, Fronds): färgvariation per klump (_CLUSTER), genomlysning i motljus (starkast i
 //   kronans tunna ytterkant), dämpad spekular (uLeafSpec) och kort som tonar bort när de ses från kanten
 //   (uEdgeFade) och valfritt mjukare skugga på löven (uLeafShadow), enligt docs/Stiliserad_vegetation_ThreeJS.
+// - Bark med extras.blend: påväxt vid foten och grön textur i grentopparna, viktade per hörn med brusig kant.
 // - Sten (material med extras.triplanar): stentexturen läggs triplanart i världskoordinater, så att det inte
 //   blir sömmar mellan ytor, och mossa växer på uppåtvända ytor med en brusig, mjuk kant (extras.moss =
 //   mängd, extras.mossTexture = fil relativt modellen, extras.mossTint). Samma teknik som "world aligned
@@ -48,11 +49,22 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
       uMoss: { value: tri.moss ?? 0 }, uMossTint: { value: new THREE.Color(tri.mossTint ?? '#ffffff') },
       uStoneScale: { value: tri.stoneScale ?? 1 }, uMossScale: { value: tri.mossScale ?? 4 },
     } : null;
-    material.customProgramCacheKey = () => `tinkertown-${leafy}-${!!tri}`;
+    // Texturblandning på bark (extras.blend från trädgeneratorn): påväxt vid foten och grön textur i grentopparna,
+    // viktade per hörn (_BLENDBASE, _BLENDTIP) och med en brusig kant
+    const bl = material.userData?.blend && material.map ? material.userData.blend : null;
+    const part = (b) => ({
+      t: { value: b ? texture(new URL(b.texture, new URL(modelUrl, location.href)).href) : null },
+      str: { value: b?.strength ?? 0 }, tint: { value: new THREE.Color(b?.tint ?? '#ffffff') }, scale: { value: b?.scale ?? 1 }, dark: { value: b?.dark ?? 0 },
+    });
+    const blend = bl ? (() => {
+      const b = part(bl.base), t = part(bl.tip);
+      return { tBase: b.t, uBaseStr: b.str, uBaseTint: b.tint, uBaseScale: b.scale, uBaseDark: b.dark, tTip: t.t, uTipStr: t.str, uTipTint: t.tint, uTipScale: t.scale };
+    })() : null;
+    material.customProgramCacheKey = () => `tinkertown-${leafy}-${!!tri}-${!!bl}`;
     material.onBeforeCompile = (shader) => {
       shader.uniforms.uTime = wind.uTime;
       shader.uniforms.uWind = wind.uWind;
-      Object.assign(shader.uniforms, foliage, rock ?? {});
+      Object.assign(shader.uniforms, foliage, rock ?? {}, blend ?? {});
       patchFog(shader, fogU); // dimma åt solen, markdimma och molnskuggor (effects.js)
       // Snö (atmosphere.js): uppåtvända ytor vitnar
       shader.uniforms.uSnow = snow;
@@ -91,6 +103,27 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
           #endif
           outgoingLight += diffuseColor.rgb * vec3(1.0, 0.92, 0.7) * back * away * mix(0.4, 1.0, thin) * uTrans;
           #include <opaque_fragment>`);
+      if (bl) shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>
+          uniform sampler2D tBase, tTip;
+          uniform float uBaseStr, uBaseScale, uBaseDark, uTipStr, uTipScale;
+          uniform vec3 uBaseTint, uTipTint;
+          varying vec2 vBlend;
+          float blHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float blNoise(vec2 p) { // mjukt värdebrus för blandningens kant
+            vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+            return mix(mix(blHash(i), blHash(i + vec2(1, 0)), u.x), mix(blHash(i + vec2(0, 1)), blHash(i + vec2(1, 1)), u.x), u.y);
+          }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+          {
+            float bn = blNoise(vMapUv * 7.0) * 0.6 + blNoise(vMapUv * 19.0) * 0.4;
+            // Foten: påväxt med tungor uppåt, och mörkare ju närmare marken
+            float wb = smoothstep(0.35, 0.65, vBlend.x + (bn - 0.5) * 0.7) * uBaseStr;
+            diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(tBase, vMapUv * uBaseScale).rgb * uBaseTint, wb) * (1.0 - uBaseDark * vBlend.x);
+            // Grentopparna: grön textur ytterst
+            float wt = smoothstep(0.3, 0.7, vBlend.y + (bn - 0.5) * 0.6) * uTipStr;
+            diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(tTip, vMapUv * uTipScale).rgb * uTipTint, wt);
+          }`);
       if (tri) shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>
           uniform sampler2D tMoss;
@@ -123,6 +156,7 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
           attribute float _wind;
           attribute vec3 _stem;
           attribute float _cluster;
+          ${bl ? 'attribute float _blendbase, _blendtip;\nvarying vec2 vBlend;' : ''}
           uniform float uTime, uWind;
           varying vec3 vVary;${tri ? '\nvarying vec3 vTriPos, vTriNormal;' : ''}`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -143,7 +177,8 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
           transformed.xz += vec2(sway, sway * 0.6) * _wind * _wind * uWind * 0.12;
           float h1 = fract(sin(_cluster * 12.9898 + 1.7) * 43758.5453), h2 = fract(sin(_cluster * 78.233 + 4.1) * 24634.6345);
           vVary = vec3(1.0 + (h2 - 0.5) * 0.1, 1.0, 1.0 - (h2 - 0.5) * 0.12) * (0.9 + h1 * 0.2);
-          ${tri ? 'vTriPos = (tkModel * vec4(transformed, 1.0)).xyz; vTriNormal = normalize(mat3(tkModel) * objectNormal);' : ''}`);
+          ${tri ? 'vTriPos = (tkModel * vec4(transformed, 1.0)).xyz; vTriNormal = normalize(mat3(tkModel) * objectNormal);' : ''}
+          ${bl ? 'vBlend = vec2(_blendbase, _blendtip);' : ''}`);
     };
     material.needsUpdate = true;
   };
