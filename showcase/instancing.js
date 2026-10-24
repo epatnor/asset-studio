@@ -7,6 +7,8 @@
 // Platt marktäcke (lövhögar, krypväxter) kan draperas över terrängen i shadern (drape), så att det
 // inte behöver en egen kopia av geometrin per exemplar.
 
+import { applyShadowRole } from './materials.js';
+
 // Terrängens höjd som en textur (halvflyttal, en texel per res meter), för drapering i shadern
 export function heightTexture(W, heightAt, size, res = 1) {
   const { THREE } = W, n = Math.round(size / res) + 1, data = new Uint16Array(n * n);
@@ -76,6 +78,7 @@ export function instanceModel(W, root, places, { lodDist = [25, 60, 160], chunk 
       const im = new THREE.InstancedMesh(part.geo, part.mat, idx.length);
       im.count = 0; im.visible = false;
       im.castShadow = shadowLods.includes(part.lod); im.receiveShadow = true;
+      applyShadowRole(im);
       scene.add(im);
       meshes.push(im);
       byLod[part.lod]?.push(im);

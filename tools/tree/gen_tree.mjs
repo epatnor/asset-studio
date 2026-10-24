@@ -60,6 +60,9 @@ const barkLods = [
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas
   maxLevel: sp.stemless ? -1 : fronds ? 0 : l.maxLevel,
+  // barkTip (kortbollar m.fl.): barken tonas mot lövfärgen ytterst på smågrenarna, så att stumpar smälter in
+  tipTint: (recipe.canopy?.barkTip ?? sp.foliage.barkTip) && recipe.leafTint ? (() => { const c = lin(recipe.leafTint), m = Math.max(...c); return c.map((x) => x / m); })() : null,
+  tipFrom: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.from ?? 0.4, tipLevel: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.level ?? 2,
   topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
   sinkDepth: Math.max(0.3, height * (sp.trunk.sinkDepth ?? 0.12)), // stammen går ner under marken
 }));
@@ -92,14 +95,26 @@ if (fronds) {
   foliage = { lods: [none(), none(), none()], clusters: [] };
 } else if (sp.foliage.type === 'cardball') {
   // Kortbollar: 6–9 korsade lövkort per boll, bollarna på skelettets kvistar
-  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height });
+  // Grenspetsar (punkt och riktning) för spetsbollar
+  const tips = sk.branches.filter((b) => b.level >= 1).map((b) => {
+    const n = b.nodes, p = n[n.length - 1].p, q = n[Math.max(0, n.length - 2)].p;
+    const d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]], l = Math.hypot(...d) || 1;
+    return { p, d: d.map((x) => x / l) };
+  });
+  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips });
+  checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;
   checks.cards = foliage.cards;
   checks.ball_radius_m = foliage.ballM;
   checks.card_m = foliage.cardM;
+  // Andel av grenarnas punkter (ej stammen) som ligger inne i någon boll: lågt värde = grenar syns mellan bollarna
+  const limbs = sk.branches.filter((b) => b.level > 0).flatMap((b) => b.nodes.map((n) => n.p));
+  checks.branch_cover = Math.round(100 * limbs.filter((p) => foliage.clusters.some((c) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= c.radii[0])).length / Math.max(1, limbs.length)) / 100;
   checks.silhouette_m2 = foliage.silhouetteM2; // kronans yta sedd framifrån: jämför hur fyllig den blir
   checks.crown_m = foliage.crownM;
-  checks.floating_clusters = foliage.clusters.filter((c) => !sk.twigs.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * c.radii[0])).length;
+  // Bollar måste sitta på en kvist; spetsbollar på den grenspets de täcker
+  const near = (pts, c) => pts.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * c.radii[0]);
+  checks.floating_clusters = foliage.clusters.filter((c) => !near(c.tip ? tips.map((t) => t.p) : sk.twigs, c)).length;
   checks.uncovered_twigs = foliage.uncovered;
 } else if (sp.foliage.type === 'crown') {
   // v4: sammanslagen molnlik kronmassa + täta små lövkort
@@ -172,6 +187,12 @@ const massMat = !fronds && (leafMass
 if (tint && massMat) massMat.setBaseColorFactor([...tint, 1]);
 
 
+// Skuggroller i materialens extras, så att klienten (och andra motorer) vet vad som ska kasta skugga.
+// Kortbollar: korten kastar och tar inte emot skugga (skärningarna syns annars direkt); djupet i kronan
+// fejkas med kronnormaler och vertexfärg, och en osynlig skuggform kastar kronans skugga.
+const shadowMat = sp.foliage.type === 'cardball' ? doc.createMaterial('ShadowProxy').setExtras({ shadowProxy: true }) : null;
+if (shadowMat) leafMat.setExtras({ ...leafMat.getExtras(), castShadow: false, receiveShadow: false });
+
 // Vindkontinuitet: hörn i samma punkt måste ha samma vindvikt, annars slits geometrin isär i vinden
 function windTorn(g) {
   const seen = new Map(); let torn = 0;
@@ -225,6 +246,8 @@ foliage.lods.forEach((lod, i) => {
     stemMat ??= doc.createMaterial('Stems').setRoughnessFactor(0.9).setMetallicFactor(0);
     lodNode.addChild(doc.createNode(`${name}_stems_LOD${i}`).setMesh(mesh(`stems_LOD${i}`, lod.stems, stemMat)));
   }
+  // Skuggform (kortbollar): kastar skugga men ritas inte (materialets extras.shadowProxy, läses av klienten)
+  if (lod.shadow?.indices.length) lodNode.addChild(doc.createNode(`${name}_shadow_LOD${i}`).setMesh(mesh(`shadow_LOD${i}`, lod.shadow, shadowMat)));
   root.addChild(lodNode);
   tris.push(Math.round((barkLods[i].indices.length + lod.indices.length) / 3 + volTris));
   alphaTris.push((fronds && !recipe.frondTexture) || sp.foliage.type === 'leafdome' ? 0 : lod.indices.length / 3); // det som kostar overdraw

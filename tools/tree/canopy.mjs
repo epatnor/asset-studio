@@ -101,7 +101,7 @@ function pushCard(out, p, n, t, size, cell, clusterIdx, clusterCenter, normalBle
  * @returns {{ clusters, lods: Array<{positions,normals,uvs,colors,wind,cluster,indices}> }}
  */
 // Ikosfär (enhetsriktningar + trianglar), subdiv 0 = 20 trianglar, 1 = 80, 2 = 320
-function icosphere(subdiv) {
+export function icosphere(subdiv) {
   const t = (1 + Math.sqrt(5)) / 2;
   let verts = [[-1, t, 0], [1, t, 0], [-1, -t, 0], [1, -t, 0], [0, -1, t], [0, 1, t], [0, -1, -t], [0, 1, -t],
     [t, 0, -1], [t, 0, 1], [-t, 0, -1], [-t, 0, 1]].map(norm);

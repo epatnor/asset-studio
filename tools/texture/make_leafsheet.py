@@ -16,6 +16,10 @@ Recept:
   stem       kvistens tjocklek i andel av cellen (standard 0.004; 0 = ingen synlig kvist). Kvisten slutar vid
              sista lövets fäste och ritas under alla löv, så den syns bara i gluggarna, aldrig utanför klasen
   aspect     lövets bredd/längd (standard efter form)
+  layout     "hang": långa hängande kvistar uppifrån och ned i stället för runda klasar (björk, pil);
+             strand = kvistlängd [min, max] i andel av cellen
+  core       tät kärna: {"leaves": n, "spread": andel av cellen}. Ett extra lager lösa löv tätt i mitten, ovanpå
+             solfjädern runt om (två lager i samma ark), så att klasen och kortbollen får en tät mitt
   alpha_blur pixlar gaussisk oskärpa på alfakanalen (0 = skarp)
   seed, size atlasens sida i px (standard 1024)
 Svarar med en rad JSON.
@@ -74,7 +78,30 @@ def cell(r, n, S, o):
     alpha = np.zeros((S, S), np.float32)
     group = o.get("sprig", 1)  # löv per kvist: > 1 ger små kvistar med löv växelvis längs en axel
     leaves, stems = [], []
-    for _ in range(max(1, n // group)):
+    if o.get("layout") == "hang":
+        # Hängande kvistar (björk, pil): långa kvistar som börjar i cellens övre del och hänger nedåt med en
+        # lätt böj, med små löv växelvis längs kvisten som pekar snett nedåt. Kortet vänds i trädgeneratorn
+        # så att arkets överkant är uppåt, så att kvistarna alltid hänger nedåt i världen.
+        lo_s, hi_s = o.get("strand", [0.45, 0.85])
+        while len(leaves) < n:
+            x, y = r.uniform(0.12, 0.88) * S, r.uniform(0.03, 0.3) * S
+            d = np.pi / 2 + r.normal(0, 0.18)  # nedåt i bilden (y växer nedåt)
+            length, walked, side = r.uniform(lo_s, hi_s) * S, 0.0, 1
+            while walked < length and len(leaves) < n:
+                L = r.uniform(lo, hi) * S
+                step = L * 0.42
+                nx, ny = x + np.cos(d) * step, y + np.sin(d) * step
+                if not (0.02 * S < nx < 0.98 * S and ny < 0.97 * S):
+                    break
+                stems.append((x, y, nx, ny))
+                a = d + side * r.uniform(0.45, 0.85)
+                cx, cy = nx + np.cos(a) * L / 2, ny + np.sin(a) * L / 2
+                tx, ty = cx + np.cos(a) * L / 2, cy + np.sin(a) * L / 2
+                if 0.01 * S < tx < 0.99 * S and 0.01 * S < ty < 0.99 * S:
+                    leaves.append((r.uniform(0, S), L, cx, cy, a))
+                x, y, walked, side = nx, ny, walked + step, -side
+                d += r.normal(0, 0.06) + (np.pi / 2 - d) * 0.05  # lätt böj, dras mot lodrätt
+    for _ in range(0 if o.get("layout") == "hang" else max(1, n // group)):
         rel = r.uniform() ** o.get("outer_bias", 0.4)  # < 0.5: fler löv ute i kanten än i mitten
         ang = r.uniform(0, 2 * np.pi)
         # Solfjäder: ju längre ut, desto mer pekar lövet utåt (men aldrig exakt); i mitten åt vilket håll som helst
@@ -113,6 +140,14 @@ def cell(r, n, S, o):
         val[win] = val[win] * (1 - cov) + (1.0 if o["mode"] == "white" else 0.42) * cov
         alpha[win] = np.maximum(alpha[win], cov)
         stem_mask[win] = np.maximum(stem_mask[win], cov)
+    core = o.get("core")
+    for _ in range(core["leaves"] if core else 0):
+        L = r.uniform(lo, hi) * S
+        rad = np.sqrt(r.uniform()) * core.get("spread", 0.2) * S
+        ang = r.uniform(0, 2 * np.pi)
+        a = ang + r.normal(0, 1.0)  # i kärnan pekar löven ungefär utåt men spritt
+        cx, cy = S / 2 + np.cos(ang) * rad, S / 2 + np.sin(ang) * rad
+        leaves.append((np.hypot(cx - S / 2, cy - S / 2), L, cx, cy, a))
     # Ytterst först (under), mitten sist (överst): klasen buktar mot betraktaren
     leaves.sort(key=lambda t: -t[0])
     for k, (rad, L, cx, cy, a) in enumerate(leaves):

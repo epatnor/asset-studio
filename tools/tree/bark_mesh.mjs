@@ -79,7 +79,9 @@ export function barkMesh(sk, o) {
         g.uvs.push((s / segs) * uRep, vAcc / o.barkRepeat);
         // Mörkare nedtill och mot fästen (enkel AO), ljusare upptill
         const ao = b.level === 0 ? 0.62 + 0.38 * Math.min(1, Math.max(0, nodes[i].p[1]) / (o.height * 0.35)) : 0.78 + 0.22 * t;
-        g.colors.push(ao, ao, ao);
+        // Gröna toppar (tipTint): de minsta grenarna tonas mot lövfärgen ytterst
+        const tw = o.tipTint && b.level >= o.tipLevel ? Math.min(1, Math.max(0, (t - o.tipFrom) / (1 - o.tipFrom))) ** 1.5 : 0;
+        g.colors.push(...[0, 1, 2].map((c) => ao + ((o.tipTint?.[c] ?? ao) - ao) * tw));
         g.wind.push(b.level === 0 ? (nodes[i].p[1] / o.height) ** 2 * 0.15 : Math.min(1, 0.25 * b.level + 0.4 * t));
       }
     }
@@ -120,7 +122,7 @@ export function barkMesh(sk, o) {
     g.positions.push(...add(tip.p, mul(tipDir, tip.r * 1.5)));
     g.normals.push(...tipDir);
     g.uvs.push(0.5 * uRep, (vAcc + tip.r) / o.barkRepeat);
-    g.colors.push(1, 1, 1);
+    g.colors.push(...(o.tipTint && b.level >= o.tipLevel ? o.tipTint : [1, 1, 1]));
     g.wind.push(1);
     const last = base + (nodes.length - 1) * row;
     for (let s = 0; s < segs; s++) g.indices.push(last + s, last + s + 1, ti);

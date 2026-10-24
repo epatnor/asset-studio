@@ -3,7 +3,8 @@
 // - Vind: _WIND (0 vid fästet, 1 i spetsen) gungar hörnen.
 // - Platta stjälkar: _STEM (förskjutning från mittlinjen) vrids runt mittlinjen mot kameran.
 // - Löv (Leaves, LeafMass, Fronds): färgvariation per klump (_CLUSTER), genomlysning i motljus (starkast i
-//   kronans tunna ytterkant) och dämpad spekular (uLeafSpec), enligt docs/Stiliserad_vegetation_ThreeJS.
+//   kronans tunna ytterkant), dämpad spekular (uLeafSpec) och kort som tonar bort när de ses från kanten
+//   (uEdgeFade) och valfritt mjukare skugga på löven (uLeafShadow), enligt docs/Stiliserad_vegetation_ThreeJS.
 // - Sten (material med extras.triplanar): stentexturen läggs triplanart i världskoordinater, så att det inte
 //   blir sömmar mellan ytor, och mossa växer på uppåtvända ytor med en brusig, mjuk kant (extras.moss =
 //   mängd, extras.mossTexture = fil relativt modellen, extras.mossTint). Samma teknik som "world aligned
@@ -11,8 +12,22 @@
 
 import { patchFog } from './effects.js';
 
+// Skuggroller från generatorn (materialets extras, i userData): castShadow/receiveShadow false stänger av
+// skuggan för delen (kortbollarnas lövkort, vars skärningar annars syns i skuggorna), och shadowProxy är en
+// osynlig form som bara kastar skugga. Anropas efter att standardvärdena satts på en mesh.
+export function applyShadowRole(mesh) {
+  const u = mesh.material?.userData ?? {};
+  if (u.castShadow === false) mesh.castShadow = false;
+  if (u.receiveShadow === false) mesh.receiveShadow = false;
+  if (u.shadowProxy) {
+    mesh.receiveShadow = false;
+    mesh.material.colorWrite = false;
+    mesh.material.depthWrite = false;
+  }
+}
+
 export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }, fogU = null }) {
-  const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 }, uLeafSpec: { value: 0.15 } };
+  const foliage = { uSunDir: sunDir, uTrans: { value: 0.55 }, uVary: { value: 1 }, uLeafSpec: { value: 0.15 }, uEdgeFade: { value: 1 }, uLeafShadow: { value: 1 } };
   const FOLIAGE = /^(Leaves|LeafMass|Fronds)$/;
   const textures = new Map();
   const loader = new THREE.TextureLoader();
@@ -25,7 +40,7 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
     return textures.get(url);
   };
 
-  return function patch(material, modelUrl) {
+  const patch = function (material, modelUrl) {
     const leafy = FOLIAGE.test(material.name);
     const tri = material.userData?.triplanar && material.map ? material.userData : null;
     const rock = tri ? {
@@ -45,8 +60,21 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
         .replace('#include <common>', '#include <common>\nuniform float uSnow;')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n      { float upW = (vec4(normal, 0.0) * viewMatrix).y; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.98), uSnow * smoothstep(0.25, 0.75, upW)); }');
       if (leafy) shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary, uLeafSpec;\nvarying vec3 vVary;')
+        .replace('#include <common>', '#include <common>\nuniform vec3 uSunDir;\nuniform float uTrans, uVary, uLeafSpec, uEdgeFade, uLeafShadow;\nvarying vec3 vVary;')
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), vVary, uVary);')
+        // Lövkort som ses från kanten blir utdragna strimmor (syns tydligt i korsade kortbollar). Kortets riktiga
+        // ytnormal räknas ur skärmderivator (normalerna är ju kronans) och alfagränsen höjs när kortet vänder
+        // kanten mot kameran, så att det tonar bort. Skuggpasset använder hela kortet som förut.
+        .replace('#include <alphatest_fragment>', `
+          #ifdef USE_ALPHATEST
+            vec3 tkGeoN = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));
+            float tkFacing = abs(dot(tkGeoN, normalize(vViewPosition)));
+            if (diffuseColor.a < mix(alphaTest, 1.01, uEdgeFade * (1.0 - smoothstep(0.12, 0.4, tkFacing)))) discard;
+          #endif`)
+        // Mjukare skugga på löv (uLeafShadow < 1): kort som skuggar varandra ger skarpa fläckar som avslöjar
+        // korten. Löven tar då bara emot en del av solskuggan (även från andra föremål).
+        .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin
+          .replace(/\? getShadow\(/g, '? (1.0 - uLeafShadow) + uLeafShadow * getShadow('))
         // Begränsade högdagrar (vegetationsguiden): löv glänser inte i solen
         .replace('#include <aomap_fragment>', 'reflectedLight.directSpecular *= uLeafSpec;\nreflectedLight.indirectSpecular *= uLeafSpec;\n#include <aomap_fragment>')
         .replace('#include <opaque_fragment>', `
@@ -119,4 +147,6 @@ export function createMaterialPatcher(THREE, { wind, sunDir, snow = { value: 0 }
     };
     material.needsUpdate = true;
   };
+  patch.uniforms = foliage; // lövens uniformer, för felsökning och reglage
+  return patch;
 }

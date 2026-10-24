@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
-import { createMaterialPatcher } from './materials.js';
+import { createMaterialPatcher, applyShadowRole } from './materials.js';
 import { createAtmosphere } from './atmosphere.js';
 import { createEffects, createFogUniforms } from './effects.js';
 
@@ -86,7 +86,7 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
   async function loadModel(url) {
     const root = (await loader.loadAsync(url)).scene;
     root.traverse((o) => {
-      if (o.isMesh) { o.castShadow = o.receiveShadow = true; addWind(o.material, url); }
+      if (o.isMesh) { o.castShadow = o.receiveShadow = true; applyShadowRole(o); addWind(o.material, url); }
       const lod = o.name.match(/_LOD(\d)$/);
       if (lod) o.visible = lod[1] === '0';
     });
@@ -141,9 +141,16 @@ export function createWorld(container, { fog = [60, 220], time = 10, weather = '
     controls.enabled = !active;
     if (!active && document.pointerLockElement) document.exitPointerLock();
   };
-  renderer.domElement.addEventListener('click', () => { if (!fp.active) setMode(true); renderer.domElement.requestPointerLock(); });
+  // Pointer lock går inte överallt (t.ex. i inbäddade webbläsare); då tittar man runt genom att dra med musen
+  let lockFailed = false;
+  document.addEventListener('pointerlockerror', () => { lockFailed = true; });
+  renderer.domElement.addEventListener('click', () => {
+    if (!fp.active) setMode(true);
+    try { Promise.resolve(renderer.domElement.requestPointerLock()).catch(() => { lockFailed = true; }); } catch { lockFailed = true; }
+  });
   addEventListener('mousemove', (e) => {
-    if (!fp.active || document.pointerLockElement !== renderer.domElement) return;
+    const locked = document.pointerLockElement === renderer.domElement;
+    if (!fp.active || !(locked || (lockFailed && e.buttons & 1))) return;
     fp.yaw -= e.movementX * 0.0022;
     fp.pitch = THREE.MathUtils.clamp(fp.pitch - e.movementY * 0.0022, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
   });

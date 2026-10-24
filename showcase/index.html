@@ -44,7 +44,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { shareTextures } from './shared_textures.js';
-import { createMaterialPatcher } from './materials.js';
+import { createMaterialPatcher, applyShadowRole } from './materials.js';
 import { createMenu } from './menu.js';
 
 const app = document.getElementById('app');
@@ -101,7 +101,7 @@ const fp = { active: false, pos: new THREE.Vector3(), yaw: 0, pitch: -0.05, vel:
 // För felsökning och automatiska tester. shot(name) renderar en bild och skickar den till
 // tools/preview/shot_server.py, som sparar den i build/shots/<name>.png.
 window.__tinker = {
-  fp, setMode: (a) => setMode(a), camera, controls, scene, sunDir,
+  fp, setMode: (a) => setMode(a), camera, controls, scene, sunDir, leaf: patchMaterial.uniforms,
   shot: async (name) => {
     controls.update();
     renderer.render(scene, camera);
@@ -115,12 +115,16 @@ function setMode(active) {
   controls.enabled = !active;
   if (!active && document.pointerLockElement) document.exitPointerLock();
 }
+// Pointer lock går inte överallt (t.ex. i inbäddade webbläsare); då tittar man runt genom att dra med musen
+let lockFailed = false;
+document.addEventListener('pointerlockerror', () => { lockFailed = true; });
 renderer.domElement.addEventListener('click', () => {
   if (!fp.active) setMode(true);
-  renderer.domElement.requestPointerLock();
+  try { Promise.resolve(renderer.domElement.requestPointerLock()).catch(() => { lockFailed = true; }); } catch { lockFailed = true; }
 });
 addEventListener('mousemove', (e) => {
-  if (!fp.active || document.pointerLockElement !== renderer.domElement) return;
+  const locked = document.pointerLockElement === renderer.domElement;
+  if (!fp.active || !(locked || (lockFailed && e.buttons & 1))) return;
   fp.yaw -= e.movementX * 0.0022;
   // Full frihet uppåt och nedåt (±90°, strax innan polen så att rotationen inte vänder)
   fp.pitch = THREE.MathUtils.clamp(fp.pitch - e.movementY * 0.0022, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
@@ -225,6 +229,7 @@ async function main() {
       m.root.traverse((o) => {
         if (o.isMesh) {
           o.castShadow = o.receiveShadow = true;
+          applyShadowRole(o);
           patchMaterial(o.material, m.it.model);
         }
         const lod = o.name.match(/_LOD(\d)$/);

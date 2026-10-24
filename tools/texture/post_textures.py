@@ -5,6 +5,7 @@
                               så att foten/stjälken hamnar i nederkant (UV v=0)
   atlas  <out.png> <a> <b> <c> <d>   packar fyra sprites till en 2x2-atlas
   gray   <in.png> <out.png>   gråskala för tintning (färgen sätts i materialet)
+  soften <in.png> <out.png> [mängd]   lägre kontrast: fåror och skåror mjukare, stora former kvar (sömlös)
 
 Kör med: uv run --no-project --python 3.12 --with pillow==11.1.0 --with numpy==2.2.3 python -I post_textures.py ...
 """
@@ -89,9 +90,28 @@ def gray(src, dst, target_mean=0.82):
     return {"out": dst, "scale": round(scale, 3)}
 
 
+
+def soften(src, dst, amount=1.0):
+    # Mjukare målning: skillnaden mot ett lokalt medel (fåror, skåror, högdagrar) dras ner, och hela bilden
+    # dras lite mot sitt medelvärde. Oskärpan görs på en kantupprepad kopia så att texturen förblir sömlös.
+    amount = float(amount)
+    im = Image.open(src).convert("RGB")
+    a = np.asarray(im).astype(np.float32)
+    h, w, _ = a.shape
+    pad = max(8, w // 40)
+    big = np.pad(a, ((pad, pad), (pad, pad), (0, 0)), mode="wrap")
+    blur = np.asarray(Image.fromarray(big.astype(np.uint8)).filter(ImageFilter.GaussianBlur(pad / 2))).astype(np.float32)[pad:-pad, pad:-pad]
+    local = blur + (a - blur) * (1 - 0.45 * amount)
+    mean = local.reshape(-1, 3).mean(0)
+    out = mean + (local - mean) * (1 - 0.2 * amount)
+    Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(dst)
+    return {"out": dst, "amount": amount, "std_before": round(float(a.std()), 1), "std_after": round(float(out.std()), 1)}
+
 if __name__ == "__main__":
     cmd, *args = sys.argv[1:]
     if cmd == "atlas":
         print(json.dumps(atlas(args[0], *args[1:])))
+    elif cmd == "soften":
+        print(json.dumps(soften(*args)))
     else:
         print(json.dumps({"tile": tile, "cutout": cutout, "gray": gray}[cmd](args[0], args[1])))

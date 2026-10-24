@@ -251,7 +251,7 @@ export function createMenu(W, { level } = {}) {
       showTab(sections[store.get('tab', 'banor')] && sections[store.get('tab', 'banor')].b.style.display !== 'none' ? store.get('tab', 'banor') : 'banor');
     }
   };
-  resume.onclick = () => { setOpen(false); if (W.fp?.active) W.renderer.domElement.requestPointerLock(); };
+  resume.onclick = () => { setOpen(false); if (W.fp?.active) Promise.resolve(W.renderer.domElement.requestPointerLock()).catch(() => {}); }; // utan pointer lock: dra med musen
   menuBtn.onclick = () => setOpen(!open);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) setOpen(false); });
   // Esc i förstaperson släpper musen (webbläsaren tar tangenten); då öppnas menyn, som en paus

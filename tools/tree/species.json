@@ -584,7 +584,8 @@
     "leafbush": "leafbush",
     "petalbush": "petalbush",
     "serratebush": "serratebush",
-    "cardtree": "cardtree"
+    "cardtree": "cardtree",
+    "cardbirch": "cardbirch"
   },
   "maple": {
     "trunk": {
@@ -1767,5 +1768,100 @@
     "bark": "bark_painted",
     "leaf_tint": "palette:foliage_light",
     "_doc": "Kortbollar (teknik från stiliserade Blender-träd): 6–9 korsade lövkort per boll, bollarna i klasar på skelettets kvistar. Testart för atlaser från tools/texture/make_leafsheet.py."
+  },
+  "cardbirch": {
+    "trunk": {
+      "length": 0.92,
+      "radius": 0.028,
+      "sections": 10,
+      "segments": 14,
+      "gnarl": 0.04,
+      "photo": 0.15,
+      "flare": 0.55,
+      "roots": 4,
+      "bend": 0.12,
+      "rootAmp": 0.45,
+      "lobes": 0,
+      "lobeAmp": 0.1,
+      "twist": 0.8,
+      "bulge": 0.04,
+      "bendFreq": 1.8
+    },
+    "levels": [
+      {
+        "count": [
+          8,
+          11
+        ],
+        "start": 0.42,
+        "angle": [
+          52,
+          10
+        ],
+        "length": 0.32,
+        "lenFalloff": 0.65,
+        "radius": 0.55,
+        "gnarl": 0.2,
+        "photo": 0.35,
+        "gravity": 0.1,
+        "sections": 5,
+        "segments": 6,
+        "droopCurve": true
+      },
+      {
+        "count": [
+          3,
+          4
+        ],
+        "start": 0.3,
+        "angle": [
+          40,
+          12
+        ],
+        "length": 0.55,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.25,
+        "photo": 0.3,
+        "gravity": 0.02,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "cardball",
+      "clusters": 8,
+      "ballsPerCluster": 1,
+      "ballScale": 2.0,
+      "minBall": 0.12,
+      "cardGroup": "drape",
+      "cardSize": 2.2,
+      "cardsPerM2": 0.8,
+      "cardOffset": 0.75,
+      "cardGrid": 3,
+      "normalBlend": 1.0,
+      "normalOffset": 0,
+      "normalLift": 0.15,
+      "innerTint": [
+        0.34,
+        0.42,
+        0.36
+      ],
+      "bottomCool": [
+        0.6,
+        0.7,
+        0.85
+      ],
+      "bottomCoolStrength": 0.5,
+      "gradientFalloff": 0.8,
+      "tipBall": 0.6,
+      "tipCards": 3,
+      "tipCover": 0,
+      "drapeArms": 5
+    },
+    "leaves": "leaf_birch_hang",
+    "bark": "bark_birch_hd3",
+    "leaf_tint": "#4E8A34",
+    "_doc": "Björk med kortbollar: draperi (fem böjda remsor från en rundad topp, som ett paraply) med långa hängande kvistar av små löv (leaf_birch_hang), björkbark med få svarta streck förskjutna omlott (bark_birch_hd3), mörkare grönt. Valt av Patrik 2026-10-25. Referens: björkarna i Allods Online."
   }
 }
