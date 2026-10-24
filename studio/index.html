@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tinkertown – Asset Studio</title>
+<style>
+  :root { --ink: #1f2a1c; --panel: rgba(255, 255, 255, 0.86); --accent: #4e8a2f; --bad: #c0392b; }
+  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  .panel { position: fixed; top: 12px; left: 12px; width: min(300px, calc(100vw - 24px)); background: var(--panel);
+           backdrop-filter: blur(6px); border-radius: 12px; padding: 12px 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); font-size: 13px; }
+  .panel h1 { margin: 0 0 2px; font-size: 17px; }
+  .panel .sub { margin: 0 0 8px; opacity: 0.75; font-size: 12px; }
+  .lamp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #aaa; margin-right: 6px; vertical-align: middle; }
+  .lamp.ok { background: var(--accent); } .lamp.bad { background: var(--bad); } .lamp.busy { background: #e0a020; }
+  #stats table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  #stats td { padding: 1px 0; } #stats td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  #warn { color: var(--bad); margin-top: 6px; white-space: pre-line; }
+  #msg { margin-top: 6px; opacity: 0.85; white-space: pre-line; }
+  .tex { display: flex; gap: 6px; margin-top: 8px; }
+  .tex figure { margin: 0; flex: 1; text-align: center; font-size: 11px; }
+  .tex img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #3a3e46; }
+  .lil-gui.root { --width: 320px; max-height: calc(100vh - 24px); overflow-y: auto; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="panel">
+  <h1>Asset Studio</h1>
+  <p class="sub">Dra i spakarna till höger; trädet byggs om när du släpper. Dra i vyn för att rotera, scrolla för att zooma.</p>
+  <div id="stats"><span class="lamp" id="lamp"></span><span id="state">Startar…</span>
+    <table id="numbers"></table>
+    <div id="warn"></div>
+    <div id="msg"></div>
+  </div>
+  <div class="tex">
+    <figure><img id="texLeaves" alt=""><figcaption>Lövark</figcaption></figure>
+    <figure><img id="texBark" alt=""><figcaption>Bark</figcaption></figure>
+  </div>
+</div>
+<script type="module" src="studio.js"></script>
+</body>
+</html>

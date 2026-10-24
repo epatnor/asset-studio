@@ -1,6 +1,8 @@
 # Plan: Asset Studio (först trädgeneratorn)
 
-Status: plan, inget byggt. Skriven 2026-10-25.
+Status: fas 1 (trädstudion) byggd 2026-10-25. Starta med `node tools/studio/server.mjs` (eller launch-konfigurationen `studio`) och öppna http://localhost:8770/studio/.
+
+Det som finns: `tools/tree/params.json` (spakarna), `tools/studio/server.mjs` (API: generators, generate, textures, library), `studio/` (vy, panel med lil-gui, kontroller och siffror, texturminiatyrer, Fäst för jämförelse, Ångra och Gör om, Spara till biblioteket med miniatyr). Biblioteket är `assets/library.json`. Förhandsvisningar hamnar i `build/studio/` (de 40 senaste sparas).
 
 ## Varför
 

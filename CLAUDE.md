@@ -58,6 +58,8 @@ Växtgeneratorn (`tools/plants/`, MCP `create_plant`) gör gräsknippen, vass, s
 
 Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna. Ange alltid `origin`, `license` och `author`. De hamnar i den genererade `assets/CREDITS.md` (`tools/import/make_credits.py`, där också `third_party/*/SOURCE.md` ingår). Saknas licens, eller är den NC, ND eller editorial, blir `checks.ok` false.
 
+**Asset Studio** (`studio/`, server `tools/studio/server.mjs`, plan i [docs/asset-studio.md](docs/asset-studio.md)): Patrik drar själv i generatorernas spakar och sparar till biblioteket `assets/library.json`. Spakarna är data i `tools/<område>/params.json`; en ny spak i en generator ska också in där. Läs biblioteket och de sparade recepten när Patrik hänvisar till något han sparat.
+
 Kommandoradsvarianter:
 
 | Kommando | Gör |

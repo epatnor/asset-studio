@@ -15,6 +15,8 @@ Receptfält (alla utom name är valfria):
   conifer                 överstyr granens barr: width, lobes, lobeDepth, chunk, asymmetry, dryShare
   frond_texture           för granar: målad barratlas (standard enligt arten), false = solida grenar utan alfa
   preview                 rendera förhandsbild via Blender (standard false)
+  out_root                mapp under projektroten för resultatet (standard assets/trees); studion lägger
+                          förhandsvisningar i build/studio/trees
 
 Svarar med en rad JSON inklusive "checks" (anslutna grenar, inget under marken, fäst lövverk).
 """
@@ -105,7 +107,10 @@ def main():
     conifer = sp["foliage"]["type"] == "fronds"
     bark = recipe.get("bark", sp.get("bark", "bark_stylized_color"))
     leaves = recipe.get("leaves", sp.get("leaves", "leaf_atlas"))
-    out_dir = ROOT / "assets" / "trees" / name
+    out_root = (ROOT / recipe.get("out_root", "assets/trees")).resolve()
+    if ROOT not in out_root.parents:
+        sys.exit(json.dumps({"error": "out_root måste ligga under projektroten"}))
+    out_dir = out_root / name
     out_dir.mkdir(parents=True, exist_ok=True)
     glb = out_dir / f"{name}.gltf"
 
