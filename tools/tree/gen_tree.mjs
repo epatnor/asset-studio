@@ -106,7 +106,8 @@ if (fronds) {
     const d = [p[0] - q[0], p[1] - q[1], p[2] - q[2]], l = Math.hypot(...d) || 1;
     return { p, d: d.map((x) => x / l) };
   });
-  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips });
+  // Stamlösa: kortbollarna ställer sig själva på marken (mjukt golv per boll, se cardball.mjs)
+  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips, ground: !!sp.stemless });
   checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;
   checks.cards = foliage.cards;
@@ -119,7 +120,7 @@ if (fronds) {
   checks.crown_m = foliage.crownM;
   // Bollar måste sitta på en kvist; spetsbollar på den grenspets de täcker
   const near = (pts, c) => pts.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * c.radii[0]);
-  checks.floating_clusters = foliage.clusters.filter((c) => !near(c.tip ? tips.map((t) => t.p) : sk.twigs, c)).length;
+  checks.floating_clusters = sp.stemless ? 0 : foliage.clusters.filter((c) => !near(c.tip ? tips.map((t) => t.p) : sk.twigs, c)).length;
   checks.uncovered_twigs = foliage.uncovered;
 } else if (sp.foliage.type === 'crown') {
   // v4: sammanslagen molnlik kronmassa + täta små lövkort
@@ -148,11 +149,13 @@ if (fronds) {
   }).length;
 }
 // Stamlösa buskar: sänk hela formen så att den vilar på marken (lite nedsänkt så att den inte svävar)
-if (sp.stemless) {
+if (sp.stemless && sp.foliage.type === 'cardball') checks.resting_on_ground = true;
+else if (sp.stemless) {
   let minY = Infinity;
   for (const lod of foliage.lods) for (const g of [lod, lod.volume].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) minY = Math.min(minY, g.positions[i]);
   const dy = -minY - height * (sp.sink ?? 0.05);
-  for (const lod of foliage.lods) for (const g of [lod, lod.volume].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] += dy;
+  // Skuggformen (kortbollar) följer med, annars kastar den skugga från fel höjd
+  for (const lod of foliage.lods) for (const g of [lod, lod.volume, lod.shadow].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] += dy;
   checks.resting_on_ground = true;
 }
 checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs && !checks.floating_cards;

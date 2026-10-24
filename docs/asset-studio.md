@@ -2,7 +2,11 @@
 
 Status: fas 1 (trädstudion) byggd 2026-10-25. Starta med `node tools/studio/server.mjs` (eller launch-konfigurationen `studio`) och öppna http://localhost:8770/studio/.
 
-Det som finns: `tools/tree/params.json` (spakarna), `tools/studio/server.mjs` (API: generators, generate, textures, library), `studio/` (vy, panel med lil-gui, kontroller och siffror, texturminiatyrer, Fäst för jämförelse, Ångra och Gör om, Spara till biblioteket med miniatyr). Biblioteket är `assets/library.json`. Förhandsvisningar hamnar i `build/studio/` (de 40 senaste sparas).
+Det som finns: `tools/tree/params.json` (spakarna), `tools/studio/server.mjs` (API: generators, generate, textures, library), `studio/` (vy; egen panel med ett kort per del av tillgången, för träd Krona och Stam, med texturernas förhandsbilder och en miniatyrväljare i korten; kontroller och siffror; Fäst för jämförelse; Ångra och Gör om; Spara till biblioteket med miniatyr). Förhandsbilderna görs av `post_textures.py thumbs` i `build/studio/thumbs/`.
+
+Uppdatering 2026-10-25: header med flikar per tillgångstyp (`kinds` i params.json: Träd, Buske; Sten, Prop och Byggnadsdel är markerade som kommande tills de har egna spakar), verktygen i headern, och en footer med tillgångens siffror och renderingens kostnad (millisekunder per bild mätt synkront, ritanrop, trianglar inklusive skuggpass) jämfört med förra mätningen, med vad som ändrades. Kortet Rendering och skuggor: skugga på marken (skuggform, lövkorten eller av), skuggor inom trädet (fejkade i shadern, mjuka eller fulla), skuggkvalitet (1024, 2048, 4096 eller VSM) och mjukhet, ambient occlusion (GTAO), solens styrka och exponering.
+
+Raytracing finns inte i realtid i WebGL eller three.js. Det närmaste är en spårad stillbild (path tracing, t.ex. three-gpu-pathtracer) som ett fotoläge för miniatyrer och jämförelser; det är en möjlig senare fas, inte ett realtidsval i spelet. Biblioteket är `assets/library.json`. Förhandsvisningar hamnar i `build/studio/` (de 40 senaste sparas).
 
 ## Varför
 
@@ -64,7 +68,7 @@ Förhandsvisningar hamnar i `build/studio/` och städas bort. Bara det som spara
 ### 3. Studion (`studio/index.html`)
 
 - **Vy:** samma ljus, himmel och lövshader som visningen (`showcase/materials.js`, `world.js`), orbit och förstapersonsläge med musdrag. Mark med skugga, så att skuggformen syns.
-- **Panel:** spakarna från `params.json`, grupperade och hopfällbara. MVP: lil-gui (finns redan i three/addons och kräver inget bygge). Senare en egen panel i husets stil.
+- **Panel:** spakarna från `params.json`. En tillgång med flera delar får ett kort per del (`parts`: för träd Krona och Stam), med delens texturer som förhandsbilder överst i kortet. Grupper i korten är hopfällbara och kan visas bara när de gäller (`when`, t.ex. Draperi).
 - **Siffror och kontroller:** `checks.ok` som grön eller röd lampa, trianglar och alfatrianglar per LOD, silhuett, antal kort och bollar. Varningar på svenska, till exempel "3 kvistar sticker ut".
 - **Jämför:** "Fäst" lägger det aktuella trädet bredvid, så att det går att jämföra A och B (det vi gjort med uppställningar hela tiden). Ångra och gör om för spakändringar.
 - **Debugvyer** (enligt vegetationsguidens acceptanstest): trådram, bara korten, normaler, bollarna, skuggformen och LOD-nivå.

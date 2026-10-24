@@ -13,7 +13,7 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, readdir, rm, mkdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -95,11 +95,28 @@ async function generate({ generator = 'tree', recipe }) {
   return { ...result, url: `/${PREVIEWS}/${name}/${name}.gltf`, ms: Date.now() - t0 };
 }
 
+// Små förhandsbilder av texturerna för studions kort (build/studio/thumbs/), gjorda i ett anrop när de saknas
+const THUMBS = 'build/studio/thumbs', THUMB_PX = 160;
+async function ensureThumbs(names) {
+  await mkdir(path.join(ROOT, THUMBS), { recursive: true });
+  const thumbOf = (n) => path.join(ROOT, THUMBS, `${n}_${THUMB_PX}.jpg`), texOf = (n) => path.join(ROOT, 'assets/textures', `${n}.png`);
+  // Saknas, eller är texturen nyare än förhandsbilden
+  const missing = names.filter((n) => !existsSync(thumbOf(n)) || statSync(texOf(n)).mtimeMs > statSync(thumbOf(n)).mtimeMs);
+  if (!missing.length) return;
+  await new Promise((resolve) => {
+    const p = spawn('uv', ['run', '--quiet', '--no-project', '--python', '3.12', '--with', 'pillow==11.1.0', '--with', 'numpy==2.2.3',
+      'python', '-I', path.join(ROOT, 'tools/texture/post_textures.py'), 'thumbs', path.join(ROOT, THUMBS), String(THUMB_PX),
+      ...missing.map(texOf)], { cwd: ROOT });
+    p.on('close', resolve);
+  });
+}
+
 async function textures(kind) {
   const dir = path.join(ROOT, 'assets/textures');
   const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen)/ }[kind] ?? /./;
   const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw|normal)\b/.test(f)).map((f) => f.slice(0, -4));
-  return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png` }));
+  await ensureThumbs(names);
+  return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png`, thumb: `/${THUMBS}/${n}_${THUMB_PX}.jpg` }));
 }
 
 async function readLibrary() {

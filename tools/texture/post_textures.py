@@ -6,6 +6,7 @@
   atlas  <out.png> <a> <b> <c> <d>   packar fyra sprites till en 2x2-atlas
   gray   <in.png> <out.png>   gråskala för tintning (färgen sätts i materialet)
   soften <in.png> <out.png> [mängd]   lägre kontrast: fåror och skåror mjukare, stora former kvar (sömlös)
+  thumbs <utmapp> <px> <in.png> ...    små förhandsbilder (JPEG) för studion; alfa läggs på mörk bakgrund
 
 Kör med: uv run --no-project --python 3.12 --with pillow==11.1.0 --with numpy==2.2.3 python -I post_textures.py ...
 """
@@ -107,11 +108,27 @@ def soften(src, dst, amount=1.0):
     Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(dst)
     return {"out": dst, "amount": amount, "std_before": round(float(a.std()), 1), "std_after": round(float(out.std()), 1)}
 
+
+def thumbs(outdir, size, *srcs):
+    size = int(size)
+    made = []
+    for src in srcs:
+        im = Image.open(src).convert("RGBA")
+        im.thumbnail((size, size), Image.LANCZOS)
+        bg = Image.new("RGBA", im.size, (58, 62, 70, 255))
+        bg.alpha_composite(im)
+        dst = f"{outdir}/{src.rsplit('/', 1)[-1].rsplit('.', 1)[0]}_{size}.jpg"
+        bg.convert("RGB").save(dst, quality=85)
+        made.append(dst)
+    return {"made": len(made)}
+
 if __name__ == "__main__":
     cmd, *args = sys.argv[1:]
     if cmd == "atlas":
         print(json.dumps(atlas(args[0], *args[1:])))
     elif cmd == "soften":
         print(json.dumps(soften(*args)))
+    elif cmd == "thumbs":
+        print(json.dumps(thumbs(*args)))
     else:
         print(json.dumps({"tile": tile, "cutout": cutout, "gray": gray}[cmd](args[0], args[1])))

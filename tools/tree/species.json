@@ -585,7 +585,8 @@
     "petalbush": "petalbush",
     "serratebush": "serratebush",
     "cardtree": "cardtree",
-    "cardbirch": "cardbirch"
+    "cardbirch": "cardbirch",
+    "cardbush": "cardbush"
   },
   "maple": {
     "trunk": {
@@ -1899,5 +1900,95 @@
         "scale": 2
       }
     }
+  },
+  "cardbush": {
+    "trunk": {
+      "length": 0.12,
+      "radius": 0.03,
+      "sections": 2,
+      "segments": 7,
+      "gnarl": 0.1,
+      "photo": 0.0,
+      "flare": 0.2,
+      "roots": 0,
+      "lobes": 3,
+      "lobeAmp": 0.12,
+      "twist": 1.0
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          7
+        ],
+        "start": 0.0,
+        "angle": [
+          38,
+          14
+        ],
+        "length": 4.5,
+        "lenFalloff": 0.0,
+        "radius": 0.75,
+        "gnarl": 0.22,
+        "photo": 0.15,
+        "gravity": 0.04,
+        "sections": 5,
+        "segments": 5
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.5,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.3,
+        "photo": 0.2,
+        "gravity": 0.03,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "foliage": {
+      "type": "cardball",
+      "clusters": 6,
+      "ballsPerCluster": 1,
+      "ballScale": 1.6,
+      "minBall": 0.14,
+      "cardGroup": 3,
+      "cardSize": 0.6,
+      "cardsPerM2": 3.0,
+      "cardOffset": 0.6,
+      "cardGrid": 3,
+      "normalBlend": 1.0,
+      "normalOffset": 0,
+      "normalLift": 0.15,
+      "innerTint": [
+        0.34,
+        0.42,
+        0.36
+      ],
+      "bottomCool": [
+        0.6,
+        0.7,
+        0.85
+      ],
+      "bottomCoolStrength": 0.5,
+      "gradientFalloff": 0.8,
+      "tipBall": 0.2,
+      "tipCards": 3,
+      "tipCover": 0
+    },
+    "leaves": "leaf_oak",
+    "bark": "bark_painted",
+    "minTwigRadius": 0.3,
+    "leaf_tint": "#6FB04A",
+    "_doc": "Buske med kortbollar (Asset Studio): buskens korta flerstammiga skelett, små treor av lövkort, rena bollnormaler, skuggform."
   }
 }

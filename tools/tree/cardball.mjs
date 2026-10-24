@@ -74,6 +74,23 @@ export function buildCardBalls(twigs, o) {
     }
   }
 
+  // Stamlösa buskar (ground): bollarna ställs på marken (y = 0) med ett mjukt golv per boll. Höga bollar följer
+  // med rakt, men bollar nära marken pressas ihop i höjdled i stället för att hamna under den (ingen geometri
+  // eller vind under marken i onödan). groundLift (m) lyfter busken: de övre bollarna följer direkt, de nedre
+  // lossnar från marken först när lyftet når dem. groundSink: hur stor del av lövverkets räckvidd som får ligga i marken.
+  if (o.ground) {
+    const y0 = Math.min(...balls.map((b) => b.center[1]));
+    const meanR = balls.reduce((acc, b) => acc + b.radii[0], 0) / balls.length, k = 0.35 * meanR;
+    const softplus = (x) => (x > 20 * k ? x : k * Math.log1p(Math.exp(x / k)));
+    for (const b of balls) {
+      // Hur långt ner bollens lövkort når: spridningen i bollen plus kortets halva höjd (klasen fyller ~85 %)
+      const h = o.cardSize ? o.cardSize / 2 : (b.radii[0] / 0.85) * (o.cardScale ?? 1);
+      const reach = Math.max(b.radii[0], b.radii[0] * (o.cardOffset ?? 0) + 0.85 * h);
+      const floor = reach * (1 - (o.groundSink ?? 0.15)); // lägsta tillåtna centrum
+      b.center = [b.center[0], floor + softplus(b.center[1] - y0 + (o.groundLift ?? 0) - floor), b.center[2]];
+    }
+  }
+
   const crownMinY = Math.min(...balls.map((b) => b.center[1] - b.radii[0]));
   const crownMaxY = Math.max(...balls.map((b) => b.center[1] + b.radii[0]));
   const maxRadial = Math.max(...balls.map((b) => Math.hypot(b.center[0], b.center[2]) + b.radii[0]));
@@ -226,7 +243,8 @@ export function buildCardBalls(twigs, o) {
     return g;
   });
 
-  const uncovered = twigs.filter((p) => !balls.some((b) => dist(p, b.center) <= b.radii[0] * 1.05)).length;
+  // Stamlösa buskar har inga synliga kvistar (bollarna är flyttade från skelettet)
+  const uncovered = o.ground ? 0 : twigs.filter((p) => !balls.some((b) => dist(p, b.center) <= b.radii[0] * 1.05)).length;
   // Mått att kontrollera med kod: bollradie och kortens sida i meter (lövens storlek följer kortet)
   const cardM = balls.flatMap((b, i) => cards[i].map((c) => 2 * halfOf(b, c)));
   const mean = (a) => Math.round(a.reduce((s, x) => s + x, 0) / a.length * 100) / 100;
