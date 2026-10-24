@@ -83,6 +83,7 @@ const setPath = (obj, p, v) => {
 function valueOf(p) {
   let v = getPath(state, p.path);
   if (v === undefined && p.path.startsWith('recipe.')) v = state.spec[p.path.slice(7)];
+  if (v === undefined && p.fallback) v = valueOf(P.params.find((q) => q.path === p.fallback) ?? { path: p.fallback });
   if (Array.isArray(v) && p.type === 'intrange') v = v[0];
   return v ?? p.default ?? (p.type === 'bool' ? false : p.min ?? 0);
 }
@@ -219,7 +220,7 @@ for (const p of P.params) {
     if (p.type === 'texture') showTextures();
   };
   if (live) c.onChange((v) => { apply(v); applyViewAll(); });
-  else c.onFinishChange((v) => { apply(v); commit(); });
+  else c.onFinishChange((v) => { apply(v); refreshUi(); commit(); }); // refreshUi: spakar som följer en annan (fallback) uppdateras
   controllers.push([p, c]);
   if (p.type === 'seed') f.add({ nytt: () => {
     const v = Math.floor(Math.random() * 99999);

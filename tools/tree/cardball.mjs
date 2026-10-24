@@ -93,6 +93,8 @@ export function buildCardBalls(twigs, o) {
   // Kortets halva sida: cardSize (meter) ger samma kort och lövstorlek oavsett bollens storlek, annars
   // följer kortet bollen (cardScale). Klasen i atlasen fyller ungefär 85 % av halva sidan.
   const halfOf = (b, c) => (o.cardSize ? o.cardSize / 2 : b.radii[0] / 0.85 * (o.cardScale ?? 1)) * c.scale;
+  // Kortets halva bredd: cardWidth (meter) gör korten rektangulära (löven sträcks med), annars kvadratiska
+  const halfW = (b, c) => (o.cardWidth ? (o.cardWidth / 2) * c.scale : halfOf(b, c));
   // cardGroup 3: korten kommer i treor som skär varandra vinkelrätt (x, y, z) runt samma punkt, så att inget
   // kort hänger ensamt eller bara sitter i ett kors. groupJitter (radianer) vrider dem lite ur vinkel.
   const cpb = o.cardsPerBall ?? [6, 9];
@@ -176,7 +178,7 @@ export function buildCardBalls(twigs, o) {
     return add(p, mul(c.a, (u * 2 - 1) * wid));
   };
   const cardPos = (ball, c, h, u, v) => c.drape ? drapePos(ball, c, h, u, v)
-    : add(add(ball.center, c.off), add(mul(c.a, (u * 2 - 1) * h), mul(c.b, (v * 2 - 1) * h)));
+    : add(add(ball.center, c.off), add(mul(c.a, (u * 2 - 1) * halfW(ball, c)), mul(c.b, (v * 2 - 1) * h)));
   const lods = lodSpec.map(({ grid, keep }) => {
     const g = empty();
     balls.forEach((ball, bi) => {
@@ -233,13 +235,13 @@ export function buildCardBalls(twigs, o) {
   const cell = 0.05, hit = new Set();
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   balls.forEach((b, bi) => cards[bi].forEach((c) => {
-    const h = halfOf(b, c), rr = 0.85 * h, cc = add(b.center, c.off);
+    const h = halfOf(b, c), rr = 0.85 * h, wr = c.drape ? 1 : halfW(b, c) / h, cc = add(b.center, c.off);
     const n = Math.min(20000, Math.ceil((rr / cell) ** 2 * 4));
     for (let i = 0; i < n; i++) {
       const rad = rr * Math.sqrt((i + 0.5) / n), ang = i * 2.39996;
       // Draperier: samma skiva lagd på remsans böjda bana (u tvärs, v längs)
       const q = c.drape ? cardPos(b, c, h, 0.5 + 0.5 * (rad / h) * Math.cos(ang), 0.5 + 0.5 * (rad / h) * Math.sin(ang))
-        : add(cc, add(mul(c.a, rad * Math.cos(ang)), mul(c.b, rad * Math.sin(ang))));
+        : add(cc, add(mul(c.a, rad * wr * Math.cos(ang)), mul(c.b, rad * Math.sin(ang))));
       hit.add(`${Math.floor(q[0] / cell)},${Math.floor(q[1] / cell)}`);
       x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]);
     }

@@ -1,5 +1,5 @@
 {
-  "_doc": "Spakarna för träd i Asset Studio (docs/asset-studio.md). path: var värdet bor. spec.* = arten (som i species.json; skickas som species/canopy i receptet), recipe.* = receptets fält, view.* = bara visningen (ändras direkt i shadern, trädet byggs inte om). Standardvärdet tas från arten; default används om arten saknar värdet. type: number, int, bool, select, color, seed, texture, intrange (heltalsintervall [min, max]; spaken styr min och behåller bredden).",
+  "_doc": "Spakarna för träd i Asset Studio (docs/asset-studio.md). path: var värdet bor. spec.* = arten (som i species.json; skickas som species/canopy i receptet), recipe.* = receptets fält, view.* = bara visningen (ändras direkt i shadern, trädet byggs inte om). Standardvärdet tas från arten; default används om arten saknar värdet. type: number, int, bool, select, color, seed, texture, intrange (heltalsintervall [min, max]; spaken styr min och behåller bredden). fallback: en annan spaks sökväg vars värde visas så länge den här inte är satt.",
   "generator": "tree",
   "label": "Träd och buskar",
   "species": ["cardtree", "cardbirch"],
@@ -42,7 +42,8 @@
     { "path": "spec.foliage.ballScale", "group": "crown", "label": "Bollstorlek", "type": "number", "min": 0.8, "max": 3, "step": 0.05 },
     { "path": "spec.foliage.minBall", "group": "crown", "label": "Minsta boll", "type": "number", "min": 0.03, "max": 0.3, "step": 0.01 },
     { "path": "spec.foliage.cardGroup", "group": "crown", "label": "Korttyp", "type": "select", "options": { "Enstaka": "", "Treor (x, y, z)": 3, "Hängande": "hang", "Draperi": "drape" }, "default": "" },
-    { "path": "spec.foliage.cardSize", "group": "crown", "label": "Kortstorlek (m)", "type": "number", "min": 0.4, "max": 4, "step": 0.05, "default": 1.7, "help": "Löven på arket skalar med kortet" },
+    { "path": "spec.foliage.cardSize", "group": "crown", "label": "Kortets höjd (m)", "type": "number", "min": 0.4, "max": 4, "step": 0.05, "default": 1.7, "help": "Löven på arket skalar med kortet. Hängande kort: längden på gardinen" },
+    { "path": "spec.foliage.cardWidth", "group": "crown", "label": "Kortets bredd (m)", "type": "number", "min": 0.3, "max": 4, "step": 0.05, "fallback": "spec.foliage.cardSize", "help": "Följer höjden tills du drar i den (kvadratiska kort). Smalare eller bredare än höjden sträcker löven" },
     { "path": "spec.foliage.cardsPerM2", "group": "crown", "label": "Täthet (kort/m²)", "type": "number", "min": 0.1, "max": 2.5, "step": 0.05, "default": 1.0 },
     { "path": "spec.foliage.cardOffset", "group": "crown", "label": "Spridning i bollen", "type": "number", "min": 0, "max": 1, "step": 0.01 },
     { "path": "spec.foliage.tipBall", "group": "crown", "label": "Spetsbollar (radie m)", "type": "number", "min": 0, "max": 1.5, "step": 0.05, "default": 0, "help": "0 = av. Små bollar på grenspetsar som annars syns" },
