@@ -60,25 +60,57 @@ const patchMaterial = createMaterialPatcher(THREE, { wind, sunDir });
 const leaf = patchMaterial.uniforms;
 const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder));
 
-// Efterbehandling (bara när ambient occlusion är på): render -> GTAO -> tonmappning
-let composer = null;
+// Efterbehandling (bara när ambient occlusion är på): render -> GTAO -> tonmappning.
+// GTAO ritar annars djup och normaler med ett eget material som inte ser lövens alfa, så att korten blir
+// mörka fyrkanter. Därför ritas djupet här med djupmaterial som klipper bort det genomskinliga (som skuggorna
+// gör), och GTAO räknar fram normalerna ur det djupet. Skuggformen och himlen ritar inget djup och hoppas över.
+let composer = null, aoDepth = null;
+const depthMats = new WeakMap();
+const depthMatFor = (m) => {
+  if (!depthMats.has(m)) depthMats.set(m, new THREE.MeshDepthMaterial({ map: m.map ?? null, alphaTest: m.alphaTest || 0, side: m.side }));
+  return depthMats.get(m);
+};
+function renderAoDepth() {
+  const swaps = [];
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    swaps.push([o, o.material, o.visible]);
+    if (o.material.colorWrite === false || o.material.depthWrite === false) o.visible = false;
+    else o.material = depthMatFor(o.material);
+  });
+  renderer.setRenderTarget(aoDepth);
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  for (const [o, m, v] of swaps) { o.material = m; o.visible = v; }
+}
 function setAO(on) {
-  if (!on) { composer?.dispose(); composer = null; return; }
+  if (!on) { composer?.dispose(); aoDepth?.dispose(); composer = aoDepth = null; return; }
   if (composer) return;
+  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+  aoDepth = new THREE.WebGLRenderTarget(size.x, size.y, { depthTexture: new THREE.DepthTexture(size.x, size.y) });
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const ao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+  // Djupet sätts efteråt: i three r186 kraschar konstruktorn om det ges direkt (den läser ett internt mål
+  // som då inte finns). Utan normaltextur räknar GTAO fram normalerna ur djupet.
+  const ao = new GTAOPass(scene, camera, size.x, size.y);
+  ao.setGBuffer(aoDepth.depthTexture, undefined);
   ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1.5 });
   composer.addPass(ao);
   composer.addPass(new OutputPass());
 }
-const draw = () => (composer ? composer.render() : renderer.render(scene, camera));
+const draw = () => {
+  if (!composer) return renderer.render(scene, camera);
+  renderAoDepth();
+  composer.render();
+};
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer?.setSize(innerWidth, innerHeight);
+  if (aoDepth) { const size = renderer.getDrawingBufferSize(new THREE.Vector2()); aoDepth.setSize(size.x, size.y); }
 });
 const timer = new THREE.Timer();
 let paused = false;
