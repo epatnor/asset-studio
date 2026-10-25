@@ -204,9 +204,23 @@ def src_planks(n, p, rng):
     return col * board[..., None] * 0.85 + col * 0.15 * board[..., None] + hexrgb(p.get("dark", "#5A3A22")) * 0.4 * (1 - board[..., None]), h * board
 
 
+def resize_wrap(a, m):
+    # Omskalning som behandlar texturen som upprepad: kanterna lindas runt innan och skärs bort efter, annars
+    # ser Pillow bildkanten som ett slut och resultatet får en söm där texturen upprepas
+    n = a.shape[0]
+    pad = max(4, n // 16)
+    big = np.pad(a, ((pad, pad), (pad, pad), (0, 0)), mode="wrap")
+    scale = m / n
+    size = int(round(big.shape[0] * scale))
+    chans = [np.asarray(Image.fromarray(big[..., c].astype(np.float32), "F").resize((size, size), Image.LANCZOS), np.float32) for c in range(a.shape[2])]
+    out = np.stack(chans, -1)
+    o = int(round(pad * scale))
+    return np.clip(out[o:o + m, o:o + m], 0, 1)
+
+
 def src_image(n, p, rng):
-    im = Image.open(TEX / f"{p.get('name', 'bark_painted')}.png").convert("RGBA").resize((n, n), Image.LANCZOS)
-    a = np.asarray(im, np.float32) / 255
+    im = Image.open(TEX / f"{p.get('name', 'bark_painted')}.png").convert("RGBA")
+    a = resize_wrap(np.asarray(im, np.float32) / 255, n)
     lum = a[..., :3] @ np.array([0.2126, 0.7152, 0.0722], np.float32)
     return a, lum
 
@@ -290,12 +304,9 @@ def step(img, s, n):
     elif op == "repeat":
         t = max(1, int(s.get("times", 2)))
         if t > 1:
-            m = max(8, n // t)
-            small = np.asarray(Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8)).resize((m, m), Image.LANCZOS), np.float32) / 255
-            tiled = np.tile(small, (t + 1, t + 1, 1))[:n, :n]
-            if tiled.shape[0] < n:
-                tiled = np.asarray(Image.fromarray((tiled * 255).astype(np.uint8)).resize((n, n), Image.LANCZOS), np.float32) / 255
-            return tiled
+            # Exakt n/t per kopia (även när n inte är jämnt delbart), skalat med kanterna lindade runt
+            m = int(np.ceil(n / t))
+            return np.tile(resize_wrap(img, m), (t, t, 1))[:n, :n] if m * t == n else resize_wrap(np.tile(resize_wrap(img, m), (t, t, 1)), n)
     return np.concatenate([np.clip(rgb, 0, 1), alpha], -1) if alpha.size else np.clip(rgb, 0, 1)
 
 

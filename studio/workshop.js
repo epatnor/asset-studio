@@ -50,7 +50,12 @@ export async function createWorkshop({ api, el, side, view, footer }) {
     const cx = (innerWidth - 360) / 2 * dpr + viewState.panX * dpr, cy = (innerHeight / 2) * dpr + viewState.panY * dpr;
     const x0 = cx - total / 2, y0 = cy - total / 2;
     ctx.imageSmoothingEnabled = viewState.zoom < 2;
-    for (let i = 0; i < viewState.tiles; i++) for (let j = 0; j < viewState.tiles; j++) ctx.drawImage(img, x0 + i * size, y0 + j * size, size, size);
+    // Hela ytan ritas med ett upprepat mönster: kopior ritade var för sig på decimalpositioner kantutjämnas mot
+    // bakgrunden och ger ett tunt streck mellan sig, som ser ut som en söm fast texturen är sömlös
+    const pattern = ctx.createPattern(img, 'repeat');
+    pattern.setTransform(new DOMMatrix().translateSelf(x0, y0).scaleSelf(s, s));
+    ctx.fillStyle = pattern;
+    ctx.fillRect(x0, y0, total, total);
     if (viewState.seams && viewState.tiles > 1) {
       ctx.strokeStyle = 'rgba(255, 220, 80, 0.55)';
       ctx.setLineDash([6 * dpr, 6 * dpr]);
