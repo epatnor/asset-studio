@@ -1,6 +1,31 @@
 # Plan: Texturverkstaden
 
-Status: T1 byggd 2026-10-25 (fliken Texturer i studion, `tools/texture/workshop.py`, `tools/texture/workshop.json`, `studio/workshop.js`); resten är plan. Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och allt annat som behöver texturer.
+Status: T1, T1b och T3a byggda 2026-10-25, och det mesta av T3c, T2, T3b, T4 och T5 (se Faser och roadmapen för det som är kvar). Filer: `tools/texture/workshop.py` (motorn), `tools/texture/workshop.json` (alla spakar), `studio/workshop.js` (panelen), `studio/lab3d.js` (materiallabbet i 3D). Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och allt annat som behöver texturer.
+
+## Så ser den ut (byggd)
+
+Upplägget följer verktyg som Substance Sampler och Quixel Mixer: bibliotek till vänster, modellen i mitten, egenskaper till höger.
+
+**Biblioteket** (vänster) har tumnaglar i fyra flikar, med sökruta:
+- **Material:** färdiga material (`presets` i `workshop.json`) i grupperna Sten, Trä och bark, Mur och tak, Mark, Blandlager, Former och AI (Krea). Ett klick lägger materialet på modellen.
+- **Texturer:** alla texturer i `assets/textures/`, grupperade (bark, mark, byggnader, löv, mossa, sten). Ett klick lägger texturen på modellen; **+ Lager** blandar in den ovanpå (kortet Blandning) och **+ Ingr.** gör den till en ingrediens. Texturer med genomskinlighet får urklipp direkt.
+- **Filter:** alla steg, med en tumnagel som visar filtret på en kullersten. Ett klick lägger filtret sist i stapeln (Lager skapar en mossingrediens om ingen finns).
+- **Mina:** det du sparat i verkstaden; ett klick öppnar receptet igen.
+
+**Mitten** startar i 3D med materialet på en modell som passar profilen (bark på cylindern, sten på drakstatyn, mark på terrängbiten) tills man själv väljer modell. Verktygsraden visar materialets namn (och "ändrad"), 2D eller 3D, modell, ljus, vridbord och avstånd; under Avancerat projektion, exponering, miljöreflexer och trådram. 2D visar en karta i taget upprepad, med sömmarna markerade.
+
+**Panelen** (höger) har hopfällbara kort. Det vanliga syns direkt; allt annat ligger under **Avancerat**, i Ytegenskaper som undermenyer per grupp:
+
+| Kort | Direkt | Under Avancerat |
+|---|---|---|
+| Bas | typ, de viktigaste spakarna, frö, färger; knappen Varianter (fyra frön) | resten av basens spakar |
+| Ingredienser (hopfällt) | under-texturer med miniatyr: procedurella (Redigera öppnar dem med brödsmulor) eller sparade texturer | |
+| Filter | stapeln: av och på, flytta, ta bort; nytt filter ur listan eller biblioteket | filtrets finare spakar |
+| Ytegenskaper | meter per upprepning, normalkarta och styrka, ruffighet och variation, AO, metall | Kartorna i detalj; Form (förskjutning, parallax, bump); Ljus (emission, alfa, transmission, SSS); Ytskikt (specular, lack, sheen, anisotropi, iridescens); Detaljkarta; Upprepning och stora ytor; Texturinställningar |
+| Blandning | lager (Mossa, Snö, Smuts nerifrån, Lav på norrsidan, Nötta kanter, eller en textur från biblioteket): textur, färgton, täckning, riktning, vinkelbredd, fördjupningar först | skärpa, brus, höjd i modellen, kanter eller skrymslen, skala, ruffighet, utjämnad och egen relief |
+| Spara | profil, namn, taggar, storlek | vilka kartor som sparas, ORM-packning, WebP |
+
+Ytegenskaper, Blandning och Spara gäller hela texturen och döljs medan en ingrediens redigeras. Spakar märkta `client` i `workshop.json` ändrar bara 3D-vyn; övriga räknar om kartorna (cachat, så att bara det som ändrats räknas om). `workshop.json` formateras med `tools/texture/write_workshop.py` (en spak eller ett material per rad).
 
 ## Varför
 
@@ -215,7 +240,7 @@ Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet 
 
 ## Frågor till Patrik
 
-0. **Drakstatyn:** hur tar vi fram den (se svaret i chatten 2026-10-25: Tripo, en färdig CC0-modell eller en enkel egen generator)?
+0. ~~Drakstatyn~~: beställd från Tripo P2 (`assets/imported/dragon_statue`), används i labbet.
 
 1. **Terrängen:** ska verkstadens lagerregler (lutning, höjd, fukt) kunna sparas direkt som biomregler i Tinkertown 2, eller räcker det att texturerna och deras höjdkartor delas?
 2. **Extern generator:** räcker OpenRouter (som Apparition), och finns det en modell du föredrar? Varje körning bekräftas med pris.

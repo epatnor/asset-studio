@@ -1,42 +1,122 @@
-// Texturverkstaden i Asset Studio (docs/texture-workshop.md): en textur är ett recept, en källa och en stapel steg.
-// Spakarna kommer från tools/texture/workshop.json; förhandsvisning och sparande går via studioserverns API.
+// Texturverkstaden i Asset Studio (docs/texture-workshop.md): ett material är ett recept, med en källa, en stapel
+// steg, ingredienser (under-texturer), materialets kartor och blandningslager. Spakarna kommer från
+// tools/texture/workshop.json; förhandsvisning och sparande går via studioserverns API. 2D-vyn visar kartorna
+// upprepade, 3D-vyn (lab3d.js) materialet på testmodeller. Detaljer ligger under Avancerat i varje kort.
+
+import { createLab, MODELS, LIGHTS } from './lab3d.js';
 
 const fmt = (n, d = 0) => (n ?? 0).toLocaleString('sv-SE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const getPath = (o, key) => key.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
+const setPath = (o, key, v) => { const ks = key.split('.'); const last = ks.pop(); let a = o; for (const k of ks) a = a[k] ??= {}; a[last] = v; };
+const ING_NAME = /^[a-z0-9åäö_-]{1,24}$/i;
+const MAP_LABELS = { color: 'Färg', height: 'Höjd', normal: 'Normal', rough: 'Ruffighet', ao: 'AO', metal: 'Metall', emissive: 'Emission' };
 
-export async function createWorkshop({ api, el, side, view, footer }) {
+const LIB_W = 300, SIDE_W = 372; // bibliotekets och panelens bredd (index.html)
+
+export async function createWorkshop({ api, el, side, view, footer, lib, getAssetUrl }) {
   const W = await api('/api/workshop');
-  const allTextures = await api('/api/textures?kind=all');
-  const recipe = { source: { type: 'bark' }, steps: [{ op: 'range' }] };
-  const valueIn = (obj, p) => obj[p.key] ?? p.default;
+  let allTextures = await api('/api/textures?kind=all');
+  const doc = { source: { type: 'stone' }, steps: [{ op: 'range' }], inputs: {}, material: {}, blend: { layers: [] } };
+  let path = []; // ingrediensen som redigeras: namn för namn från roten
+  const cur = () => path.reduce((r, n) => r.inputs[n].recipe, doc);
+  const scope = () => {
+    let sc = { ...doc.inputs }, r = doc;
+    for (const n of path) { r = r.inputs[n].recipe; sc = { ...sc, ...(r.inputs ?? {}) }; }
+    return sc;
+  };
+  const MAT_PARAMS = W.material.groups.flatMap((g) => g.params);
+  const CLIENT_KEYS = MAT_PARAMS.filter((p) => p.client).map((p) => p.key);
+  const fullMaterial = () => { const m = clone(doc.material); for (const p of MAT_PARAMS) if (getPath(m, p.key) === undefined) setPath(m, p.key, p.default); return m; };
+  const pyMaterial = () => {
+    // Bara det som påverkar bilderna skickas till servern, så att en spak som bara gäller 3D-vyn inte räknar om
+    const m = fullMaterial();
+    for (const k of CLIENT_KEYS) { const ks = k.split('.'); if (ks.length === 1) delete m[k]; else if (m[ks[0]]) delete m[ks[0]][ks[1]]; }
+    return m;
+  };
 
-  // --- Förhandsvisning: textur upprepad med zoom och panorering, sömmarna markerade ---
+  // --- Vyerna: 2D (kartorna upprepade) och 3D (materiallabbet) ---
   const canvas = el('canvas');
   view.append(canvas);
   const ctx = canvas.getContext('2d');
-  const viewState = { zoom: 1, panX: 0, panY: 0, tiles: 3, seams: true, img: null };
+  const lab = createLab({ getAssetUrl });
+  lab.setInsets(LIB_W, SIDE_W);
+  lab.canvas.style.display = 'none';
+  view.append(lab.canvas);
+  const vs = { mode: '2d', map: 'color', zoom: 1, panX: 0, panY: 0, tiles: 3, seams: true, img: null, model: null };
+  let maps = {};
+
   const bar = el('div', 'wbar glass');
-  const tilesSel = el('select');
-  for (const t of [1, 3, 5]) { const o = el('option', null, `${t} × ${t}`); o.value = t; tilesSel.append(o); }
-  tilesSel.value = 3;
-  tilesSel.onchange = () => { viewState.tiles = Number(tilesSel.value); fit(); };
-  const seamBox = el('input', 'switch');
-  seamBox.type = 'checkbox'; seamBox.checked = true;
-  seamBox.onchange = () => { viewState.seams = seamBox.checked; draw(); };
+  const seg = el('div', 'seg');
+  const b2 = el('button', 'on', '2D'), b3 = el('button', null, '3D');
+  b2.onclick = () => setMode('2d'); b3.onclick = () => setMode('3d');
+  seg.append(b2, b3);
+  const sel = (opts, value, onchange, title) => {
+    const s = el('select');
+    for (const [v, l] of opts) { const o = el('option', null, l); o.value = v; s.append(o); }
+    s.value = value; s.onchange = () => onchange(s.value);
+    if (title) s.title = title;
+    return s;
+  };
+  const sw = (checked, onchange, title) => { const b = el('input', 'switch'); b.type = 'checkbox'; b.checked = checked; b.onchange = () => onchange(b.checked); if (title) b.title = title; return b; };
+  const mapSel = sel(Object.entries(MAP_LABELS), 'color', (v) => { vs.map = v; showMap(); }, 'Vilken karta som visas');
+  const tilesSel = sel([[1, '1 × 1'], [3, '3 × 3'], [5, '5 × 5']], 3, (v) => { vs.tiles = Number(v); fit(); });
   const zoomOut = el('span', 'zoom');
   const fitBtn = el('button', null, 'Rama in');
-  fitBtn.onclick = fit;
-  bar.append(el('span', null, 'Upprepning'), tilesSel, el('span', null, 'Sömmar'), seamBox, zoomOut, fitBtn);
-  view.append(bar);
+  fitBtn.onclick = () => (vs.mode === '2d' ? fit() : lab.setDistance('fit'));
+  const g2 = el('span', 'grp');
+  g2.append(mapSel, el('span', null, 'Upprepning'), tilesSel, el('span', null, 'Sömmar'), sw(true, (v) => { vs.seams = v; draw(); }), zoomOut);
+  const modelSel = sel(Object.entries(MODELS).map(([k, v]) => [k, v.label]), 'sphere', (v) => { vs.model = v; setModel(v); });
+  const lightSel = sel(Object.entries(LIGHTS).map(([k, v]) => [k, v.label]), 'sun', (v) => lab.setLight(v));
+  const distSel = sel([['fit', 'Ramad'], ['5', '5 m'], ['20', '20 m'], ['60', '60 m']], 'fit', (v) => lab.setDistance(v), 'Avstånd: så ser texturen ut på håll (mipmappar, upprepning)');
+  const g3 = el('span', 'grp');
+  const advBtn = el('button', null, 'Avancerat ▾');
+  const pop = el('div', 'popover glass');
+  const popRow = (label, input) => { const r = el('div', 'row span2'); r.append(el('label', null, label), input); pop.append(r); };
+  const range = (min, max, step, value, oninput) => { const r = el('input'); r.type = 'range'; Object.assign(r, { min, max, step, value }); r.oninput = () => oninput(Number(r.value)); return r; };
+  popRow('Projektion', sel([['auto', 'Auto (triplanar på statyn)'], ['uv', 'UV'], ['tri', 'Triplanar']], 'auto', (v) => lab.setProjection(v)));
+  popRow('Exponering', range(0.4, 2.5, 0.05, 1, (v) => lab.setExposure(v)));
+  popRow('Miljöreflexer', range(0, 3, 0.05, 1, (v) => lab.setEnv(v)));
+  popRow('Trådram', sw(false, (v) => lab.setWire(v)));
+  advBtn.onclick = () => pop.classList.toggle('open');
+  g3.append(modelSel, lightSel, el('span', null, 'Vridbord'), sw(false, (v) => lab.setTurntable(v)), distSel, advBtn);
+  const undoBtn = el('button', null, 'Ångra'), redoBtn = el('button', null, 'Gör om');
+  const nameTag = el('span', 'curname');
+  bar.append(seg, nameTag, g2, g3, fitBtn, undoBtn, redoBtn);
+  view.append(bar, pop);
+  const varBox = el('div', 'wvar glass');
+  view.append(varBox);
+
+  function setMode(m) {
+    vs.mode = m;
+    b2.classList.toggle('on', m === '2d'); b3.classList.toggle('on', m === '3d');
+    g2.style.display = m === '2d' ? '' : 'none';
+    g3.style.display = m === '3d' ? '' : 'none';
+    pop.classList.remove('open');
+    canvas.style.display = m === '2d' ? 'block' : 'none';
+    note2d.style.display = m === '2d' ? '' : 'none';
+    if (m === '3d') { lab.show(); pushToLab(); } else { lab.hide(); resize(); }
+  }
+  async function setModel(id) {
+    status.textContent = 'Laddar modellen…';
+    try { await lab.setModel(id); status.textContent = ''; } catch (e) { status.textContent = e.message; }
+  }
+  function pushToLab() {
+    if (maps.color) lab.setMaps(maps);
+    lab.setMaterial(fullMaterial());
+    lab.setLayers(doc.blend.layers);
+  }
+
   function resize() {
     canvas.width = innerWidth * devicePixelRatio; canvas.height = innerHeight * devicePixelRatio;
     canvas.style.width = `${innerWidth}px`; canvas.style.height = `${innerHeight}px`;
     draw();
   }
   function fit() {
-    if (!viewState.img) return;
-    const area = viewState.img.width * viewState.tiles, avail = Math.min(innerWidth - 400, innerHeight - 160);
-    viewState.zoom = Math.max(0.05, avail / area);
-    viewState.panX = 0; viewState.panY = 0;
+    if (!vs.img) return;
+    const area = vs.img.width * vs.tiles, avail = Math.min(innerWidth - LIB_W - SIDE_W - 40, innerHeight - 160);
+    vs.zoom = Math.max(0.05, avail / area);
+    vs.panX = 0; vs.panY = 0;
     draw();
   }
   function draw() {
@@ -44,68 +124,91 @@ export async function createWorkshop({ api, el, side, view, footer }) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#2b2f36';
     ctx.fillRect(0, 0, w, h);
-    const img = viewState.img;
+    const img = vs.img;
     if (!img) return;
-    const s = viewState.zoom * dpr, size = img.width * s, total = size * viewState.tiles;
-    const cx = (innerWidth - 360) / 2 * dpr + viewState.panX * dpr, cy = (innerHeight / 2) * dpr + viewState.panY * dpr;
+    const s = vs.zoom * dpr, size = img.width * s, total = size * vs.tiles;
+    const cx = (LIB_W + (innerWidth - LIB_W - SIDE_W) / 2) * dpr + vs.panX * dpr, cy = (innerHeight / 2) * dpr + vs.panY * dpr;
     const x0 = cx - total / 2, y0 = cy - total / 2;
-    ctx.imageSmoothingEnabled = viewState.zoom < 2;
+    ctx.imageSmoothingEnabled = vs.zoom < 2;
     // Hela ytan ritas med ett upprepat mönster: kopior ritade var för sig på decimalpositioner kantutjämnas mot
     // bakgrunden och ger ett tunt streck mellan sig, som ser ut som en söm fast texturen är sömlös
     const pattern = ctx.createPattern(img, 'repeat');
     pattern.setTransform(new DOMMatrix().translateSelf(x0, y0).scaleSelf(s, s));
     ctx.fillStyle = pattern;
     ctx.fillRect(x0, y0, total, total);
-    if (viewState.seams && viewState.tiles > 1) {
+    if (vs.seams && vs.tiles > 1) {
       ctx.strokeStyle = 'rgba(255, 220, 80, 0.55)';
       ctx.setLineDash([6 * dpr, 6 * dpr]);
       ctx.lineWidth = dpr;
-      for (let k = 1; k < viewState.tiles; k++) {
+      for (let k = 1; k < vs.tiles; k++) {
         ctx.beginPath(); ctx.moveTo(x0 + k * size, y0); ctx.lineTo(x0 + k * size, y0 + total); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(x0, y0 + k * size); ctx.lineTo(x0 + total, y0 + k * size); ctx.stroke();
       }
       ctx.setLineDash([]);
     }
-    zoomOut.textContent = `${fmt(viewState.zoom * 100)} %`;
+    zoomOut.textContent = `${fmt(vs.zoom * 100)} %`;
   }
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    viewState.zoom = Math.min(16, Math.max(0.05, viewState.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+    vs.zoom = Math.min(16, Math.max(0.05, vs.zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
     draw();
   }, { passive: false });
   let drag = null;
-  canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, px: viewState.panX, py: viewState.panY }; canvas.setPointerCapture(e.pointerId); });
-  canvas.addEventListener('pointermove', (e) => { if (!drag) return; viewState.panX = drag.px + e.clientX - drag.x; viewState.panY = drag.py + e.clientY - drag.y; draw(); });
+  canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, px: vs.panX, py: vs.panY }; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener('pointermove', (e) => { if (!drag) return; vs.panX = drag.px + e.clientX - drag.x; vs.panY = drag.py + e.clientY - drag.y; draw(); });
   canvas.addEventListener('pointerup', () => { drag = null; });
-  addEventListener('resize', resize);
+  addEventListener('resize', () => { if (vs.mode === '2d') resize(); });
+  const note2d = el('div', 'wnote');
+  view.append(note2d);
+  let firstFit = true;
+  function showMap() {
+    const url = maps[vs.map];
+    if (!url) { vs.img = null; draw(); note2d.textContent = maps.color ? `${MAP_LABELS[vs.map]} är avslagen i materialet` : ''; return; }
+    note2d.textContent = '';
+    const img = new Image();
+    img.onload = () => { vs.img = img; if (firstFit) { fit(); firstFit = false; } else draw(); };
+    img.src = url;
+  }
 
-  // --- Uppdatering: när en spak släpps räknas förhandsvisningen om (cachad per recept på servern) ---
-  let latest = 0, firstFit = true;
-  const status = el('span');
+  // --- Förhandsvisning: räknas när en spak släpps; långa jobb (Krea) följs tills de är klara ---
+  async function preview(recipe) {
+    let res = await api('/api/texture/preview', { recipe });
+    while (res.pending) {
+      status.textContent = `${res.krea ? 'Krea målar' : 'Räknar'}… ${fmt((Date.now() - res.since) / 1000)} s`;
+      await new Promise((ok) => setTimeout(ok, 1500));
+      res = await api(`/api/texture/job?id=${res.job}`);
+    }
+    return res;
+  }
+  const levelRecipe = (size = 512) => ({ source: cur().source, steps: cur().steps, inputs: scope(), material: pyMaterial(), size });
+  let latest = 0;
   async function update() {
     const id = ++latest;
     status.textContent = 'Räknar…';
-    const res = await api('/api/texture/preview', { recipe: { ...recipe, size: 512 } });
+    const res = await preview(levelRecipe());
     if (id !== latest) return;
     if (res.error) { status.textContent = 'Fel'; stats.innerHTML = `<span class="bad">${res.error}</span>`; return; }
-    const img = new Image();
-    img.onload = () => {
-      if (id !== latest) return;
-      viewState.img = img;
-      if (firstFit) { fit(); firstFit = false; } else draw();
-      status.textContent = '';
-      showChecks(res);
-    };
-    img.src = res.url;
+    maps = res.maps ?? {};
+    status.textContent = '';
+    // En textur med genomskinlighet (löv, dekaler) får urklipp direkt när den läggs på modellen
+    if (autoAlpha && res.alpha && (doc.material.alpha?.mode ?? 'off') === 'off') { setPath(doc.material, 'alpha.mode', 'cutout'); renderMaterial(); }
+    autoAlpha = false;
+    showChecks(res);
+    showMap();
+    if (vs.mode === '3d') pushToLab();
+    refreshIngredientThumbs();
   }
   const stats = el('div', 'vals');
+  const status = el('span');
   function showChecks(res) {
     const c = res.checks ?? {};
     stats.innerHTML = [
-      `<span>Söm <b class="${c.seamless ? 'good' : 'bad'}">${c.seamless ? 'sömlös' : 'syns'} (${c.seam})</b></span>`,
+      `<span title="Skillnaden över skarven jämfört med skillnaderna nära kanten">Söm <b class="${c.seamless ? 'good' : 'bad'}">${c.seamless ? 'sömlös' : 'syns'} (${c.seam})</b></span>`,
+      `<span title="Andel av variationen i små former (stilguiden vill låg frekvens)">Små former <b class="${c.low_frequency ? 'good' : 'bad'}">${fmt((c.high_freq ?? 0) * 100)} %</b></span>`,
       `<span>Utanför paletten <b>${fmt((c.off_palette ?? 0) * 100)} %</b></span>`,
       `<span>Medelfärg <i class="swatch" style="background:${c.mean}"></i><b>${c.mean}</b></span>`,
       `<span>Valörer <b>${fmt((c.value_range?.[0] ?? 0) * 100)}–${fmt((c.value_range?.[1] ?? 0) * 100)} %</b></span>`,
+      c.halo !== undefined ? `<span title="Kantens ljushet mot det helt synliga; positivt = ljus kant">Halo <b class="${c.halo > 0.08 ? 'bad' : 'good'}">${c.halo}</b></span>` : '',
       `<span>Räknetid <b>${res.cached ? 'cachad' : `${fmt(res.ms / 1000, 1)} s`}</b></span>`,
     ].join('');
   }
@@ -114,38 +217,81 @@ export async function createWorkshop({ api, el, side, view, footer }) {
   footer.append(Object.assign(el('div', 'block'), { innerHTML: '<b>Status</b>' }));
   footer.lastChild.append(status);
 
+  // --- Ångra och gör om: en ögonblicksbild av hela receptet per ändring ---
+  const history = [clone({ ...doc, path })];
+  let hpos = 0;
+  function snapshot() {
+    history.length = hpos + 1;
+    history.push(clone({ ...doc, path }));
+    if (history.length > 80) history.shift();
+    hpos = history.length - 1;
+  }
+  function restore(k) {
+    hpos = k;
+    const s = clone(history[k]);
+    path = s.path ?? [];
+    delete s.path;
+    Object.assign(doc, s);
+    renderMaterial(); renderLayers(); renderAll();
+    update();
+  }
+  undoBtn.onclick = () => { if (hpos > 0) restore(hpos - 1); };
+  redoBtn.onclick = () => { if (hpos < history.length - 1) restore(hpos + 1); };
+  let curName = '', edited = false;
+  const showName = () => { nameTag.textContent = curName ? `${curName}${edited ? ' (ändrad)' : ''}` : ''; };
+  const commit = () => { snapshot(); edited = true; showName(); update(); };
+  const commitLook = () => { snapshot(); edited = true; showName(); lab.setMaterial(fullMaterial()); lab.setLayers(doc.blend.layers); };
+
   // --- Spakar ---
-  function control(p, get, set, onCommit) {
+  const inputNames = () => Object.keys(scope()).filter((n) => !path.includes(n));
+  const defaultOf = (o, k) => {
+    const all = [...MAT_PARAMS, ...W.blend.params, ...(W.sources[o?.type]?.params ?? []), ...(W.steps[o?.op]?.params ?? [])];
+    return all.find((q) => q.key === k)?.default;
+  };
+  function control(p, obj, onCommit) {
+    const get = () => { const v = getPath(obj(), p.key); return v === undefined ? p.default : v; };
+    const set = (v) => setPath(obj(), p.key, v);
     const row = el('div', 'row');
     if (p.help) row.title = p.help;
     const label = el('label', null, p.label);
-    const sync = [];
-    if (p.type === 'select' || p.type === 'texture') {
+    let sync = () => {};
+    if (p.type === 'select' || p.type === 'texture' || p.type === 'input') {
       row.classList.add('span2');
-      const sel = el('select');
-      const opts = p.type === 'texture' ? allTextures.map((t) => [t.name, t.name]) : Object.entries(p.options);
-      for (const [lab, val] of opts) { const o = el('option', null, lab); o.value = JSON.stringify(val); sel.append(o); }
-      sel.onchange = () => { set(JSON.parse(sel.value)); onCommit(); };
-      sync.push(() => { sel.value = JSON.stringify(get()); });
-      row.append(label, sel);
+      const s = el('select');
+      const fill = () => {
+        const opts = p.type === 'texture' ? allTextures.map((t) => [t.name, t.name])
+          : p.type === 'input' ? [['– ingen –', ''], ...inputNames().map((n) => [n, n])] : Object.entries(p.options);
+        s.replaceChildren();
+        for (const [l, val] of opts) { const o = el('option', null, l); o.value = JSON.stringify(val); s.append(o); }
+      };
+      fill();
+      s.onchange = () => { set(JSON.parse(s.value)); onCommit(); };
+      sync = () => { if (p.type === 'input') fill(); s.value = JSON.stringify(get()); };
+      row.append(label, s);
     } else if (p.type === 'bool') {
       row.classList.add('span2');
       const box = el('input', 'switch'); box.type = 'checkbox';
       box.onchange = () => { set(box.checked); onCommit(); };
-      sync.push(() => { box.checked = !!get(); });
+      sync = () => { box.checked = !!get(); };
       row.append(label, box);
     } else if (p.type === 'color') {
       row.classList.add('span2');
       const c = el('input'); c.type = 'color';
       c.onchange = () => { set(c.value); onCommit(); };
-      sync.push(() => { c.value = get(); });
+      sync = () => { c.value = get(); };
       row.append(label, c);
+    } else if (p.type === 'text') {
+      row.classList.add('span2');
+      const t = el('textarea', 'text'); t.rows = 2;
+      t.onchange = () => { set(t.value); onCommit(); };
+      sync = () => { t.value = get(); };
+      row.append(label, t);
     } else if (p.type === 'seed') {
       const n = el('input'), b = el('button', null, 'Nytt');
       n.type = 'number'; n.min = 0; n.max = 99999;
       n.onchange = () => { set(Number(n.value)); onCommit(); };
-      b.onclick = () => { set(Math.floor(Math.random() * 99999)); refresh(); onCommit(); };
-      sync.push(() => { n.value = get(); });
+      b.onclick = () => { set(Math.floor(Math.random() * 99999)); sync(); onCommit(); };
+      sync = () => { n.value = get(); };
       row.append(label, n, b);
     } else {
       const r = el('input'), out = el('output');
@@ -154,52 +300,206 @@ export async function createWorkshop({ api, el, side, view, footer }) {
       const show = () => { out.textContent = Number(r.value).toFixed(dec); };
       r.oninput = show;
       r.onchange = () => { set(Number(r.value)); onCommit(); };
-      sync.push(() => { r.value = get(); show(); });
+      sync = () => { r.value = get(); show(); };
       row.append(label, r, out);
     }
-    for (const s of sync) s();
-    return { row, sync: () => sync.forEach((s) => s()) };
+    // Villkor (when): raden visas bara när ett annat värde stämmer
+    const visible = () => Object.entries(p.when ?? {}).every(([k, cond]) => {
+      let v = getPath(obj(), k);
+      if (v === undefined) v = defaultOf(obj(), k);
+      if (cond && typeof cond === 'object' && !Array.isArray(cond)) return 'not' in cond ? v !== cond.not : 'gt' in cond ? v > cond.gt : true;
+      return Array.isArray(cond) ? cond.includes(v) : v === cond;
+    });
+    const refresh = () => { sync(); row.style.display = visible() ? '' : 'none'; };
+    refresh();
+    return { row, refresh };
   }
-  const commit = () => update();
-  let syncs = [];
-  function refresh() { for (const s of syncs) s(); }
+  // Spakar i en behållare: grundspakarna direkt, resten under en hopfälld "Avancerat"
+  function paramRows(params, obj, onCommit, into) {
+    const refs = [];
+    const adv = el('details', 'adv');
+    adv.append(el('summary', null, 'Avancerat'));
+    const advRows = el('div', 'rows');
+    adv.append(advRows);
+    for (const p of params) {
+      const c = control(p, obj, () => { onCommit(); refs.forEach((r) => r.refresh()); });
+      refs.push(c);
+      (p.adv ? advRows : into).append(c.row);
+    }
+    if (advRows.children.length) into.append(adv);
+    return refs;
+  }
 
-  // Kort: Källa
-  const srcCard = card('Källa', '#7a4e2d');
+  // --- Kort ---
+  function card(title, accent, opts = {}) {
+    const c = el('section', 'card glass');
+    c.style.setProperty('--part', accent);
+    const head = el('header');
+    const h = el('h2', null, title);
+    head.append(h);
+    if (opts.help) head.title = opts.help;
+    const body = el('div', 'rows');
+    c.append(head, body);
+    // Klick på rubriken fäller ihop kortet
+    head.onclick = (e) => { if (e.target === head || e.target === h) c.classList.toggle('closed'); };
+    if (opts.closed) c.classList.add('closed');
+    side.append(c);
+    return { card: c, head, body, h };
+  }
+  const crumbs = el('div', 'crumbs glass');
+  side.append(crumbs);
+
+  // Källa
+  const srcCard = card('Bas', '#7a4e2d', { help: 'Grunden i materialet: en algoritm, en befintlig textur, en ingrediens eller Krea' });
+  const varBtn = el('button', 'mini', 'Varianter');
+  varBtn.title = 'Fyra varianter med nya frön att välja bland';
+  srcCard.head.append(varBtn);
   const srcType = el('select');
   for (const [k, v] of Object.entries(W.sources)) { const o = el('option', null, v.label); o.value = k; srcType.append(o); }
-  srcType.onchange = () => { recipe.source = { type: srcType.value }; renderSource(); commit(); };
+  srcType.onchange = () => { cur().source = { type: srcType.value }; renderSource(); commit(); };
   const srcRow = el('div', 'row span2');
   srcRow.append(el('label', null, 'Typ'), srcType);
-  const srcRows = el('div', 'rows');
+  const srcRows = el('div', 'rows sub');
   srcCard.body.append(srcRow, srcRows);
   function renderSource() {
-    srcType.value = recipe.source.type;
+    srcType.value = cur().source.type;
     srcRows.replaceChildren();
-    syncs = [];
-    for (const p of W.sources[recipe.source.type].params) {
-      const c = control(p, () => valueIn(recipe.source, p), (v) => { recipe.source[p.key] = v; }, commit);
-      srcRows.append(c.row);
-      syncs.push(c.sync);
-    }
+    const def = W.sources[cur().source.type];
+    srcType.title = def.help ?? '';
+    paramRows(def.params, () => cur().source, commit, srcRows);
   }
 
-  // Kort: Steg (en stapel; ordningen spelar roll)
-  const stepCard = card('Steg', '#3d5a80');
+  // Varianter: samma recept med fyra nya frön
+  varBtn.onclick = async () => {
+    const src = cur().source;
+    if (!W.sources[src.type].params.some((p) => p.type === 'seed')) { status.textContent = 'Källan har inget frö'; return; }
+    if (src.type === 'krea' && !confirm('Fyra Krea-bilder tar cirka 12 minuter. Fortsätta?')) return;
+    const base = Number(src.seed ?? 1);
+    const seeds = [1, 2, 3, 4].map((k) => (base * 31 + k * 7919) % 99999);
+    const grid = el('div', 'vgrid');
+    const close = el('button', 'mini', 'Stäng');
+    close.onclick = () => varBox.classList.remove('open');
+    varBox.replaceChildren(Object.assign(el('div', 'vhead'), { textContent: 'Välj en variant' }), grid, close);
+    varBox.classList.add('open');
+    for (const seed of seeds) {
+      const fig = el('figure');
+      const img = el('img');
+      fig.append(img, el('figcaption', null, `frö ${seed}`));
+      grid.append(fig);
+      fig.onclick = () => { cur().source.seed = seed; varBox.classList.remove('open'); renderSource(); commit(); };
+      preview({ ...levelRecipe(256), source: { ...src, seed } }).then((r) => { if (r.maps) img.src = r.maps.color; else fig.lastChild.textContent = r.error ?? 'fel'; });
+    }
+  };
+
+  // Ingredienser
+  const ingCard = card('Ingredienser', '#8a6d1f', { closed: true, help: 'Under-texturer som källan och stegen Lager och Strö ut kan använda: mossa, fläckar, en sparad sten …' });
+  const ingList = el('div', 'ings');
+  const ingAdd = el('div', 'row span2');
+  const addProc = el('button', 'mini', '+ Procedurell'), addTex = el('button', 'mini', '+ Sparad textur');
+  const addBox = el('div', 'btns');
+  addBox.append(addProc, addTex);
+  ingAdd.append(el('label', null, 'Ny ingrediens'), addBox);
+  ingCard.body.append(ingList, ingAdd);
+  const ingThumbs = new Map();
+  function newIngredient(def) {
+    const r = cur();
+    let name = prompt('Ingrediensens namn (t.ex. mossa, sten, fläckar)', '');
+    if (name === null) return;
+    name = name.trim().toLowerCase();
+    if (!ING_NAME.test(name)) { alert('Namnet får ha bokstäver, siffror, _ och - (högst 24 tecken)'); return; }
+    if (scope()[name]) { alert(`${name} finns redan`); return; }
+    (r.inputs ??= {})[name] = def;
+    snapshot();
+    if (def.recipe) { path.push(name); renderAll(); update(); } else { renderIngredients(); refreshIngredientThumbs(); }
+  }
+  addProc.onclick = () => newIngredient({ recipe: { source: { type: 'noise' }, steps: [] } });
+  addTex.onclick = () => newIngredient({ texture: allTextures[0]?.name ?? 'bark_painted' });
+  function renderIngredients() {
+    ingList.replaceChildren();
+    const own = cur().inputs ?? {};
+    const inherited = Object.keys(scope()).filter((n) => !(n in own) && !path.includes(n));
+    for (const [name, def] of Object.entries(own)) {
+      const item = el('div', 'ing');
+      const img = el('img');
+      img.dataset.ing = name;
+      const info = el('div', 'info');
+      info.append(el('b', null, name));
+      if (def.texture) {
+        const s = el('select');
+        for (const t of allTextures) { const o = el('option', null, t.name); o.value = t.name; s.append(o); }
+        s.value = def.texture;
+        s.onchange = () => { def.texture = s.value; refreshIngredientThumbs(); commit(); };
+        info.append(s);
+      } else {
+        info.append(el('span', null, `${W.sources[def.recipe.source.type]?.label ?? def.recipe.source.type}${def.recipe.steps?.length ? `, ${def.recipe.steps.length} steg` : ''}`));
+        const open = el('button', 'mini', 'Redigera');
+        open.onclick = () => { path.push(name); renderAll(); update(); };
+        img.onclick = open.onclick;
+        img.style.cursor = 'pointer';
+        info.append(open);
+      }
+      const del = el('button', 'mini', '✕');
+      del.title = 'Ta bort ingrediensen';
+      del.onclick = () => { if (!confirm(`Ta bort ${name}?`)) return; delete own[name]; renderAll(); commit(); };
+      item.append(img, info, del);
+      ingList.append(item);
+    }
+    if (inherited.length) ingList.append(el('div', 'note', `Ärvs också: ${inherited.join(', ')}`));
+    if (!ingList.children.length) ingList.append(el('div', 'note', 'Inga än. En ingrediens är en egen liten textur, t.ex. mossa att lägga i stenens fogar med steget Lager.'));
+  }
+  function refreshIngredientThumbs() {
+    const sc = scope();
+    for (const img of ingList.querySelectorAll('img[data-ing]')) {
+      const name = img.dataset.ing, def = sc[name];
+      if (!def) continue;
+      if (def.texture) { img.src = `/assets/textures/${def.texture}.png`; continue; }
+      const r = { source: def.recipe.source, steps: def.recipe.steps ?? [], inputs: { ...sc, ...(def.recipe.inputs ?? {}) }, material: { normal: { on: false }, ao: { on: false } }, size: 128 };
+      const key = JSON.stringify(r);
+      if (ingThumbs.get(name)?.key === key) { img.src = ingThumbs.get(name).url; continue; }
+      api('/api/texture/preview', { recipe: r }).then((res) => {
+        if (res.maps) { ingThumbs.set(name, { key, url: res.maps.color }); img.src = res.maps.color; }
+        else if (res.pending) img.alt = 'räknas …';
+      });
+    }
+  }
+  function renderCrumbs() {
+    crumbs.replaceChildren();
+    crumbs.style.display = path.length ? '' : 'none';
+    const go = (k) => { path = path.slice(0, k); renderAll(); update(); };
+    const root = el('a', null, 'Texturen'); root.onclick = () => go(0);
+    crumbs.append(root);
+    path.forEach((n, i) => {
+      crumbs.append(el('span', null, ' ▸ '));
+      const a = el(i === path.length - 1 ? 'b' : 'a', null, n);
+      if (i < path.length - 1) a.onclick = () => go(i + 1);
+      crumbs.append(a);
+    });
+    const back = el('button', 'mini', 'Tillbaka');
+    back.onclick = () => go(path.length - 1);
+    crumbs.append(back);
+  }
+
+  // Steg (en stapel; ordningen spelar roll)
+  const stepCard = card('Filter', '#3d5a80', { help: 'Bildbehandling i ordning uppifrån och ned. Fler finns i biblioteket under Filter.' });
   const stepList = el('div', 'steps');
   const addSel = el('select');
-  addSel.append(Object.assign(el('option', null, 'Lägg till steg…'), { value: '' }));
-  for (const [k, v] of Object.entries(W.steps)) { const o = el('option', null, v.label); o.value = k; addSel.append(o); }
-  addSel.onchange = () => { if (!addSel.value) return; recipe.steps.push({ op: addSel.value, on: true }); addSel.value = ''; renderSteps(true); commit(); };
+  addSel.append(Object.assign(el('option', null, 'Lägg till filter…'), { value: '' }));
+  for (const g of W.step_groups) {
+    const og = el('optgroup'); og.label = g.label;
+    for (const k of g.ops) { const o = el('option', null, W.steps[k].label); o.value = k; o.title = W.steps[k].help ?? ''; og.append(o); }
+    addSel.append(og);
+  }
+  addSel.onchange = () => { if (!addSel.value) return; cur().steps.push({ op: addSel.value, on: true }); addSel.value = ''; renderSteps(true); commit(); };
   const addRow = el('div', 'row span2');
-  addRow.append(el('label', null, 'Nytt steg'), addSel);
+  addRow.append(el('label', null, 'Nytt filter'), addSel);
   stepCard.body.append(stepList, addRow);
   function renderSteps(openLast = false) {
+    const steps = cur().steps;
     stepList.replaceChildren();
-    recipe.steps.forEach((s, i) => {
+    steps.forEach((s, i) => {
       const def = W.steps[s.op];
       const box = el('details', 'step');
-      box.open = openLast && i === recipe.steps.length - 1;
+      box.open = openLast && i === steps.length - 1;
       const sum = el('summary');
       const on = el('input', 'switch'); on.type = 'checkbox'; on.checked = s.on !== false;
       on.title = 'Av/på';
@@ -208,78 +508,316 @@ export async function createWorkshop({ api, el, side, view, footer }) {
       box.classList.toggle('off', s.on === false);
       const btn = (t, title, fn) => { const b = el('button', 'mini', t); b.title = title; b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
       sum.append(on, el('span', 'name', def?.label ?? s.op),
-        btn('↑', 'Flytta upp', () => { if (i > 0) { [recipe.steps[i - 1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i - 1]]; renderSteps(); commit(); } }),
-        btn('↓', 'Flytta ned', () => { if (i < recipe.steps.length - 1) { [recipe.steps[i + 1], recipe.steps[i]] = [recipe.steps[i], recipe.steps[i + 1]]; renderSteps(); commit(); } }),
-        btn('✕', 'Ta bort', () => { recipe.steps.splice(i, 1); renderSteps(); commit(); }));
+        btn('↑', 'Flytta upp', () => { if (i > 0) { [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]]; renderSteps(); commit(); } }),
+        btn('↓', 'Flytta ned', () => { if (i < steps.length - 1) { [steps[i + 1], steps[i]] = [steps[i], steps[i + 1]]; renderSteps(); commit(); } }),
+        btn('✕', 'Ta bort', () => { steps.splice(i, 1); renderSteps(); commit(); }));
       box.append(sum);
       if (def?.help) box.title = def.help;
       const rows = el('div', 'rows');
-      for (const p of def?.params ?? []) rows.append(control(p, () => valueIn(s, p), (v) => { s[p.key] = v; }, commit).row);
+      paramRows(def?.params ?? [], () => s, commit, rows);
       box.append(rows);
       stepList.append(box);
     });
+    if (!steps.length) stepList.append(el('div', 'note', 'Inga filter: basen visas som den är.'));
   }
 
-  // Kort: Spara (och öppna en textur som gjorts i verkstaden)
+  // Material: grunden direkt, varje avancerad grupp som en egen undermeny under Avancerat
+  const matCard = card('Ytegenskaper', '#6b4fa0', { help: 'Materialets kartor och egenskaper. Syns bäst i 3D.' });
+  function renderMaterial() {
+    matCard.body.replaceChildren();
+    const adv = el('details', 'adv');
+    adv.append(el('summary', null, 'Avancerat'));
+    const refs = [];
+    for (const g of W.material.groups) {
+      let into = matCard.body;
+      if (g.adv) {
+        const sub = el('details', 'sub');
+        sub.append(el('summary', null, g.label));
+        into = el('div', 'rows');
+        sub.append(into);
+        adv.append(sub);
+      }
+      for (const p of g.params) {
+        const c = control(p, () => doc.material, () => { (p.client ? commitLook : commit)(); refs.forEach((r) => r.refresh()); });
+        refs.push(c);
+        into.append(c.row);
+      }
+    }
+    matCard.body.append(adv);
+  }
+
+  // Blandning: lager som läggs på modellen i 3D (mossa uppifrån, snö, smuts nerifrån, nötta kanter)
+  const blendCard = card('Blandning', '#2f7a6b', { help: 'Lager som blandas in på modellen efter riktning, höjd, fördjupningar och kanter. Syns i 3D.' });
+  const layerList = el('div', 'steps');
+  const layerAdd = el('select');
+  layerAdd.append(Object.assign(el('option', null, 'Lägg till lager…'), { value: '' }));
+  for (const k of [...Object.keys(W.layer_presets), 'Tomt lager']) { const o = el('option', null, k); o.value = k; layerAdd.append(o); }
+  layerAdd.onchange = () => {
+    if (!layerAdd.value) return;
+    if (doc.blend.layers.length >= 4) { alert('Högst fyra lager'); layerAdd.value = ''; return; }
+    const defaults = Object.fromEntries(W.blend.params.map((p) => [p.key, p.default]));
+    doc.blend.layers.push({ name: layerAdd.value, on: true, ...defaults, ...(W.layer_presets[layerAdd.value] ?? {}) });
+    layerAdd.value = '';
+    renderLayers(true);
+    commitLook();
+    if (vs.mode !== '3d') setMode('3d');
+  };
+  const layerAddRow = el('div', 'row span2');
+  layerAddRow.append(el('label', null, 'Nytt lager'), layerAdd);
+  blendCard.body.append(layerList, layerAddRow);
+  function renderLayers(openLast = false) {
+    const layers = doc.blend.layers;
+    layerList.replaceChildren();
+    layers.forEach((l, i) => {
+      const box = el('details', 'step');
+      box.open = openLast && i === layers.length - 1;
+      const sum = el('summary');
+      const on = el('input', 'switch'); on.type = 'checkbox'; on.checked = l.on !== false;
+      on.onclick = (e) => e.stopPropagation();
+      on.onchange = () => { l.on = on.checked; box.classList.toggle('off', !on.checked); commitLook(); };
+      box.classList.toggle('off', l.on === false);
+      const del = el('button', 'mini', '✕');
+      del.onclick = (e) => { e.preventDefault(); layers.splice(i, 1); renderLayers(); commitLook(); };
+      sum.append(on, el('span', 'name', l.name ?? `Lager ${i + 1}`), del);
+      const rows = el('div', 'rows');
+      paramRows(W.blend.params, () => l, commitLook, rows);
+      box.append(sum, rows);
+      layerList.append(box);
+    });
+    if (!layers.length) layerList.append(el('div', 'note', 'Inga lager. Prova Mossa eller Snö på drakstatyn.'));
+  }
+
+  // Spara (och öppna en textur som gjorts i verkstaden)
   const saveCard = card('Spara', '#4e8a2f');
-  const nameIn = Object.assign(el('input'), { type: 'text', placeholder: 'bark_min_ek' });
+  const nameIn = Object.assign(el('input', 'text'), { type: 'text', placeholder: 'rock_mossig_kullersten' });
   const profSel = el('select');
   for (const [k, v] of Object.entries(W.profiles)) { const o = el('option', null, v.label); o.value = k; profSel.append(o); }
-  profSel.onchange = () => { const pre = W.profiles[profSel.value].prefix; if (!nameIn.value || Object.values(W.profiles).some((x) => nameIn.value === x.prefix)) nameIn.value = pre; };
-  const tagsIn = Object.assign(el('input'), { type: 'text', placeholder: 'ek, mörk, sommar' });
-  const metersIn = Object.assign(el('input'), { type: 'number', min: 0.1, max: 50, step: 0.1, value: 2 });
+  const tagsIn = Object.assign(el('input', 'text'), { type: 'text', placeholder: 'sten, mossa, skog' });
   const sizeSel = el('select');
   for (const s of [512, 1024, 2048, 4096]) { const o = el('option', null, `${s} px`); o.value = s; sizeSel.append(o); }
   sizeSel.value = 1024;
   const saveBtn = el('button', 'primary', 'Spara textur');
   const saveMsg = el('div', 'note');
-  const openSel = el('select');
-  const rowOf = (lab, input, title) => { const r = el('div', 'row span2'); if (title) r.title = title; r.append(el('label', null, lab), input); return r; };
+  const rowOf = (l, input, title) => { const r = el('div', 'row span2'); if (title) r.title = title; r.append(el('label', null, l), input); return r; };
+  const mapBoxes = {};
+  const saveAdv = el('details', 'adv');
+  saveAdv.append(el('summary', null, 'Avancerat'));
+  const saveAdvRows = el('div', 'rows');
+  saveAdv.append(saveAdvRows);
+  for (const k of ['normal', 'height', 'rough', 'ao', 'metal', 'emissive']) {
+    mapBoxes[k] = el('input', 'switch'); mapBoxes[k].type = 'checkbox';
+    saveAdvRows.append(rowOf(`Spara ${MAP_LABELS[k].toLowerCase()}`, mapBoxes[k]));
+  }
+  const ormBox = el('input', 'switch'); ormBox.type = 'checkbox';
+  const webpBox = el('input', 'switch'); webpBox.type = 'checkbox';
+  saveAdvRows.append(rowOf('ORM-packning', ormBox, 'AO i rött, ruffighet i grönt, metall i blått (som glTF)'), rowOf('WebP-kopia', webpBox, 'Mindre fil för klienten'),
+    el('div', 'note', 'Skriver du över en textur flyttas den förra till assets/textures/versions/.'));
+  function profileDefaults() {
+    const pr = W.profiles[profSel.value];
+    const m = fullMaterial();
+    for (const k of Object.keys(mapBoxes)) mapBoxes[k].checked = pr.maps.includes(k) || (k === 'metal' && m.metal.on) || (k === 'emissive' && m.emission.on);
+  }
+  profSel.onchange = () => {
+    const pre = W.profiles[profSel.value].prefix;
+    if (!nameIn.value || Object.values(W.profiles).some((x) => nameIn.value === x.prefix)) nameIn.value = pre;
+    profileDefaults();
+    if (!vs.model) { modelSel.value = W.profiles[profSel.value].model; if (vs.mode === '3d') setModel(modelSel.value); }
+  };
   saveCard.body.append(
-    rowOf('Profil', profSel, 'Vem som använder texturen: styr namn, kartor och kontroller'),
-    rowOf('Namn', nameIn), rowOf('Taggar', tagsIn), rowOf('Meter per upprepning', metersIn, 'Hur stor texturen är i världen'),
-    rowOf('Storlek', sizeSel), saveBtn, saveMsg, rowOf('Öppna sparad', openSel, 'Texturer gjorda i verkstaden (med recept)'),
+    rowOf('Profil', profSel, 'Vem som använder texturen: styr namn, kartor och vilken modell 3D-vyn visar'),
+    rowOf('Namn', nameIn), rowOf('Taggar', tagsIn), rowOf('Storlek', sizeSel), saveAdv, saveBtn, saveMsg,
   );
-  for (const el2 of [nameIn, tagsIn, metersIn]) el2.classList.add('text');
+  let catalog = [];
   async function listSaved() {
     const cat = await fetch('/assets/textures/catalog.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : { textures: [] })).catch(() => ({ textures: [] }));
-    openSel.replaceChildren(Object.assign(el('option', null, cat.textures.length ? 'Välj…' : 'Inga än'), { value: '' }));
-    for (const t of cat.textures) { const o = el('option', null, `${t.name} (${W.profiles[t.profile]?.label ?? t.profile})`); o.value = t.name; openSel.append(o); }
+    catalog = cat.textures;
+    if (libTab === 'mine') renderLib();
   }
-  openSel.onchange = async () => {
-    if (!openSel.value) return;
-    const r = await api(`/api/texture/recipe?name=${encodeURIComponent(openSel.value)}`);
+  async function openSaved(name) {
+    const r = await api(`/api/texture/recipe?name=${encodeURIComponent(name)}`);
     if (r.error) { saveMsg.textContent = r.error; return; }
-    recipe.source = r.source; recipe.steps = r.steps ?? [];
-    nameIn.value = r.name; profSel.value = r.profile; tagsIn.value = (r.tags ?? []).join(', '); metersIn.value = r.meters ?? 2;
-    renderSource(); renderSteps(); commit();
-  };
+    Object.assign(doc, { source: r.source, steps: r.steps ?? [], inputs: r.inputs ?? {}, material: r.material ?? {}, blend: r.blend ?? { layers: [] } });
+    path = [];
+    nameIn.value = r.name; profSel.value = r.profile; tagsIn.value = (r.tags ?? []).join(', ');
+    for (const k of Object.keys(mapBoxes)) mapBoxes[k].checked = (r.maps ?? []).includes(k);
+    renderMaterial(); renderLayers(); renderAll();
+    snapshot(); curName = r.name; edited = false; showName(); update();
+  }
   saveBtn.onclick = async () => {
     const name = nameIn.value.trim().toLowerCase();
-    const payload = { recipe, name, profile: profSel.value, tags: tagsIn.value.split(','), meters: Number(metersIn.value), size: Number(sizeSel.value) };
+    const recipe = { source: doc.source, steps: doc.steps, inputs: doc.inputs, material: fullMaterial(), blend: doc.blend };
+    const payload = { recipe, name, profile: profSel.value, tags: tagsIn.value.split(','), size: Number(sizeSel.value),
+      maps: ['color', ...Object.keys(mapBoxes).filter((k) => mapBoxes[k].checked)], pack: ormBox.checked ? 'orm' : null, webp: webpBox.checked };
     saveMsg.textContent = 'Sparar…';
     let res = await api('/api/texture/save', payload);
-    if (res.exists && confirm(`${name} finns redan. Skriva över?`)) res = await api('/api/texture/save', { ...payload, overwrite: true });
-    saveMsg.textContent = res.error ? `Sparades inte: ${res.error}` : `Sparad: ${res.out} (${res.size} px, ${res.checks?.seamless ? 'sömlös' : 'söm syns'})`;
-    if (!res.error) listSaved();
+    if (res.exists && confirm(`${name} finns redan. Skriva över? (Den förra sparas i versions/)`)) res = await api('/api/texture/save', { ...payload, overwrite: true });
+    saveMsg.textContent = res.error ? `Sparades inte: ${res.error}` : `Sparad: ${res.out} med ${res.entry.maps.join(', ')} (${res.size} px, ${res.checks?.seamless ? 'sömlös' : 'söm syns'})`;
+    if (!res.error) { listSaved(); allTextures = await api('/api/textures?kind=all'); }
   };
 
-  function card(title, accent) {
-    const c = el('section', 'card glass');
-    c.style.setProperty('--part', accent);
-    const head = el('header');
-    head.append(el('h2', null, title));
-    const body = el('div', 'rows');
-    c.append(head, body);
-    side.append(c);
-    return { card: c, body };
+  // --- Biblioteket till vänster: färdiga material, befintliga texturer, filter och egna, som tumnaglar ---
+  // Ett klick lägger materialet på modellen (eller filtret sist i stapeln); knapparna på en textur blandar in
+  // den som lager eller gör den till en ingrediens i stället.
+  let libTab = 'material', libQuery = '';
+  const libHead = el('div', 'libhead');
+  const libSeg = el('div', 'seg');
+  const LIB_TABS = { material: 'Material', textures: 'Texturer', filters: 'Filter', mine: 'Mina' };
+  for (const [k, l] of Object.entries(LIB_TABS)) {
+    const b = el('button', k === libTab ? 'on' : null, l);
+    b.dataset.tab = k;
+    b.onclick = () => { libTab = k; libSeg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.tab === k)); renderLib(); };
+    libSeg.append(b);
+  }
+  const libSearch = Object.assign(el('input', 'search'), { type: 'search', placeholder: 'Sök…' });
+  libSearch.oninput = () => { libQuery = libSearch.value.trim().toLowerCase(); renderLib(); };
+  const libHint = el('div', 'note');
+  libHead.append(el('h2', null, 'Bibliotek'), libSeg, libSearch, libHint);
+  const libBody = el('div', 'libbody');
+  lib.append(libHead, libBody);
+
+  // Tumnaglarna räknas av servern (cachade) en i taget, så att de dyker upp i ordning
+  const thumbCache = new Map();
+  let thumbQueue = Promise.resolve();
+  function thumb(img, recipe) {
+    const r = { source: recipe.source, steps: recipe.steps ?? [], inputs: recipe.inputs ?? {}, material: { normal: { on: false }, ao: { on: false } }, size: 128 };
+    const key = JSON.stringify(r);
+    if (thumbCache.has(key)) { img.src = thumbCache.get(key); return; }
+    thumbQueue = thumbQueue.then(async () => {
+      if (!img.isConnected) return;
+      const res = await api('/api/texture/preview', { recipe: r });
+      if (res.maps) { thumbCache.set(key, res.maps.color); img.src = res.maps.color; }
+    });
+  }
+  function tile(label, { src, recipe, badge, onclick, actions = [], title }) {
+    const f = el('figure', 'tile');
+    const img = el('img');
+    img.alt = '';
+    f.append(img);
+    if (src) img.src = src; else if (recipe) thumb(img, recipe);
+    if (badge) f.append(el('span', 'badge', badge));
+    f.append(el('figcaption', null, label));
+    f.title = title ?? label;
+    f.onclick = onclick;
+    if (actions.length) {
+      const a = el('div', 'acts');
+      for (const [t, tip, fn] of actions) { const b = el('button', 'mini', t); b.title = tip; b.onclick = (e) => { e.stopPropagation(); fn(); }; a.append(b); }
+      f.append(a);
+    }
+    return f;
+  }
+  function libGroup(title, tiles) {
+    if (!tiles.length) return;
+    const g = el('section', 'libgroup');
+    const grid = el('div', 'tiles');
+    grid.append(...tiles);
+    g.append(el('h3', null, title), grid);
+    libBody.append(g);
+  }
+  const match = (...words) => !libQuery || words.some((w) => (w ?? '').toLowerCase().includes(libQuery));
+  const TEX_GROUPS = [['Bark', /^bark_/], ['Mark och ytor', /^surface_(?!bld_)/], ['Byggnader', /^surface_bld_/], ['Löv och barr', /^(leaf|leaves|needle|blossom|autumn|foliage)/],
+    ['Mossa och påväxt', /^(moss|lichen|blend_)/], ['Sten', /^(rock_|stone)/], ['Övrigt', /./]];
+  const FILTER_REF = { inputs: W.presets.cobble_moss.recipe.inputs, source: { type: 'stone' } };
+  function renderLib() {
+    libBody.replaceChildren();
+    if (libTab === 'material') {
+      libHint.textContent = 'Klicka på ett material för att lägga det på modellen.';
+      for (const g of W.preset_groups) {
+        libGroup(g, Object.entries(W.presets).filter(([, p]) => p.group === g && match(p.label, g)).map(([id, p]) => tile(p.label, p.ai
+          ? { badge: 'AI', onclick: () => applyPreset(id), title: `${p.label}: målas av Krea i ComfyUI, cirka 1–3 minuter första gången` }
+          : { recipe: p.recipe, onclick: () => applyPreset(id) })));
+      }
+    } else if (libTab === 'textures') {
+      libHint.textContent = 'Klicka för att lägga texturen på modellen. + Lager blandar in den ovanpå, + Ingr. gör den till en ingrediens.';
+      const left = allTextures.filter((t) => match(t.name));
+      for (const [g, re] of TEX_GROUPS) {
+        const these = left.filter((t) => re.test(t.name));
+        for (const t of these) left.splice(left.indexOf(t), 1);
+        libGroup(g, these.map((t) => tile(t.name.replace(/^(surface_bld_|surface_|bark_)/, ''), { src: t.thumb, title: t.name, onclick: () => applyTexture(t.name), actions: [
+          ['+ Lager', 'Blanda in som lager på modellen (kortet Blandning)', () => addBlendLayer(t.name)],
+          ['+ Ingr.', 'Lägg till som ingrediens', () => addTextureIngredient(t.name)]] })));
+      }
+    } else if (libTab === 'filters') {
+      libHint.textContent = 'Klicka för att lägga filtret sist i stapeln. Bilderna visar filtret på en kullersten.';
+      for (const g of W.step_groups) {
+        libGroup(g.label, g.ops.filter((op) => match(W.steps[op].label, g.label)).map((op) => tile(W.steps[op].label, {
+          recipe: { ...FILTER_REF, steps: [{ op, ...(op === 'layer' ? { input: 'mossa' } : {}) }] }, title: W.steps[op].help ?? W.steps[op].label, onclick: () => addFilter(op) })));
+      }
+    } else {
+      libHint.textContent = catalog.length ? 'Texturer du sparat i verkstaden. Klicka för att öppna dem igen.' : 'Inga sparade än. Det du sparar i kortet Spara hamnar här.';
+      libGroup('Sparade', catalog.filter((t) => match(t.name, ...(t.tags ?? []))).map((t) => tile(t.name, {
+        src: `/assets/textures/${t.name}.png?v=${encodeURIComponent(t.saved)}`, title: `${t.name} (${W.profiles[t.profile]?.label ?? t.profile})`, onclick: () => openSaved(t.name) })));
+    }
+  }
+  const openCard = (c) => c.card.classList.remove('closed');
+  let autoAlpha = false;
+  function startFresh(recipe, name, profile) {
+    path = [];
+    Object.assign(doc, { source: clone(recipe.source), steps: clone(recipe.steps ?? []), inputs: clone(recipe.inputs ?? {}), material: clone(recipe.material ?? {}) });
+    if (profile && W.profiles[profile]) { profSel.value = profile; nameIn.value = ''; profSel.onchange(); }
+    renderMaterial(); renderAll();
+    snapshot(); curName = name; edited = false; showName();
+    autoAlpha = true;
+    update();
+  }
+  function applyPreset(id) { const p = W.presets[id]; startFresh(p.recipe, p.label, p.profile); }
+  function applyTexture(name) {
+    if (catalog.some((t) => t.name === name)) return openSaved(name);
+    const profile = /^bark_/.test(name) ? 'bark' : /^surface_bld_/.test(name) ? 'building' : /^surface_/.test(name) ? 'terrain' : /^(moss|lichen)/.test(name) ? 'blend' : /^(leaf|leaves|needle|blossom)/.test(name) ? 'decal' : 'rock';
+    startFresh({ source: { type: 'image', name }, steps: [] }, name, profile);
+  }
+  function addBlendLayer(texture) {
+    if (doc.blend.layers.length >= 4) { alert('Högst fyra lager'); return; }
+    const defaults = Object.fromEntries(W.blend.params.map((q) => [q.key, q.default]));
+    doc.blend.layers.push({ name: texture, on: true, ...defaults, texture, dir: 'none', amount: 0.5 });
+    renderLayers(true);
+    openCard(blendCard);
+    commitLook();
+    if (vs.mode !== '3d') setMode('3d');
+  }
+  function addTextureIngredient(texture) {
+    let name = texture.replace(/^(surface_bld_|surface_|bark_)/, '').slice(0, 24);
+    while (scope()[name]) name = `${name.slice(0, 22)}_${Math.floor(Math.random() * 9)}`;
+    (cur().inputs ??= {})[name] = { texture };
+    renderIngredients();
+    openCard(ingCard);
+    snapshot();
+    refreshIngredientThumbs();
+  }
+  function addFilter(op) {
+    const st = { op, on: true };
+    if (op === 'layer') {
+      // Lager behöver en ingrediens: saknas en, skapas mossa
+      let names = inputNames();
+      if (!names.length) { (cur().inputs ??= {}).mossa = { recipe: clone(W.presets.moss.recipe) }; names = ['mossa']; renderIngredients(); }
+      st.input = names[0];
+    }
+    cur().steps.push(st);
+    renderSteps(true);
+    openCard(stepCard);
+    commit();
   }
 
-  renderSource();
-  renderSteps();
+  function renderAll() {
+    renderCrumbs();
+    srcCard.h.textContent = path.length ? `Bas: ${path[path.length - 1]}` : 'Bas';
+    renderSource();
+    renderIngredients();
+    renderSteps();
+    for (const c of [matCard, blendCard, saveCard]) c.card.style.display = path.length ? 'none' : '';
+  }
+
+  renderMaterial();
+  renderLayers();
+  renderAll();
+  profileDefaults();
   listSaved();
+  renderLib();
+  setMode('3d');
+  applyPreset('cobble');
   return {
-    show() { resize(); if (!viewState.img) update(); },
-    hide() {},
+    show() { if (vs.mode === '3d') lab.show(); else resize(); if (!maps.color) update(); },
+    hide() { lab.hide(); },
+    shot: () => lab.shot(),
+    lab,
   };
 }

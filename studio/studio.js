@@ -190,7 +190,7 @@ const recipeNow = () => ({
 });
 
 // --- Modellerna: den aktuella i mitten, fästa till vänster för jämförelse ---
-let current = null;
+let current = null, currentUrl = null; // currentUrl: verkstadens materiallabb kan visa det aktuella trädet
 const pinned = [];
 const spacing = () => (kind.height ?? 8) * 1.6;
 
@@ -240,6 +240,7 @@ function applyViewAll() {
 }
 async function showModel(url) {
   const root = (await loader.loadAsync(url)).scene;
+  currentUrl = url;
   root.traverse((o) => {
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
@@ -491,13 +492,14 @@ texBtn.onclick = async () => {
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
   refreshUi();
-  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot') });
+  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), getAssetUrl: () => currentUrl });
   workshop.show();
 };
 function leaveTextureMode() {
   if (!textureMode) return;
   textureMode = false;
   document.body.classList.remove('texture-mode');
+  workshop?.hide();
   paused = false;
 }
 async function selectKind(k) {
@@ -567,6 +569,7 @@ async function save() {
 // För felsökning och automatiska tester. shot(name) sparar 3D-vyn som build/shots/studio_<name>.png.
 window.__studio = {
   camera, controls, state, frame: () => frame(current, ...pinned), measure,
+  get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
   shot: async (name) => {
     controls.update();
     draw();

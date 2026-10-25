@@ -286,6 +286,29 @@ def generate_surface(name: str, preset: str | None = None, prompt: str | None = 
 
 
 @mcp.tool()
+def texture_recipe(recipe: dict, save: dict | None = None, size: int | None = None) -> dict:
+    """Kör ett recept i texturverkstaden (samma som fliken Texturer i Asset Studio; docs/texture-workshop.md).
+
+    recipe: {"source": {"type": "stone" | "bark" | "bricks" | "planks" | "shingles" | "splat" | "noise" | "gradient"
+      | "krea" | "image" | "input", ...}, "steps": [{"op": "layer" | "scatter" | "colorramp" | "edges" | ...}],
+      "inputs": {"namn": {"texture": "..."} | {"recipe": {...}}}, "material": {"normal": {"strength": 1}, ...}}.
+      Spakar och standardvärden: tools/texture/workshop.json. Ett sparat recept: assets/textures/<namn>.texture.json.
+    save: {"name": "rock_mossig", "profile": "rock", "tags": [...], "maps": ["color", "normal", "height"],
+      "pack": "orm", "webp": true, "overwrite": false}. Utan save blir det en förhandsvisning i build/studio/tex/mcp.
+    Källan "krea" kör Krea-2 i ComfyUI (cirka 1–3 minuter, cachas). Kontrollera checks (seamless, high_freq) i svaret.
+    """
+    r = dict(recipe)
+    if size:
+        r["size"] = size
+    if save:
+        _check_name(save.get("name", ""))
+        r["save"] = save
+    else:
+        r["out"] = "build/studio/tex/mcp"
+    return json.loads(_run([sys.executable, "-I", "tools/texture/workshop.py", json.dumps(r)], 1200))
+
+
+@mcp.tool()
 def list_assets() -> dict:
     """Lista genererade träd, props, växter, byggnader och texturer (bara namn)."""
     a = ROOT / "assets"

@@ -1,11 +1,18 @@
-"""Krea-2 Turbo via ComfyUI: python3 -I krea2.py "<prompt>" <bredd> <höjd> <utfil.png> [seed]
+"""Krea-2 Turbo via ComfyUI: python3 -I krea2.py "<prompt>" <bredd> <höjd> <utfil.png> [seed] [--base <bild.png> --denoise 0.6]
 
-(ord:vikt) i prompten, t.ex. (anime:-1), går via Krea2PromptWeight: vanliga vikter och negativa prompter gör inget vid cfg 1."""
-import json, random, re, sys, time, urllib.parse, urllib.request
+(ord:vikt) i prompten, t.ex. (anime:-1), går via Krea2PromptWeight: vanliga vikter och negativa prompter gör inget vid cfg 1.
+--base gör bild till bild: bilden laddas upp till ComfyUI och Krea målar om den, så mycket som denoise säger (0..1)."""
+import json, random, re, sys, time, urllib.parse, urllib.request, uuid
 
 COMFY = "http://127.0.0.1:8188"
-prompt, w, h, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
-seed = int(sys.argv[5]) if len(sys.argv) > 5 else random.randint(0, 2**48)
+args = sys.argv[1:]
+base = denoise = None
+if "--base" in args:
+    i = args.index("--base"); base = args[i + 1]; del args[i:i + 2]
+if "--denoise" in args:
+    i = args.index("--denoise"); denoise = float(args[i + 1]); del args[i:i + 2]
+prompt, w, h, out = args[0], int(args[1]), int(args[2]), args[3]
+seed = int(args[4]) if len(args) > 4 else random.randint(0, 2**48)
 
 g = {
     "1": {"class_type": "UNETLoader", "inputs": {"unet_name": "krea2_turbo_int8_convrot.safetensors", "weight_dtype": "default"}},
@@ -19,6 +26,18 @@ g = {
     "8": {"class_type": "VAEDecode", "inputs": {"samples": ["7", 0], "vae": ["3", 0]}},
     "9": {"class_type": "SaveImage", "inputs": {"images": ["8", 0], "filename_prefix": "tree_tool"}},
 }
+if base:
+    # Bild till bild: ladda upp basbilden, skala till rätt storlek och koda den till latentrummet
+    boundary = uuid.uuid4().hex
+    data = open(base, "rb").read()
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"tt_base_{uuid.uuid4().hex[:8]}.png\"\r\n"
+            "Content-Type: image/png\r\n\r\n").encode() + data + f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--{boundary}--\r\n".encode()
+    up = urllib.request.Request(f"{COMFY}/upload/image", data=body, headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    name = json.load(urllib.request.urlopen(up, timeout=30))["name"]
+    g["10"] = {"class_type": "LoadImage", "inputs": {"image": name}}
+    g["11"] = {"class_type": "ImageScale", "inputs": {"image": ["10", 0], "upscale_method": "lanczos", "width": w, "height": h, "crop": "center"}}
+    g["6"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["11", 0], "vae": ["3", 0]}}
+    g["7"]["inputs"]["denoise"] = 0.6 if denoise is None else max(0.05, min(1.0, denoise))
 if re.search(r"\([^()]+:-?\d+(\.\d+)?\)", prompt):
     g["4"] = {"class_type": "Krea2PromptWeight", "inputs": {"model": ["1", 0], "clip": ["2", 0], "text": prompt, "strength": 1.0}}
     g["5"]["inputs"]["conditioning"] = ["4", 1]

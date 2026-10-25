@@ -116,6 +116,70 @@
   .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 4px; border: 1px solid var(--line); }
   b.good { color: var(--good); } b.bad, span.bad { color: var(--bad); }
   .note { color: var(--muted); font-size: 12px; min-height: 16px; }
+  /* Verkstadens verktygsrad, Avancerat-menyer, ingredienser och varianter */
+  .wbar { flex-wrap: wrap; max-width: calc(100vw - 400px); }
+  .wbar .grp { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 4px 12px; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .popover { display: none; position: fixed; top: calc(var(--head) + 60px); left: 12px; width: 320px; padding: 10px 12px; border-radius: 10px; z-index: 3; gap: 6px; }
+  .popover.open { display: grid; }
+  details.adv { border-top: 1px dashed var(--line); margin-top: 4px; }
+  details.adv > summary, details.sub > summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 5px 0; list-style: none; }
+  details.adv > summary::before, details.sub > summary::before { content: '▸ '; }
+  details.adv[open] > summary::before, details.sub[open] > summary::before { content: '▾ '; }
+  details.sub { margin: 0 0 2px 6px; border-left: 2px solid var(--line); padding-left: 8px; }
+  details.sub > summary { color: var(--ink); font-weight: 500; }
+  details.adv > .rows, details.sub > .rows { padding: 2px 0 6px; }
+  .crumbs { padding: 8px 12px; border-radius: var(--radius); display: flex; align-items: center; gap: 4px; flex: none; }
+  .crumbs a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .crumbs button { margin-left: auto; }
+  .ings { display: grid; gap: 6px; }
+  .ing { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #fff; }
+  .ing img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; background: #3a3e46; }
+  .ing .info { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; align-items: flex-start; }
+  .ing .info select { font: inherit; max-width: 100%; }
+  .btns { display: flex; gap: 6px; }
+  .wvar { display: none; position: fixed; left: calc(50% - 180px); top: 50%; transform: translate(-50%, -50%); padding: 12px; border-radius: 12px; z-index: 4; gap: 8px; justify-items: end; }
+  .wvar.open { display: grid; }
+  .wvar .vhead { justify-self: start; font-weight: 600; }
+  .vgrid { display: grid; grid-template-columns: repeat(2, 200px); gap: 8px; }
+  .vgrid figure { margin: 0; cursor: pointer; text-align: center; font-size: 11px; color: var(--muted); }
+  .vgrid img { width: 200px; height: 200px; border-radius: 8px; background: #3a3e46; display: block; border: 2px solid transparent; }
+  .vgrid figure:hover img { border-color: var(--accent); }
+  .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: #e8e2d0; }
+  .row textarea.text { width: 100%; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; resize: vertical; }
+  #wview canvas { position: absolute; left: 0; top: 0; }
+  /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
+  #wlib { display: none; position: fixed; top: calc(var(--head) + 10px); left: 12px; bottom: calc(var(--foot) + 10px); width: 288px;
+          border-radius: var(--radius); flex-direction: column; overflow: hidden; }
+  body.texture-mode #wlib { display: flex; }
+  .libhead { padding: 10px 12px 8px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+  .libhead h2 { margin: 0; font-size: 15px; }
+  .libhead .seg { display: flex; }
+  .libhead .seg button { flex: 1; padding: 4px 4px; }
+  .libhead input.search { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .libbody { overflow-y: auto; padding: 0 10px 12px; }
+  .libgroup h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin: 12px 2px 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .tile { margin: 0; position: relative; cursor: pointer; font-size: 11px; text-align: center; min-width: 0; }
+  .tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; border: 2px solid transparent; box-sizing: border-box;
+              background: repeating-conic-gradient(#5a5f68 0 25%, #4a4e56 0 50%) 0 0 / 12px 12px; }
+  .tile:hover img { border-color: var(--accent); }
+  .tile figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .tile .badge { position: absolute; top: 6px; left: 6px; background: #6b4fa0; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 6px; }
+  .tile .acts { display: none; position: absolute; left: 4px; right: 4px; bottom: 22px; gap: 3px; justify-content: center; }
+  .tile:hover .acts { display: flex; }
+  .tile .acts button { font-size: 10px; padding: 1px 4px; }
+  body.texture-mode .wbar { left: 312px; max-width: calc(100vw - 312px - 384px); }
+  body.texture-mode .popover { left: 312px; }
+  body.texture-mode .wnote { left: 324px; }
+  body.texture-mode .wvar { left: calc(50% - 36px); }
+  .curname { font-weight: 600; white-space: nowrap; }
+  #wside .card > header { cursor: pointer; }
+  #wside .card > header h2::before { content: '▾ '; color: var(--muted); }
+  #wside .card.closed > header h2::before { content: '▸ '; }
+  #wside .card.closed > .rows { display: none; }
   #kinds .sep { width: 1px; background: var(--line); margin: 4px 6px; }
   #msg { color: var(--muted); margin-left: auto; text-align: right; }
 </style>
@@ -143,6 +207,7 @@
 </header>
 <div id="side"></div>
 <div id="wview"></div>
+<div id="wlib" class="glass"></div>
 <div id="wside"></div>
 <footer id="wfoot" class="glass"></footer>
 <footer id="bottom" class="glass">
