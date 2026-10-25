@@ -135,6 +135,9 @@ const setPath = (obj, p, v) => {
   for (const [i, k] of keys.entries()) o = (o[k] ??= /^\d+$/.test(keys[i + 1] ?? last) ? [] : {});
   o[last] = v;
 };
+// Färger kan vara sparade som palettnamn (palette:foliage_light, som i species.json); färgväljaren vill ha #rrggbb
+const PALETTE = (await fetch('/tools/style.json').then((r) => r.json())).palette;
+const colorOf = (v) => (typeof v === 'string' && v.startsWith('palette:') ? PALETTE[v.slice(8)] ?? '#888888' : v);
 const paramAt = (path) => P.params.find((q) => q.path === path) ?? { path };
 // Värde för en spak: det som är satt, annars artens värde (recipe.leaves m.fl. finns som leaves i arten), annars standard
 function valueOf(p) {
@@ -154,6 +157,25 @@ function resetSpecies(preset, height) {
   state.spec = structuredClone(G.species[preset]);
   state.recipe = { preset, height: height ?? state.recipe.height ?? kind.height ?? 8, seed: state.recipe.seed ?? 47,
     bark_blend: structuredClone(state.spec.bark_blend ?? {}) };
+}
+// Läs in ett sparat recept (som make_tree.py skriver i recipe.json): artens värden med receptets överst
+function loadRecipe(r) {
+  resetSpecies(r.preset.split('_')[0], r.height);
+  const sp = state.spec, ov = r.species ?? {};
+  Object.assign(sp.trunk, ov.trunk ?? {});
+  (ov.levels ?? []).forEach((l, i) => { sp.levels[i] = { ...(sp.levels[i] ?? {}), ...l }; });
+  if (ov.stemless !== undefined) sp.stemless = ov.stemless;
+  Object.assign(sp.foliage, r.canopy ?? {});
+  Object.assign(state.recipe, { seed: r.seed ?? state.recipe.seed, bark_blend: structuredClone(r.bark_blend ?? state.recipe.bark_blend) });
+  for (const k of ['leaves', 'bark', 'leaf_tint']) if (r[k] !== undefined) state.recipe[k] = r[k];
+}
+// Fliken startar med sitt startrecept (params.json: kinds[].start, ett namn i biblioteket), annars med sin första art
+async function startKind(k) {
+  if (k.start) {
+    const r = await fetch(`/assets/trees/${k.start}/recipe.json`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    if (r) return loadRecipe(r);
+  }
+  resetSpecies(k.species[0], k.height);
 }
 // Texturblandningen: artens värden, ändrade spakar ovanpå, och spakarnas standard där arten saknar värde
 function blendNow() {
@@ -391,7 +413,7 @@ function makeRow(p) {
     const c = el('input');
     c.type = 'color';
     c.onchange = () => commitParam(p, c.value);
-    syncs.push(() => { c.value = valueOf(p); });
+    syncs.push(() => { c.value = colorOf(valueOf(p)); });
     row.append(label, c);
   } else if (p.type === 'seed') {
     const n = el('input'), b = el('button', null, 'Nytt');
@@ -478,11 +500,11 @@ function leaveTextureMode() {
   document.body.classList.remove('texture-mode');
   paused = false;
 }
-function selectKind(k) {
+async function selectKind(k) {
   if (textureMode) { leaveTextureMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
-  resetSpecies(k.species[0], k.height);
+  await startKind(k);
   framed = false;
   for (const r of pinned) { scene.remove(r); dispose(r); }
   pinned.length = 0;
@@ -553,8 +575,8 @@ window.__studio = {
   },
 };
 
-// Start: första fliken och dess första art
-resetSpecies(kind.species[0], kind.height);
+// Start: första fliken med sitt startrecept
+await startKind(kind);
 refreshUi();
 lastSnapshot = snapshot();
 applyViewAll();

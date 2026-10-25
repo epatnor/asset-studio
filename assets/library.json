@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "name": "cardtree_71924",
+      "type": "tree",
+      "tags": [
+        "träd"
+      ],
+      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+      "recipe": "assets/trees/cardtree_71924/recipe.json",
+      "thumbnail": "assets/trees/cardtree_71924/cardtree_71924_thumb.jpg",
+      "checks_ok": true,
+      "saved": "2026-10-24T23:52:22.831Z"
+    }
+  ]
+}
