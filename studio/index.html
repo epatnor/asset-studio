@@ -90,6 +90,33 @@
   footer .vals span { white-space: nowrap; }
   footer .delta.up { color: var(--bad); } footer .delta.down { color: var(--good); }
   #warn { color: var(--bad); }
+
+  /* Texturverkstaden: 2D-vy, kort till höger, egen footer. Läget styrs av body.texture-mode */
+  #wview, #wside, #wfoot { display: none; }
+  body.texture-mode #app, body.texture-mode #side, body.texture-mode #bottom, body.texture-mode .asset-tool { display: none; }
+  body.texture-mode #wview { display: block; position: fixed; inset: 0; }
+  body.texture-mode #wside { display: flex; }
+  body.texture-mode #wfoot { display: flex; }
+  #wside { position: fixed; top: calc(var(--head) + 10px); right: 12px; bottom: calc(var(--foot) + 10px); width: min(350px, calc(100vw - 24px));
+           overflow-y: auto; flex-direction: column; gap: 10px; padding-right: 2px; }
+  #wfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 24px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px; }
+  .wbar { position: fixed; top: calc(var(--head) + 10px); left: 12px; display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; z-index: 1; }
+  .wbar select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+  .wbar .zoom { min-width: 48px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #wview canvas { cursor: grab; display: block; }
+  .steps { display: grid; gap: 6px; }
+  .step { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .step.off { opacity: 0.55; }
+  .step > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 5px 6px; cursor: pointer; }
+  .step > summary .name { flex: 1; font-weight: 600; }
+  .step .rows { padding: 4px 8px 8px; }
+  button.mini { padding: 1px 6px; font-size: 12px; border-radius: 6px; }
+  .row input.text { width: 100%; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; }
+  .row input[type=number] { box-sizing: border-box; }
+  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 4px; border: 1px solid var(--line); }
+  b.good { color: var(--good); } b.bad, span.bad { color: var(--bad); }
+  .note { color: var(--muted); font-size: 12px; min-height: 16px; }
+  #kinds .sep { width: 1px; background: var(--line); margin: 4px 6px; }
   #msg { color: var(--muted); margin-left: auto; text-align: right; }
 </style>
 <script type="importmap">
@@ -105,16 +132,19 @@
   <h1>Asset Studio</h1>
   <nav id="kinds"></nav>
   <div id="tools">
-    <span id="status"><span class="lamp" id="lamp"></span><span id="state">Startar…</span></span>
-    <button id="pin" title="Ställ det här bredvid och fortsätt ändra, för att jämföra">Fäst</button>
-    <button id="unpin">Ta bort fästa</button>
-    <button id="undo">Ångra</button>
-    <button id="redo">Gör om</button>
-    <button id="frame">Rama in</button>
-    <button id="save" class="primary">Spara till biblioteket…</button>
+    <span id="status" class="asset-tool"><span class="lamp" id="lamp"></span><span id="state">Startar…</span></span>
+    <button class="asset-tool" id="pin" title="Ställ det här bredvid och fortsätt ändra, för att jämföra">Fäst</button>
+    <button class="asset-tool" id="unpin">Ta bort fästa</button>
+    <button class="asset-tool" id="undo">Ångra</button>
+    <button class="asset-tool" id="redo">Gör om</button>
+    <button class="asset-tool" id="frame">Rama in</button>
+    <button id="save" class="primary asset-tool">Spara till biblioteket…</button>
   </div>
 </header>
 <div id="side"></div>
+<div id="wview"></div>
+<div id="wside"></div>
+<footer id="wfoot" class="glass"></footer>
 <footer id="bottom" class="glass">
   <div class="block"><b>Tillgången</b><div class="vals" id="assetStats">–</div></div>
   <div class="block"><b>Rendering</b><div class="vals" id="perfStats">–</div></div>

@@ -9,9 +9,14 @@
 // GET  /api/textures?kind=bark      texturer att välja bland (leaves, bark)
 // GET  /api/library                 bibliotekets katalog (assets/library.json)
 // POST /api/library                 { generator, name, tags, recipe, thumbnail } -> assets/ + rad i katalogen
+// GET  /api/workshop                texturverkstadens spakar (tools/texture/workshop.json)
+// POST /api/texture/preview         { recipe } -> förhandsvisning (512 px) i build/studio/tex/, cachad per recept
+// POST /api/texture/save            { recipe, name, profile, tags, meters, size, overwrite } -> assets/textures + texturkatalogen
+// GET  /api/texture/recipe?name=    receptet för en textur som gjorts i verkstaden
 
 import http from 'node:http';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile, writeFile, readdir, rm, mkdir, stat } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -113,10 +118,35 @@ async function ensureThumbs(names) {
 
 async function textures(kind) {
   const dir = path.join(ROOT, 'assets/textures');
-  const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen)/ }[kind] ?? /./;
+  const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen|blend_|rock_)/ }[kind] ?? /./;
   const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw|normal)\b/.test(f)).map((f) => f.slice(0, -4));
   await ensureThumbs(names);
   return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png`, thumb: `/${THUMBS}/${n}_${THUMB_PX}.jpg` }));
+}
+
+// --- Texturverkstaden (docs/texture-workshop.md): recept -> tools/texture/workshop.py ---
+const TEXPREV = 'build/studio/tex';
+let texQueue = Promise.resolve();
+const texSerial = (fn) => (texQueue = texQueue.then(fn, fn));
+async function texturePreview({ recipe }) {
+  const r = { source: recipe?.source ?? { type: 'noise' }, steps: recipe?.steps ?? [], size: Math.min(1024, recipe?.size ?? 512) };
+  const hash = createHash('sha1').update(JSON.stringify(r)).digest('hex').slice(0, 16);
+  const out = `${TEXPREV}/${hash}.png`, meta = path.join(ROOT, TEXPREV, `${hash}.json`);
+  if (existsSync(meta)) return { ...JSON.parse(await readFile(meta, 'utf8')), url: `/${out}`, cached: true };
+  const res = await texSerial(() => runTool('tools/texture/workshop.py', { ...r, out }));
+  if (res.error) return res;
+  await writeFile(meta, JSON.stringify(res));
+  cleanDir(path.join(ROOT, TEXPREV), 400).catch(() => {});
+  return { ...res, url: `/${out}` };
+}
+async function textureSave({ recipe, name, profile, tags = [], meters = 2, size = 1024, overwrite = false }) {
+  const r = { source: recipe?.source, steps: recipe?.steps ?? [], size: [512, 1024, 2048, 4096].includes(size) ? size : 1024 };
+  return texSerial(() => runTool('tools/texture/workshop.py', { ...r, save: { name, profile, tags, meters, overwrite } }));
+}
+async function cleanDir(dir, keep) {
+  const entries = await Promise.all((await readdir(dir)).map(async (n) => ({ n, t: (await stat(path.join(dir, n))).mtimeMs })));
+  entries.sort((a, b) => b.t - a.t);
+  await Promise.all(entries.slice(keep).map((e) => rm(path.join(dir, e.n), { force: true })));
 }
 
 async function readLibrary() {
@@ -162,6 +192,15 @@ async function api(req, res, url) {
   if (url.pathname === '/api/textures' && req.method === 'GET') return json(res, 200, await textures(url.searchParams.get('kind')));
   if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await readLibrary());
   if (url.pathname === '/api/library' && req.method === 'POST') return json(res, 200, await saveToLibrary(await body(req)));
+  if (url.pathname === '/api/workshop' && req.method === 'GET') return json(res, 200, JSON.parse(await readFile(path.join(ROOT, 'tools/texture/workshop.json'), 'utf8')));
+  if (url.pathname === '/api/texture/preview' && req.method === 'POST') return json(res, 200, await texturePreview(await body(req)));
+  if (url.pathname === '/api/texture/save' && req.method === 'POST') return json(res, 200, await textureSave(await body(req)));
+  if (url.pathname === '/api/texture/recipe' && req.method === 'GET') {
+    const name = url.searchParams.get('name') ?? '';
+    const file = path.join(ROOT, 'assets/textures', `${name}.texture.json`);
+    if (!NAME.test(name) || !existsSync(file)) return json(res, 404, { error: 'inget recept för den texturen' });
+    return json(res, 200, JSON.parse(await readFile(file, 'utf8')));
+  }
   return json(res, 404, { error: 'okänt anrop' });
 }
 
@@ -192,5 +231,6 @@ http.createServer(async (req, res) => {
   }
 }).listen(PORT, '127.0.0.1', () => {
   mkdir(path.join(ROOT, PREVIEWS), { recursive: true });
+  mkdir(path.join(ROOT, TEXPREV), { recursive: true });
   console.log(`Asset Studio: http://localhost:${PORT}/studio/`);
 });

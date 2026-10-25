@@ -1,6 +1,6 @@
 # Plan: Texturverkstaden
 
-Status: plan, inget byggt. Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och allt annat som behöver texturer.
+Status: T1 byggd 2026-10-25 (fliken Texturer i studion, `tools/texture/workshop.py`, `tools/texture/workshop.json`, `studio/workshop.js`); resten är plan. Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och allt annat som behöver texturer.
 
 ## Varför
 

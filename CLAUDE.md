@@ -58,7 +58,7 @@ Växtgeneratorn (`tools/plants/`, MCP `create_plant`) gör gräsknippen, vass, s
 
 Färdiga modeller från andra (GLB, glTF, FBX, OBJ, DAE, blend) importeras med `import_model` (`tools/import/`): de normaliseras till meter med pivot vid marken och komprimeras som våra egna. Ange alltid `origin`, `license` och `author`. De hamnar i den genererade `assets/CREDITS.md` (`tools/import/make_credits.py`, där också `third_party/*/SOURCE.md` ingår). Saknas licens, eller är den NC, ND eller editorial, blir `checks.ok` false.
 
-**Asset Studio** (`studio/`, server `tools/studio/server.mjs`, plan i [docs/asset-studio.md](docs/asset-studio.md)): Patrik drar själv i generatorernas spakar och sparar till biblioteket `assets/library.json`. Spakarna är data i `tools/<område>/params.json`; en ny spak i en generator ska också in där. Läs biblioteket och de sparade recepten när Patrik hänvisar till något han sparat.
+**Asset Studio** (`studio/`, server `tools/studio/server.mjs`, plan i [docs/asset-studio.md](docs/asset-studio.md)): Patrik drar själv i generatorernas spakar och sparar till biblioteket `assets/library.json`. Spakarna är data i `tools/<område>/params.json`; en ny spak i en generator ska också in där. Läs biblioteket och de sparade recepten när Patrik hänvisar till något han sparat. Fliken Texturer är texturverkstaden ([docs/texture-workshop.md](docs/texture-workshop.md)): en textur är ett recept (källa + steg) som körs av `tools/texture/workshop.py`, med spakarna i `tools/texture/workshop.json` och katalogen `assets/textures/catalog.json`; nya källor och steg läggs till där, inte som enstaka bilder.
 
 Kommandoradsvarianter:
 
@@ -71,5 +71,6 @@ Kommandoradsvarianter:
 | `python3 -I tools/building/make_building.py '<recept>'` | Byggnad → `assets/buildings/<name>/<name>.gltf` (+ .bin), texturer genereras vid behov |
 | `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
 | `python3 -I tools/texture/make_leafsheet.py '<recept>'` | Procedurellt lövark (2x2, runda lövklasar för kortbollar): white, painted eller color |
+| `python3 -I tools/texture/workshop.py '<recept>'` | Textur från recept (källa + steg) → förhandsvisning eller `assets/textures/<namn>.png` + recept + katalograd |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

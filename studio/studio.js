@@ -10,6 +10,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { shareTextures } from '../showcase/shared_textures.js';
 import { createMaterialPatcher, applyShadowRole } from '../showcase/materials.js';
+import { createWorkshop } from './workshop.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -447,7 +448,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || valueOf(paramAt(p.when.path)) === p.when.equals);
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : b.dataset.kind === kind.id);
 }
 
 // --- Header: flikar för tillgångstyp och verktyg ---
@@ -458,7 +459,27 @@ for (const k of P.kinds) {
   else b.onclick = () => selectKind(k);
   $('kinds').append(b);
 }
+// Texturverkstaden (studio/workshop.js): egen vy, egna kort och egen footer; skapas första gången den öppnas
+const texBtn = el('button', null, 'Texturer');
+texBtn.title = 'Texturverkstaden: ta fram och justera texturer för tillgångar, terräng och byggnader';
+$('kinds').append(Object.assign(el('span', 'sep')), texBtn);
+let workshop = null, textureMode = false;
+texBtn.onclick = async () => {
+  textureMode = true;
+  document.body.classList.add('texture-mode');
+  paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
+  refreshUi();
+  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot') });
+  workshop.show();
+};
+function leaveTextureMode() {
+  if (!textureMode) return;
+  textureMode = false;
+  document.body.classList.remove('texture-mode');
+  paused = false;
+}
 function selectKind(k) {
+  if (textureMode) { leaveTextureMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   resetSpecies(k.species[0], k.height);

@@ -1,6 +1,6 @@
 # Plan: Asset Studio (först trädgeneratorn)
 
-Status: fas 1 (trädstudion) byggd 2026-10-25, med mer ovanpå (se tabellen under Faser och roadmapen, avsnittet Asset Studio). Starta med `node tools/studio/server.mjs` (eller launch-konfigurationen `studio`) och öppna http://localhost:8770/studio/.
+Status: fas 1 (trädstudion) byggd 2026-10-25, med mer ovanpå (se tabellen under Faser och roadmapen, avsnittet Asset Studio). Starta med genvägen Asset Studio på skrivbordet (`tools/studio/start.sh`: startar servern i distrobox-containern claude-desktop om den inte redan körs och öppnar studion i webbläsaren), eller med `node tools/studio/server.mjs` (launch-konfigurationen `studio`) och http://localhost:8770/studio/.
 
 Det som finns: `tools/tree/params.json` (spakarna), `tools/studio/server.mjs` (API: generators, generate, textures, library), `studio/` (vy; egen panel med ett kort per del av tillgången, för träd Krona och Stam, med texturernas förhandsbilder och en miniatyrväljare i korten; kontroller och siffror; Fäst för jämförelse; Ångra och Gör om; Spara till biblioteket med miniatyr). Förhandsbilderna görs av `post_textures.py thumbs` i `build/studio/thumbs/`.
 
