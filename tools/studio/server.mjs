@@ -9,6 +9,7 @@
 // GET  /api/textures?kind=bark      texturer att välja bland (leaves, bark)
 // GET  /api/library                 bibliotekets katalog (assets/library.json)
 // POST /api/library                 { generator, name, tags, recipe, thumbnail } -> assets/ + rad i katalogen
+// POST /api/shot?name=             skärmdump av 3D-vyn (PNG i kroppen) -> build/shots/studio_<namn>.png
 // GET  /api/workshop                texturverkstadens spakar (tools/texture/workshop.json)
 // POST /api/texture/preview         { recipe } -> förhandsvisning (512 px) i build/studio/tex/, cachad per recept
 // POST /api/texture/save            { recipe, name, profile, tags, meters, size, overwrite } -> assets/textures + texturkatalogen
@@ -192,6 +193,17 @@ async function api(req, res, url) {
   if (url.pathname === '/api/textures' && req.method === 'GET') return json(res, 200, await textures(url.searchParams.get('kind')));
   if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await readLibrary());
   if (url.pathname === '/api/library' && req.method === 'POST') return json(res, 200, await saveToLibrary(await body(req)));
+  if (url.pathname === '/api/shot' && req.method === 'POST') {
+    // Skärmdump av studions 3D-vy (för tavlor och dokumentation): PNG-data -> build/shots/studio_<namn>.png
+    const name = url.searchParams.get('name') ?? '';
+    if (!/^[a-z0-9_-]{1,64}$/i.test(name)) return json(res, 400, { error: 'name: a-z, 0-9, _ och -' });
+    const chunks = [];
+    for await (const c of req) chunks.push(c);
+    await mkdir(path.join(ROOT, 'build/shots'), { recursive: true });
+    const out = `build/shots/studio_${name}.png`;
+    await writeFile(path.join(ROOT, out), Buffer.concat(chunks));
+    return json(res, 200, { out });
+  }
   if (url.pathname === '/api/workshop' && req.method === 'GET') return json(res, 200, JSON.parse(await readFile(path.join(ROOT, 'tools/texture/workshop.json'), 'utf8')));
   if (url.pathname === '/api/texture/preview' && req.method === 'POST') return json(res, 200, await texturePreview(await body(req)));
   if (url.pathname === '/api/texture/save' && req.method === 'POST') return json(res, 200, await textureSave(await body(req)));

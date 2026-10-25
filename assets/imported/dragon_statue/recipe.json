@@ -1,0 +1,9 @@
+{
+  "name": "dragon_statue",
+  "source": "build/tripo/dragon_statue/dragon_statue.glb",
+  "height": 2.4,
+  "category": "prop_large",
+  "origin": "Tripo AI P2 (image-to-model, task 72535faa), referens från Krea-2 seed 7311, tools/tripo/make_tripo.py",
+  "license": "egen",
+  "author": "Tripo AI (genererad åt Patrik)"
+}

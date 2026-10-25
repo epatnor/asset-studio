@@ -2,7 +2,8 @@
 
   python3 -I tools/tripo/make_tripo.py '{"name": "male_ref", "views": {"front": "a.png", "left": "b.png", "right": "c.png"}, "face_limit": 8000, "dry_run": true}'
 
-Receptfält: name, views (front krävs, plus left/back/right; PNG eller JPEG upp till 20 MB), face_limit (50–20000),
+Receptfält: name, views (front krävs, plus left/back/right; PNG eller JPEG upp till 20 MB; bara front ger
+image-to-model, flera vyer multiview-to-model), face_limit (50–20000),
 texture (standard true), pbr (standard true), texture_quality (standard "standard"), model (standard "P1-20260311";
 "P2-20260801" för P2), quad (bara P2: riktigt quadnät, face_limit räknas i quads),
 dry_run (true: visa beräknat pris och kontots saldo, skicka ingenting).
@@ -73,8 +74,9 @@ def upload(key, path):
 def main():
     r = json.loads(sys.argv[1])
     name, views = r["name"], r["views"]
-    if "front" not in views or len(views) < 2:
-        sys.exit(json.dumps({"ok": False, "error": "front krävs, och minst två vyer"}))
+    if "front" not in views:
+        sys.exit(json.dumps({"ok": False, "error": "front krävs"}))
+    single = len(views) == 1  # bara framvyn: image-to-model i stället för multiview-to-model
     texture = bool(r.get("texture", True) or r.get("pbr", True))
     quality = r.get("texture_quality", "standard")
     model = r.get("model", "P1-20260311")
@@ -84,16 +86,21 @@ def main():
     if not key:
         sys.exit(json.dumps({"ok": False, "error": "TRIPO_API_KEY saknas (miljön eller .env)"}))
     if r.get("dry_run"):
-        print(json.dumps({"ok": True, "dry_run": True, "name": name, "views": sorted(views), "estimated_credits": cost, "balance": balance(key)}))
+        print(json.dumps({"ok": True, "dry_run": True, "name": name, "views": sorted(views), "mode": "image-to-model" if single else "multiview-to-model",
+                          "estimated_credits": cost, "balance": balance(key)}))
         return
     tokens = {v: upload(key, ROOT / p if not os.path.isabs(p) else p) for v, p in views.items()}
-    body = {"inputs": [{v: t} for v, t in tokens.items()], "model": model, "texture": texture,
-            "pbr": bool(r.get("pbr", True)), "texture_quality": quality}
+    body = {"model": model, "texture": texture, "pbr": bool(r.get("pbr", True)), "texture_quality": quality}
+    if single:
+        body["input"] = tokens["front"]
+    else:
+        body["inputs"] = [{v: t} for v, t in tokens.items()]
     if r.get("face_limit"):
         body["face_limit"] = int(r["face_limit"])
     if r.get("quad"):
         body["quad"] = True  # bara P2; face_limit räknas då i quads (48–25000)
-    sub = request("POST", "/v3/generation/multiview-to-model", key, json.dumps(body).encode(), {"Content-Type": "application/json"})
+    endpoint = "/v3/generation/image-to-model" if single else "/v3/generation/multiview-to-model"
+    sub = request("POST", endpoint, key, json.dumps(body).encode(), {"Content-Type": "application/json"})
     if sub.get("code") != 0:
         sys.exit(json.dumps({"ok": False, "error": sub}))
     task = sub["data"]["task_id"]
@@ -123,7 +130,7 @@ def main():
                 (out_dir / f"{name}_render.webp").write_bytes(resp.read())
         except Exception:
             pass
-    (out_dir / "task.json").write_text(json.dumps({"task_id": task, "request": {k: v for k, v in body.items() if k != "inputs"}, "views": views,
+    (out_dir / "task.json").write_text(json.dumps({"task_id": task, "request": {k: v for k, v in body.items() if k not in ("inputs", "input")}, "views": views,
                                                    "consumed_credit": data.get("consumed_credit")}, indent=2))
     print(json.dumps({"ok": True, "name": name, "glb": str(glb.relative_to(ROOT)), "task_id": task, "seconds": round(time.time() - t0),
                       "consumed_credit": data.get("consumed_credit"), "estimated_credits": cost}))

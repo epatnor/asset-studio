@@ -47,6 +47,27 @@ En textur byggs av en **källa** och en **stapel steg**, precis som en tillgång
 - Ett nytt skript, `tools/texture/workshop.py`, kör recept enligt verktygsmönstret: JSON in, en rad JSON ut, resultat i `assets/textures/`, mellanfiler i `build/`. Det återanvänder de verktyg som finns (`post_textures.py`, `make_surface.py`, `make_leafsheet.py`, `krea2.py`).
 - Förhandsvisningen räknas i låg upplösning (512 px) och cachas per receptsteg, så att en spak bara räknar om stegen efter den ändrade. Full upplösning görs när man sparar.
 
+## Ingredienser (under-texturer)
+
+Ett recept kan ha namngivna **ingredienser** (`inputs`): en sparad textur ur katalogen eller ett inbäddat eget recept, som i sin tur kan ha egna ingredienser. Källan och stegen pekar på dem med namn:
+
+```json
+{
+  "inputs": {
+    "sten":  { "texture": "rock_cobble" },
+    "mossa": { "recipe": { "source": { "type": "noise" }, "steps": [] } },
+    "fläck": { "recipe": { "source": { "type": "noise", "kind": "blobs", "scale": 4 } } }
+  },
+  "source": { "type": "input", "input": "sten" },
+  "steps": [ { "op": "layer", "input": "mossa", "mask": "fläck", "mode": "height", "scale": 2 } ]
+}
+```
+
+- Varje ingrediens räknas för sig och cachas, så att en ändring i mossan inte räknar om stenen. Den skalas med ett helt antal upprepningar, så att resultatet förblir sömlöst.
+- **Höjden följer med genom hela stapeln** (källorna räknar redan ut den). Då kan en ingrediens styras av en annans form: mossa i fogarna, smuts i barkens fåror, gräs mellan stigens stenar.
+- Användning: lager med mask, masker (från höjd, ljushet, lutning, brus), detaljlager i annan skala (multiplicera, overlay), **utspridning av stämplar** (löv, småsten, blommor över skogsbotten, sömlöst), struktur till Krea (T2), materialets kartor (T3), färgramp.
+- I studion: kortet **Ingredienser** med miniatyrer. Klick redigerar ingrediensens recept med samma kort, med en brödsmula (*Skogsbotten ▸ Mossa*) tillbaka. En ingrediens kan sparas som egen textur och återanvändas; katalogen håller reda på vilka texturer som använder vilka, så att de kan byggas om när en ingrediens ändras.
+
 ## Källor
 
 ### Fasta algoritmer (procedurellt, sekunder, inga GPU-jobb)
@@ -94,6 +115,52 @@ En textur byggs av en **källa** och en **stapel steg**, precis som en tillgång
 - **Avstånd:** samma textur som den ser ut på 5, 20 och 60 m (mipmappar), så att mönster som flimrar eller blir grått syns.
 - **3D:** på en kub, sfär, cylinder (stam) eller plan, eller direkt på den aktuella tillgången i studion (byt barken på trädet medan du drar). Skalan anges i meter per upprepning, så att texturens täthet stämmer med världen.
 
+## Materiallabbet: alla egenskaper
+
+Verkstaden gör inte bara en färgtextur utan ett **material**: en uppsättning kartor och värden, där varje egenskap kan slås på och av och styras med spakar, och provas på testmodeller. Kartorna kommer från ingredienser eller räknas fram ur källans höjd. three.js `MeshPhysicalMaterial` har det mesta inbyggt, och glTF för det vidare (KHR-tillägg) till klienten och Godot.
+
+| Grupp | Egenskap | Hur verkstaden gör den | I klienten |
+|---|---|---|---|
+| Grund | **Färg (albedo)** | källan och stegen; kontroll att inget ljus är inbakat (valörer, AO-andel) | `map`, sRGB |
+| | **Normalkarta** | ur höjden (styrka, skärpa) eller från en ingrediens | `normalMap`, linjär |
+| | **Ruffighet** | ur ljusheten, höjden eller en ingrediens, med kurva; glans (inverterad) som val | `roughnessMap` |
+| | **Metall** | mask (ingrediens eller tröskel), nästan alltid 0 eller 1 | `metalnessMap` |
+| | **AO** | ur höjden (radie, styrka) | `aoMap` (andra UV-kanalen eller samma) |
+| Form | **Höjd och förskjutning** | höjden; testmodellerna finns i täta versioner | `displacementMap` |
+| | **Parallax occlusion mapping** | höjden; djup och antal steg | egen shader |
+| | **Bump** | gråskala, äldre alternativ till normalkartan | `bumpMap` |
+| Ljus | **Emission** | mask och färg, styrka (lava, runor, fönster) | `emissiveMap`, sRGB |
+| | **Alfa och urklipp** | alfakanal, tröskel (urklipp), mjuk kant | `alphaMap`, `alphaTest` |
+| | **Transmission och brytning** | mängd, tjocklek, IOR (glas, vatten, is) | `transmission`, `thickness`, `ior` |
+| | **Subsurface (SSS)** | stiliserad genomlysning (som lövens), färg och styrka | egen shader |
+| Avancerat | **Specular** | styrka och färg (äldre arbetsflöde, eller glTF-tillägget) | `specularIntensity`, `specularColor` |
+| | **Clearcoat** | lacklager med egen ruffighet och normal | `clearcoat*` |
+| | **Sheen** | tyg och sammet: färg och ruffighet | `sheen*` |
+| | **Anisotropi** | utdragna reflexer: styrka, riktning, riktningskarta | `anisotropy*` |
+| | **Iridescens** | regnbågsskimmer: styrka, IOR, tjockleksintervall | `iridescence*` |
+| | **Detaljkartor** | en fin ingrediens (färg och normal) i hög tiling, som tonas in på nära håll | egen shader |
+| | **Masker och ID-kartor** | RGB-mask som styr vilket lager som hamnar var (smuts, rost, slitage) | lagerstacken (T4) |
+
+**Inställningar på texturen** (en panel per karta, med förklaring):
+- **UV-tiling, förskjutning och vridning.**
+- **Filtrering:** nearest, linear, trilinear, och anisotrop filtrering med nivå.
+- **Mipmappar:** av och på, med en vy av hur de ser ut på avstånd.
+- **Wrap mode:** repeat, clamp eller mirror.
+- **Färgrymd per karta:** sRGB för färg och emission, linjär för alla datakartor. Verkstaden varnar om en datakarta står som sRGB, en klassisk felkälla.
+- **Kanalpackning:** ORM, med AO i R, ruffighet i G och metall i B, som glTF väntar sig, och egna packningar.
+
+### Testmodeller
+
+Förhandsvisningen i 3D har en modellväljare, så att material och blandning kan provas på olika former:
+- **Block med fasade kanter:** platta ytor, kanter och hörn (nötning och kantljus).
+- **Sfär:** alla riktningar (riktningsmasker som mossa på norrsidan och snö uppifrån), ljusets fall.
+- **Cylinder:** stam och pelare (barkens upprepning längs och runt).
+- **Terrängbit med kullar:** lutning och höjd, för markprofilen.
+- **Stiliserad drakstaty:** en avancerad form med veck, fjäll och utskott, där AO, krökning, höjdblandning och riktningar syns tydligt.
+- **Den aktuella tillgången från studion.**
+
+Varje modell finns i en tät version för höjdförskjutning. Visningen har vridbord, ljusförval (spelets sol och himmel, studioljus, motljus) och en HDR-miljö för reflexer.
+
 ## Terräng och stora ytor
 
 Marken i Tinkertown 2 täcker stora ytor, där upprepning och skarvar mellan lager syns mest. Verkstaden får därför egna verktyg för profilen `terrain`:
@@ -133,16 +200,22 @@ Masker kan kombineras (till exempel riktning × brus). Resultatet sparas som mat
 
 ## Faser
 
+Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet med testmodellerna och blandningen först, så att texturblandning kan provas på riktiga former.
+
 | Fas | Innehåll | Klart när |
 |---|---|---|
-| T1. Grund | `workshop.py` med recept; procedurella källor (brus, bark, sten, tegel, plankor) och import; stegen tile, levels, hsv, palette, gray, soften, scale; fliken Texturer med 2D-vy, zoom och 3×3-tiling; spara till biblioteket | Patrik kan göra och spara en sömlös bark eller sten med spakar |
-| T2. Generativt | Krea text till bild och bild till bild från en procedurell bas, med varianter och jobbkö; extern generator med pris och bekräftelse | Målade texturer med kontrollerad form, utan att be Claude |
-| T3. Kartor och 3D | höjd, normal, AO, ruffighet; 3D-förhandsvisning på former och på aktuell tillgång, med meter per upprepning; avståndsvyn; målprofiler och texturkatalogen | Texturen går att bedöma där den ska användas |
-| T3b. Terräng | profilen `terrain`: förhandsvisning på en terrängbit med lagerregler (lutning, höjd, fukt), höjdbaserad blandning, upprepningsskydd och makrotextur; katalogen läses av Tinkertown 2 | Marklagren till Tinkertown 2 görs och provas i verkstaden |
+| T1. Grund (klar) | `workshop.py` med recept; procedurella källor (brus, bark, sten, tegel, plankor) och import; stegen tile, levels, hsv, palette, gray, soften, scale; fliken Texturer med 2D-vy, zoom och 3×3-tiling; spara till biblioteket | Patrik kan göra och spara en sömlös bark eller sten med spakar |
+| T1b. Ingredienser | höjden genom stapeln; ingredienser (sparade och inbäddade) med cache per ingrediens; steget `layer` med masker; kortet Ingredienser med brödsmulor; utspridning av stämplar | Mossa i stenens fogar och löv strödda över marken, byggda av ingredienser |
+| T3a. Materiallabbet och 3D | kartor ur höjden och ingredienser (normal, ruffighet, metall, AO, höjd, bump); 3D-vy med testmodellerna (block, sfär, cylinder, terrängbit, drakstaty, aktuell tillgång), vridbord och ljusförval; texturinställningarna (tiling, filtrering, mipmappar, wrap, färgrymd, kanalpackning); avståndsvyn; målprofiler | Ett material går att bedöma och justera på olika former |
 | T4. Blandning | lagerstacken med masker (riktning, höjd, höjdkarta, brus, krökning, vertexvikt) i klientens shader, styrd och förhandsvisad i verkstaden; ersätter `bark_blend` och stenmossan | Mossa på norrsidan och snö uppifrån med spakar |
+| T3c. Avancerade egenskaper | emission, alfa och urklipp, transmission och brytning, stiliserad SSS, specular, clearcoat, sheen, anisotropi, iridescens; parallax occlusion mapping och detaljkartor i shadern; export som glTF-material | Alla egenskaper i listan kan provas en i taget |
+| T2. Generativt | Krea text till bild och bild till bild från en procedurell bas, med varianter och jobbkö; extern generator med pris och bekräftelse | Målade texturer med kontrollerad form, utan att be Claude |
+| T3b. Terräng | profilen `terrain`: förhandsvisning på en terrängbit med lagerregler (lutning, höjd, fukt), höjdbaserad blandning, upprepningsskydd och makrotextur; katalogen läses av Tinkertown 2 | Marklagren till Tinkertown 2 görs och provas i verkstaden |
 | T5. Resten | lövark och atlas i verkstaden, alfaverktyg, detaljsteg (frekvens, målad look), varianter och versioner, kontroller, MCP | Alla texturer i projektet kan göras och underhållas i verkstaden |
 
 ## Frågor till Patrik
+
+0. **Drakstatyn:** hur tar vi fram den (se svaret i chatten 2026-10-25: Tripo, en färdig CC0-modell eller en enkel egen generator)?
 
 1. **Terrängen:** ska verkstadens lagerregler (lutning, höjd, fukt) kunna sparas direkt som biomregler i Tinkertown 2, eller räcker det att texturerna och deras höjdkartor delas?
 2. **Extern generator:** räcker OpenRouter (som Apparition), och finns det en modell du föredrar? Varje körning bekräftas med pris.

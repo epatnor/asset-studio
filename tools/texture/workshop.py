@@ -95,7 +95,7 @@ def voronoi(n, pts, weights=None):
 
 # --- Källor: varje källa ger färg (n, n, 3) och höjd (n, n), båda 0..1 ---
 def src_noise(n, p, rng):
-    kind = p.get("type", "fbm")
+    kind = p.get("kind", "fbm")  # inte "type": det namnet anger vilken källa receptet har
     if kind == "worley":
         pts = rng.random((max(4, int(p.get("scale", 6)) ** 2), 2))
         f1, _, _ = voronoi(n, pts)

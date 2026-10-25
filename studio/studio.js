@@ -542,7 +542,16 @@ async function save() {
   $('note').textContent = res.error ? res.error : `Sparad i biblioteket: ${res.entry.model}`;
 }
 
-window.__studio = { camera, controls, state, frame: () => frame(current, ...pinned), measure }; // för felsökning och automatiska tester
+// För felsökning och automatiska tester. shot(name) sparar 3D-vyn som build/shots/studio_<name>.png.
+window.__studio = {
+  camera, controls, state, frame: () => frame(current, ...pinned), measure,
+  shot: async (name) => {
+    controls.update();
+    draw();
+    const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+    return (await fetch(`/api/shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).json();
+  },
+};
 
 // Start: första fliken och dess första art
 resetSpecies(kind.species[0], kind.height);

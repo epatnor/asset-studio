@@ -2,7 +2,7 @@
   "_doc": "Texturverkstadens spakar (docs/texture-workshop.md). sources: källor (en per recept), steps: bildbehandlingssteg (en stapel), profiles: målprofiler (vem som använder texturen). Spaktyper som i studion: number, int, select, color, seed, texture, bool. Färger anges som #RRGGBB i sRGB.",
   "sources": {
     "noise": { "label": "Brus", "params": [
-      { "key": "type", "label": "Typ", "type": "select", "options": { "Mjukt (fBm)": "fbm", "Celler (Worley)": "worley", "Fläckar": "blobs" }, "default": "fbm" },
+      { "key": "kind", "label": "Sort", "type": "select", "options": { "Mjukt (fBm)": "fbm", "Celler (Worley)": "worley", "Fläckar": "blobs" }, "default": "fbm" },
       { "key": "scale", "label": "Skala", "type": "number", "min": 1, "max": 32, "step": 1, "default": 6, "help": "Antal stora former över texturen" },
       { "key": "octaves", "label": "Oktaver", "type": "int", "min": 1, "max": 6, "default": 4 },
       { "key": "sharpness", "label": "Skärpa", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3 },

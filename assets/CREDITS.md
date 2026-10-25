@@ -9,6 +9,7 @@ Genereras av `tools/import/make_credits.py` från importrecepten och `third_part
 | `azshara_bridge` | Patrik | egen | Azshara Island, egen Godot-prototyp (tools/levels/azshara) |
 | `azshara_jetty` | Patrik | egen | Azshara Island, egen Godot-prototyp (tools/levels/azshara) |
 | `azshara_lantern` | Patrik | egen | Azshara Island, egen Godot-prototyp (tools/levels/azshara) |
+| `dragon_statue` | Tripo AI (genererad åt Patrik) | egen | Tripo AI P2 (image-to-model, task 72535faa), referens från Krea-2 seed 7311, tools/tripo/make_tripo.py |
 | `tripo_female_p2` | Tripo AI (genererad) | – | Tripo AI, genererad med tools/tripo/make_tripo.py |
 | `tripo_female_ref` | Tripo AI (genererad) | – | Tripo AI, genererad med tools/tripo/make_tripo.py |
 | `tripo_male_p2` | Tripo AI (genererad) | – | Tripo AI, genererad med tools/tripo/make_tripo.py |
