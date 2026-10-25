@@ -1,6 +1,6 @@
 # Plan: Asset Studio (först trädgeneratorn)
 
-Status: fas 1 (trädstudion) byggd 2026-10-25. Starta med `node tools/studio/server.mjs` (eller launch-konfigurationen `studio`) och öppna http://localhost:8770/studio/.
+Status: fas 1 (trädstudion) byggd 2026-10-25, med mer ovanpå (se tabellen under Faser och roadmapen, avsnittet Asset Studio). Starta med `node tools/studio/server.mjs` (eller launch-konfigurationen `studio`) och öppna http://localhost:8770/studio/.
 
 Det som finns: `tools/tree/params.json` (spakarna), `tools/studio/server.mjs` (API: generators, generate, textures, library), `studio/` (vy; egen panel med ett kort per del av tillgången, för träd Krona och Stam, med texturernas förhandsbilder och en miniatyrväljare i korten; kontroller och siffror; Fäst för jämförelse; Ångra och Gör om; Spara till biblioteket med miniatyr). Förhandsbilderna görs av `post_textures.py thumbs` i `build/studio/thumbs/`.
 
@@ -87,13 +87,13 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 
 ## Faser
 
-| Fas | Innehåll | Klart när |
-|---|---|---|
-| 1. Trädstudio (MVP) | Studioserver med `generators` och `generate`; `tools/tree/params.json` för de viktigaste spakarna; studiosida med lil-gui, vy, siffror, Fäst/jämför; Spara till biblioteket (recept, modell, miniatyr, katalograd) | Patrik kan dra i spakarna, se trädet byggas om på under en sekund och spara det |
-| 2. Texturer | Lövarkspanel med direktvisning; Krea-jobb för bark och löv med förlopp; kontrastspak; texturväljare med miniatyrer | Nytt lövark eller ny bark utan att be Claude |
-| 3. Bibliotek | Biblioteksvy med miniatyrer, sökning och taggar; ladda tillbaka i studion; "Fler varianter" | Sparade träd går att hitta, ändra och variera |
-| 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props |
-| 5. Hopkoppling | Tinkertown 2 visar biblioteket; Electron-paketering tillsammans med Tinkertown 2 | Det som sparas i studion går att placera i världen |
+| Fas | Innehåll | Klart när | Status |
+|---|---|---|---|
+| 1. Trädstudio (MVP) | Studioserver med `generators` och `generate`; `tools/tree/params.json` för de viktigaste spakarna; studiosida med vy, siffror, Fäst/jämför; Spara till biblioteket (recept, modell, miniatyr, katalograd) | Patrik kan dra i spakarna, se trädet byggas om på under en sekund och spara det | Klar, plus kort per del, header, footer med prestanda, rendering och skuggor, buske |
+| 2. Texturer | Lövarkspanel med direktvisning; Krea-jobb för bark och löv med förlopp; kontrastspak; texturväljare med miniatyrer | Nytt lövark eller ny bark utan att be Claude | Texturväljaren med miniatyrer finns; resten återstår |
+| 3. Bibliotek | Biblioteksvy med miniatyrer, sökning och taggar; ladda tillbaka i studion; "Fler varianter" | Sparade träd går att hitta, ändra och variera | Återstår (katalogen finns) |
+| 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props | Flikarna finns, markerade som kommande |
+| 5. Hopkoppling | Tinkertown 2 visar biblioteket; Electron-paketering tillsammans med Tinkertown 2 | Det som sparas i studion går att placera i världen | Återstår |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.
 

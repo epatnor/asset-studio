@@ -77,6 +77,19 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [x] `leaf_tint`: lövfärgen är en materialparameter (gråskaleatlas × baseColorFactor), som Material Instances i referensvideon. Höst- eller vårvariant utan nya texturer.
 - [ ] Jämför mot ArtStation-referensen g2vxrL (sidan går inte att läsa automatiskt, så en skärmdump behövs).
 
+**Kortbollar** (`cardball.mjs`, arterna `cardtree`, `cardbirch` och `cardbush`; teknik från stiliserade Blender-träd, kort i `knowledge/cards/trees/`):
+- [x] Bollar av lövkort i klasar på skelettets kvistar, med båda kortsidorna som egen geometri och sfäriska normaler. Treor (x, y, z), hängande kort och draperier (fem böjda remsor från en rundad topp, björken) som korttyper.
+- [x] Fast kortstorlek i meter (höjd och bredd), täthet per m² bollyta, spridning i bollen, spetsbollar på grenspetsar och täckningssteg, så att inga kala kvistar sticker ut.
+- [x] Lövark från `make_leafsheet.py`: åtta bladformer, solfjäder, kvistar, hängande kvistar och tät kärna; vita, målade eller i paletten.
+- [x] Korten kastar och tar inte emot skugga (skärningarna syns annars); en osynlig skuggform av bollarna kastar kronans skugga. Rollerna står i materialens extras.
+- [x] Lövshadern: dämpad glans, genomlysning som väger in normal och tunn ytterkant, kort som tonas bort när de ses från kanten.
+- [x] Stamlösa buskar på marken med ett mjukt golv per boll, och lyft från marken.
+- [x] Barkens texturblandning: påväxt vid foten och grön textur i grentopparna (`bark_blend`, blandas i klientens shader). Barktexturer i 2048 px (`bark_birch_hd3` m.fl.).
+- [ ] Impostor (LOD3) för kortbollsträd på långt avstånd.
+- [ ] Kronans rundning för draperier som en spak (lyft och häng i ett), och en spak som skalar bollar och kort tillsammans.
+- [ ] Palmer och ormbunkar med draperidelen.
+- [ ] Mät kortbollar mot crown och bladkupoler i Skogen (alfakortens kostnad i tät skog).
+
 **Lövmaterial i klienten** (från "Stylized Fluffy Trees Tutorial", akbutea; det mesta av looken sitter i shadern):
 - [ ] Färgvariation per kluster: hasha `_CLUSTER` till en liten nyans- och ljushetsförskjutning.
 - [ ] Genomlysning (subsurface/translucency): ljusare löv i motljus, på `onBeforeCompile` i `MeshStandardMaterial`.
@@ -103,7 +116,7 @@ Varje generator ska uppfylla detta, så att biblioteket, editorn och AI:n kan be
 - [ ] Ersätt den nuvarande `tile`-metoden, som ger spökformer på oregelbundna mönster.
 
 ### Bibliotek (första version)
-- [ ] Katalog över alla tillgångar: typ, kategori, taggar, miniatyrbild, receptfamilj och varianter.
+- [ ] Katalog över alla tillgångar: typ, kategori, taggar, miniatyrbild, receptfamilj och varianter. Påbörjat: Asset Studio sparar recept, modell, miniatyr och taggar till `assets/library.json`.
 - [ ] Sökning och filtrering (typ, biom, storlek, taggar).
 - [ ] Favoriter och "senast använda".
 - [ ] Dra och släpp från biblioteket ut i världen.
@@ -171,6 +184,7 @@ Klient (shader och placering):
 - [ ] Väg och grus visar fortfarande svagt korset från sömlagningen vid upprepning; prova bredare mask eller två omgångar.
 - [x] Gräs, blommor, vass och säd utspridda i parken (småstenar återstår).
 - [ ] Höjd- och roughness-kartor; blandning efter höjd (stenar sticker upp ur gräset) i stället för linjär blandning.
+- [ ] Ytorna flyttar in i texturverkstaden (profilen `terrain`) med höjdkartor, upprepningsskydd och lagerregler; se [texture-workshop.md](texture-workshop.md).
 
 ### Vatten och hav
 - [ ] Hav: stiliserad vattenshader med djupfärg (grunt turkos, djupt blått), skumkant mot land och mjuka vågor.
@@ -247,6 +261,38 @@ Klient (shader och placering):
 - [ ] Koppling till NPC:er, interaktiva objekt och inventory.
 - [ ] AI-genererade uppdrag från ett kort recept ("en fiskarby behöver hjälp med X").
 
+## Genomgående: Asset Studio
+
+Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direkt och sparar det han är nöjd med till biblioteket. Plan och detaljer: [asset-studio.md](asset-studio.md). Starta med `node tools/studio/server.mjs` och öppna http://localhost:8770/studio/.
+
+**Klart (fas 1 och mer):**
+- [x] Studioserver (`tools/studio/server.mjs`) med API: generatorer och spakar, förhandsvisning, texturer med miniatyrer, biblioteket. Klienten kör aldrig verktygen själv.
+- [x] Spakarna som data per generator (`tools/<område>/params.json`): delar (`parts`), grupper, villkor (`when`), flikar (`kinds`), av/på-reglage. En ny generator får en studio genom sin `params.json`.
+- [x] Träd och buskar: ombyggnad på under en sekund när en spak släpps, kort per del (Krona och Stam) med texturernas förhandsbilder och en miniatyrväljare.
+- [x] Header med flikar per tillgångstyp och verktyg: Fäst (jämför bredvid), Ångra, Gör om, Rama in, Spara till biblioteket (recept, modell, miniatyr, taggar).
+- [x] Footer med tillgångens siffror (trianglar, alfa, kort, silhuett, grenar i kronan) och renderingens kostnad mätt per bild, jämfört med förra mätningen och vad som ändrades.
+- [x] Kortet Rendering och skuggor: skugga på marken (skuggform, lövkort, av), skuggor inom trädet (fejkade, mjuka, fulla), skuggkvalitet och mjukhet, GTAO med alfaklippt djup, sol och exponering.
+
+**Nästa:**
+- [ ] **Fas 2, texturer:** Nytt lövark med arkets spakar och direktvisning (`make_leafsheet.py`), Ny bark eller annan textur via Krea med förlopp och kö (ett jobb i taget på grafikkortet), kontrastspak (`soften`).
+- [ ] **Fas 3, bibliotek:** biblioteksvy med miniatyrer, sök och taggar; ladda tillbaka ett recept i studion; Fler varianter (nya frön); ta bort.
+- [ ] **Fas 4, fler generatorer:** Sten och Prop via propsgeneratorn, Byggnadsdel via byggnadsgeneratorn, var och en med sin `params.json`; servern kör rätt skript per flik.
+- [ ] **Fas 5, hopkoppling:** biblioteket i Tinkertown 2, och Electron tillsammans med världsbyggaren.
+- [ ] Spara en ny art (`species.json`) från studion, som andra recept utgår från.
+- [ ] Jämförelse: fästa tillgångar med etikett, A/B-växling på samma plats.
+- [ ] Prestanda i en skog: en instansierad uppställning med många exemplar, så att skuggval och alfakort visar sin verkliga kostnad; GPU-tid via timer queries där de finns.
+- [ ] Debugvyer: bara korten, normaler, bollarna, LOD-växling på avstånd.
+- [ ] Fotoläge: spårad stillbild (path tracing) för miniatyrer och jämförelser. Raytracing i realtid finns inte i WebGL.
+- [ ] MCP: AI:n läser biblioteket och de sparade recepten, och en knapp "Be Claude" i studion.
+
+**Texturverkstaden** ([texture-workshop.md](texture-workshop.md)): fliken Texturer i studion, men projektets gemensamma texturkälla. Den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och stenarna via en texturkatalog med målprofiler (bark, löv, terräng, makro, gräs, sten, byggnad, blandlager, dekaler). En textur är ett recept: en källa (procedurell algoritm, lokal Krea-2, extern generator via OpenRouter eller import) och en stapel steg med spakar.
+- [ ] **T1, grund:** `workshop.py` med recept; procedurella källor (brus, bark, sten, tegel, plankor) och import; stegen sömlöst, nivåer, nyans och mättnad, palett, gråskala, mjukare kontrast och skala; 2D-vy med zoom och 3×3-tiling; spara till katalogen.
+- [ ] **T2, generativt:** Krea text till bild och bild till bild från en procedurell bas (algoritmen ger formen, Krea målar), varianter och jobbkö; extern generator med pris och bekräftelse.
+- [ ] **T3, kartor och 3D:** höjd, normal, AO, ruffighet; förhandsvisning på former och på den aktuella tillgången med meter per upprepning; avståndsvy; målprofiler och texturkatalogen.
+- [ ] **T3b, terräng:** förhandsvisning på en terrängbit med lagerregler efter lutning, höjd och fukt; höjdbaserad blandning mellan marklager; upprepningsskydd (stokastisk tiling, makrotextur); samma texeltäthet och färgnivå mellan lager; katalogen läses av Tinkertown 2.
+- [ ] **T4, blandning med riktningar:** en gemensam lagerstack i klientens shader med masker för riktning, höjd, höjdkarta, brus, krökning och vertexvikt; ersätter barkens `bark_blend` och stenarnas mossa.
+- [ ] **T5, resten:** lövark och atlas i verkstaden, alfaverktyg, frekvensseparation och målad look, varianter och versioner, kontroller (sömmar, halo, palett, brus), MCP-verktyget `texture_recipe`.
+
 ## Genomgående: GUI
 
 Editorn ligger som ett lager ovanpå spelet. Man växlar mellan att spela och att bygga med en tangent, utan att lämna världen.
@@ -254,7 +300,7 @@ Editorn ligger som ett lager ovanpå spelet. Man växlar mellan att spela och at
 - [ ] **Lägesbyte** (till exempel Tab) mellan spel och editor. Kameran stannar där den är.
 - [ ] **Snabbfält** med de senast valda objekten, som i ett byggspel. Siffertangenter väljer, klick placerar.
 - [ ] **Bibliotekspanel:** rutnät med miniatyrbilder, sök, filter, kategorier.
-- [ ] **Inspektör:** receptets parametrar som reglage. När man drar i ett reglage genereras objektet om live.
+- [ ] **Inspektör:** receptets parametrar som reglage. När man drar i ett reglage genereras objektet om live. Prototypen finns i Asset Studio (spakar från `params.json`); samma panel kan bli editorns inspektör.
 - [ ] **Verktygsfält för terräng:** borstar, storlek, styrka, material.
 - [ ] **AI-ruta:** skriv "lägg en skog där jag tittar" eller "gör den här stenen större", och AI:n anropar verktygen.
 - [ ] **Kommandopalett** (Ctrl+K) för alla funktioner.
