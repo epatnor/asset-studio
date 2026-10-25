@@ -1,6 +1,6 @@
 # Plan: Texturverkstaden
 
-Status: T1, T1b och T3a byggda 2026-10-25, och det mesta av T3c, T2, T3b, T4 och T5 (se Faser och roadmapen för det som är kvar). Filer: `tools/texture/workshop.py` (motorn), `tools/texture/workshop.json` (alla spakar), `studio/workshop.js` (panelen), `studio/lab3d.js` (materiallabbet i 3D). Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown 2, gräset, byggnaderna och allt annat som behöver texturer.
+Status: T1, T1b och T3a byggda 2026-10-25, och det mesta av T3c, T2, T3b, T4 och T5 (se Faser och roadmapen för det som är kvar). Filer: `tools/texture/workshop.py` (motorn), `tools/texture/workshop.json` (alla spakar), `studio/workshop.js` (panelen), `studio/lab3d.js` (materiallabbet i 3D). Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown, gräset, byggnaderna och allt annat som behöver texturer.
 
 ## Så ser den ut (byggd)
 
@@ -33,13 +33,13 @@ Texturerna avgör hur mycket av stilen som når fram: barken, lövarken, stenarn
 
 ## Vem använder texturerna: målprofiler
 
-Verkstaden är inte bara till för studions tillgångar. Varje textur sparas med en **målprofil** som säger vad den är till för, vilka kartor som ska med och vilken skala den har i världen. Den som använder texturen (studion, terrängen, gräset, byggnadsgeneratorn, Tinkertown 2) läser profilen ur samma katalog.
+Verkstaden är inte bara till för studions tillgångar. Varje textur sparas med en **målprofil** som säger vad den är till för, vilka kartor som ska med och vilken skala den har i världen. Den som använder texturen (studion, terrängen, gräset, byggnadsgeneratorn, Tinkertown) läser profilen ur samma katalog.
 
 | Profil | Används av | Kartor och krav |
 |---|---|---|
 | `bark` | träd och stubbar (studion, props) | färg, normal; sömlös i båda led; meter per upprepning längs stammen |
 | `leaves` | lövkort, kortbollar | 2×2-atlas med alfa, bleed, ingen halo; gråskala eller färg |
-| `terrain` | terrängens marklager i Tinkertown 2, ytorna i `make_surface.py` | färg, normal, **höjd** (för höjdbaserad blandning mellan lager); sömlös; meter per upprepning; låg upprepningskänsla över stora ytor |
+| `terrain` | terrängens marklager i Tinkertown, ytorna i `make_surface.py` | färg, normal, **höjd** (för höjdbaserad blandning mellan lager); sömlös; meter per upprepning; låg upprepningskänsla över stora ytor |
 | `terrain_macro` | stora variationer över terrängen (fuktfläckar, ljusare och mörkare partier) | gråskala eller färg, mycket stor skala, lågfrekvent |
 | `grass` | gräsfältet (`showcase/grass.js`) och växterna | rotfärg och spetsfärg, strå- eller tuvatextur med alfa |
 | `rock` | stenar och klippor (props, terrängens branter) | färg, normal, höjd; triplanar i världskoordinater |
@@ -188,11 +188,11 @@ Varje modell finns i en tät version för höjdförskjutning. Visningen har vrid
 
 ## Terräng och stora ytor
 
-Marken i Tinkertown 2 täcker stora ytor, där upprepning och skarvar mellan lager syns mest. Verkstaden får därför egna verktyg för profilen `terrain`:
+Marken i Tinkertown täcker stora ytor, där upprepning och skarvar mellan lager syns mest. Verkstaden får därför egna verktyg för profilen `terrain`:
 
 - **Upprepningsskydd:** förhandsvisning över 50 × 50 m, där mönster som upprepas syns. Steg som minskar det: stokastisk tiling (texturen delas i plattor som slumpas och vrids, "texture bombing" eller hex-tiling i shadern), en makrotextur ovanpå, och varianter av samma lager som blandas med brus.
 - **Höjdbaserad blandning mellan marklager:** varje lager har en höjdkarta, så att gräs växer upp mellan stenarna i en stig i stället för att tonas in som en dimma. Spak för hur skarp övergången är.
-- **Lagerregler som i biomerna:** förhandsvisning på en terrängbit med kullar, där lagren läggs efter lutning (brant blir berg), höjd och fukt med spakar, samma regler som Tinkertown 2:s biomer. Det man ställer in kan sparas som en biomregel.
+- **Lagerregler som i biomerna:** förhandsvisning på en terrängbit med kullar, där lagren läggs efter lutning (brant blir berg), höjd och fukt med spakar, samma regler som Tinkertowns biomer. Det man ställer in kan sparas som en biomregel.
 - **Samma texeltäthet och färgnivå:** kontroll att lagren har samma meter per upprepning och ungefär samma ljushet och mättnad, så att inget lager sticker ut i övergångarna.
 - **Avstånd:** hur marken ser ut på 5, 50 och 200 m, där detaljer blir mipmappar och makrovariationen tar över.
 
@@ -213,7 +213,7 @@ Masker kan kombineras (till exempel riktning × brus). Resultatet sparas som mat
 
 ## Bibliotek och kontroller
 
-- Sparade texturer hamnar i `assets/textures/` med receptet bredvid (`<namn>.texture.json`), en miniatyr och en rad i texturkatalogen `assets/textures/catalog.json` (namn, profil, kartor, meter per upprepning, taggar). Katalogen läses av studions texturväljare, av generatorerna och av Tinkertown 2 (som redan serverar `assets/` under `/tinkertown/assets/`). Taggar: bark, sten, mark, trä, löv, tak.
+- Sparade texturer hamnar i `assets/textures/` med receptet bredvid (`<namn>.texture.json`), en miniatyr och en rad i texturkatalogen `assets/textures/catalog.json` (namn, profil, kartor, meter per upprepning, taggar). Katalogen läses av studions texturväljare, av generatorerna och av Tinkertown (som redan serverar `assets/` under `/asset-studio/assets/`). Taggar: bark, sten, mark, trä, löv, tak.
 - "Fler varianter": samma recept med nya frön. Versioner: att spara över behåller den förra versionen.
 - Kontroller i svaret, som generatorernas `checks`: sömlöshet (skillnad över kanterna), vit halo, avvikelse från paletten, för mycket högfrekvent brus (mot stilguiden), upplösning och filstorlek.
 
@@ -235,14 +235,14 @@ Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet 
 | T4. Blandning | lagerstacken med masker (riktning, höjd, höjdkarta, brus, krökning, vertexvikt) i klientens shader, styrd och förhandsvisad i verkstaden; ersätter `bark_blend` och stenmossan | Mossa på norrsidan och snö uppifrån med spakar |
 | T3c. Avancerade egenskaper | emission, alfa och urklipp, transmission och brytning, stiliserad SSS, specular, clearcoat, sheen, anisotropi, iridescens; parallax occlusion mapping och detaljkartor i shadern; export som glTF-material | Alla egenskaper i listan kan provas en i taget |
 | T2. Generativt | Krea text till bild och bild till bild från en procedurell bas, med varianter och jobbkö; extern generator med pris och bekräftelse | Målade texturer med kontrollerad form, utan att be Claude |
-| T3b. Terräng | profilen `terrain`: förhandsvisning på en terrängbit med lagerregler (lutning, höjd, fukt), höjdbaserad blandning, upprepningsskydd och makrotextur; katalogen läses av Tinkertown 2 | Marklagren till Tinkertown 2 görs och provas i verkstaden |
+| T3b. Terräng | profilen `terrain`: förhandsvisning på en terrängbit med lagerregler (lutning, höjd, fukt), höjdbaserad blandning, upprepningsskydd och makrotextur; katalogen läses av Tinkertown | Marklagren till Tinkertown görs och provas i verkstaden |
 | T5. Resten | lövark och atlas i verkstaden, alfaverktyg, detaljsteg (frekvens, målad look), varianter och versioner, kontroller, MCP | Alla texturer i projektet kan göras och underhållas i verkstaden |
 
 ## Frågor till Patrik
 
 0. ~~Drakstatyn~~: beställd från Tripo P2 (`assets/imported/dragon_statue`), används i labbet.
 
-1. **Terrängen:** ska verkstadens lagerregler (lutning, höjd, fukt) kunna sparas direkt som biomregler i Tinkertown 2, eller räcker det att texturerna och deras höjdkartor delas?
+1. **Terrängen:** ska verkstadens lagerregler (lutning, höjd, fukt) kunna sparas direkt som biomregler i Tinkertown, eller räcker det att texturerna och deras höjdkartor delas?
 2. **Extern generator:** räcker OpenRouter (som Apparition), och finns det en modell du föredrar? Varje körning bekräftas med pris.
 3. **Ordning:** T1 först (procedurellt och bildbehandling), eller vill du ha Krea i verkstaden tidigt (T2)?
 4. **Blandningen:** ska den gemensamma lagerstacken (T4) ersätta barkens och stenarnas nuvarande blandning direkt, eller leva bredvid tills den är klar?

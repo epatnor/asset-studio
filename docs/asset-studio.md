@@ -77,7 +77,7 @@ Förhandsvisningar hamnar i `build/studio/` och städas bort. Bara det som spara
 
 ### 4. Biblioteket (`assets/library.json`)
 
-En katalog med en rad per tillgång: namn, typ (träd, buske, sten ...), taggar, miniatyr, sökväg till modell och recept, skapad, och vilken generatorversion som gjorde den. Recepten är fristående, så att en tillgång alltid kan byggas om, laddas tillbaka i studion och ändras, eller få fler varianter (samma recept, nya frön). Tinkertown 2 läser samma katalog via `/tinkertown/assets/` för sin biblioteksvy.
+En katalog med en rad per tillgång: namn, typ (träd, buske, sten ...), taggar, miniatyr, sökväg till modell och recept, skapad, och vilken generatorversion som gjorde den. Recepten är fristående, så att en tillgång alltid kan byggas om, laddas tillbaka i studion och ändras, eller få fler varianter (samma recept, nya frön). Tinkertown läser samma katalog via `/asset-studio/assets/` för sin biblioteksvy.
 
 Det stämmer med roadmapens "Bibliotek (första version)" och generatorkontraktet (`recipe.json` och miniatyr per tillgång).
 
@@ -93,13 +93,13 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 | 2. Texturer | Lövarkspanel med direktvisning; Krea-jobb för bark och löv med förlopp; kontrastspak; texturväljare med miniatyrer | Nytt lövark eller ny bark utan att be Claude | Texturväljaren med miniatyrer finns; resten återstår |
 | 3. Bibliotek | Biblioteksvy med miniatyrer, sökning och taggar; ladda tillbaka i studion; "Fler varianter" | Sparade träd går att hitta, ändra och variera | Återstår (katalogen finns) |
 | 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props | Flikarna finns, markerade som kommande |
-| 5. Hopkoppling | Tinkertown 2 visar biblioteket; Electron-paketering tillsammans med Tinkertown 2 | Det som sparas i studion går att placera i världen | Återstår |
+| 5. Hopkoppling | Tinkertown visar biblioteket; Electron-paketering tillsammans med Tinkertown | Det som sparas i studion går att placera i världen | Återstår |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.
 
 ## Frågor till Patrik
 
-1. **Var ska studion bo?** Förslag: i Tinkertown (tillgångsverkstaden), som en egen sida bredvid visningen. Tinkertown 2 läser bara biblioteket.
+1. **Var ska studion bo?** Förslag: i Azshara Asset Studio (tillgångsverkstaden), som en egen sida bredvid visningen. Tinkertown läser bara biblioteket.
 2. **Hur många spakar från början?** Förslag: ett urval (tabellen ovan) med "Avancerat" hopfällt, hellre än alla parametrar på en gång.
 3. **Panel:** lil-gui för att komma igång snabbt, eller ett eget utseende från början?
 4. **Bibliotekets namn och taggar:** räcker art, biom och årstid, eller behövs mer?

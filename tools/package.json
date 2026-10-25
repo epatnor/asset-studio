@@ -1,5 +1,5 @@
 {
-  "name": "tinkertown-tools",
+  "name": "asset-studio-tools",
   "private": true,
   "type": "module",
   "description": "Gemensamma beroenden för generatorerna i tools/ (träd, props, växter): glTF-skrivning och meshopt-komprimering",

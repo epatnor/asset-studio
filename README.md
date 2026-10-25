@@ -1,8 +1,8 @@
-![Tinkertown](docs/banner.jpg)
+![Azshara Asset Studio](docs/banner.jpg)
 
-# Tinkertown
+# Azshara Asset Studio
 
-En speleditor där man spelar hela tiden. WASD, mouselook, spring, flyg, interagera och attack finns från start, och varje del av världen kan genereras inifrån editorn.
+Tillgångsverkstaden i Azshara Studio: generatorer för träd, props, växter och byggnader, GUI:t Asset Studio och texturverkstaden. Tillgångarna används av studions spel, bland annat världsbyggaren [Tinkertown](../tinkertown) och banan Azshara Island. Visningssidorna finns på https://epatnor.github.io/asset-studio/.
 
 Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna eller open source) som bygger träd, terräng, vatten, props, karaktärer och texturer. Ett träd ska kosta några hundra tokens, inte tiotusentals.
 
@@ -16,7 +16,7 @@ Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna e
 
 ## Plattform och arkitektur
 
-- **Renderare:** [Three.js](https://threejs.org). Tinkertown är ett eget motorlager ovanpå: editor, spelläge, världsrecept och verktygsregister. Ingen egen renderare.
+- **Renderare:** [Three.js](https://threejs.org). Visningssidorna och studion bygger direkt på den; editorn och spelläget byggs i Tinkertown. Ingen egen renderare.
 - **Mål 1, webbläsaren:** spelet och editorn körs i en vanlig webbläsare.
 - **Mål 2, desktopapp:** samma kod paketeras senare med [Electron](https://www.electronjs.org). Electron har med sig en egen Chromium, så WebGPU och WebGL beter sig likadant överallt. (Tauri valdes bort: på Linux använder det WebKitGTK, med svagare WebGPU- och WebGL-stöd.)
 
@@ -65,7 +65,7 @@ Alla banor delar en spelmeny (`showcase/menu.js`, Esc eller M): banor, tid på d
 
 `showcase/byggnader.html` visar byggnadsgeneratorns hus på rad (`?m=namn1,namn2` väljer vilka).
 
-`showcase/azshara.html` är banan Azshara Island: två öar från det tidigare Godot-projektet, med Tinkertowns växter, hus och vatten (se [docs/azshara](docs/azshara/README.md)).
+`showcase/azshara.html` är banan Azshara Island: två öar från det tidigare Godot-projektet, med växterna, husen och vattnet från generatorerna här (se [docs/azshara](docs/azshara/README.md)).
 
 `showcase/skogen.html` är banan Skogen: en tät granskog med stig och gläntor, ritad instansierat med LOD per avstånd (`showcase/instancing.js`). Storleken kan ökas (`?size=2` ger 4× yta). Se [prestandarapporten](docs/skogen-prestanda.md).
 
@@ -93,7 +93,7 @@ cd tools/tree && npm install && cd ../..
 
 ### Via MCP (det normala sättet)
 
-Projektets `.mcp.json` registrerar servern `tinkertown`, som startas med `uv run --script tools/mcp/server.py` (beroenden installeras automatiskt av uv). Claude Code frågar om servern ska godkännas första gången projektet öppnas.
+Projektets `.mcp.json` registrerar servern `asset-studio`, som startas med `uv run --script tools/mcp/server.py` (beroenden installeras automatiskt av uv). Claude Code frågar om servern ska godkännas första gången projektet öppnas.
 
 | Verktyg | Exempel | Svar |
 |---|---|---|

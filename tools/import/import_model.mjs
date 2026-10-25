@@ -1,4 +1,4 @@
-// Import av färdiga modeller: gör en GLB/glTF (från Sketchfab, Kenney, egna) kompatibel med Tinkertown.
+// Import av färdiga modeller: gör en GLB/glTF (från Sketchfab, Kenney, egna) kompatibel med Azshara Asset Studio.
 // Recept in, glTF ut, en rad JSON som svar.
 //   node import_model.mjs '{"name":"bench","source":"x.glb","out":"assets/imported/bench/bench.gltf","height":0.9}'
 //

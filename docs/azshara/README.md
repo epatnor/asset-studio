@@ -16,7 +16,7 @@ Det här finns kvar från det:
 
 Det som flyttades in i Tinkertown:
 
-- **Terrängen** (höjder, zoner, stig, bäck, sjö, strand, klippor, tomter) är bakad ur Azsharas generator. Allt ovanpå kommer från Tinkertowns generatorer: träd och växter (även höstträd för den västra zonen), husen från byggnadsgeneratorn (fantasy, WoW) på Azsharas tomter, och vattnet från vattengeneratorn. Bron, lyktstolparna och bryggan är Azsharas egna modeller, importerade med `import_model`.
+- **Terrängen** (höjder, zoner, stig, bäck, sjö, strand, klippor, tomter) är bakad ur Azsharas generator. Allt ovanpå kommer från generatorerna i Azshara Asset Studio: träd och växter (även höstträd för den västra zonen), husen från byggnadsgeneratorn (fantasy, WoW) på Azsharas tomter, och vattnet från vattengeneratorn. Bron, lyktstolparna och bryggan är Azsharas egna modeller, importerade med `import_model`.
 - **Atmosfären** (`showcase/atmosphere.js`) gäller alla banor: himmel med sol- och månskiva, stjärnor och volymetriska moln, tid på dygnet, dimma, regn, snö, storm med blixtar och färgton. På Azshara stormar det över den mörka ön, som i originalet.
 
 - **Effekterna** (`showcase/effects.js`, 2026-10-20) gäller också alla banor: volymetriskt solljus genom diset (läser solens skuggkarta, så strålar bildas genom kronor, hus och bro), ljusstrålar mellan kronorna, glöd (bloom) och vinjett, dimma som blir varm åt solen, markdimma i den mörka öns sänkor, molnskuggor som driver över landskapet, stoftkorn som glimmar i motljus och regnstänk. Tända fönster och lyktor lyser starkare i mörker. Vattenfallet ner i sjön finns också.

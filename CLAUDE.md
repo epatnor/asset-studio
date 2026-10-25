@@ -1,4 +1,6 @@
-# Tinkertown – anvisningar för AI-agenter
+# Azshara Asset Studio – anvisningar för AI-agenter
+
+Azshara Asset Studio är tillgångsverkstaden i Azshara Studio: generatorerna för träd, props, växter och byggnader, GUI:t Asset Studio och texturverkstaden. Mappen ligger i `~/Spelutveckling/azshara-studio/asset-studio` (GitHub: `epatnor/asset-studio`). Tillgångarna används av studions spel, bland annat spelet och världsbyggaren Tinkertown i `../tinkertown` och banan Azshara Island (`showcase/azshara.html`).
 
 Läs README.md för visionen. Det viktigaste här är tokenekonomin: **låt verktygen göra jobbet.**
 
@@ -12,7 +14,7 @@ Allt som skapas ska följa [docs/style-guide.md](docs/style-guide.md): stilisera
 
 ## Referenser (Apparition)
 
-Referensbilder och underlag för Tinkertown och Aszhara Studio samlas på moodboarden Apparition (MCP `apparition`). Boarden är indelad i grupper så att man bara läser det uppgiften kräver:
+Referensbilder och underlag för Azshara Studio och dess spel samlas på moodboarden Apparition (MCP `apparition`). Boarden är indelad i grupper så att man bara läser det uppgiften kräver:
 
 1. `get_board` först: där syns grupperna och vad var och en är till för.
 2. Sedan `list_items` eller `get_style` för **en** grupp. Det är text (palett, taggar, anteckningar) och räcker oftast.
@@ -46,7 +48,7 @@ En bild kostar ungefär bredd × höjd / 750 tokens (1024×1024 ≈ 1 400), oavs
 
 ## Verktyg
 
-Använd i första hand MCP-servern `tinkertown` (`create_tree`, `generate_texture`, `list_assets`). Nya verktyg läggs till i `tools/mcp/server.py` som tunna omslag runt ett skript i `tools/<område>/`.
+Använd i första hand MCP-servern `asset-studio` (`create_tree`, `generate_texture`, `list_assets`). Nya verktyg läggs till i `tools/mcp/server.py` som tunna omslag runt ett skript i `tools/<område>/`.
 
 Trädgeneratorn är till för alla större växter (träd och buskar; gräs och blommor är en egen generator). **Skapa eller justera aldrig enskilda träd för hand**: förbättringar görs i generatorns kod eller som artdata i `species.json`, och varje träd är ett recept som körs genom generatorn. Allt (bark, lövkluster, granens barr) byggs från samma skelett i `skeleton.mjs`. Lägg aldrig till lövverk eller grenar som inte utgår från skelettet; då försvinner garantin att delarna sitter ihop. Arter och stil-parametrar ändras i `species.json`, inte i koden. Kontrollera `checks.ok` i svaret i stället för att titta på bilder.
 

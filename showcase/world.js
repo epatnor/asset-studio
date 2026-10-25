@@ -1,4 +1,4 @@
-// Gemensam scen för Tinkertowns visningssidor: rendering, himmel, ljus enligt stilguiden, vind,
+// Gemensam scen för visningssidorna i Azshara Asset Studio: rendering, himmel, ljus enligt stilguiden, vind,
 // modell-laddning, skyltar och förstapersonskamera. Ren klientkod (ingen Node).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

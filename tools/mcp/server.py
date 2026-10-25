@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["mcp==1.30.0", "pillow==11.1.0", "numpy==2.2.3"]
 # ///
-"""Tinkertown MCP-server: ger AI-agenter höga verb för att bygga spelvärlden.
+"""MCP-servern för Azshara Asset Studio: ger AI-agenter höga verb för att bygga spelvärlden.
 
 Varje verktyg tar ett litet recept och svarar med en kort JSON, aldrig med geometri
 eller bilddata. Resultat hamnar under assets/, mellanfiler under build/.
@@ -30,7 +30,7 @@ def tree_presets() -> list[str]:
 
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
-mcp = FastMCP("tinkertown")
+mcp = FastMCP("asset-studio")
 
 
 def _check_name(name: str) -> None:

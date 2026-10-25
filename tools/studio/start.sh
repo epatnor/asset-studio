@@ -1,5 +1,5 @@
 #!/bin/sh
-# Startar Asset Studio: studioservern (tools/studio/server.mjs) och studion i webbläsaren.
+# Startar Azshara Asset Studio: studioservern (tools/studio/server.mjs) och studion i webbläsaren.
 # Värden har ingen Node, så servern körs i distrobox-containern claude-desktop (där node och uv finns);
 # containern delar nätverk med värden, så studion nås på localhost. Körs servern redan öppnas bara studion.
 #   STUDIO_PORT=8770 (standard)   STUDIO_NO_OPEN=1 startar bara servern

@@ -1,6 +1,6 @@
 # Stilguide
 
-Gäller allt som skapas i Tinkertown och Azshara Island, oavsett om det görs av ett verktyg, en AI-agent eller för hand. Värden som verktygen läser automatiskt ligger i [`tools/style.json`](../tools/style.json); den här guiden förklarar varför.
+Gäller allt som skapas i Azshara Studio (Azshara Asset Studio, Tinkertown och Azshara Island), oavsett om det görs av ett verktyg, en AI-agent eller för hand. Värden som verktygen läser automatiskt ligger i [`tools/style.json`](../tools/style.json); den här guiden förklarar varför.
 
 ## Kärnan
 
