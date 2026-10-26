@@ -22,5 +22,9 @@ if ! up; then
   notify-send -a "Asset Studio" -i dialog-error "Asset Studio" "The studio server did not start (journalctl --user -u asset-studio-server)" 2>/dev/null
   exit 1
 fi
+# Finns ett Asset Studio-fönster redan (klassen asset-studio, se --class i servern) lyfts det fram i stället för ett nytt
+if command -v wmctrl >/dev/null && wmctrl -lx 2>/dev/null | grep -qi 'asset-studio'; then
+  wmctrl -x -a asset-studio && exit 0
+fi
 curl -fs --max-time 10 -X POST -H 'content-type: application/json' -d '{"id":"discrete","path":"/studio/"}' "$URL/api/gpu/launch" | grep -q '"ok":true' \
   || xdg-open "$URL/studio/"

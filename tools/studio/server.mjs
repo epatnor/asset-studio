@@ -578,6 +578,9 @@ async function gpuTool_() {
   for (const t of ['cardwire', 'switcherooctl']) if ((await capture(['sh', '-c', `command -v ${t}`]))?.trim()) return (gpuTool = t);
   return null;
 }
+// Stänger provfönstrens Chrome (profilen för prov): först snällt, och lever det kvar efter två sekunder med SIGKILL
+// (Chrome bryr sig ibland inte om SIGTERM strax efter start med en ny profil). Mönstret med [a] matchar inte sig självt.
+const closeTest = () => capture(['sh', '-c', 'pkill -f "[a]sset-studio-test"; sleep 2; pkill -9 -f "[a]sset-studio-test"; true']);
 async function gpuList() {
   const tool = await gpuTool_();
   const out = tool ? await capture([tool, 'list']) : null;
@@ -590,7 +593,9 @@ async function gpuList() {
   const browser = ['com.google.Chrome', 'org.chromium.Chromium'].find((b) => apps.split(/\r?\n/).map((x) => x.trim()).includes(b)) ?? null;
   return { gpus, browser, canLaunch: gpus.length > 1 && !!browser, seen: gpuSeen.slice(-6) };
 }
-async function gpuLaunch({ id, path: page }) {
+// test: ett provfönster (?shot=) med en egen profil, så att det kan stängas helt efteråt (gpuCloseTest) utan att
+// röra studiofönster som redan är öppna; vanliga fönster delar en profil per kort och öppnas i samma Chrome
+async function gpuLaunch({ id, path: page, test = false }) {
   const { gpus, browser, canLaunch } = await gpuList();
   // id: kortets nummer, eller 'discrete' för det snabba kortet (genvägen i appmenyn, tools/studio/launch.sh)
   const gpu = id === 'discrete' ? gpus.find((g) => g.discrete) ?? gpus[0] : gpus.find((g) => g.id === id);
@@ -600,8 +605,11 @@ async function gpuLaunch({ id, path: page }) {
   // Fönstret får sitt kortval med sig (gpu=), som förval för WebGPU:s adapter i den profilen
   const u = new URL(page, 'http://localhost');
   u.searchParams.set('gpu', gpu.discrete ? 'high-performance' : 'low-power');
+  if (test) u.searchParams.set('test', '1');
   const url = `http://localhost:${PORT}${u.pathname}${u.search}${u.hash}`;
-  const profile = path.join(process.env.HOME, `.var/app/${browser}/data/asset-studio-gpu${id}`);
+  const profile = path.join(process.env.HOME, `.var/app/${browser}/data/asset-studio-${test ? 'test' : `gpu${id}`}`);
+  // Provprofilen töms före varje prov: ingen cachad kod eller gammalt tillstånd från förra provet
+  if (test) await rm(profile, { recursive: true, force: true });
   // Kortet väljs med miljövariabler (PRIME för NVIDIA, DRI_PRIME för Mesa), inte med cardwire launch: dess låsning
   // av Vulkan-drivrutinerna gör att Vulkan inte startar i Flatpak-Chrome, och då hamnar WebGPU på processorn
   // (SwiftShader). X11 (XWayland) i stället för Wayland: Chrome med Vulkan och NVIDIA fungerar inte på Wayland.
@@ -617,6 +625,11 @@ async function gpuLaunch({ id, path: page }) {
 async function api(req, res, url) {
   if (url.pathname === '/api/gpus' && req.method === 'GET') return json(res, 200, await gpuList());
   if (url.pathname === '/api/gpu/launch' && req.method === 'POST') return json(res, 200, await gpuLaunch(await body(req)));
+  if (url.pathname === '/api/gpu/close-test' && req.method === 'POST') {
+    // Stänger provfönstrens Chrome (profilen asset-studio-test); mönstret med [a] matchar inte kommandot självt
+    await closeTest();
+    return json(res, 200, { ok: true });
+  }
   if (url.pathname === '/api/gpu/seen' && req.method === 'POST') {
     const b = await body(req);
     gpuSeen.push({ gpu: String(b.gpu ?? '').slice(0, 160), api: String(b.api ?? '').slice(0, 40), webgpu: b.webgpu ? String(b.webgpu).slice(0, 80) : null, page: String(b.page ?? '').slice(0, 80), at: new Date().toISOString() });
@@ -662,6 +675,8 @@ async function api(req, res, url) {
     await mkdir(path.join(ROOT, 'build/shots'), { recursive: true });
     const out = `build/shots/studio_${name}.png`;
     await writeFile(path.join(ROOT, out), Buffer.concat(chunks));
+    // Från ett provfönster (test=1, profilen asset-studio-test): stäng det när bilden är sparad
+    if (url.searchParams.get('test') === '1') setTimeout(closeTest, 300);
     return json(res, 200, { out });
   }
   if (url.pathname === '/api/workshop' && req.method === 'GET') {

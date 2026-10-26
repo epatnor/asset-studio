@@ -592,7 +592,9 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   if (shotName && /^[\w-]{1,40}$/.test(shotName)) setTimeout(async () => {
     renderer.render(scene, camera);
     const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
-    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}`, { method: 'POST', body: blob });
+    // Ett provfönster (test=1, egen profil) stängs av servern när bilden är sparad
+    const test = new URLSearchParams(location.search).get('test') === '1' ? '&test=1' : '';
+    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}${test}`, { method: 'POST', body: blob });
   }, 4000);
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
