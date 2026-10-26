@@ -15,7 +15,7 @@
 //   scene.add(grass.group); varje bild: grass.update(camera)
 import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial } from 'three/webgpu';
 import {
-  attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, pow, mix, smoothstep, normalize, cross, dot, length,
+  attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, min, pow, mix, smoothstep, normalize, cross, dot, length,
   varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract,
 } from 'three/tsl';
 
@@ -61,7 +61,7 @@ export function createGrass(wind, field = {}, settings = {}) {
       let best = null;
       for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
         const gx = cx + i, gz = cz + j, h = hash2(gx, gz);
-        const px = (gx + 0.2 + 0.6 * h) * C, pz = (gz + 0.2 + 0.6 * hash2(gz + 7, gx - 3)) * C;
+        const px = (gx + h) * C, pz = (gz + hash2(gz + 7.31, gx - 3.17)) * C; // var som helst i cellen, så att inget rutnät syns
         const d = (px - x) ** 2 + (pz - z) ** 2;
         if (!best || d < best.d) best = { d, px, pz, h };
       }
@@ -79,17 +79,20 @@ export function createGrass(wind, field = {}, settings = {}) {
       const x0 = -f.radius + ci * f.chunk, z0 = -f.radius + cj * f.chunk;
       const cx = x0 + f.chunk / 2, cz = z0 + f.chunk / 2, cd = Math.hypot(cx, cz);
       if (cd > f.radius + f.chunk) continue;
-      const dens = cd < f.inner ? f.counts[0] : f.counts[0] + (f.counts[1] - f.counts[0]) * Math.min(1, (cd - f.inner) / (f.radius - f.inner));
+      // Tätheten följer varje strås avstånd från mitten (inte rutans), så att rutorna inte syns som trappsteg
+      const densAt = (d) => (d < f.inner ? 1 : (f.counts[0] + (f.counts[1] - f.counts[0]) * Math.min(1, (d - f.inner) / (f.radius - f.inner))) / f.counts[0]);
       const P = [], S = [], V = [];
-      for (let k = 0, count = Math.round(dens * f.chunk * f.chunk); k < count; k++) {
-        const x = x0 + r() * f.chunk, z = z0 + r() * f.chunk;
-        if (Math.hypot(x, z) > f.radius * (0.92 + 0.08 * hash2(x, z)) || excluded(x, z)) continue;
+      for (let k = 0, count = Math.round(f.counts[0] * f.chunk * f.chunk); k < count; k++) {
+        const x = x0 + r() * f.chunk, z = z0 + r() * f.chunk, d = Math.hypot(x, z);
+        if (r() > densAt(d) || d > f.radius * (0.92 + 0.08 * hash2(x, z)) || excluded(x, z)) continue;
         const c = clumpAt(x, z);
         P.push(x, 0, z, Math.atan2(z - c.pz, x - c.px) + (r() - 0.5) * 1.1);
         S.push(r(), shorter(x, z), r(), r()); // höjdslump, kortare-faktor, breddslump, böjslump
         V.push(c.h, r(), r() * TAU, Math.sqrt(c.d)); // tuvans ton, styvhetsslump, fas, avstånd till tuvans mitt
       }
-      if (P.length) out.push({ c: new Vector3(cx, 0, cz), P, S, V, n: P.length / 4 });
+      // Ordningstal 0..1 i slumpad ordning: gallringen på avstånd tar bort stråna med högst tal först
+      const n = P.length / 4, R = Float32Array.from({ length: n }, (_, i) => (i + 0.5) / n);
+      if (n) out.push({ c: new Vector3(cx, 0, cz), P, S, V, R, n });
     }
     return out;
   }
@@ -103,7 +106,8 @@ export function createGrass(wind, field = {}, settings = {}) {
   const far = smoothstep(u.lodNear, u.lodFar, length(root.xz.sub(cameraPosition.xz)));
   // Fläckar i höjd och färg (mjukt brus, storleken i meter), tuvans ton och stråets egen slump
   const q = root.xz.mul(float(6).div(u.patchSize));
-  const patchN = float(0.5).add(sin(q.x.mul(0.23).add(sin(q.y.mul(0.19)).mul(2.1))).mul(0.28)).add(sin(q.y.mul(0.31).sub(q.x.mul(0.17)).add(0.7)).mul(0.22));
+  const d1 = dot(q, vec2(0.21, 0.09)), d2 = dot(q, vec2(-0.08, 0.24)), d3 = dot(q, vec2(0.17, -0.19));
+  const patchN = clamp(float(0.5).add(sin(d1.add(sin(d2.mul(1.3)).mul(1.6))).mul(0.24)).add(sin(d2.mul(1.1).add(0.7)).mul(0.17)).add(sin(d3.mul(1.7).add(2.1)).mul(0.12)), 0, 1);
   const clumpH = iVar.x;
   const pv = clamp(patchN.mul(0.8).add(clumpH.sub(0.5).mul(0.5)).add(fract(iVar.z.mul(7.13)).sub(0.5).mul(0.15)), 0, 1);
   // Gräsets vågor: band vinkelräta mot vinden som rullar med den (waveSize meter mellan banden, waveSpeed m/s),
@@ -124,7 +128,11 @@ export function createGrass(wind, field = {}, settings = {}) {
   const ownBend = u.curve.mul(mix(1, float(0.3).add(iShape.w.mul(1.4)), u.curveVar)).add(u.clumpLean.mul(iVar.w).mul(1.5));
   const lean = facing.mul(ownBend).add(W.mul(windA));
   const theta = max(length(lean), 0.001), L = lean.div(theta);
-  const h = mix(u.heightMin, u.heightMax, clumpH.mul(0.35).add(patchN.mul(0.65))).mul(float(0.78).add(iShape.x.mul(0.4))).mul(iShape.y);
+  // Gallring på avstånd, per strå (inte per ruta): strån vars ordningstal ligger över andelen som ska synas krymper bort
+  const distC = length(root.xz.sub(cameraPosition.xz));
+  const keep = min(max(float(0.28), float(1).sub(distC.sub(u.lodNear).div(u.lodFar.sub(u.lodNear)).mul(0.72))), 1).mul(u.density);
+  const thin = float(1).sub(smoothstep(keep.sub(0.06), keep, attribute('iRank', 'float')));
+  const h = mix(u.heightMin, u.heightMax, clumpH.mul(0.35).add(patchN.mul(0.65))).mul(float(0.78).add(iShape.x.mul(0.4))).mul(iShape.y).mul(thin);
   const a = theta.mul(t);
   // Mittlinjen: en båge med konstant krökning, längden h * t
   const center = L.mul(float(1).sub(cos(a))).add(vec3(0, 1, 0).mul(sin(a))).mul(h.div(theta));
@@ -166,7 +174,8 @@ export function createGrass(wind, field = {}, settings = {}) {
     chunks = bladesFor();
     total = 0;
     for (const ch of chunks) {
-      const attrs = { iPos: new InstancedBufferAttribute(new Float32Array(ch.P), 4), iShape: new InstancedBufferAttribute(new Float32Array(ch.S), 4), iVar: new InstancedBufferAttribute(new Float32Array(ch.V), 4) };
+      const attrs = { iPos: new InstancedBufferAttribute(new Float32Array(ch.P), 4), iShape: new InstancedBufferAttribute(new Float32Array(ch.S), 4),
+        iVar: new InstancedBufferAttribute(new Float32Array(ch.V), 4), iRank: new InstancedBufferAttribute(ch.R, 1) };
       const make = (g) => {
         const geo = new InstancedBufferGeometry();
         geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
@@ -202,10 +211,10 @@ export function createGrass(wind, field = {}, settings = {}) {
     update(camera) {
       for (const ch of chunks) {
         const d = tmp.copy(ch.c).sub(camera.position).setY(0).length();
-        const near = d < f.lod[0];
-        const keep = (near ? 1 : Math.max(0.28, 1 - ((d - f.lod[0]) / (f.lod[1] - f.lod[0])) * 0.72)) * u.density.value;
+        const near = d < f.lod[0], dMin = Math.max(0, d - f.chunk * 0.71); // rutans närmaste hörn
+        const keep = Math.min(1, Math.max(0.28, 1 - ((dMin - f.lod[0]) / (f.lod[1] - f.lod[0])) * 0.72)) * u.density.value;
         ch.hi.visible = near; ch.lo.visible = !near;
-        (near ? ch.hi : ch.lo).geometry.instanceCount = Math.max(1, Math.floor(ch.n * Math.min(1, keep)));
+        (near ? ch.hi : ch.lo).geometry.instanceCount = Math.max(1, Math.ceil(ch.n * Math.min(1, keep + 0.02)));
       }
     },
     visibleBlades() { return chunks.reduce((s, ch) => s + (ch.hi.visible ? ch.hi : ch.lo).geometry.instanceCount, 0); },
