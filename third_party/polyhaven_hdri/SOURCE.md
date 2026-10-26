@@ -1,6 +1,6 @@
 # HDRI från Poly Haven
 
-Miljöljus för Ateljéns materiallabb (`studio/lab3d.js`, Environment), som komplement till spelsolen. Hämtat 2026-10-26 från https://polyhaven.com, upplösning 2k (.hdr, cirka 25 MB tillsammans).
+Miljöljus för Ateljéns materiallabb (`studio/lab3d.js`, Environment), som komplement till spelsolen. Hämtat 2026-10-26 från https://polyhaven.com i upplösningen 2k (.hdr, cirka 25 MB tillsammans).
 
 **Licens: CC0 1.0**: fria att använda, ändra och sprida, även kommersiellt, utan krav på erkännande. Upphovspersonerna står ändå här och i `index.json`.
 
