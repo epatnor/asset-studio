@@ -324,8 +324,9 @@
       0,
       -1.5
     ],
-    "pole": 5,
-    "length": 1.8,
-    "height": 1.1
+    "pole": 5.5,
+    "length": 1.9,
+    "height": 1.2,
+    "texture": "flag_sweden"
   }
 }

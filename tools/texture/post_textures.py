@@ -3,6 +3,8 @@
   tile   <in.png> <out.png>   gör en textur sömlös (för bark, mark, sten ...)
   cutout <in.png> <out.png>   ger en sprite på vit bakgrund alfakanal och beskär
                               så att foten/stjälken hamnar i nederkant (UV v=0)
+  matte  <in.png> <out.png> [maxbredd]   alfakanal ur vit bakgrund, tätt beskuren men med bildens proportioner
+                              (flaggor, skyltar, tyger: fransar och slitna kanter blir genomskinliga)
   atlas  <out.png> <a> <b> <c> <d>   packar fyra sprites till en 2x2-atlas
   gray   <in.png> <out.png>   gråskala för tintning (färgen sätts i materialet)
   soften <in.png> <out.png> [mängd]   lägre kontrast: fåror och skåror mjukare, stora former kvar (sömlös)
@@ -29,7 +31,7 @@ def tile(src, dst):
     return {"out": dst, "size": [w, h]}
 
 
-def cutout(src, dst, size=512, margin=1.12):
+def white_alpha(src):
     # Alfa från avstånd till vit bakgrund
     img = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     dist = np.linalg.norm(255 - img, axis=2)
@@ -45,6 +47,35 @@ def cutout(src, dst, size=512, margin=1.12):
     a = np.maximum(alpha, 1e-3)[..., None]
     img = np.clip((img - (1 - a) * 255) / a, 0, 255)
     alpha = np.minimum(alpha, np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3))) / 255)
+    return img, alpha
+
+
+def matte(src, dst, max_w=1024, margin=0.015):
+    # Som cutout, men beskuren tätt runt motivet med dess egna proportioner (ingen kvadrat, ingen fot nedtill)
+    img, alpha = white_alpha(src)
+    ys, xs = np.nonzero(alpha > 0.5)
+    h, w = alpha.shape
+    mx, my = int((xs.max() - xs.min()) * margin), int((ys.max() - ys.min()) * margin)
+    x0, x1 = max(0, xs.min() - mx), min(w, xs.max() + mx + 1)
+    y0, y1 = max(0, ys.min() - my), min(h, ys.max() + my + 1)
+    # Hål inne i motivet (ljusa fläckar som skattats som bakgrund) fylls: allt som inte hänger ihop med bakgrunden
+    # utanför blir helt täckt, så att bara kanter och fransar får alfa
+    from PIL import ImageDraw
+    outside = Image.fromarray(np.pad((alpha < 0.5).astype(np.uint8) * 255, 1, constant_values=255)).copy()  # floodfill kräver en egen buffert
+    ImageDraw.floodfill(outside, (0, 0), 128)
+    inside = np.asarray(outside)[1:-1, 1:-1] != 128
+    alpha = np.where(inside, 1.0, alpha)
+    rgba = np.dstack([img, alpha * 255]).astype(np.uint8)[y0:y1, x0:x1]
+    out = Image.fromarray(rgba, "RGBA")
+    max_w = int(max_w)
+    if out.width > max_w:
+        out = out.resize((max_w, round(out.height * max_w / out.width)), Image.LANCZOS)
+    out.save(dst)
+    return {"out": dst, "size": list(out.size), "coverage": round(float((alpha[y0:y1, x0:x1] > 0.5).mean()), 3)}
+
+
+def cutout(src, dst, size=512, margin=1.12):
+    img, alpha = white_alpha(src)
     ys, xs = np.nonzero(alpha > 0.5)
     cx = (xs.min() + xs.max()) // 2
     side = int(max(xs.max() - xs.min(), ys.max() - ys.min()) * margin)
@@ -128,6 +159,8 @@ if __name__ == "__main__":
         print(json.dumps(atlas(args[0], *args[1:])))
     elif cmd == "soften":
         print(json.dumps(soften(*args)))
+    elif cmd == "matte":
+        print(json.dumps(matte(*args)))
     elif cmd == "thumbs":
         print(json.dumps(thumbs(*args)))
     else:

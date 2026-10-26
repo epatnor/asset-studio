@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
-import { createGrass, colorTexture } from '../shared/effects/grass.js';
+import { createGrass, colorTexture, groundSampler } from '../shared/effects/grass.js';
 import { gpuPreference } from './gpu.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
@@ -112,7 +112,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     stats.failed.push(...g.errors);
     addGrass(g.grass, g.items, g.flag);
     scatter();
-    addFlag(g.flag);
+    await addFlag(g.flag);
     applyDebug();
     setNote(stats.failed.length ? `Glade built, with problems: ${stats.failed.join('; ')}` : '');
   }
@@ -159,9 +159,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   async function setGround(name) {
     if (!groundCache.has(name)) groundCache.set(name, name === 'none' ? Promise.resolve(colorTexture('#557f2a')) : texLoader.loadAsync(`/assets/textures/${name}.png`).then((t) => {
       t.colorSpace = THREE.SRGBColorSpace;
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.anisotropy = 8;
-      return t;
+      return groundSampler(t);
     }));
     const tex = await groundCache.get(name).catch(() => null);
     if (tex && grassVals.ground === name) grass?.setGroundTexture(tex);
@@ -251,22 +249,32 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     setNote('');
   }
 
-  // --- Flaggan: stång och duk ---
-  function addFlag(o) {
+  // --- Flaggan: stång och duk. Tyget är en textur med alfa (målad av GPT Image 2, fransarna genomskinliga) och
+  // rör sig med wind.flag: hänger i stiltje, lyfts och veckar sig i vinden, med normaler ur den veckade ytan ---
+  async function addFlag(o) {
     if (!o) return;
     const grp = new THREE.Group();
     grp.position.set(...o.pos);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, o.pole, 10), new THREE.MeshStandardNodeMaterial({ color: '#d8d2c4', roughness: 0.6 }));
     pole.position.y = o.pole / 2;
     pole.castShadow = true;
-    const cloth = new THREE.PlaneGeometry(o.length, o.height, 28, 10);
-    cloth.translate(o.length / 2, o.pole - o.height / 2 - 0.1, 0);
-    const fm = new THREE.MeshStandardNodeMaterial({ color: '#c0412e', roughness: 0.85, side: THREE.DoubleSide });
-    fm.positionNode = wind.flag(o.length);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), new THREE.MeshStandardNodeMaterial({ color: '#d9b440', roughness: 0.35, metalness: 0.6 }));
+    knob.position.y = o.pole + 0.04;
+    const tex = o.texture ? await texLoader.loadAsync(`/assets/textures/${o.texture}.png`).catch(() => null) : null;
+    if (tex) { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; }
+    // Duken i flaggans proportioner (bildens, med fransarna), överkanten vid stångens topp
+    const L = o.length, H = tex ? (L * tex.image.height) / tex.image.width : o.height;
+    const cloth = new THREE.PlaneGeometry(L, H, 48, 20);
+    cloth.translate(L / 2, -H / 2, 0);
+    const fm = new THREE.MeshStandardNodeMaterial({ color: tex ? '#ffffff' : '#c0412e', map: tex, alphaTest: tex ? 0.5 : 0, roughness: 0.82, side: THREE.DoubleSide });
+    const f = wind.flag(L, H);
+    fm.positionNode = f.positionNode;
+    fm.normalNode = f.normalNode;
     const flag = new THREE.Mesh(cloth, fm);
+    flag.position.set(0.05, o.pole - 0.06, 0);
     flag.castShadow = true;
     flag.frustumCulled = false;
-    grp.add(pole, flag);
+    grp.add(pole, knob, flag);
     scene.add(grp);
   }
 
@@ -517,6 +525,14 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     }
   }
   await loadGlade();
+  // För prov: ?shot=<namn> sparar en bild av gläntan (build/shots/studio_<namn>.png) när den har laddat, med vilken
+  // renderare som användes, så att man kan se WebGPU-fönster som man inte själv kan titta in i
+  const shotName = new URLSearchParams(location.search).get('shot');
+  if (shotName && /^[\w-]{1,40}$/.test(shotName)) setTimeout(async () => {
+    renderer.render(scene, camera);
+    const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}`, { method: 'POST', body: blob });
+  }, 4000);
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },

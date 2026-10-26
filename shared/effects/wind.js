@@ -13,7 +13,7 @@ import { DataTexture, RGBAFormat, FloatType, NearestFilter } from 'three/webgpu'
 import {
   Fn, uniform, attribute, float, int, vec3, vec4, ivec2, textureLoad, Loop, If, Break, positionLocal, normalGeometry,
   modelWorldMatrix, modelWorldMatrixInverse, cameraPosition, cross, normalize, dot, length, sin, cos, clamp, mix, max, pow,
-  select, round, sign, smoothstep, fract, transformNormalToView,
+  select, round, sign, smoothstep, fract, transformNormalToView, faceDirection,
 } from 'three/tsl';
 
 export const WIND_DEFAULTS = { strength: 0.5, dir: 0, gust: 0.5, gustScale: 18, gustSpeed: 6, sway: 0.35, flutter: 0.5, separation: 1, timeScale: 1 };
@@ -147,24 +147,44 @@ export function createWind(params = {}) {
   }
 
   /**
-   * Flagga: hörnen ligger i stångens rum med x = längs flaggan (0 vid stången) och y uppåt. Flaggan vänder sig
-   * med vinden runt stången, fladdrar i vågor som löper mot den fria kanten och hänger när det är stilla.
+   * Flagga (tyg på en stång): hörnen ligger i stångens rum med x längs flaggan (0 vid stången, L vid den fria kanten)
+   * och y nedåt från överkanten (0 till -H). Returnerar { positionNode, normalNode } till ett material med DoubleSide.
+   * - Tyget är lätt och svarar på svag vind som en blomma (RESPONSE.plant): i stiltje hänger det längs stången, och
+   *   ju mer det blåser desto mer lyfts det mot vågrätt (mest ytterst, där tyget är fritt).
+   * - Vågor löper från stången mot den fria kanten; utslaget växer mot kanten och med byarna, farten med vinden, och
+   *   en svagare, snabbare våg korsar den. Tyget tar längd från bredden när det veckar sig (ingen töjning).
+   * - Den fria kanten (fransarna) rycker snabbt i blåst.
+   * - Normalen räknas ur den deformerade ytan, så att vecken får rätt ljus och skugga.
    */
-  function flag(L) {
-    return Fn(() => {
-      const p = positionLocal, x = p.x.div(L);
-      const pw = modelWorldMatrix.mul(vec4(0, 0, 0, 1)).xyz;
-      const k = smoothstep(0, 0.7, u.strength.mul(u.strength).mul(0.5).add(forceAt(pw.xz)).add(0.05));
-      const wave = sin(x.mul(7.0).sub(u.time.mul(float(4).add(u.strength.mul(6))))).mul(x).mul(L * 0.09).mul(k.add(0.25));
-      const flap = sin(x.mul(3.0).sub(u.time.mul(2.3)).add(p.y)).mul(x).mul(L * 0.04);
-      // Hängande: flaggan faller ned längs stången; flygande: rakt ut med vågor
-      const hang = vec3(p.x.mul(0.18), p.y.sub(p.x.mul(0.85)), wave.mul(0.3));
-      const fly = vec3(p.x, p.y.sub(x.mul(x).mul(L * 0.12).mul(float(1).sub(k))), wave.add(flap));
-      const q = mix(hang, fly, k);
-      // Vrid runt stången så att +x pekar med vinden
-      const W = normalize(modelWorldMatrixInverse.mul(vec4(windW(), 0)).xyz);
-      return vec3(q.x.mul(W.x).sub(q.z.mul(W.z)), q.y, q.x.mul(W.z).add(q.z.mul(W.x)));
-    })();
+  function flag(L, H) {
+    const pw = modelWorldMatrix.mul(vec4(0, 0, 0, 1)).xyz;
+    const S = u.strength, F = forceFor(pw.xz, RESPONSE.plant.force), g = gustAt(pw.xz);
+    const lift = smoothstep(0.0, 0.45, F); // 0 = hänger, 1 = flyger
+    const speed = float(0.6).add(pow(max(F, 0.0001), 0.5).mul(3.4)); // vågor per sekund
+    const lambda = mix(0.95, 0.55, lift); // våglängd i andelar av flaggans längd
+    const shape = (x, y) => {
+      const uu = x.div(L), vv = y.negate().div(H);
+      const ph = uu.div(lambda).sub(u.time.mul(speed)).mul(TAU).add(vv.mul(0.7));
+      const amp = float(L * 0.11).mul(pow(uu, 1.25)).mul(mix(0.3, 1.0, lift)).mul(float(0.75).add(g.mul(0.5))).mul(smoothstep(0, 0.06, S).mul(0.8).add(0.2));
+      const z = amp.mul(sin(ph)).add(amp.mul(0.32).mul(sin(ph.mul(2.17).add(vv.mul(2.4)).add(u.time.mul(1.3)))));
+      const fray = sin(u.time.mul(23).add(vv.mul(31))).mul(pow(uu, 6)).mul(L * 0.006).mul(lift);
+      const yr = amp.mul(0.16).mul(sin(ph.mul(1.3).add(1.1)));
+      // Veck tar längd: ju större utslag, desto kortare blir flaggan i sin riktning
+      const xx = x.mul(float(1).sub(amp.div(L).mul(amp.div(L)).mul(18)));
+      // Hängande tyg faller nedåt, mer ju längre ut
+      const droop = float(1).sub(lift).mul(1.25).add(0.06).mul(float(0.3).add(uu.mul(0.7)));
+      return vec3(xx.mul(cos(droop)), y.sub(xx.mul(sin(droop)).mul(0.9)).add(yr), z.add(fray));
+    };
+    // Vrid runt stången så att +x pekar med vinden
+    const Wl = normalize(modelWorldMatrixInverse.mul(vec4(windW(), 0)).xyz);
+    const toPole = (q) => vec3(q.x.mul(Wl.x).sub(q.z.mul(Wl.z)), q.y, q.x.mul(Wl.z).add(q.z.mul(Wl.x)));
+    const x = positionLocal.x, y = positionLocal.y, e = L * 0.01;
+    const P = shape(x, y);
+    const n = normalize(cross(shape(x.add(e), y).sub(P), shape(x, y.add(e)).sub(P)));
+    return {
+      positionNode: toPole(P),
+      normalNode: transformNormalToView(toPole(n)).mul(faceDirection),
+    };
   }
 
   return {

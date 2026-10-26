@@ -14,7 +14,7 @@
 //   const grass = createGrass(wind, { radius: 30, exclude: [{ x, z, r }] }, settings);
 //   scene.add(grass.group); varje bild: grass.update(camera)
 import { RESPONSE } from './wind.js';
-import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace } from 'three/webgpu';
+import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter } from 'three/webgpu';
 import {
   attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, min, pow, mix, smoothstep, normalize, cross, dot, length,
   varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract, texture,
@@ -30,10 +30,21 @@ export const GRASS_SETTINGS = {
   waveBend: 0.45, waveSheen: 1, waveSize: 9, waveSpeed: 4, waveSharp: 3, waveBreakup: 0.6,
   ground: 'ground_meadow', groundScale: 3, groundBright: 0.85, rootFromGround: true,
 };
-// Marken under gräset: en färg som textur (1 × 1), tills en riktig textur sätts med setGroundTexture
+// Marken under gräset: en färg som textur (1 × 1), tills en riktig textur sätts med setGroundTexture.
+// Den har samma sampler som marktexturerna (upprepning och mipmappar): med WebGPU behåller texturnoden den första
+// texturens sampler när en ny sätts in, och en klampad platshållare gör då marken till streck.
+export function groundSampler(t) {
+  t.wrapS = t.wrapT = RepeatWrapping;
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 8;
+  return t;
+}
 export function colorTexture(hex) {
   const c = new Color(hex), t = new DataTexture(new Uint8Array([c.r * 255, c.g * 255, c.b * 255, 255]), 1, 1);
   t.colorSpace = SRGBColorSpace;
+  groundSampler(t);
   t.needsUpdate = true;
   return t;
 }
