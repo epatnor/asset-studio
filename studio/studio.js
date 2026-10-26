@@ -12,6 +12,7 @@ import { shareTextures } from '../showcase/shared_textures.js';
 import { createMaterialPatcher, applyShadowRole } from '../showcase/materials.js';
 import { createWorkshop } from './workshop.js';
 import { createLibrary } from './library.js';
+import { createHome } from './home.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -512,6 +513,7 @@ libBtn.title = 'Biblioteket: allt som sparats, som familjer (recept) och fasta m
 $('kinds').append(Object.assign(el('span', 'sep')), libBtn, texBtn);
 let workshop = null, textureMode = false, library = null, libraryMode = false;
 libBtn.onclick = async () => {
+  leaveHome();
   leaveTextureMode();
   libraryMode = true;
   document.body.classList.add('library-mode');
@@ -543,6 +545,7 @@ async function openInStudio(item) {
   setState(`Öppnade ${item.name}`);
 }
 texBtn.onclick = async () => {
+  leaveHome();
   leaveLibraryMode();
   textureMode = true;
   document.body.classList.add('texture-mode');
@@ -559,7 +562,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (textureMode || libraryMode) { leaveTextureMode(); leaveLibraryMode(); if (k.id === kind.id) return refreshUi(); }
+  if (homeMode || textureMode || libraryMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -640,6 +643,27 @@ refreshUi();
 lastSnapshot = snapshot();
 applyViewAll();
 regenerate();
-// En länk till …/studio/#texturer eller #bibliotek öppnar verkstaden eller biblioteket direkt
+// Landningssidan (studio/home.js): visas vid start och när man klickar på märket i headern
+let homeMode = false;
+const home = createHome({ el, api, root: $('home'), open: (id) => {
+  if (id === 'atelier') texBtn.onclick();
+  else if (id === 'vault') libBtn.onclick();
+  else selectKind(P.kinds[0]);
+} });
+function goHome() {
+  leaveTextureMode(); leaveLibraryMode();
+  homeMode = true;
+  paused = true; // 3D-vyn behövs inte under landningssidan
+  home.show();
+}
+function leaveHome() {
+  if (!homeMode) return;
+  homeMode = false;
+  home.hide();
+  paused = false;
+}
+document.querySelector('header#top h1').onclick = goHome;
+// En länk till …/studio/#texturer, #bibliotek eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
-if (location.hash === '#bibliotek') libBtn.onclick();
+else if (location.hash === '#bibliotek') libBtn.onclick();
+else if (location.hash !== '#smedjan') goHome();

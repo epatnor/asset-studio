@@ -287,11 +287,17 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [ ] MCP: AI:n läser biblioteket och de sparade recepten, och en knapp "Be Claude" i studion.
 - [x] Professionellt utseende: designtokens, ljust och mörkt tema (följer systemet eller väljs i headern). Byggt 2026-10-26.
 
-**Effektlabben** ([effektlabb.md](effektlabb.md), plan 2026-10-26): tre nya flikar i studion, Vind, Vatten och Väder, var och en med en grundscen att prova effekterna i och recept att spara. Effekterna blir gemensamma moduler i TSL (`shared/effects/`) som studion, visningen och Tinkertown delar.
+**Avdelningarna** ([avdelningar.md](avdelningar.md), plan 2026-10-26): Smedjan (grön, tillgångar), Väderkvarnen (blå, vind, vatten och väder), Ateljén (guld, texturer och material), Häxkitteln (lila, spelets effekter) och Skattkammaren (storbiblioteket), med egen underrubrik och accent, en låda per flik som Content Drawer i Unreal, och en landningssida.
+- [x] **A1, landningssidan:** byggd 2026-10-26 (`studio/home.js`, engelska): The Forge, The Windmill, The Atelier, The Cauldron (de två sistnämnda markerade Planned) och The Vault med illustrationer från GPT Image 2 via OpenRouter (`tools/texture/openrouter_image.py`, cirka 9 cent för alla fem), senast sparat, märket i headern leder tillbaka. Kvar: A2b, resten av appen på engelska.
+- [ ] **A2, headern och färgerna:** avdelningsväljare, underrubrik, flikar i en andra rad, accent per avdelning.
+- [ ] **A3, lådorna:** låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag.
+
+**Effektlabben** ([effektlabb.md](effektlabb.md), plan 2026-10-26): Väderkvarnens flikar Vind, Vatten och Väder och Häxkittelns spelets effekter, var och en med en grundscen att prova effekterna i och recept att spara. Effekterna blir gemensamma moduler i TSL (`shared/effects/`) som studion, visningen och Tinkertown delar.
 - [ ] **E1, fliken Vind:** vindriggen (`tools/wind/`, hierarki stam → grenar → klasar, stjälk → blomhuvud, med luftmotstånd och styvhet) i träd- och växtgeneratorn; vindmodulen; gläntan med spakar och felsökningsvy; gräset böjs med rotation och läser samma vind.
 - [ ] **E2, vinden i alla klienter:** visningen och Tinkertown (batchar, växter, impostors); vindlager i världen som havet delar; flaggor, rankor och lyktor.
 - [ ] **E3, fliken Vatten:** vattenmodulen från visningens vattengenerator och Tinkertowns hav; testbassäng med damm, sjö, bäck, å, vattenfall, hav och pöl; vattentyper som recept.
 - [ ] **E4, fliken Väder:** vädermodulen från visningens atmosfär och effekter; dygn, moln, regn, snö, dimma och storm; väderlägen som recept som styr vind och vatten.
+- [ ] **E6, Häxkitteln:** glöd och aura, markörer på marken (dekaler), partiklar på grafikkortet, spår och träffar, som recept; arena med figur och träningsdocka.
 - [ ] **E5, export:** vindriggen för Pivot Painter (Unreal, Godot, Unity).
 
 **Öppna verktyg:** vad vi kan låna eller härma i stället för att bygga själva (RedGPU, impostors, EZ-Tree, Material Maker, KTX2) står i [oppna-verktyg.md](oppna-verktyg.md).

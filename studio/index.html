@@ -341,6 +341,47 @@
   .linfo { display: grid; grid-template-columns: 96px 1fr; gap: 5px 10px; margin: 0; font-size: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
   .linfo dt { color: var(--muted); }
   .linfo dd { margin: 0; word-break: break-word; color: var(--ink-2); }
+
+  /* Landningssidan (studio/home.js): fyra verkstäder och The Vault, var och en i sin färg (--dept) */
+  #home { display: none; }
+  body.home-mode #home { display: block; position: fixed; inset: var(--head) 0 0 0; overflow-y: auto; z-index: 1;
+    background: radial-gradient(900px 520px at 12% -8%, color-mix(in srgb, #3f9a45 16%, transparent), transparent 70%),
+                radial-gradient(900px 520px at 92% 4%, color-mix(in srgb, #8b5cf6 16%, transparent), transparent 70%),
+                radial-gradient(900px 600px at 50% 110%, color-mix(in srgb, #2f7fd8 12%, transparent), transparent 70%), var(--bg); }
+  body.home-mode #app, body.home-mode #side, body.home-mode #bottom, body.home-mode .asset-tool, body.home-mode #kinds { display: none; }
+  header#top h1 { cursor: pointer; }
+  .home { max-width: 1240px; margin: 0 auto; padding: 40px 28px 56px; }
+  .home-kicker { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; font-weight: 650; color: var(--muted); }
+  .home-hero h1 { margin: 6px 0 10px; font-size: 42px; font-weight: 700; letter-spacing: -0.02em; }
+  .home-lead { margin: 0; max-width: 640px; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+  .home-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; margin-top: 32px; }
+  button.home-card { display: flex; flex-direction: column; align-items: stretch; height: auto; padding: 0; gap: 0; text-align: left; font-weight: 400;
+    border-radius: 14px; overflow: hidden; position: relative; background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow);
+    transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s; --tone: color-mix(in srgb, var(--dept), #fff var(--lift)); }
+  button.home-card::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--dept); z-index: 1; }
+  button.home-card:hover:not(.soon) { transform: translateY(-3px); background: var(--surface-solid); border-color: color-mix(in srgb, var(--dept) 55%, transparent);
+    box-shadow: 0 14px 36px color-mix(in srgb, var(--dept) 30%, transparent); }
+  button.home-card.soon { cursor: default; }
+  .home-pic { aspect-ratio: 3 / 2; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--dept) 60%, #000), var(--dept)); }
+  .home-pic img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s; }
+  button.home-card:hover:not(.soon) .home-pic img { transform: scale(1.04); }
+  button.home-card.soon .home-pic img { filter: saturate(0.75) brightness(0.92); }
+  .home-body { padding: 14px 16px 16px; display: grid; gap: 6px; }
+  .home-sub { font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tone); }
+  .home-body h2 { margin: 0; font-size: 20px; font-weight: 650; color: var(--ink); }
+  .home-body p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+  .home-go { margin-top: 4px; font-size: 12.5px; font-weight: 600; color: var(--tone); }
+  button.home-card.soon .home-go { color: var(--muted); }
+  button.home-card.wide { flex-direction: row; width: 100%; margin-top: 18px; }
+  button.home-card.wide .home-pic { width: 50%; flex: none; aspect-ratio: 2 / 1; }
+  button.home-card.wide .home-body { align-content: center; padding: 24px 28px; }
+  button.home-card.wide .home-body h2 { font-size: 24px; }
+  .home-recent h3 { margin: 32px 0 10px; font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .home-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  button.home-item { display: flex; flex-direction: column; height: auto; padding: 6px; gap: 6px; align-items: stretch; font-weight: 500; font-size: 11.5px; border-radius: 10px; }
+  button.home-item img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: radial-gradient(circle at 50% 38%, var(--btn-hover), var(--field) 75%); }
+  button.home-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+  @media (max-width: 760px) { button.home-card.wide { flex-direction: column; } button.home-card.wide .home-pic { width: 100%; } .home-hero h1 { font-size: 32px; } }
 </style>
 <script type="importmap">
 { "imports": {
@@ -369,6 +410,7 @@
 <div id="side"></div>
 <div id="wview"></div>
 <div id="libview"></div>
+<div id="home"></div>
 <div id="wlib" class="glass"></div>
 <div id="wside"></div>
 <footer id="wfoot" class="glass"></footer>
