@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Azshara Asset Studio</title>
+<!-- Appikonen: bonsaiträdet i häxkitteln (tools/texture/make_icon.py, studio/img/icon/) -->
+<link rel="icon" type="image/png" sizes="32x32" href="img/icon/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -76,8 +81,7 @@
                background: var(--surface-solid); border-bottom: 2px solid var(--accent); box-sizing: border-box; }
   body.home-mode header#top { border-bottom: 1px solid var(--line); }
   header#top h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: 0.1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; cursor: pointer; }
-  header#top h1 .mark { width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-    background: linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 38%), var(--accent) 55%, color-mix(in srgb, var(--accent), #000 35%)); }
+  header#top h1 .mark { width: 24px; height: 24px; display: block; flex: none; } /* appikonen, med egna rundade hörn */
   #dept { display: flex; align-items: baseline; gap: 8px; padding-left: 14px; border-left: 1px solid var(--line-strong); white-space: nowrap; min-width: 0; }
   #dept b { color: var(--accent); font-weight: 650; font-size: 13.5px; }
   #dept span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
@@ -437,6 +441,7 @@
                 radial-gradient(900px 600px at 50% 110%, color-mix(in srgb, #2f7fd8 12%, transparent), transparent 70%), var(--bg); }
   body.home-mode #app, body.home-mode #side, body.home-mode #bottom, body.home-mode .asset-tool { display: none; }
   .home { max-width: 1240px; margin: 0 auto; padding: 40px 28px 56px; }
+  .home-icon { width: 84px; height: 84px; display: block; margin: 0 0 14px; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.28)); }
   .home-kicker { margin: 0; text-transform: uppercase; letter-spacing: 0.16em; font-size: 11px; font-weight: 650; color: var(--muted); }
   .home-hero h1 { margin: 6px 0 10px; font-size: 42px; font-weight: 700; letter-spacing: -0.02em; }
   .home-lead { margin: 0; max-width: 640px; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
@@ -481,7 +486,7 @@
 <body>
 <div id="app"></div>
 <header id="top">
-  <h1 title="Home"><i class="mark"></i><span>Asset Studio</span></h1>
+  <h1 title="Home"><img class="mark" src="img/icon/icon-64.png" alt=""><span>Asset Studio</span></h1>
   <div id="dept"><b></b><span></span></div>
   <nav id="depts"></nav>
   <div id="hdrtools"><button id="gpu" class="gpubtn" title="Graphics card"></button><button id="theme" class="icon"></button></div>

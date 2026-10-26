@@ -1,0 +1,15 @@
+{
+  "name": "Azshara Asset Studio",
+  "short_name": "Asset Studio",
+  "description": "The asset forge of Azshara Studio: trees, props, plants, buildings, textures, wind and grass from recipes.",
+  "start_url": "/studio/",
+  "scope": "/studio/",
+  "display": "standalone",
+  "background_color": "#15171c",
+  "theme_color": "#15171c",
+  "icons": [
+    { "src": "img/icon/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "img/icon/icon-1024.png", "sizes": "1024x1024", "type": "image/png" }
+  ]
+}

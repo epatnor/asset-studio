@@ -19,7 +19,7 @@ export function createHome({ el, root, api, open }) {
   root.append(page);
 
   const hero = el('header', 'home-hero');
-  hero.append(el('p', 'home-kicker', 'Azshara Studio'), el('h1', null, 'Asset Studio'),
+  hero.append(Object.assign(el('img', 'home-icon'), { src: 'img/icon/icon-192.png', alt: '' }), el('p', 'home-kicker', 'Azshara Studio'), el('h1', null, 'Asset Studio'),
     el('p', 'home-lead', 'The asset forge for our games: everything is a recipe, every recipe is a slider away from the next variant.'));
   page.append(hero);
 
