@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
-import { createGrass } from '../shared/effects/grass.js';
+import { createGrass, colorTexture } from '../shared/effects/grass.js';
 import { gpuPreference } from './gpu.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
@@ -139,8 +139,25 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     grass = createGrass(wind, { ...o, exclude: baseExclude }, grassVals);
     grass.uniforms.sun.value.copy(sun.position).normalize();
     scene.add(grass.group);
+    // Marken ritar samma textur som rötterna läser, i samma skala
+    ground.material.colorNode = grass.groundNode;
+    ground.material.needsUpdate = true;
+    setGround(grassVals.ground);
   }
-  const setGrass = (k, v) => { grassVals[k] = v; grass?.set({ [k]: v }); };
+  // Marktexturen (Ground): samma textur för marken och för grässtrånas rötter; 'none' = markens enfärg
+  const groundList = await api('/api/textures?kind=ground').catch(() => []);
+  const groundCache = new Map(), texLoader = new THREE.TextureLoader();
+  async function setGround(name) {
+    if (!groundCache.has(name)) groundCache.set(name, name === 'none' ? Promise.resolve(colorTexture('#557f2a')) : texLoader.loadAsync(`/assets/textures/${name}.png`).then((t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = 8;
+      return t;
+    }));
+    const tex = await groundCache.get(name).catch(() => null);
+    if (tex && grassVals.ground === name) grass?.setGroundTexture(tex);
+  }
+  const setGrass = (k, v) => { grassVals[k] = v; if (k === 'ground') setGround(v); else grass?.set({ [k]: v }); };
 
   // --- Blomklungor: växter från växtgeneratorn (riggade, i samma vind), slumpade i klungor över ängen. Varje art
   // byggs i några frön av servern (/api/wind/plant) och klonas; klonerna delar geometri och material ---
@@ -296,6 +313,37 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     row.append(el('label', null, q.label), r, out);
     return row;
   }
+  // Marktexturen: små tumnaglar att klicka på, plus None
+  function textureRow(q, get, set, changed) {
+    const row = el('div', 'row span2 texpick'), grid = el('div', 'gtex');
+    if (q.help) row.title = q.help;
+    const opts = [{ name: 'none', thumb: null }, ...groundList];
+    const btns = opts.map((t) => {
+      const b = el('button', 'gtile');
+      b.title = t.name === 'none' ? 'None: a plain ground colour' : t.name;
+      if (t.thumb) b.append(Object.assign(el('img'), { src: t.thumb, alt: '', loading: 'lazy' }));
+      else b.append(el('span', null, 'None'));
+      b.append(el('small', null, t.name.replace(/^(ground_|surface_)/, '')));
+      b.onclick = () => { set(q.key, t.name); sync(); changed?.(); };
+      grid.append(b);
+      return [t.name, b];
+    });
+    const sync = () => { for (const [n, b] of btns) b.classList.toggle('on', n === get(q.key)); };
+    syncs.push(sync);
+    row.append(el('label', null, q.label), grid);
+    return row;
+  }
+  // Av och på (iOS-reglage); hjälptexten står under etiketten
+  function toggleRow(q, get, set, changed) {
+    const row = el('div', 'row span2'), box = el('input', 'switch'), lab = el('label', 'twoline');
+    box.type = 'checkbox';
+    lab.append(document.createTextNode(q.label), el('small', null, q.key === 'rootFromGround' ? 'Follow ground texture color' : ''));
+    if (q.help) row.title = q.help;
+    syncs.push(() => { box.checked = !!get(q.key); });
+    box.onchange = () => { set(q.key, box.checked); changed?.(); };
+    row.append(lab, box);
+    return row;
+  }
   function colorRow(q, get, set, changed) {
     const row = el('div', 'row span2'), c = el('input');
     c.type = 'color';
@@ -311,8 +359,9 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   // Gräset: ett kort per grupp i grass.json
   const grassGet = (k) => grassVals[k];
   for (const g of G.groups) {
-    const body = card(g.label, '#5aa43c', { closed: g.id !== 'waves' });
-    for (const q of G.params.filter((x) => x.group === g.id)) body.append((q.type === 'color' ? colorRow : slider)(q, grassGet, setGrass, () => markGrass(null)));
+    const body = card(g.label, '#5aa43c', { closed: !['waves', 'ground'].includes(g.id) });
+    const rowFor = { color: colorRow, texture: textureRow, bool: toggleRow };
+    for (const q of G.params.filter((x) => x.group === g.id)) body.append((rowFor[q.type] ?? slider)(q, grassGet, setGrass, () => markGrass(null)));
   }
 
   // Blomklungorna: vilka växter, och hur de slumpas ut

@@ -129,7 +129,7 @@ async function ensureThumbs(names) {
 
 async function textures(kind) {
   const dir = path.join(ROOT, 'assets/textures');
-  const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen|blend_|rock_)/ }[kind] ?? /./;
+  const match = { bark: /^bark_/, ground: /^(ground_|surface_(?!bld_))/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen|blend_|rock_)/ }[kind] ?? /./;
   const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw|normal|height|rough|metal|ao|emissive|orm)$/.test(f.slice(0, -4))).map((f) => f.slice(0, -4));
   await ensureThumbs(names);
   const cat = await readJson('assets/textures/catalog.json') ?? {};
@@ -521,6 +521,8 @@ async function grassSave({ name, settings, flowers, overwrite }) {
   for (const q of G.params) {
     const v = settings?.[q.key];
     if (q.type === 'color') clean[q.key] = /^#[0-9a-f]{6}$/i.test(v) ? v : q.default;
+    else if (q.type === 'bool') clean[q.key] = v === undefined ? q.default : !!v;
+    else if (q.type === 'texture') clean[q.key] = v === 'none' || (NAME.test(String(v)) && existsSync(path.join(ROOT, 'assets/textures', `${v}.png`))) ? v : q.default;
     else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
   }
   const fl = flowers ? {

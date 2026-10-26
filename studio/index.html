@@ -353,6 +353,15 @@
   #wmside .card.closed > .rows { display: none; }
   #wmside .rows > button { justify-content: center; }
   .flowerchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+  .row.texpick { grid-template-columns: 1fr; gap: 4px; }
+  .gtex { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 5px; }
+  .gtile { height: auto; padding: 0; display: grid; gap: 2px; background: transparent; border: 0; justify-items: stretch; }
+  .gtile img, .gtile > span { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 2px solid transparent; box-sizing: border-box; display: grid; place-items: center; background: var(--field); font-size: 11px; color: var(--muted); }
+  .gtile small { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+  .gtile.on img, .gtile.on > span { border-color: var(--accent); }
+  .gtile:hover img { border-color: var(--line-strong); }
+  label.twoline { display: grid; line-height: 1.25; }
+  label.twoline small { color: var(--muted); font-size: 11px; }
 
   /* Biblioteket (studio/library.js): sidopanel, rutnät som FAB, detaljpanel. Läget styrs av body.library-mode */
   #libview { display: none; }

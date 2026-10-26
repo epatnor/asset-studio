@@ -13,10 +13,10 @@
 //
 //   const grass = createGrass(wind, { radius: 30, exclude: [{ x, z, r }] }, settings);
 //   scene.add(grass.group); varje bild: grass.update(camera)
-import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial } from 'three/webgpu';
+import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace } from 'three/webgpu';
 import {
   attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, min, pow, mix, smoothstep, normalize, cross, dot, length,
-  varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract,
+  varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract, texture,
 } from 'three/tsl';
 
 const TAU = Math.PI * 2;
@@ -27,7 +27,15 @@ export const GRASS_SETTINGS = {
   heightMin: 0.17, heightMax: 0.38, width: 0.035, taper: 1.8, curve: 0.55, curveVar: 0.6, clumpLean: 1, stiffness: 1, density: 1,
   clumpSize: 0.7,
   waveBend: 0.45, waveSheen: 1, waveSize: 9, waveSpeed: 4, waveSharp: 3, waveBreakup: 0.6,
+  ground: 'ground_meadow', groundScale: 3, groundBright: 0.85, rootFromGround: true,
 };
+// Marken under gräset: en färg som textur (1 × 1), tills en riktig textur sätts med setGroundTexture
+export function colorTexture(hex) {
+  const c = new Color(hex), t = new DataTexture(new Uint8Array([c.r * 255, c.g * 255, c.b * 255, 255]), 1, 1);
+  t.colorSpace = SRGBColorSpace;
+  t.needsUpdate = true;
+  return t;
+}
 export const GRASS_FIELD = { radius: 30, inner: 13, counts: [280, 70], chunk: 5, seed: 11, lod: [12, 30] };
 
 function rng(seed) {
@@ -49,7 +57,8 @@ function bladeGeometry(rows) {
 export function createGrass(wind, field = {}, settings = {}) {
   const f = { ...GRASS_FIELD, ...field };
   const s0 = { ...GRASS_SETTINGS, ...settings };
-  const u = Object.fromEntries(Object.entries(s0).map(([k, v]) => [k, uniform(typeof v === 'string' ? new Color(v) : v)]));
+  // Uniforms för allt utom marktexturens namn (ground); färger som Color, av/på som 0 och 1
+  const u = Object.fromEntries(Object.entries(s0).filter(([k]) => k !== 'ground').map(([k, v]) => [k, uniform(typeof v === 'string' ? new Color(v) : typeof v === 'boolean' ? Number(v) : v)]));
   Object.assign(u, { sun: uniform(new Vector3(0.5, 0.7, 0.4).normalize()), lodNear: uniform(f.lod[0]), lodFar: uniform(f.lod[1]) });
   let clumpSize = s0.clumpSize, exclude = f.exclude ?? [];
 
@@ -146,6 +155,11 @@ export function createGrass(wind, field = {}, settings = {}) {
   const vT = varying(t), vPv = varying(pv), vPatch = varying(patchN), vClump = varying(clumpH), vFar = varying(far);
   // Glansen: där vågen och byarna går visar stråna sin ljusare sida
   const vShine = varying(max(wave, wind.gust(root.xz).mul(S)).mul(t));
+  // Markens färg där strået står: samma koordinater som marken (meter / groundScale), en suddig mipnivå (medelfärgen)
+  const groundTex = texture(colorTexture('#557f2a'), root.xz.div(u.groundScale), float(4));
+  const vGround = varying(groundTex.rgb.mul(u.groundBright));
+  // Samma textur för markens egen yta (i fragmentet, full upplösning), bytt tillsammans med rötternas
+  const groundTexW = texture(groundTex.value, positionWorld.xz.div(u.groundScale));
 
   const mat = new MeshLambertNodeMaterial({ side: DoubleSide });
   mat.positionNode = root.add(center).add(side.mul(x).mul(width));
@@ -153,10 +167,12 @@ export function createGrass(wind, field = {}, settings = {}) {
   // Färgen: mörk bas, mellanton och ljus topp; torra fläckar (dryAmount) drar topparna mot den torra färgen
   const dryMask = smoothstep(float(0.95).sub(u.dryAmount.mul(0.9)), float(1.2).sub(u.dryAmount.mul(0.9)), vPv);
   const tipCol = mix(u.tip, u.dry, dryMask);
-  const body = mix(u.base, mix(u.mid, u.dry.mul(0.7), dryMask.mul(0.4)), smoothstep(0.0, 0.45, vT));
+  // Roten: grässets egen rotfärg, eller markens (Grass root color: Follow ground texture color)
+  const rootCol = mix(u.base, vGround.mul(0.92), u.rootFromGround);
+  const body = mix(rootCol, mix(u.mid, u.dry.mul(0.7), dryMask.mul(0.4)), smoothstep(0.0, 0.45, vT));
   let col = mix(body, tipCol, smoothstep(0.35, 1.0, vT));
   col = col.mul(mix(1, float(0.75).add(vClump.mul(0.5)), u.clumpShade)); // tuvorna lite olika ljusa
-  col = col.mul(mix(float(1).sub(u.ao.mul(0.6)), 1.0, smoothstep(0.0, 0.55, vT))); // mörkare vid roten
+  col = col.mul(mix(float(1).sub(u.ao.mul(mix(0.6, 0.3, u.rootFromGround))), 1.0, smoothstep(0.0, 0.55, vT))); // mörkare vid roten
   // Stora fläckar: mörkare och blågrönare där fältet är lågt, varmare och gulare där det är högt
   col = col.mul(mix(vec3(1), mix(vec3(0.8, 0.92, 0.88), vec3(1.1, 1.05, 0.86), vPatch), u.patches));
   col = col.add(mix(vec3(0.24, 0.27, 0.1), tipCol.mul(0.35), 0.5).mul(vShine).mul(u.waveSheen)).mul(mix(1.0, 0.92, vFar));
@@ -202,9 +218,13 @@ export function createGrass(wind, field = {}, settings = {}) {
       for (const [k, v] of Object.entries(values)) {
         if (k === 'clumpSize') { if (v !== clumpSize) { clumpSize = v; build(); } continue; }
         if (!u[k]) continue;
-        if (u[k].value?.isColor) u[k].value.set(v); else u[k].value = v;
+        if (u[k].value?.isColor) u[k].value.set(v); else u[k].value = typeof v === 'boolean' ? Number(v) : v;
       }
     },
+    // Marktexturen (eller colorTexture) som rötterna läser; marken själv ritas av den som äger den, med groundNode
+    setGroundTexture(tex) { groundTex.value = tex; groundTexW.value = tex; },
+    // Markens färg i världen, med samma skala och ljushet som rötterna: till markens material (colorNode)
+    groundNode: groundTexW.rgb.mul(u.groundBright),
     // Nya fria ytor (till exempel runt utslumpade blommor): stråna byggs om
     setExclude(list) { exclude = list; build(); },
     // Varje bild: närmaste rutorna med den fina geometrin, glesare längre bort
