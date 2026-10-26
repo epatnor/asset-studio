@@ -386,7 +386,7 @@ def src_krea(n, p, rng, ctx):
     out = CACHE / "krea" / f"{h}.png"
     if not out.exists():
         if not comfy_up():
-            raise RuntimeError("ComfyUI är inte igång (127.0.0.1:8188). Starta den och försök igen.")
+            raise RuntimeError("ComfyUI is not running (127.0.0.1:8188). Start it and try again.")
         out.parent.mkdir(parents=True, exist_ok=True)
         cmd = [sys.executable, "-I", str(ROOT / "tools/texture/krea2.py"), prompt, "1024", "1024", str(out), str(int(p.get("seed", 1)))]
         if base:
@@ -396,7 +396,7 @@ def src_krea(n, p, rng, ctx):
             cmd += ["--base", str(bp), "--denoise", str(p.get("denoise", 0.6))]
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
         if r.returncode or not out.exists():
-            raise RuntimeError("Krea misslyckades: " + (r.stderr or r.stdout).strip()[-300:])
+            raise RuntimeError("Krea failed: " + (r.stderr or r.stdout).strip()[-300:])
     img = np.asarray(Image.open(out).convert("RGB"), np.float32) / 255
     if p.get("seamless", True):
         # Med en sömlös bas är Krea redan nästan sömlös och formerna ligger kvar där formen har dem: skarven jämnas då
@@ -468,12 +468,12 @@ class Ctx:
 
     def get(self, name, n):
         if not name:
-            raise RuntimeError("en ingrediens saknas: välj en i spaken")
+            raise RuntimeError("an ingredient is missing: pick one in the slider")
         if name in self.chain:
-            raise RuntimeError(f"ingrediensen {name} använder sig själv")
+            raise RuntimeError(f"the ingredient {name} uses itself")
         d = self.scope.get(name)
         if d is None:
-            raise RuntimeError(f"ingrediensen {name} finns inte")
+            raise RuntimeError(f"the ingredient {name} does not exist")
         k = (name, n)
         if k in self.memo:
             return self.memo[k]
@@ -955,17 +955,17 @@ def main():
     if save:
         name = save.get("name", "")
         if not name or set(name) - NAME_OK or len(name) > 48:
-            sys.exit(json.dumps({"error": "namnet får bara ha a–z, 0–9 och _ (högst 48 tecken)"}))
+            sys.exit(json.dumps({"error": "the name may only have a–z, 0–9 and _ (at most 48 characters)"}))
         out = TEX / f"{name}.png"
         meta = TEX / f"{name}.texture.json"
         if out.exists() and not meta.exists():
-            sys.exit(json.dumps({"error": f"{name} finns redan och är inte gjord i verkstaden; välj ett annat namn"}))
+            sys.exit(json.dumps({"error": f"{name} already exists and was not made in the Atelier; pick another name"}))
         if out.exists() and not save.get("overwrite"):
-            sys.exit(json.dumps({"error": f"{name} finns redan", "exists": True}))
+            sys.exit(json.dumps({"error": f"{name} already exists", "exists": True}))
     else:
         prefix = (ROOT / recipe.get("out", "build/studio/tex/preview")).resolve()
         if ROOT not in prefix.parents:
-            sys.exit(json.dumps({"error": "out måste ligga under projektroten"}))
+            sys.exit(json.dumps({"error": "out must be under the project root"}))
     try:
         t = build_cached(recipe, n)
     except (RuntimeError, OSError, KeyError) as e:

@@ -77,7 +77,7 @@ function runTool(script, recipe) {
     p.on('close', () => {
       // Fel skrivs som en rad JSON på stderr (sys.exit), så att studion kan visa bara meddelandet
       const last = (s) => { try { return JSON.parse(s.trim().split('\n').pop()); } catch { return null; } };
-      resolve(last(out) ?? (last(err)?.error ? last(err) : { error: (err || out).trim().slice(-500) || 'inget svar' }));
+      resolve(last(out) ?? (last(err)?.error ? last(err) : { error: (err || out).trim().slice(-500) || 'no response' }));
     });
   });
 }
@@ -101,7 +101,7 @@ const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];
-  if (!g) return { error: `okänd generator ${generator}` };
+  if (!g) return { error: `unknown generator ${generator}` };
   const name = `p${Date.now().toString(36)}${(previewCounter++).toString(36)}`;
   const t0 = Date.now();
   const result = await serial(() => runTool(g.script, { ...cleanRecipe(recipe), name, out_root: PREVIEWS }));
@@ -172,7 +172,7 @@ async function texturePreview({ recipe }) {
 }
 function textureJob(id) {
   const j = jobs.get(id);
-  if (!j) return { error: 'jobbet finns inte (servern kan ha startats om)' };
+  if (!j) return { error: 'no such job (the server may have restarted)' };
   return j.done ? j.result : { pending: true, job: id, since: j.t0, krea: j.krea };
 }
 async function textureSave({ recipe, name, profile, tags = [], meters = 2, size = 1024, maps, pack, webp, overwrite = false }) {
@@ -192,10 +192,10 @@ async function readLibrary() {
 
 async function saveToLibrary({ generator = 'tree', name, tags = [], recipe, thumbnail, overwrite = false }) {
   const g = GENERATORS[generator];
-  if (!g) return { error: `okänd generator ${generator}` };
-  if (!NAME.test(name ?? '')) return { error: 'namnet får bara ha a–z, 0–9 och _ (högst 48 tecken)' };
+  if (!g) return { error: `unknown generator ${generator}` };
+  if (!NAME.test(name ?? '')) return { error: 'the name may only have a–z, 0–9 and _ (at most 48 characters)' };
   const dir = path.join(ROOT, g.assets, name);
-  if (existsSync(dir) && !overwrite) return { error: `${name} finns redan`, exists: true };
+  if (existsSync(dir) && !overwrite) return { error: `${name} already exists`, exists: true };
   const result = await serial(() => runTool(g.script, { ...cleanRecipe(recipe), name }));
   if (result.error) return result;
   let thumb = null;
@@ -267,7 +267,7 @@ const cleanTags = (tags) => [...new Set((tags ?? []).filter((t) => typeof t === 
 const CATEGORIES = new Set(['tree', 'bush', 'plant', 'rock', 'prop', 'building']);
 async function libraryAdd({ model, tags }) {
   const found = (await libraryScan()).items.find((i) => i.model === model);
-  if (!found) return { error: 'finns inte, eller ligger redan i biblioteket' };
+  if (!found) return { error: 'does not exist, or is already in the library' };
   const lib = await readLibrary();
   const entry = { name: found.name, type: found.type, kind: found.kind, category: found.category, tags: cleanTags(tags), model, recipe: found.recipe,
                   thumbnail: found.thumbnail, checks_ok: null, saved: new Date().toISOString() };
@@ -277,10 +277,10 @@ async function libraryAdd({ model, tags }) {
 }
 async function libraryUpdate({ model, tags, category, scatter }) {
   const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
-  if (!e) return { error: 'finns inte i biblioteket' };
+  if (!e) return { error: 'not in the library' };
   if (tags) e.tags = cleanTags(tags);
   if (scatter && typeof scatter === 'object') e.scatter = { ...e.scatter, ...cleanScatter(scatter) };
-  if (category) { if (!CATEGORIES.has(category)) return { error: `okänd kategori ${category}` }; e.category = category; }
+  if (category) { if (!CATEGORIES.has(category)) return { error: `unknown category ${category}` }; e.category = category; }
   await completeEntry(e);
   await writeLibrary(lib);
   return { entry: e };
@@ -289,19 +289,19 @@ async function libraryRemove({ model }) {
   // Bara raden i katalogen: filerna ligger kvar och syns under Ej tillagda
   const lib = await readLibrary(), n = lib.items.length;
   lib.items = lib.items.filter((i) => i.model !== model);
-  if (lib.items.length === n) return { error: 'finns inte i biblioteket' };
+  if (lib.items.length === n) return { error: 'not in the library' };
   await writeLibrary(lib);
   return { ok: true };
 }
 // Frys: kopiera familjens modell till assets/fixed/<namn>/ (samma djup, så att texturernas relativa sökvägar gäller),
 // med receptet bredvid och en hänvisning till familjen den kom från
 async function libraryFreeze({ model, name }) {
-  if (!NAME.test(name ?? '')) return { error: 'namnet får bara ha a–z, 0–9 och _ (högst 48 tecken)' };
+  if (!NAME.test(name ?? '')) return { error: 'the name may only have a–z, 0–9 and _ (at most 48 characters)' };
   const src = (await libraryView()).items.find((i) => i.model === model) ?? (await libraryScan()).items.find((i) => i.model === model);
-  if (!src) return { error: 'modellen finns inte' };
-  if (src.kind === 'fixed') return { error: 'den är redan en fast modell' };
+  if (!src) return { error: 'the model does not exist' };
+  if (src.kind === 'fixed') return { error: 'it is already a fixed model' };
   const from = path.dirname(model), to = `assets/fixed/${name}`;
-  if (existsSync(path.join(ROOT, to))) return { error: `${name} finns redan bland de fasta modellerna`, exists: true };
+  if (existsSync(path.join(ROOT, to))) return { error: `${name} already exists among the fixed models`, exists: true };
   await mkdir(path.join(ROOT, to), { recursive: true });
   const old = path.basename(model).replace(/\.(gltf|glb)$/, ''), ext = path.extname(model);
   for (const f of await readdir(path.join(ROOT, from))) {
@@ -327,7 +327,7 @@ async function libraryFreeze({ model, name }) {
 async function libraryThumb({ model, thumbnail }) {
   const m = /^data:image\/png;base64,(.+)$/.exec(thumbnail ?? '');
   if (!m || typeof model !== 'string' || !/^assets\/[a-z0-9_/]+\/[a-z0-9_]+\.(gltf|glb)$/.test(model) || !existsSync(path.join(ROOT, model)))
-    return { error: 'ogiltig modell eller bild' };
+    return { error: 'invalid model or image' };
   const name = path.basename(model).replace(/\.(gltf|glb)$/, ''), rel = `${path.dirname(model)}/${name}_thumb.png`;
   await writeFile(path.join(ROOT, rel), Buffer.from(m[1], 'base64'));
   const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
@@ -394,9 +394,9 @@ const variantJobs = new Map();
 let variantJobCounter = 0;
 async function libraryVariants({ model, count = 8 }) {
   const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
-  if (!e) return { error: 'lägg till den i biblioteket först' };
+  if (!e) return { error: 'add it to the library first' };
   const view = (await libraryView()).items.find((i) => i.model === model);
-  if (view.kind !== 'family' || !GEN_TOOLS[e.type] || !e.recipe) return { error: 'bara familjer från en generator kan få varianter' };
+  if (view.kind !== 'family' || !GEN_TOOLS[e.type] || !e.recipe) return { error: 'only families from a generator can have variants' };
   const dir = `${path.dirname(model)}/variants`;
   count = Math.max(0, Math.min(16, Math.round(Number(count) || 0)));
   if (!count) { // tom pool: ta bort varianterna
@@ -449,7 +449,7 @@ async function api(req, res, url) {
   const LIB_POST = { add: libraryAdd, update: libraryUpdate, remove: libraryRemove, freeze: libraryFreeze, thumb: libraryThumb, variants: libraryVariants };
   if (url.pathname === '/api/library/job' && req.method === 'GET') {
     const j = variantJobs.get(url.searchParams.get('id') ?? '');
-    return json(res, 200, j ?? { error: 'jobbet finns inte (servern kan ha startats om)' });
+    return json(res, 200, j ?? { error: 'no such job (the server may have restarted)' });
   }
   const lm = /^\/api\/library\/([a-z]+)$/.exec(url.pathname);
   if (lm && LIB_POST[lm[1]] && req.method === 'POST') return json(res, 200, await LIB_POST[lm[1]](await body(req)));
@@ -457,7 +457,7 @@ async function api(req, res, url) {
   if (url.pathname === '/api/shot' && req.method === 'POST') {
     // Skärmdump av studions 3D-vy (för tavlor och dokumentation): PNG-data -> build/shots/studio_<namn>.png
     const name = url.searchParams.get('name') ?? '';
-    if (!/^[a-z0-9_-]{1,64}$/i.test(name)) return json(res, 400, { error: 'name: a-z, 0-9, _ och -' });
+    if (!/^[a-z0-9_-]{1,64}$/i.test(name)) return json(res, 400, { error: 'name: a-z, 0-9, _ and -' });
     const chunks = [];
     for await (const c of req) chunks.push(c);
     await mkdir(path.join(ROOT, 'build/shots'), { recursive: true });
@@ -478,10 +478,10 @@ async function api(req, res, url) {
   if (url.pathname === '/api/texture/recipe' && req.method === 'GET') {
     const name = url.searchParams.get('name') ?? '';
     const file = path.join(ROOT, 'assets/textures', `${name}.texture.json`);
-    if (!NAME.test(name) || !existsSync(file)) return json(res, 404, { error: 'inget recept för den texturen' });
+    if (!NAME.test(name) || !existsSync(file)) return json(res, 404, { error: 'no recipe for that texture' });
     return json(res, 200, JSON.parse(await readFile(file, 'utf8')));
   }
-  return json(res, 404, { error: 'okänt anrop' });
+  return json(res, 404, { error: 'unknown request' });
 }
 
 async function serveStatic(req, res, url) {
@@ -489,7 +489,7 @@ async function serveStatic(req, res, url) {
   if (rel === '/' || rel === '/studio') { res.writeHead(302, { Location: '/studio/' }); return res.end(); }
   const file = path.resolve(ROOT, '.' + rel);
   // Bara filer under projektroten, inga dolda filer eller mappar (.git, .env ...)
-  if (!file.startsWith(ROOT + path.sep) || file.split(path.sep).some((p) => p.startsWith('.'))) return json(res, 403, { error: 'nekad' });
+  if (!file.startsWith(ROOT + path.sep) || file.split(path.sep).some((p) => p.startsWith('.'))) return json(res, 403, { error: 'denied' });
   try {
     const st = await stat(file);
     const target = st.isDirectory() ? path.join(file, 'index.html') : file;
@@ -497,7 +497,7 @@ async function serveStatic(req, res, url) {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(target)] ?? 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(data);
   } catch {
-    json(res, 404, { error: 'finns inte' });
+    json(res, 404, { error: 'not found' });
   }
 }
 

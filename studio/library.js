@@ -7,13 +7,13 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-const CATS = [['all', 'Alla'], ['tree', 'Träd'], ['bush', 'Buskar'], ['plant', 'Växter'], ['rock', 'Stenar'], ['prop', 'Props'], ['building', 'Byggnader']];
+const CATS = [['all', 'All'], ['tree', 'Trees'], ['bush', 'Bushes'], ['plant', 'Plants'], ['rock', 'Rocks'], ['prop', 'Props'], ['building', 'Buildings']];
 const CAT_LABEL = Object.fromEntries(CATS);
-const SOURCE_LABEL = { tree: 'Trädgeneratorn', prop: 'Propsgeneratorn', plant: 'Växtgeneratorn', building: 'Byggnadsgeneratorn', imported: 'Importerad', fixed: 'Fast modell' };
-const KIND_LABEL = { family: 'Familj', fixed: 'Fast' };
+const SOURCE_LABEL = { tree: 'Tree generator', prop: 'Prop generator', plant: 'Plant generator', building: 'Building generator', imported: 'Imported', fixed: 'Fixed model' };
+const KIND_LABEL = { family: 'Family', fixed: 'Fixed' };
 const KIND_HELP = {
-  family: 'Familj: ett recept som generatorn kan göra om, med nya frön och ändrade spakar',
-  fixed: 'Fast modell: en bestämd modell som ligger kvar som den är',
+  family: 'Family: a recipe the generator can rebuild, with new seeds and changed sliders',
+  fixed: 'Fixed model: one specific model that stays as it is',
 };
 const THUMB_PX = 384;
 
@@ -74,15 +74,15 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   const side = el('aside', 'lside glass'), main = el('section', 'lmain'), detail = el('aside', 'ldetail glass');
   root.append(side, main, detail);
   const bar = el('div', 'lbar glass');
-  const search = Object.assign(el('input', 'search'), { type: 'search', placeholder: 'Sök namn, art, tagg …' });
+  const search = Object.assign(el('input', 'search'), { type: 'search', placeholder: 'Search name, species, tag …' });
   search.oninput = () => { f.q = search.value.trim().toLowerCase(); renderGrid(); };
   const sortSel = el('select');
-  for (const [v, l] of [['new', 'Nyast först'], ['name', 'Namn'], ['cat', 'Kategori']]) { const o = el('option', null, l); o.value = v; sortSel.append(o); }
+  for (const [v, l] of [['new', 'Newest first'], ['name', 'Name'], ['cat', 'Category']]) { const o = el('option', null, l); o.value = v; sortSel.append(o); }
   sortSel.onchange = () => { f.sort = sortSel.value; renderGrid(); };
   const count = el('span', 'lcount');
-  const thumbsBtn = el('button', null, 'Gör miniatyrer');
-  thumbsBtn.title = 'Renderar miniatyrer för de synliga tillgångar som saknar en';
-  const refreshBtn = Object.assign(el('button', 'icon'), { title: 'Läs om biblioteket',
+  const thumbsBtn = el('button', null, 'Make thumbnails');
+  thumbsBtn.title = 'Renders thumbnails for the visible assets that lack one';
+  const refreshBtn = Object.assign(el('button', 'icon'), { title: 'Reload the library',
     innerHTML: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg>' });
   refreshBtn.onclick = () => load();
   bar.append(search, sortSel, count, thumbsBtn, refreshBtn);
@@ -113,14 +113,14 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   // --- Sidopanelen: källa, sort, kategorier med antal, taggar ---
   function renderSide() {
     side.replaceChildren();
-    side.append(el('h2', null, 'Bibliotek'));
-    side.append(seg([['lib', `Biblioteket ${items.length}`], ['loose', `Ej tillagda ${loose.length}`]], f.source, (v) => { f.source = v; f.tags.clear(); sel = null; renderAll(); }));
-    side.lastChild.title = 'Ej tillagda: modeller under assets/ som ännu inte ligger i biblioteket';
-    side.append(el('h3', null, 'Sort'));
-    const ks = seg([['all', 'Alla'], ['family', 'Familj'], ['fixed', 'Fast']], f.kind, (v) => { f.kind = v; renderAll(); });
+    side.append(el('h2', null, 'The Vault'));
+    side.append(seg([['lib', `Library ${items.length}`], ['loose', `Not added ${loose.length}`]], f.source, (v) => { f.source = v; f.tags.clear(); sel = null; renderAll(); }));
+    side.lastChild.title = 'Not added: models under assets/ that are not in the library yet';
+    side.append(el('h3', null, 'Kind'));
+    const ks = seg([['all', 'All'], ['family', 'Family'], ['fixed', 'Fixed']], f.kind, (v) => { f.kind = v; renderAll(); });
     ks.title = `${KIND_HELP.family}. ${KIND_HELP.fixed}.`;
     side.append(ks);
-    side.append(el('h3', null, 'Kategorier'));
+    side.append(el('h3', null, 'Categories'));
     const cats = el('nav', 'lcats');
     for (const [c, label] of CATS) {
       const n = pool().filter((i) => baseFilter(i) && (c === 'all' || i.category === c)).length;
@@ -133,11 +133,11 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     const counts = new Map();
     for (const i of pool()) for (const t of i.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
     if (counts.size) {
-      side.append(el('h3', null, 'Taggar'));
+      side.append(el('h3', null, 'Tags'));
       const chips = el('div', 'chips');
       for (const [t, n] of [...counts].sort((a, b) => b[1] - a[1]).slice(0, 40)) {
         const c = el('button', `chip${f.tags.has(t) ? ' on' : ''}`, t);
-        c.title = `${n} st`;
+        c.title = `${n}`;
         c.onclick = () => { if (f.tags.has(t)) f.tags.delete(t); else f.tags.add(t); renderAll(); };
         chips.append(c);
       }
@@ -156,16 +156,16 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     const kb = el('span', `kindb ${i.kind}`, KIND_LABEL[i.kind]);
     kb.title = KIND_HELP[i.kind];
     box.append(kb);
-    if (i.checks_ok === false) box.append(Object.assign(el('span', 'warnb', '!'), { title: 'Kontrollerna gick inte igenom när den sparades' }));
+    if (i.checks_ok === false) box.append(Object.assign(el('span', 'warnb', '!'), { title: 'The checks failed when it was saved' }));
     const nv = (i.variants?.items.length ?? 0);
-    if (nv > 1) box.append(Object.assign(el('span', 'poolb', `×${nv}`), { title: `Variantpool: ${nv} färdiga varianter` }));
+    if (nv > 1) box.append(Object.assign(el('span', 'poolb', `×${nv}`), { title: `Variant pool: ${nv} ready variants` }));
     if (f.source === 'loose') {
-      const add = el('button', 'mini primary addb', '+ Lägg till');
+      const add = el('button', 'mini primary addb', '+ Add');
       add.onclick = (e) => { e.stopPropagation(); addToLibrary(i); };
       box.append(add);
     }
     const cap = el('figcaption');
-    cap.append(el('b', null, i.name), el('span', null, [CAT_LABEL[i.category], i.seed != null ? `frö ${i.seed}` : SOURCE_LABEL[i.type]].filter(Boolean).join(' · ')));
+    cap.append(el('b', null, i.name), el('span', null, [CAT_LABEL[i.category], i.seed != null ? `seed ${i.seed}` : SOURCE_LABEL[i.type]].filter(Boolean).join(' · ')));
     fig.append(box, cap);
     fig.onclick = () => { sel = i.model; renderGrid(); renderDetail(); };
     fig.ondblclick = () => { if (canOpen(i)) openInStudio(i); };
@@ -173,14 +173,14 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   }
   function renderGrid() {
     const list = visible();
-    count.textContent = `${list.length} st`;
+    count.textContent = `${list.length} items`;
     const missing = list.filter((i) => !i.thumbnail).length;
-    thumbsBtn.textContent = missing ? `Gör miniatyrer (${missing})` : 'Miniatyrer klara';
+    thumbsBtn.textContent = missing ? `Make thumbnails (${missing})` : 'Thumbnails done';
     thumbsBtn.disabled = !missing || making;
     grid.replaceChildren(...list.map(card));
     if (!list.length) grid.append(el('div', 'lempty', f.source === 'lib' && !items.length
-      ? 'Biblioteket är tomt. Spara från studion, eller lägg till modeller under Ej tillagda.'
-      : 'Inget matchar urvalet.'));
+      ? 'The library is empty. Save from the studio, or add models under Not added.'
+      : 'Nothing matches the selection.'));
   }
 
   // --- Detaljpanelen ---
@@ -191,11 +191,11 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     detail.replaceChildren();
     if (!i) return;
     const inLib = items.includes(i);
-    const close = Object.assign(el('button', 'icon lclose'), { title: 'Stäng', innerHTML: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg>' });
+    const close = Object.assign(el('button', 'icon lclose'), { title: 'Close', innerHTML: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg>' });
     close.onclick = () => { sel = null; renderGrid(); renderDetail(); };
     const big = el('div', 'lbig');
     const url = thumbUrl(i);
-    if (url) big.append(Object.assign(el('img'), { src: url, alt: '' })); else big.append(el('span', 'ph', 'Ingen miniatyr än'));
+    if (url) big.append(Object.assign(el('img'), { src: url, alt: '' })); else big.append(el('span', 'ph', 'No thumbnail yet'));
     const head = el('div', 'lhead');
     head.append(el('h2', null, i.name));
     const badges = el('div', 'btns');
@@ -207,31 +207,31 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     const acts = el('div', 'lacts');
     const openable = canOpen(i);
     if (i.kind === 'family') {
-      const open = el('button', 'primary', 'Öppna i studion');
+      const open = el('button', 'primary', 'Open in the studio');
       open.disabled = !openable;
-      open.title = openable ? 'Ladda receptet i studion för att ändra och variera det' : 'Studion har inga spakar för den här generatorn eller arten än';
+      open.title = openable ? 'Load the recipe in the studio to change and vary it' : 'The studio has no sliders for this generator or species yet';
       open.onclick = () => openInStudio(i);
-      const freeze = el('button', null, 'Frys…');
-      freeze.title = 'Gör en fast modell av den här (kopia under assets/fixed/, receptet följer med)';
+      const freeze = el('button', null, 'Freeze…');
+      freeze.title = 'Make a fixed model of this (a copy under assets/fixed/, the recipe comes along)';
       freeze.onclick = () => freezeItem(i);
       acts.append(open, freeze);
     } else {
-      const thaw = el('button', 'primary', 'Tina i studion');
+      const thaw = el('button', 'primary', 'Thaw in the studio');
       thaw.disabled = !openable;
-      thaw.title = openable ? 'Öppna receptet i studion; sparar du blir det en ny familj' : i.recipe ? 'Studion har inga spakar för den här generatorn eller arten än' : 'Saknar recept (importerad modell)';
+      thaw.title = openable ? 'Open the recipe in the studio; saving makes it a new family' : i.recipe ? 'The studio has no sliders for this generator or species yet' : 'No recipe (imported model)';
       thaw.onclick = () => openInStudio(i);
       acts.append(thaw);
     }
-    const mk = el('button', null, i.thumbnail ? 'Ny miniatyr' : 'Gör miniatyr');
+    const mk = el('button', null, i.thumbnail ? 'New thumbnail' : 'Make thumbnail');
     mk.onclick = async () => { mk.disabled = true; await makeThumb(i); renderAll(); };
     acts.append(mk);
     if (inLib) {
-      const rm = el('button', 'danger', 'Ta bort ur biblioteket');
-      rm.title = 'Tar bara bort raden i katalogen; filerna ligger kvar under Ej tillagda';
-      rm.onclick = async () => { if (!confirm(`Ta bort ${i.name} ur biblioteket? Filerna ligger kvar.`)) return; await post('remove', { model: i.model }); sel = null; await load(); };
+      const rm = el('button', 'danger', 'Remove from the library');
+      rm.title = 'Only removes the catalog row; the files stay under Not added';
+      rm.onclick = async () => { if (!confirm(`Remove ${i.name} from the library? The files stay.`)) return; await post('remove', { model: i.model }); sel = null; await load(); };
       acts.append(rm);
     } else {
-      const add = el('button', null, '+ Lägg till i biblioteket');
+      const add = el('button', null, '+ Add to the library');
       add.onclick = () => addToLibrary(i);
       acts.append(add);
     }
@@ -247,36 +247,36 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
       for (const [c, l] of CATS.slice(1)) { const o = el('option', null, l); o.value = c; cs.append(o); }
       cs.value = i.category;
       cs.onchange = async () => { await post('update', { model: i.model, category: cs.value }); await load(); };
-      catRow.append(el('label', null, 'Kategori'), cs);
+      catRow.append(el('label', null, 'Category'), cs);
       const tagBox = el('div', 'chips');
       const setTags = async (tags) => { await post('update', { model: i.model, tags }); await load(); };
       for (const t of i.tags ?? []) {
         const c = el('span', 'chip on', t);
         const x = el('button', 'x', '×');
-        x.title = `Ta bort ${t}`;
+        x.title = `Remove ${t}`;
         x.onclick = () => setTags(i.tags.filter((y) => y !== t));
         c.append(x);
         tagBox.append(c);
       }
-      const add = Object.assign(el('input', 'text tagin'), { placeholder: '+ tagg' });
+      const add = Object.assign(el('input', 'text tagin'), { placeholder: '+ tag' });
       add.onkeydown = (e) => { if (e.key === 'Enter' && add.value.trim()) setTags([...(i.tags ?? []), ...add.value.split(',')]); };
       tagBox.append(add);
       const sec = el('div', 'rows lsec');
-      sec.append(catRow, el('label', 'lab', 'Taggar'), tagBox);
+      sec.append(catRow, el('label', 'lab', 'Tags'), tagBox);
       detail.append(sec);
     }
 
     // Fakta
     const dl = el('dl', 'linfo');
     const fact = (k, v) => { if (v == null || v === '') return; dl.append(el('dt', null, k), el('dd', null, String(v))); };
-    fact('Källa', SOURCE_LABEL[i.type] ?? i.type);
-    fact('Recept', i.preset ? `${i.preset}${i.seed != null ? `, frö ${i.seed}` : ''}` : i.recipe ? 'finns' : 'saknas');
-    fact('Frusen från', i.from?.name);
-    fact('Ursprung', i.origin);
-    fact('Licens', i.license);
-    fact('Kontroller', i.checks_ok == null ? null : i.checks_ok ? 'godkända' : 'gick inte igenom');
-    fact('Sparad', i.saved ? new Date(i.saved).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' }) : null);
-    fact('Modell', i.model);
+    fact('Source', SOURCE_LABEL[i.type] ?? i.type);
+    fact('Recipe', i.preset ? `${i.preset}${i.seed != null ? `, seed ${i.seed}` : ''}` : i.recipe ? 'yes' : 'missing');
+    fact('Frozen from', i.from?.name);
+    fact('Origin', i.origin);
+    fact('License', i.license);
+    fact('Checks', i.checks_ok == null ? null : i.checks_ok ? 'passed' : 'failed');
+    fact('Saved', i.saved ? new Date(i.saved).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : null);
+    fact('Model', i.model);
     detail.append(dl);
   }
 
@@ -285,35 +285,35 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   function variantSection(i) {
     const sec = el('section', 'lsec2');
     const pool = i.variants?.items ?? [];
-    sec.append(el('h3', null, `Varianter${pool.length ? ` (${pool.length})` : ''}`));
+    sec.append(el('h3', null, `Variants${pool.length ? ` (${pool.length})` : ''}`));
     if (pool.length) {
       const strip = el('div', 'vstrip');
       for (const v of pool) {
         const f = el('figure');
         if (v.thumbnail) f.append(Object.assign(el('img'), { src: `/${v.thumbnail}${bust.has(v.model) ? `?v=${bust.get(v.model)}` : ''}`, alt: '' }));
         else f.append(el('span', 'ph', '…'));
-        f.append(el('figcaption', null, v.main ? `${v.seed} (egen)` : String(v.seed)));
+        f.append(el('figcaption', null, v.main ? `${v.seed} (own)` : String(v.seed)));
         if (v.checks_ok === false) f.classList.add('bad');
-        f.title = `frö ${v.seed}${v.height_m ? `, ${v.height_m} m` : ''}${v.checks_ok === false ? ', kontrollerna röda' : ''}`;
+        f.title = `seed ${v.seed}${v.height_m ? `, ${v.height_m} m` : ''}${v.checks_ok === false ? ', checks red' : ''}`;
         strip.append(f);
       }
       sec.append(strip);
-    } else sec.append(el('div', 'note', 'Ingen pool än. Världen behöver några färdiga varianter av familjen att sprida ut; den väljer den som ligger närmast fröet.'));
+    } else sec.append(el('div', 'note', 'No pool yet. The world needs some ready variants of the family to scatter; it picks the one nearest the seed.'));
     const row = el('div', 'btns');
     const n = el('select');
-    for (const k of [4, 8, 12, 16]) { const o = el('option', null, `${k} nya`); o.value = k; n.append(o); }
+    for (const k of [4, 8, 12, 16]) { const o = el('option', null, `${k} new`); o.value = k; n.append(o); }
     n.value = String(Math.min(16, Math.max(4, Math.round(((pool.length || 9) - 1) / 4) * 4)));
-    const build = el('button', 'primary', pool.length ? 'Bygg om poolen' : 'Bygg variantpool');
-    build.title = 'Samma recept med nya frön; servern bygger dem en i taget';
+    const build = el('button', 'primary', pool.length ? 'Rebuild the pool' : 'Build variant pool');
+    build.title = 'The same recipe with new seeds; the server builds them one at a time';
     const prog = el('span', 'note');
     const job = jobs.get(i.model);
     if (job) { build.disabled = true; prog.textContent = job; }
     build.onclick = () => buildPool(i, Number(n.value));
     row.append(n, build);
     if (pool.length > 1) {
-      const del = el('button', 'danger', 'Ta bort');
-      del.title = 'Ta bort variantpoolen (familjens egen modell ligger kvar)';
-      del.onclick = async () => { if (!confirm('Ta bort variantpoolen?')) return; await post('variants', { model: i.model, count: 0 }); await load(); };
+      const del = el('button', 'danger', 'Remove');
+      del.title = 'Remove the variant pool (the family’s own model stays)';
+      del.onclick = async () => { if (!confirm('Remove the variant pool?')) return; await post('variants', { model: i.model, count: 0 }); await load(); };
       row.append(del);
     }
     sec.append(row, prog);
@@ -322,25 +322,25 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   async function buildPool(i, count) {
     const r = await post('variants', { model: i.model, count });
     if (r.error || !r.job) return;
-    jobs.set(i.model, `Bygger 0/${count} …`);
+    jobs.set(i.model, `Building 0/${count} …`);
     renderDetail();
     let st;
     for (;;) {
       await new Promise((ok) => setTimeout(ok, 1200));
       st = await api(`/api/library/job?id=${r.job}`);
       if (st.error || st.done) break;
-      jobs.set(i.model, `Bygger ${st.k}/${st.n} …`);
+      jobs.set(i.model, `Building ${st.k}/${st.n} …`);
       if (sel === i.model) renderDetail();
     }
     // Miniatyrer för de nya varianterna, sedan läses biblioteket om
     const items = st.entry?.variants?.items ?? [];
     for (const [k, v] of items.entries()) {
-      jobs.set(i.model, `Miniatyrer ${k + 1}/${items.length} …`);
+      jobs.set(i.model, `Thumbnails ${k + 1}/${items.length} …`);
       if (sel === i.model) renderDetail();
       if (!v.thumbnail) await makeThumb(v);
     }
     jobs.delete(i.model);
-    if (st.errors?.length) alert(`Några varianter misslyckades:\n${st.errors.join('\n')}`);
+    if (st.errors?.length) alert(`Some variants failed:\n${st.errors.join('\n')}`);
     await load();
   }
 
@@ -348,8 +348,8 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   function scatterSection(i) {
     const s = i.scatter ?? {};
     const sec = el('section', 'lsec2');
-    sec.append(el('h3', null, 'Utplacering'));
-    if (i.bounds) sec.append(el('div', 'note', `Mått: ${i.bounds.width} × ${i.bounds.depth} m, ${i.bounds.height} m hög`));
+    sec.append(el('h3', null, 'Scatter'));
+    if (i.bounds) sec.append(el('div', 'note', `Size: ${i.bounds.width} × ${i.bounds.depth} m, ${i.bounds.height} m tall`));
     const save = (patch) => { Object.assign(s, patch); post('update', { model: i.model, scatter: patch }); };
     const rows = el('div', 'rows');
     const slider = (label, key, min, max, step, help, fmt = (v) => v) => {
@@ -364,26 +364,26 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     };
     // Storlek: två tal (min och max)
     const sz = el('div', 'row span2');
-    sz.title = 'Slumpad skala per exemplar';
+    sz.title = 'Random scale per instance';
     const pair = el('div', 'pair');
     const [a, b] = s.scale ?? [1, 1];
     const lo = Object.assign(el('input'), { type: 'number', min: 0.05, max: 20, step: 0.05, value: a });
     const hi = Object.assign(el('input'), { type: 'number', min: 0.05, max: 20, step: 0.05, value: b });
     lo.onchange = hi.onchange = () => save({ scale: [Number(lo.value), Number(hi.value)] });
     pair.append(lo, el('span', null, '–'), hi);
-    sz.append(el('label', null, 'Storlek (×)'), pair);
+    sz.append(el('label', null, 'Scale (×)'), pair);
     rows.append(sz);
-    slider('Luta med marken', 'align', 0, 1, 0.05, '0: står alltid rakt upp (träd). 1: följer markens lutning (stenar, mossa)', (v) => v.toFixed(2));
-    slider('Största lutning', 'max_slope', 0, 90, 1, 'Placeras inte där marken lutar mer än så', (v) => `${v}°`);
-    slider('Radie (m)', 'radius', 0.1, Math.max(20, Math.ceil((i.bounds?.radius ?? 5) * 2)), 0.1, 'Fotavtryck: hur stor plats ett exemplar tar (standard ur modellens mått)', (v) => v.toFixed(1));
-    slider('Avstånd (× radie)', 'spacing', 0.1, 4, 0.05, 'Minsta avstånd mellan exemplar, i radier. Under 1 får de gå in i varandra', (v) => v.toFixed(2));
-    slider('Vikt', 'weight', 0, 10, 0.1, 'Hur ofta familjen väljs jämfört med andra på samma plats', (v) => v.toFixed(1));
+    slider('Align to ground', 'align', 0, 1, 0.05, '0: always stands straight up (trees). 1: follows the ground slope (rocks, moss)', (v) => v.toFixed(2));
+    slider('Max slope', 'max_slope', 0, 90, 1, 'Not placed where the ground is steeper than this', (v) => `${v}°`);
+    slider('Radius (m)', 'radius', 0.1, Math.max(20, Math.ceil((i.bounds?.radius ?? 5) * 2)), 0.1, 'Footprint: how much room an instance takes (default from the model size)', (v) => v.toFixed(1));
+    slider('Spacing (× radius)', 'spacing', 0.1, 4, 0.05, 'Minimum distance between instances, in radii. Below 1 they may overlap', (v) => v.toFixed(2));
+    slider('Weight', 'weight', 0, 10, 0.1, 'How often the family is picked compared with others in the same place', (v) => v.toFixed(1));
     const rot = el('div', 'row span2');
     const rs = el('select');
-    for (const [v, l] of [['y', 'Bara runt höjdaxeln'], ['free', 'Fritt (även lutad)']]) { const o = el('option', null, l); o.value = v; rs.append(o); }
+    for (const [v, l] of [['y', 'Only around the up axis'], ['free', 'Free (tilted too)']]) { const o = el('option', null, l); o.value = v; rs.append(o); }
     rs.value = s.rotate ?? 'y';
     rs.onchange = () => save({ rotate: rs.value });
-    rot.append(el('label', null, 'Vridning'), rs);
+    rot.append(el('label', null, 'Rotation'), rs);
     rows.append(rot);
     // Biomer: taggar för var familjen hör hemma
     const bio = el('div', 'chips');
@@ -395,13 +395,13 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
       c.append(x);
       bio.append(c);
     }
-    for (const t of ['skog', 'äng', 'strand', 'berg', 'by', 'träsk'].filter((t) => !(s.biomes ?? []).includes(t))) {
+    for (const t of ['forest', 'meadow', 'beach', 'mountain', 'village', 'swamp'].filter((t) => !(s.biomes ?? []).includes(t))) {
       const c = el('button', 'chip', `+ ${t}`);
       c.onclick = () => setBiomes([...(s.biomes ?? []), t]);
       bio.append(c);
     }
     const lab = el('div', 'row span2');
-    lab.append(el('label', null, 'Biomer'), bio);
+    lab.append(el('label', null, 'Biomes'), bio);
     rows.append(lab);
     sec.append(rows);
     return sec;
@@ -422,7 +422,7 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     await load();
   }
   async function freezeItem(i) {
-    const name = prompt('Namn på den fasta modellen (a–z, 0–9 och _):', `${i.name}_fast`);
+    const name = prompt('Name of the fixed model (a–z, 0–9 and _):', `${i.name}_fixed`);
     if (!name) return;
     const r = await post('freeze', { model: i.model, name: name.trim().toLowerCase() });
     if (r.error) return;
@@ -443,7 +443,7 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     making = true;
     thumbsBtn.disabled = true;
     for (const [k, i] of todo.entries()) {
-      thumbsBtn.textContent = `Miniatyrer ${k + 1}/${todo.length} …`;
+      thumbsBtn.textContent = `Thumbnails ${k + 1}/${todo.length} …`;
       await makeThumb(i);
       // Byt bara kortets bild, så att rutnätet inte hoppar medan det pågår
       const img = [...grid.children].find((c) => c.querySelector('figcaption b')?.textContent === i.name)?.querySelector('.lthumb');

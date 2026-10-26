@@ -13,18 +13,18 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 const MAX_LAYERS = 4;
 
 export const MODELS = {
-  block: { label: 'Block med fasade kanter' },
-  sphere: { label: 'Sfär' },
-  cylinder: { label: 'Cylinder (stam)' },
-  terrain: { label: 'Terrängbit (60 m)' },
-  dragon: { label: 'Drakstaty' },
-  asset: { label: 'Aktuellt träd (stammen)' },
+  block: { label: 'Block with bevelled edges' },
+  sphere: { label: 'Sphere' },
+  cylinder: { label: 'Cylinder (trunk)' },
+  terrain: { label: 'Terrain patch (60 m)' },
+  dragon: { label: 'Dragon statue' },
+  asset: { label: 'Current tree (the trunk)' },
 };
 export const LIGHTS = {
-  sun: { label: 'Spelets sol', sun: [0xfff1dc, 3.0, [6, 9, 4]], hemi: [0xbcd7ff, 0x5b4a35, 1.0], env: 0.35, bg: 0x9cc4ec },
-  studio: { label: 'Studioljus', sun: [0xffffff, 2.0, [4, 6, 6]], hemi: [0xffffff, 0x444444, 0.35], env: 1.0, bg: 0x4a4f58 },
-  back: { label: 'Motljus', sun: [0xffe0b0, 3.4, [-6, 5, -7]], hemi: [0x9fb7d9, 0x3a3328, 0.7], env: 0.3, bg: 0x2f3a4a },
-  evening: { label: 'Kväll', sun: [0xffa860, 2.6, [8, 2.2, 2]], hemi: [0x6f86b8, 0x2a2018, 0.6], env: 0.25, bg: 0x5c6f9a },
+  sun: { label: 'Game sun', sun: [0xfff1dc, 3.0, [6, 9, 4]], hemi: [0xbcd7ff, 0x5b4a35, 1.0], env: 0.35, bg: 0x9cc4ec },
+  studio: { label: 'Studio light', sun: [0xffffff, 2.0, [4, 6, 6]], hemi: [0xffffff, 0x444444, 0.35], env: 1.0, bg: 0x4a4f58 },
+  back: { label: 'Backlight', sun: [0xffe0b0, 3.4, [-6, 5, -7]], hemi: [0x9fb7d9, 0x3a3328, 0.7], env: 0.3, bg: 0x2f3a4a },
+  evening: { label: 'Evening', sun: [0xffa860, 2.6, [8, 2.2, 2]], hemi: [0x6f86b8, 0x2a2018, 0.6], env: 0.25, bg: 0x5c6f9a },
 };
 const DIRS = { up: [0, 1, 0], down: [0, -1, 0], north: [0, 0, 1], south: [0, 0, -1], east: [1, 0, 0], west: [-1, 0, 0] };
 
@@ -327,7 +327,7 @@ export function createLab({ getAssetUrl }) {
       uvSize = [60, 60];
     } else if (id === 'dragon' || id === 'asset') {
       const url = id === 'dragon' ? '/assets/imported/dragon_statue/dragon_statue.gltf' : getAssetUrl?.();
-      if (!url) throw new Error('Inget träd i studion än: öppna fliken Träd först');
+      if (!url) throw new Error('No tree in the studio yet: open the Tree tab first');
       const g = await gltf.loadAsync(url);
       g.scene.updateMatrixWorld(true);
       g.scene.traverse((o) => {

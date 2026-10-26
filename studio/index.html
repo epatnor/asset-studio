@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="sv">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -396,13 +396,13 @@
   <h1><i class="mark"></i><span>Asset Studio</span> <small>Azshara</small></h1>
   <nav id="kinds"></nav>
   <div id="tools">
-    <span id="status" class="asset-tool"><span class="lamp" id="lamp"></span><span id="state">Startar…</span></span>
-    <button class="asset-tool" id="pin" title="Ställ det här bredvid och fortsätt ändra, för att jämföra">Fäst</button>
-    <button class="asset-tool" id="unpin" title="Ta bort de fästa jämförelserna">Ta bort fästa</button>
-    <button class="asset-tool icon" id="undo" title="Ångra"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5 2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/></svg></button>
-    <button class="asset-tool icon" id="redo" title="Gör om"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 3.5 3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/></svg></button>
-    <button class="asset-tool icon" id="frame" title="Rama in"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
-    <button id="save" class="primary asset-tool">Spara till biblioteket…</button>
+    <span id="status" class="asset-tool"><span class="lamp" id="lamp"></span><span id="state">Starting…</span></span>
+    <button class="asset-tool" id="pin" title="Put this aside and keep editing, to compare">Pin</button>
+    <button class="asset-tool" id="unpin" title="Remove the pinned comparisons">Unpin all</button>
+    <button class="asset-tool icon" id="undo" title="Undo"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5 2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/></svg></button>
+    <button class="asset-tool icon" id="redo" title="Redo"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 3.5 3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/></svg></button>
+    <button class="asset-tool icon" id="frame" title="Frame"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
+    <button id="save" class="primary asset-tool">Save to the library…</button>
     <span class="div"></span>
     <button id="theme" class="icon"></button>
   </div>
@@ -415,9 +415,9 @@
 <div id="wside"></div>
 <footer id="wfoot" class="glass"></footer>
 <footer id="bottom" class="glass">
-  <div class="block"><b>Tillgången</b><div class="vals" id="assetStats">–</div></div>
+  <div class="block"><b>Asset</b><div class="vals" id="assetStats">–</div></div>
   <div class="block"><b>Rendering</b><div class="vals" id="perfStats">–</div></div>
-  <div class="block"><b>Jämfört med förra</b><div class="vals" id="perfDelta">–</div></div>
+  <div class="block"><b>Compared with last</b><div class="vals" id="perfDelta">–</div></div>
   <div id="msg"><div id="warn"></div><div id="note"></div></div>
 </footer>
 <script type="module" src="studio.js"></script>

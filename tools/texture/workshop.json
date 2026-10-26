@@ -2,488 +2,488 @@
   "_doc": "Texturverkstadens spakar (docs/texture-workshop.md). sources: källor (en per recept), steps: bildbehandlingssteg (en stapel), material: materiallabbets egenskaper (punktade nycklar i recipe.material; client: true = räknas i 3D-vyn utan att texturen görs om), blend: spakar per blandningslager (recipe.blend.layers, bara i 3D-vyn och klientens shader), layer_presets: färdiga lager, profiles: målprofiler (vem som använder texturen). Spaktyper: number, int, select, color, seed, texture, bool, input (en ingrediens), text. adv: true lägger spaken under Avancerat; when: {nyckel: värde eller [värden]} visar den bara när villkoret gäller. Färger anges som #RRGGBB i sRGB. presets: färdiga material som tumnaglar i verkstadens bibliotek (group, label, profile, recipe med source, steps, inputs och material).",
   "sources": {
     "noise": {
-      "label": "Brus",
+      "label": "Noise",
       "params": [
-        {"key": "kind", "label": "Sort", "type": "select", "options": {"Mjukt (fBm)": "fbm", "Celler (Worley)": "worley", "Fläckar": "blobs"}, "default": "fbm"},
-        {"key": "scale", "label": "Skala", "type": "number", "min": 1, "max": 32, "step": 1, "default": 6, "help": "Antal stora former över texturen"},
-        {"key": "octaves", "label": "Oktaver", "type": "int", "min": 1, "max": 6, "default": 4, "adv": true},
-        {"key": "sharpness", "label": "Skärpa", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "dark", "label": "Mörk färg", "type": "color", "default": "#3E5A2B"},
-        {"key": "light", "label": "Ljus färg", "type": "color", "default": "#8FB65A"}
+        {"key": "kind", "label": "Kind", "type": "select", "options": {"Smooth (fBm)": "fbm", "Cells (Worley)": "worley", "Blobs": "blobs"}, "default": "fbm"},
+        {"key": "scale", "label": "Scale", "type": "number", "min": 1, "max": 32, "step": 1, "default": 6, "help": "Number of large shapes across the texture"},
+        {"key": "octaves", "label": "Octaves", "type": "int", "min": 1, "max": 6, "default": 4, "adv": true},
+        {"key": "sharpness", "label": "Sharpness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "dark", "label": "Dark color", "type": "color", "default": "#3E5A2B"},
+        {"key": "light", "label": "Light color", "type": "color", "default": "#8FB65A"}
       ]
     },
     "bark": {
       "label": "Bark",
       "params": [
-        {"key": "ridges", "label": "Åsar", "type": "int", "min": 2, "max": 20, "default": 7},
-        {"key": "depth", "label": "Fårornas djup", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6},
-        {"key": "width", "label": "Fårornas bredd", "type": "number", "min": 0.05, "max": 0.6, "step": 0.01, "default": 0.22, "adv": true},
-        {"key": "wiggle", "label": "Slingrighet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.45, "adv": true},
-        {"key": "plates", "label": "Plattor", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "help": "Tvärgående sprickor som delar åsarna i plattor", "adv": true},
-        {"key": "detail", "label": "Fin detalj", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "dark", "label": "Fårornas färg", "type": "color", "default": "#3B2618"},
-        {"key": "light", "label": "Åsarnas färg", "type": "color", "default": "#8A5B3A"}
+        {"key": "ridges", "label": "Ridges", "type": "int", "min": 2, "max": 20, "default": 7},
+        {"key": "depth", "label": "Furrow depth", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6},
+        {"key": "width", "label": "Furrow width", "type": "number", "min": 0.05, "max": 0.6, "step": 0.01, "default": 0.22, "adv": true},
+        {"key": "wiggle", "label": "Waviness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.45, "adv": true},
+        {"key": "plates", "label": "Plates", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "help": "Cross cracks that split the ridges into plates", "adv": true},
+        {"key": "detail", "label": "Fine detail", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "dark", "label": "Furrow color", "type": "color", "default": "#3B2618"},
+        {"key": "light", "label": "Ridge color", "type": "color", "default": "#8A5B3A"}
       ]
     },
     "stone": {
-      "label": "Sten och kullersten",
+      "label": "Stone and cobble",
       "params": [
-        {"key": "cells", "label": "Stenar", "type": "int", "min": 4, "max": 120, "default": 28},
-        {"key": "gap", "label": "Fogbredd", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.08},
-        {"key": "variation", "label": "Variation i storlek", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "round", "label": "Rundning", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true},
-        {"key": "tint", "label": "Färgvariation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.15, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "light", "label": "Stenens färg", "type": "color", "default": "#A9A39A"},
-        {"key": "dark", "label": "Fogens färg", "type": "color", "default": "#4C4636"}
+        {"key": "cells", "label": "Stones", "type": "int", "min": 4, "max": 120, "default": 28},
+        {"key": "gap", "label": "Joint width", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.08},
+        {"key": "variation", "label": "Size variation", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "round", "label": "Rounding", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true},
+        {"key": "tint", "label": "Color variation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.15, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "light", "label": "Stone color", "type": "color", "default": "#A9A39A"},
+        {"key": "dark", "label": "Joint color", "type": "color", "default": "#4C4636"}
       ]
     },
     "bricks": {
-      "label": "Tegel och murverk",
+      "label": "Brick and masonry",
       "params": [
-        {"key": "rows", "label": "Rader", "type": "int", "min": 2, "max": 24, "default": 8},
-        {"key": "cols", "label": "Stenar per rad", "type": "int", "min": 1, "max": 12, "default": 4},
-        {"key": "offset", "label": "Förband (förskjutning)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "mortar", "label": "Fogbredd", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.07, "adv": true},
-        {"key": "jitter", "label": "Ojämnhet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "adv": true},
-        {"key": "chip", "label": "Avslagna hörn", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
-        {"key": "tint", "label": "Färgvariation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "light", "label": "Stenens färg", "type": "color", "default": "#B5563A"},
-        {"key": "dark", "label": "Fogens färg", "type": "color", "default": "#D9CBB0"}
+        {"key": "rows", "label": "Rows", "type": "int", "min": 2, "max": 24, "default": 8},
+        {"key": "cols", "label": "Stones per row", "type": "int", "min": 1, "max": 12, "default": 4},
+        {"key": "offset", "label": "Bond (offset)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "mortar", "label": "Joint width", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.07, "adv": true},
+        {"key": "jitter", "label": "Unevenness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "adv": true},
+        {"key": "chip", "label": "Chipped corners", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
+        {"key": "tint", "label": "Color variation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "light", "label": "Stone color", "type": "color", "default": "#B5563A"},
+        {"key": "dark", "label": "Joint color", "type": "color", "default": "#D9CBB0"}
       ]
     },
     "planks": {
-      "label": "Plankor och trä",
+      "label": "Planks and wood",
       "params": [
-        {"key": "planks", "label": "Plankor", "type": "int", "min": 1, "max": 16, "default": 5},
-        {"key": "length", "label": "Skarvar per planka", "type": "int", "min": 0, "max": 4, "default": 1, "adv": true},
-        {"key": "grain", "label": "Ådring", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5},
-        {"key": "knots", "label": "Kvistar", "type": "int", "min": 0, "max": 12, "default": 3, "adv": true},
-        {"key": "gap", "label": "Springor", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.025, "adv": true},
-        {"key": "tint", "label": "Färgvariation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "dark", "label": "Mörkt trä", "type": "color", "default": "#5A3A22"},
-        {"key": "light", "label": "Ljust trä", "type": "color", "default": "#A87A4E"}
+        {"key": "planks", "label": "Planks", "type": "int", "min": 1, "max": 16, "default": 5},
+        {"key": "length", "label": "Joints per plank", "type": "int", "min": 0, "max": 4, "default": 1, "adv": true},
+        {"key": "grain", "label": "Grain", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5},
+        {"key": "knots", "label": "Knots", "type": "int", "min": 0, "max": 12, "default": 3, "adv": true},
+        {"key": "gap", "label": "Gaps", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.025, "adv": true},
+        {"key": "tint", "label": "Color variation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "dark", "label": "Dark wood", "type": "color", "default": "#5A3A22"},
+        {"key": "light", "label": "Light wood", "type": "color", "default": "#A87A4E"}
       ]
     },
     "shingles": {
-      "label": "Takpannor och spån",
+      "label": "Roof tiles and shingles",
       "params": [
-        {"key": "rows", "label": "Rader", "type": "int", "min": 2, "max": 20, "default": 8},
-        {"key": "cols", "label": "Pannor per rad", "type": "int", "min": 1, "max": 16, "default": 6},
-        {"key": "shape", "label": "Form", "type": "select", "options": {"Runda (fjäll)": "round", "Raka (spån)": "square", "Spetsiga": "pointed"}, "default": "round"},
-        {"key": "overlap", "label": "Skugga under raden", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "gap", "label": "Springor", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.03, "adv": true},
-        {"key": "jitter", "label": "Ojämnhet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
-        {"key": "tint", "label": "Färgvariation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "light", "label": "Pannans färg", "type": "color", "default": "#9C4A32"},
-        {"key": "dark", "label": "Skuggans färg", "type": "color", "default": "#3A2420"}
+        {"key": "rows", "label": "Rows", "type": "int", "min": 2, "max": 20, "default": 8},
+        {"key": "cols", "label": "Tiles per row", "type": "int", "min": 1, "max": 16, "default": 6},
+        {"key": "shape", "label": "Shape", "type": "select", "options": {"Round (scales)": "round", "Straight (shingles)": "square", "Pointed": "pointed"}, "default": "round"},
+        {"key": "overlap", "label": "Shadow under the row", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "gap", "label": "Gaps", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.03, "adv": true},
+        {"key": "jitter", "label": "Unevenness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
+        {"key": "tint", "label": "Color variation", "type": "number", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "light", "label": "Tile color", "type": "color", "default": "#9C4A32"},
+        {"key": "dark", "label": "Shadow color", "type": "color", "default": "#3A2420"}
       ]
     },
     "splat": {
-      "label": "Mark och fläckar",
+      "label": "Ground and patches",
       "params": [
-        {"key": "scale", "label": "Fläckarnas storlek", "type": "number", "min": 1, "max": 16, "step": 0.5, "default": 4, "help": "Antal fläckar över texturen"},
-        {"key": "grass", "label": "Andel gräs", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.45},
-        {"key": "gravel", "label": "Andel grus", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25},
-        {"key": "edge", "label": "Skarpa kanter", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "detail", "label": "Fin detalj", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "soil", "label": "Jord", "type": "color", "default": "#6B4E32"},
-        {"key": "grass_color", "label": "Gräs", "type": "color", "default": "#5E8A3A"},
-        {"key": "gravel_color", "label": "Grus", "type": "color", "default": "#9A9384"}
+        {"key": "scale", "label": "Patch size", "type": "number", "min": 1, "max": 16, "step": 0.5, "default": 4, "help": "Number of patches across the texture"},
+        {"key": "grass", "label": "Share of grass", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.45},
+        {"key": "gravel", "label": "Share of gravel", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25},
+        {"key": "edge", "label": "Sharp edges", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "detail", "label": "Fine detail", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "soil", "label": "Soil", "type": "color", "default": "#6B4E32"},
+        {"key": "grass_color", "label": "Grass", "type": "color", "default": "#5E8A3A"},
+        {"key": "gravel_color", "label": "Gravel", "type": "color", "default": "#9A9384"}
       ]
     },
     "gradient": {
-      "label": "Gradient och form",
-      "help": "För masker och enkla målade ytor; ett helt antal band eller celler, så att den är sömlös",
+      "label": "Gradient and shape",
+      "help": "For masks and simple painted surfaces; a whole number of bands or cells, so it stays seamless",
       "params": [
-        {"key": "kind", "label": "Sort", "type": "select", "options": {"Band": "linear", "Ringar": "radial", "Kuddar (per cell)": "cells"}, "default": "linear"},
-        {"key": "bands", "label": "Antal", "type": "int", "min": 1, "max": 16, "default": 1},
-        {"key": "vertical", "label": "Lodrätt", "type": "bool", "default": false, "when": {"kind": "linear"}},
-        {"key": "softness", "label": "Mjukhet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1, "adv": true},
-        {"key": "dark", "label": "Mörk färg", "type": "color", "default": "#333333"},
-        {"key": "light", "label": "Ljus färg", "type": "color", "default": "#DDDDDD"}
+        {"key": "kind", "label": "Kind", "type": "select", "options": {"Bands": "linear", "Rings": "radial", "Pillows (per cell)": "cells"}, "default": "linear"},
+        {"key": "bands", "label": "Count", "type": "int", "min": 1, "max": 16, "default": 1},
+        {"key": "vertical", "label": "Vertical", "type": "bool", "default": false, "when": {"kind": "linear"}},
+        {"key": "softness", "label": "Softness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1, "adv": true},
+        {"key": "dark", "label": "Dark color", "type": "color", "default": "#333333"},
+        {"key": "light", "label": "Light color", "type": "color", "default": "#DDDDDD"}
       ]
     },
     "krea": {
-      "label": "Krea (målad med AI)",
-      "help": "Lokal ComfyUI med Krea-2. Första gången tar det cirka 3 minuter; resultatet cachas",
+      "label": "Krea (painted with AI)",
+      "help": "Local ComfyUI with Krea-2. The first run takes about 3 minutes; the result is cached",
       "params": [
-        {"key": "prompt", "label": "Beskrivning", "type": "text", "default": "mossy grey cobblestones", "help": "Beskriv bara materialet; stilen läggs till av Husets stil"},
-        {"key": "base", "label": "Form från ingrediens", "type": "input", "default": "", "help": "Bild till bild: en ingrediens bestämmer formen och Krea målar den. Knappen Måla med AI gör det automatiskt"},
-        {"key": "denoise", "label": "Fri tolkning", "type": "number", "min": 0.1, "max": 1, "step": 0.05, "default": 0.6, "when": {"base": {"not": ""}}, "help": "Lågt: formen behålls och Krea målar bara ytan. Högt: Krea hittar på mer och formen följer med mindre"},
-        {"key": "relief", "label": "Relief från", "type": "select", "options": {"Formen": "form", "Bilden": "image", "Blandad": "mix"}, "default": "form", "when": {"base": {"not": ""}}, "help": "Höjden (normal, AO) från formens algoritm, som har rätt höjd, eller ur bildens ljushet"},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
-        {"key": "style", "label": "Husets stil", "type": "bool", "default": true, "adv": true},
-        {"key": "seamless", "label": "Gör sömlös", "type": "bool", "default": true, "adv": true}
+        {"key": "prompt", "label": "Description", "type": "text", "default": "mossy grey cobblestones", "help": "Describe the material only; the house style is added by House style"},
+        {"key": "base", "label": "Shape from ingredient", "type": "input", "default": "", "help": "Image to image: an ingredient sets the shape and Krea paints it. The Paint with AI button does this for you"},
+        {"key": "denoise", "label": "Free interpretation", "type": "number", "min": 0.1, "max": 1, "step": 0.05, "default": 0.6, "when": {"base": {"not": ""}}, "help": "Low: the shape is kept and Krea only paints the surface. High: Krea invents more and follows the shape less"},
+        {"key": "relief", "label": "Relief from", "type": "select", "options": {"The shape": "form", "The image": "image", "Mixed": "mix"}, "default": "form", "when": {"base": {"not": ""}}, "help": "The height (normal, AO) from the shape's algorithm, which has the right height, or from the image's brightness"},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "style", "label": "House style", "type": "bool", "default": true, "adv": true},
+        {"key": "seamless", "label": "Make seamless", "type": "bool", "default": true, "adv": true}
       ]
     },
-    "image": {"label": "Befintlig textur", "params": [{"key": "name", "label": "Textur", "type": "texture", "default": "bark_painted"}]},
-    "input": {"label": "Ingrediens", "params": [{"key": "input", "label": "Ingrediens", "type": "input", "default": ""}]}
+    "image": {"label": "Existing texture", "params": [{"key": "name", "label": "Texture", "type": "texture", "default": "bark_painted"}]},
+    "input": {"label": "Ingredient", "params": [{"key": "input", "label": "Ingredient", "type": "input", "default": ""}]}
   },
   "steps": {
     "layer": {
-      "label": "Lager (ingrediens med mask)",
-      "help": "Lägger en ingrediens ovanpå, styrd av en mask: mossa i fogarna, smuts i fårorna",
+      "label": "Layer (ingredient with mask)",
+      "help": "Puts an ingredient on top, controlled by a mask: moss in the joints, dirt in the furrows",
       "params": [
-        {"key": "input", "label": "Ingrediens", "type": "input", "default": ""},
-        {"key": "mask", "label": "Mask", "type": "select", "options": {"Ingen (överallt)": "none", "Fördjupningar (låg höjd)": "low", "Toppar (hög höjd)": "high", "Mörka partier": "dark", "Ljusa partier": "light", "Branta kanter": "slope", "Brus": "noise", "Annan ingrediens": "input"}, "default": "low"},
-        {"key": "amount", "label": "Täckning", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0.5},
-        {"key": "opacity", "label": "Styrka", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1, "adv": true},
-        {"key": "softness", "label": "Mjuk kant", "type": "number", "min": 0.01, "max": 0.5, "step": 0.01, "default": 0.08, "adv": true},
-        {"key": "mask_input", "label": "Maskens ingrediens", "type": "input", "default": "", "when": {"mask": "input"}},
-        {"key": "breakup", "label": "Bruten kant", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
-        {"key": "breakup_scale", "label": "Brusets skala", "type": "number", "min": 1, "max": 32, "step": 1, "default": 10, "adv": true},
-        {"key": "repeat", "label": "Ingrediensens upprepning", "type": "int", "min": 1, "max": 8, "default": 1, "adv": true},
-        {"key": "mode", "label": "Blandning", "type": "select", "options": {"Täck": "mix", "Multiplicera": "multiply", "Overlay": "overlay", "Ljusare": "screen"}, "default": "mix", "adv": true},
-        {"key": "height", "label": "Höjden", "type": "select", "options": {"Lagret lägger sig ovanpå": "fill", "Blanda": "mix", "Behåll basens": "keep"}, "default": "fill", "adv": true},
-        {"key": "seed", "label": "Frö (brus)", "type": "seed", "default": 3, "adv": true}
+        {"key": "input", "label": "Ingredient", "type": "input", "default": ""},
+        {"key": "mask", "label": "Mask", "type": "select", "options": {"None (everywhere)": "none", "Hollows (low height)": "low", "Peaks (high height)": "high", "Dark areas": "dark", "Light areas": "light", "Steep edges": "slope", "Noise": "noise", "Other ingredient": "input"}, "default": "low"},
+        {"key": "amount", "label": "Coverage", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0.5},
+        {"key": "opacity", "label": "Strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1, "adv": true},
+        {"key": "softness", "label": "Soft edge", "type": "number", "min": 0.01, "max": 0.5, "step": 0.01, "default": 0.08, "adv": true},
+        {"key": "mask_input", "label": "Mask ingredient", "type": "input", "default": "", "when": {"mask": "input"}},
+        {"key": "breakup", "label": "Broken edge", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true},
+        {"key": "breakup_scale", "label": "Noise scale", "type": "number", "min": 1, "max": 32, "step": 1, "default": 10, "adv": true},
+        {"key": "repeat", "label": "Ingredient repeat", "type": "int", "min": 1, "max": 8, "default": 1, "adv": true},
+        {"key": "mode", "label": "Blend", "type": "select", "options": {"Cover": "mix", "Multiply": "multiply", "Overlay": "overlay", "Lighten": "screen"}, "default": "mix", "adv": true},
+        {"key": "height", "label": "Height", "type": "select", "options": {"The layer lies on top": "fill", "Mix": "mix", "Keep the base's": "keep"}, "default": "fill", "adv": true},
+        {"key": "seed", "label": "Seed (noise)", "type": "seed", "default": 3, "adv": true}
       ]
     },
     "scatter": {
-      "label": "Strö ut (stämplar)",
-      "help": "Löv, småsten eller blommor utspridda över texturen, sömlöst",
+      "label": "Scatter (stamps)",
+      "help": "Leaves, pebbles or flowers scattered over the texture, seamlessly",
       "params": [
-        {"key": "shape", "label": "Stämpel", "type": "select", "options": {"Löv": "leaf", "Småsten": "pebble", "Blommor": "flower", "Prickar": "dot", "Pinnar": "twig", "Ingrediens": "input"}, "default": "leaf"},
-        {"key": "input", "label": "Ingrediens", "type": "input", "default": "", "when": {"shape": "input"}},
-        {"key": "count", "label": "Antal", "type": "int", "min": 1, "max": 600, "default": 60},
-        {"key": "size", "label": "Storlek", "type": "number", "min": 0.01, "max": 0.3, "step": 0.005, "default": 0.06, "help": "Andel av texturens sida"},
-        {"key": "size_var", "label": "Variation i storlek", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true},
-        {"key": "clump", "label": "Klumpighet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true, "help": "Samlar stämplarna i grupper"},
-        {"key": "shade", "label": "Skuggning", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 5},
-        {"key": "dark", "label": "Mörk färg", "type": "color", "default": "#8A4E22", "when": {"shape": {"not": "input"}}},
-        {"key": "light", "label": "Ljus färg", "type": "color", "default": "#D89A3A", "when": {"shape": {"not": "input"}}}
+        {"key": "shape", "label": "Stamp", "type": "select", "options": {"Leaves": "leaf", "Pebbles": "pebble", "Flowers": "flower", "Dots": "dot", "Twigs": "twig", "Ingredient": "input"}, "default": "leaf"},
+        {"key": "input", "label": "Ingredient", "type": "input", "default": "", "when": {"shape": "input"}},
+        {"key": "count", "label": "Count", "type": "int", "min": 1, "max": 600, "default": 60},
+        {"key": "size", "label": "Size", "type": "number", "min": 0.01, "max": 0.3, "step": 0.005, "default": 0.06, "help": "Share of the texture's side"},
+        {"key": "size_var", "label": "Size variation", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true},
+        {"key": "clump", "label": "Clumping", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true, "help": "Gathers the stamps in groups"},
+        {"key": "shade", "label": "Shading", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 5},
+        {"key": "dark", "label": "Dark color", "type": "color", "default": "#8A4E22", "when": {"shape": {"not": "input"}}},
+        {"key": "light", "label": "Light color", "type": "color", "default": "#D89A3A", "when": {"shape": {"not": "input"}}}
       ]
     },
     "tile": {
-      "label": "Sömlös",
-      "help": "Blandar kanterna med en förskjuten kopia, så att texturen går att upprepa utan söm",
-      "params": [{"key": "width", "label": "Kantbredd", "type": "number", "min": 0.05, "max": 0.5, "step": 0.01, "default": 0.25}]
+      "label": "Seamless",
+      "help": "Blends the edges with an offset copy, so the texture repeats without a seam",
+      "params": [{"key": "width", "label": "Edge width", "type": "number", "min": 0.05, "max": 0.5, "step": 0.01, "default": 0.25}]
     },
     "levels": {
-      "label": "Nivåer",
+      "label": "Levels",
       "params": [
-        {"key": "contrast", "label": "Kontrast", "type": "number", "min": 0.2, "max": 2, "step": 0.05, "default": 1},
-        {"key": "lift", "label": "Ljushet", "type": "number", "min": -0.4, "max": 0.4, "step": 0.01, "default": 0},
+        {"key": "contrast", "label": "Contrast", "type": "number", "min": 0.2, "max": 2, "step": 0.05, "default": 1},
+        {"key": "lift", "label": "Brightness", "type": "number", "min": -0.4, "max": 0.4, "step": 0.01, "default": 0},
         {"key": "gamma", "label": "Gamma", "type": "number", "min": 0.4, "max": 2.5, "step": 0.05, "default": 1, "adv": true}
       ]
     },
     "hsv": {
-      "label": "Nyans och mättnad",
+      "label": "Hue and saturation",
       "params": [
-        {"key": "hue", "label": "Nyans (°)", "type": "number", "min": -180, "max": 180, "step": 1, "default": 0},
-        {"key": "saturation", "label": "Mättnad", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1},
-        {"key": "value", "label": "Ljushet", "type": "number", "min": 0.3, "max": 1.7, "step": 0.05, "default": 1}
+        {"key": "hue", "label": "Hue (°)", "type": "number", "min": -180, "max": 180, "step": 1, "default": 0},
+        {"key": "saturation", "label": "Saturation", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1},
+        {"key": "value", "label": "Brightness", "type": "number", "min": 0.3, "max": 1.7, "step": 0.05, "default": 1}
       ]
     },
     "colorramp": {
-      "label": "Färgramp",
-      "help": "Färgar om efter höjd eller ljushet: mörkt i fördjupningarna, ljust på topparna",
+      "label": "Color ramp",
+      "help": "Recolors by height or brightness: dark in the hollows, light on the peaks",
       "params": [
-        {"key": "by", "label": "Efter", "type": "select", "options": {"Höjd": "height", "Ljushet": "lum"}, "default": "height"},
-        {"key": "low", "label": "Lågt", "type": "color", "default": "#3B3A33"},
-        {"key": "mid", "label": "Mitten", "type": "color", "default": "#7D7766"},
-        {"key": "high", "label": "Högt", "type": "color", "default": "#C9C2AE"},
-        {"key": "amount", "label": "Styrka", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1},
-        {"key": "mid_pos", "label": "Mittens läge", "type": "number", "min": 0.1, "max": 0.9, "step": 0.05, "default": 0.5, "adv": true},
-        {"key": "keep_detail", "label": "Behåll detaljen", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true}
+        {"key": "by", "label": "By", "type": "select", "options": {"Height": "height", "Brightness": "lum"}, "default": "height"},
+        {"key": "low", "label": "Low", "type": "color", "default": "#3B3A33"},
+        {"key": "mid", "label": "Middle", "type": "color", "default": "#7D7766"},
+        {"key": "high", "label": "High", "type": "color", "default": "#C9C2AE"},
+        {"key": "amount", "label": "Strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1},
+        {"key": "mid_pos", "label": "Middle position", "type": "number", "min": 0.1, "max": 0.9, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "keep_detail", "label": "Keep the detail", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true}
       ]
     },
     "palette": {
-      "label": "Mot paletten",
-      "help": "Drar varje pixel mot närmaste färg i paletten (tools/style.json)",
+      "label": "Toward the palette",
+      "help": "Pulls every pixel toward the nearest color in the palette (tools/style.json)",
       "params": [
-        {"key": "amount", "label": "Styrka", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4},
-        {"key": "group", "label": "Färger", "type": "select", "options": {"Hela paletten": "all", "Löv": "foliage", "Barr": "conifer", "Bark och trä": "bark", "Sten": "stone", "Mark och sand": "ground"}, "default": "all"}
+        {"key": "amount", "label": "Strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4},
+        {"key": "group", "label": "Colors", "type": "select", "options": {"Whole palette": "all", "Leaves": "foliage", "Needles": "conifer", "Bark and wood": "bark", "Stone": "stone", "Ground and sand": "ground"}, "default": "all"}
       ]
     },
     "edges": {
-      "label": "Kanter och skrymslen",
-      "help": "Ljusare kanter på det som sticker ut och mörkare i skrymslena, ur höjden (stilguidens kantljus)",
+      "label": "Edges and crevices",
+      "help": "Lighter edges on what sticks out and darker crevices, from the height (the style guide's edge light)",
       "params": [
-        {"key": "edge", "label": "Kantljus", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35},
-        {"key": "cavity", "label": "Mörka skrymslen", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35},
-        {"key": "radius", "label": "Bredd (px vid 1024)", "type": "number", "min": 1, "max": 24, "step": 0.5, "default": 4, "adv": true}
+        {"key": "edge", "label": "Edge light", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35},
+        {"key": "cavity", "label": "Dark crevices", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35},
+        {"key": "radius", "label": "Width (px at 1024)", "type": "number", "min": 1, "max": 24, "step": 0.5, "default": 4, "adv": true}
       ]
     },
     "height": {
-      "label": "Höjd",
-      "help": "Ändrar höjdkartan (som styr normal, AO, lager och blandning) utan att röra färgen",
+      "label": "Height",
+      "help": "Changes the height map (which drives normal, AO, layers and blending) without touching the color",
       "params": [
-        {"key": "from", "label": "Höjden ur", "type": "select", "options": {"Källan (behåll)": "keep", "Ljusheten": "lum", "Blandning": "mix"}, "default": "keep"},
-        {"key": "mix", "label": "Andel ljushet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "when": {"from": "mix"}},
-        {"key": "contrast", "label": "Kontrast", "type": "number", "min": 0.2, "max": 3, "step": 0.05, "default": 1},
-        {"key": "invert", "label": "Vänd", "type": "bool", "default": false},
-        {"key": "blur", "label": "Mjuka upp (px vid 1024)", "type": "number", "min": 0, "max": 16, "step": 0.5, "default": 0, "adv": true}
+        {"key": "from", "label": "Height from", "type": "select", "options": {"The source (keep)": "keep", "The brightness": "lum", "Blend": "mix"}, "default": "keep"},
+        {"key": "mix", "label": "Share of brightness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "when": {"from": "mix"}},
+        {"key": "contrast", "label": "Contrast", "type": "number", "min": 0.2, "max": 3, "step": 0.05, "default": 1},
+        {"key": "invert", "label": "Invert", "type": "bool", "default": false},
+        {"key": "blur", "label": "Soften (px at 1024)", "type": "number", "min": 0, "max": 16, "step": 0.5, "default": 0, "adv": true}
       ]
     },
     "warp": {
-      "label": "Förvrängning",
-      "help": "Böjer mönstret med mjukt brus, så att raka former blir mer organiska",
+      "label": "Warp",
+      "help": "Bends the pattern with soft noise, so straight shapes become more organic",
       "params": [
-        {"key": "amount", "label": "Mängd", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.03},
-        {"key": "scale", "label": "Skala", "type": "number", "min": 1, "max": 16, "step": 1, "default": 4},
-        {"key": "seed", "label": "Frö", "type": "seed", "default": 7, "adv": true}
+        {"key": "amount", "label": "Amount", "type": "number", "min": 0, "max": 0.2, "step": 0.005, "default": 0.03},
+        {"key": "scale", "label": "Scale", "type": "number", "min": 1, "max": 16, "step": 1, "default": 4},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 7, "adv": true}
       ]
     },
     "gray": {
-      "label": "Gråskala (för tint)",
-      "help": "Färgen sätts sedan i materialet (leaf_tint, bark_tint)",
-      "params": [{"key": "mean", "label": "Medelljushet", "type": "number", "min": 0.4, "max": 0.95, "step": 0.01, "default": 0.82}]
+      "label": "Grayscale (for tint)",
+      "help": "The color is then set in the material (leaf_tint, bark_tint)",
+      "params": [{"key": "mean", "label": "Mean brightness", "type": "number", "min": 0.4, "max": 0.95, "step": 0.01, "default": 0.82}]
     },
-    "soften": {"label": "Mjukare kontrast", "help": "Drar ner fåror och skåror men behåller stora former", "params": [{"key": "amount", "label": "Mängd", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1}]},
+    "soften": {"label": "Softer contrast", "help": "Tones down furrows and grooves but keeps large shapes", "params": [{"key": "amount", "label": "Amount", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1}]},
     "frequency": {
-      "label": "Frekvens (stora och små former)",
-      "help": "Stilguiden vill låg frekvens: dra ner de små formerna och behåll de stora",
+      "label": "Frequency (large and small shapes)",
+      "help": "The style guide wants low frequency: tone down the small shapes and keep the large ones",
       "params": [
-        {"key": "low", "label": "Stora former", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1},
-        {"key": "high", "label": "Små former", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.6},
-        {"key": "radius", "label": "Gräns (px vid 1024)", "type": "number", "min": 1, "max": 32, "step": 0.5, "default": 6, "adv": true}
+        {"key": "low", "label": "Large shapes", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 1},
+        {"key": "high", "label": "Small shapes", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.6},
+        {"key": "radius", "label": "Cutoff (px at 1024)", "type": "number", "min": 1, "max": 32, "step": 0.5, "default": 6, "adv": true}
       ]
     },
     "paint": {
-      "label": "Målad look",
-      "help": "Kuwahara-filter: plana penseldrag som behåller kanter",
-      "params": [{"key": "radius", "label": "Penselstorlek (px vid 1024)", "type": "number", "min": 1, "max": 16, "step": 0.5, "default": 4}]
+      "label": "Painted look",
+      "help": "Kuwahara filter: flat brush strokes that keep edges",
+      "params": [{"key": "radius", "label": "Brush size (px at 1024)", "type": "number", "min": 1, "max": 16, "step": 0.5, "default": 4}]
     },
     "posterize": {
-      "label": "Färre valörer",
-      "params": [{"key": "levels", "label": "Valörer", "type": "int", "min": 2, "max": 16, "default": 6}, {"key": "softness", "label": "Mjukhet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3}]
+      "label": "Fewer values",
+      "params": [{"key": "levels", "label": "Values", "type": "int", "min": 2, "max": 16, "default": 6}, {"key": "softness", "label": "Softness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3}]
     },
     "sharpen": {
-      "label": "Skärpa",
+      "label": "Sharpness",
       "params": [
-        {"key": "amount", "label": "Mängd", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.5},
-        {"key": "radius", "label": "Radie (px vid 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5, "adv": true}
+        {"key": "amount", "label": "Amount", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.5},
+        {"key": "radius", "label": "Radius (px at 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5, "adv": true}
       ]
     },
     "range": {
-      "label": "Valörgränser",
-      "help": "Stilguiden: inget rent svart eller vitt (ungefär 8–90 %)",
-      "params": [{"key": "low", "label": "Mörkast", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.08}, {"key": "high", "label": "Ljusast", "type": "number", "min": 0.7, "max": 1, "step": 0.01, "default": 0.9}]
+      "label": "Value limits",
+      "help": "The style guide: no pure black or white (about 8–90 %)",
+      "params": [{"key": "low", "label": "Darkest", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.08}, {"key": "high", "label": "Lightest", "type": "number", "min": 0.7, "max": 1, "step": 0.01, "default": 0.9}]
     },
-    "blur": {"label": "Oskärpa", "params": [{"key": "radius", "label": "Radie (px vid 1024)", "type": "number", "min": 0, "max": 12, "step": 0.5, "default": 1.5}]},
-    "repeat": {"label": "Zoom (upprepa)", "help": "Upprepar mönstret flera gånger inom texturen, så att det blir mindre i världen", "params": [{"key": "times", "label": "Gånger", "type": "int", "min": 1, "max": 8, "default": 2}]},
+    "blur": {"label": "Blur", "params": [{"key": "radius", "label": "Radius (px at 1024)", "type": "number", "min": 0, "max": 12, "step": 0.5, "default": 1.5}]},
+    "repeat": {"label": "Zoom (repeat)", "help": "Repeats the pattern several times within the texture, so it gets smaller in the world", "params": [{"key": "times", "label": "Times", "type": "int", "min": 1, "max": 8, "default": 2}]},
     "offset": {
-      "label": "Förskjut",
-      "params": [{"key": "x", "label": "Vågrätt", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.5}, {"key": "y", "label": "Lodrätt", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0}]
+      "label": "Offset",
+      "params": [{"key": "x", "label": "Horizontal", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.5}, {"key": "y", "label": "Vertical", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0}]
     },
-    "rotate": {"label": "Vrid", "params": [{"key": "angle", "label": "Vinkel", "type": "select", "options": {"90°": 90, "180°": 180, "270°": 270}, "default": 90}]},
-    "mirror": {"label": "Spegla", "params": [{"key": "axis", "label": "Led", "type": "select", "options": {"Vågrätt": "x", "Lodrätt": "y"}, "default": "x"}]},
+    "rotate": {"label": "Rotate", "params": [{"key": "angle", "label": "Angle", "type": "select", "options": {"90°": 90, "180°": 180, "270°": 270}, "default": 90}]},
+    "mirror": {"label": "Mirror", "params": [{"key": "axis", "label": "Axis", "type": "select", "options": {"Horizontal": "x", "Vertical": "y"}, "default": "x"}]},
     "cutout": {
-      "label": "Urklipp (alfa)",
-      "help": "Gör en del genomskinlig, efter ljushet eller höjd",
+      "label": "Cutout (alpha)",
+      "help": "Makes part of it transparent, by brightness or height",
       "params": [
-        {"key": "from", "label": "Efter", "type": "select", "options": {"Ljushet": "lum", "Höjd": "height"}, "default": "lum"},
-        {"key": "threshold", "label": "Gräns", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.5},
-        {"key": "soft", "label": "Mjuk kant", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.05},
-        {"key": "invert", "label": "Vänd", "type": "bool", "default": false}
+        {"key": "from", "label": "By", "type": "select", "options": {"Brightness": "lum", "Height": "height"}, "default": "lum"},
+        {"key": "threshold", "label": "Threshold", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.5},
+        {"key": "soft", "label": "Soft edge", "type": "number", "min": 0, "max": 0.3, "step": 0.01, "default": 0.05},
+        {"key": "invert", "label": "Invert", "type": "bool", "default": false}
       ]
     },
-    "bleed": {"label": "Fyll genomskinligt (bleed)", "help": "Ger genomskinliga pixlar färgen från närmaste synliga, så att mipmappar inte får en ljus kant", "params": []},
-    "alphablur": {"label": "Mjukare alfakant", "params": [{"key": "radius", "label": "Radie (px vid 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5}]}
+    "bleed": {"label": "Fill transparent (bleed)", "help": "Gives transparent pixels the color of the nearest visible one, so mipmaps don't get a light fringe", "params": []},
+    "alphablur": {"label": "Softer alpha edge", "params": [{"key": "radius", "label": "Radius (px at 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5}]}
   },
   "step_groups": [
-    {"label": "Bygg på", "ops": ["layer", "scatter"]},
-    {"label": "Färg", "ops": ["levels", "hsv", "colorramp", "palette", "edges", "gray", "range"]},
-    {"label": "Form och höjd", "ops": ["height", "warp", "soften", "frequency", "paint", "posterize", "sharpen", "blur"]},
-    {"label": "Upprepning", "ops": ["tile", "repeat", "offset", "rotate", "mirror"]},
-    {"label": "Alfa", "ops": ["cutout", "bleed", "alphablur"]}
+    {"label": "Build on", "ops": ["layer", "scatter"]},
+    {"label": "Color", "ops": ["levels", "hsv", "colorramp", "palette", "edges", "gray", "range"]},
+    {"label": "Shape and height", "ops": ["height", "warp", "soften", "frequency", "paint", "posterize", "sharpen", "blur"]},
+    {"label": "Repeat", "ops": ["tile", "repeat", "offset", "rotate", "mirror"]},
+    {"label": "Alpha", "ops": ["cutout", "bleed", "alphablur"]}
   ],
   "material": {
     "groups": [
       {
         "id": "basic",
-        "label": "Grund",
+        "label": "Basics",
         "params": [
-          {"key": "meters", "label": "Meter per upprepning", "type": "number", "min": 0.1, "max": 20, "step": 0.1, "default": 2, "client": true, "help": "Hur stor texturen är i världen"},
-          {"key": "normal.on", "label": "Normalkarta", "type": "bool", "default": true},
-          {"key": "normal.strength", "label": "Reliefens styrka", "type": "number", "min": 0, "max": 4, "step": 0.05, "default": 1, "when": {"normal.on": true}},
-          {"key": "roughness.base", "label": "Ruffighet", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.85},
-          {"key": "roughness.amount", "label": "Variation i ruffighet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25},
+          {"key": "meters", "label": "Meters per repeat", "type": "number", "min": 0.1, "max": 20, "step": 0.1, "default": 2, "client": true, "help": "How large the texture is in the world"},
+          {"key": "normal.on", "label": "Normal map", "type": "bool", "default": true},
+          {"key": "normal.strength", "label": "Relief strength", "type": "number", "min": 0, "max": 4, "step": 0.05, "default": 1, "when": {"normal.on": true}},
+          {"key": "roughness.base", "label": "Roughness", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.85},
+          {"key": "roughness.amount", "label": "Roughness variation", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25},
           {"key": "ao.on", "label": "Ambient occlusion", "type": "bool", "default": true},
-          {"key": "ao.strength", "label": "AO-styrka", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "when": {"ao.on": true}},
-          {"key": "metal.on", "label": "Metall", "type": "bool", "default": false}
+          {"key": "ao.strength", "label": "AO strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "when": {"ao.on": true}},
+          {"key": "metal.on", "label": "Metal", "type": "bool", "default": false}
         ]
       },
       {
         "id": "maps",
-        "label": "Kartorna i detalj",
+        "label": "Maps in detail",
         "adv": true,
         "params": [
-          {"key": "normal.soft", "label": "Mjukare normaler (px vid 1024)", "type": "number", "min": 0, "max": 8, "step": 0.5, "default": 1},
-          {"key": "normal.mode", "label": "Relief som", "type": "select", "options": {"Normalkarta": "normal", "Bump (äldre)": "bump"}, "default": "normal", "client": true},
-          {"key": "roughness.from", "label": "Ruffighet efter", "type": "select", "options": {"Ljushet": "lum", "Höjd": "height"}, "default": "lum"},
-          {"key": "roughness.invert", "label": "Vänd (ljust är blankt)", "type": "bool", "default": false},
-          {"key": "ao.radius", "label": "AO-radie (px vid 1024)", "type": "number", "min": 1, "max": 32, "step": 1, "default": 8},
-          {"key": "metal.from", "label": "Metall där", "type": "select", "options": {"Ljust": "light", "Mörkt": "dark", "Högt": "high", "Lågt": "low", "Överallt": "all"}, "default": "light", "when": {"metal.on": true}},
-          {"key": "metal.threshold", "label": "Metallens gräns", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.6, "when": {"metal.on": true}},
-          {"key": "metal.rough", "label": "Metallens ruffighet", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.35, "when": {"metal.on": true}}
+          {"key": "normal.soft", "label": "Softer normals (px at 1024)", "type": "number", "min": 0, "max": 8, "step": 0.5, "default": 1},
+          {"key": "normal.mode", "label": "Relief as", "type": "select", "options": {"Normal map": "normal", "Bump (legacy)": "bump"}, "default": "normal", "client": true},
+          {"key": "roughness.from", "label": "Roughness from", "type": "select", "options": {"Brightness": "lum", "Height": "height"}, "default": "lum"},
+          {"key": "roughness.invert", "label": "Invert (light is glossy)", "type": "bool", "default": false},
+          {"key": "ao.radius", "label": "AO radius (px at 1024)", "type": "number", "min": 1, "max": 32, "step": 1, "default": 8},
+          {"key": "metal.from", "label": "Metal where", "type": "select", "options": {"Light": "light", "Dark": "dark", "High": "high", "Low": "low", "Everywhere": "all"}, "default": "light", "when": {"metal.on": true}},
+          {"key": "metal.threshold", "label": "Metal threshold", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.6, "when": {"metal.on": true}},
+          {"key": "metal.rough", "label": "Metal roughness", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.35, "when": {"metal.on": true}}
         ]
       },
       {
         "id": "shape",
-        "label": "Form: höjd, parallax och bump",
+        "label": "Shape: height, parallax and bump",
         "adv": true,
         "params": [
-          {"key": "displace.on", "label": "Förskjutning (tät modell)", "type": "bool", "default": false, "client": true},
-          {"key": "displace.scale", "label": "Förskjutning (m)", "type": "number", "min": 0, "max": 0.3, "step": 0.005, "default": 0.04, "client": true, "when": {"displace.on": true}},
-          {"key": "pom.on", "label": "Parallax occlusion", "type": "bool", "default": false, "client": true, "help": "Djup utan extra geometri (UV-läge)"},
-          {"key": "pom.depth", "label": "Parallaxdjup", "type": "number", "min": 0, "max": 0.15, "step": 0.005, "default": 0.04, "client": true, "when": {"pom.on": true}},
-          {"key": "pom.steps", "label": "Steg", "type": "int", "min": 4, "max": 64, "default": 24, "client": true, "when": {"pom.on": true}}
+          {"key": "displace.on", "label": "Displacement (dense model)", "type": "bool", "default": false, "client": true},
+          {"key": "displace.scale", "label": "Displacement (m)", "type": "number", "min": 0, "max": 0.3, "step": 0.005, "default": 0.04, "client": true, "when": {"displace.on": true}},
+          {"key": "pom.on", "label": "Parallax occlusion", "type": "bool", "default": false, "client": true, "help": "Depth without extra geometry (UV mode)"},
+          {"key": "pom.depth", "label": "Parallax depth", "type": "number", "min": 0, "max": 0.15, "step": 0.005, "default": 0.04, "client": true, "when": {"pom.on": true}},
+          {"key": "pom.steps", "label": "Steps", "type": "int", "min": 4, "max": 64, "default": 24, "client": true, "when": {"pom.on": true}}
         ]
       },
       {
         "id": "light",
-        "label": "Ljus: emission, alfa, genomlysning",
+        "label": "Light: emission, alpha, translucency",
         "adv": true,
         "params": [
-          {"key": "emission.on", "label": "Emission (glöd)", "type": "bool", "default": false},
-          {"key": "emission.from", "label": "Glöder där", "type": "select", "options": {"Lågt (sprickor)": "low", "Högt": "high", "Ljust": "light", "Mörkt": "dark"}, "default": "low", "when": {"emission.on": true}},
-          {"key": "emission.threshold", "label": "Gräns", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.25, "when": {"emission.on": true}},
-          {"key": "emission.color", "label": "Glödens färg", "type": "color", "default": "#FF7A1A", "when": {"emission.on": true}},
-          {"key": "emission.intensity", "label": "Glödens styrka", "type": "number", "min": 0, "max": 10, "step": 0.1, "default": 2, "client": true, "when": {"emission.on": true}},
-          {"key": "alpha.mode", "label": "Alfa", "type": "select", "options": {"Av": "off", "Urklipp": "cutout", "Mjuk (blend)": "blend"}, "default": "off", "client": true},
-          {"key": "alpha.test", "label": "Urklippsgräns", "type": "number", "min": 0.05, "max": 0.95, "step": 0.05, "default": 0.5, "client": true, "when": {"alpha.mode": "cutout"}},
-          {"key": "transmission.amount", "label": "Transmission (glas, is)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
-          {"key": "transmission.thickness", "label": "Tjocklek", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.3, "client": true, "when": {"transmission.amount": {"gt": 0}}},
-          {"key": "transmission.ior", "label": "Brytning (IOR)", "type": "number", "min": 1, "max": 2.4, "step": 0.01, "default": 1.45, "client": true},
-          {"key": "sss.amount", "label": "Genomlysning (stiliserad SSS)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
-          {"key": "sss.color", "label": "Genomlysningens färg", "type": "color", "default": "#E8B070", "client": true, "when": {"sss.amount": {"gt": 0}}}
+          {"key": "emission.on", "label": "Emission (glow)", "type": "bool", "default": false},
+          {"key": "emission.from", "label": "Glows where", "type": "select", "options": {"Low (cracks)": "low", "High": "high", "Light": "light", "Dark": "dark"}, "default": "low", "when": {"emission.on": true}},
+          {"key": "emission.threshold", "label": "Threshold", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0.25, "when": {"emission.on": true}},
+          {"key": "emission.color", "label": "Glow color", "type": "color", "default": "#FF7A1A", "when": {"emission.on": true}},
+          {"key": "emission.intensity", "label": "Glow strength", "type": "number", "min": 0, "max": 10, "step": 0.1, "default": 2, "client": true, "when": {"emission.on": true}},
+          {"key": "alpha.mode", "label": "Alpha", "type": "select", "options": {"Off": "off", "Cutout": "cutout", "Soft (blend)": "blend"}, "default": "off", "client": true},
+          {"key": "alpha.test", "label": "Cutout threshold", "type": "number", "min": 0.05, "max": 0.95, "step": 0.05, "default": 0.5, "client": true, "when": {"alpha.mode": "cutout"}},
+          {"key": "transmission.amount", "label": "Transmission (glass, ice)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
+          {"key": "transmission.thickness", "label": "Thickness", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.3, "client": true, "when": {"transmission.amount": {"gt": 0}}},
+          {"key": "transmission.ior", "label": "Refraction (IOR)", "type": "number", "min": 1, "max": 2.4, "step": 0.01, "default": 1.45, "client": true},
+          {"key": "sss.amount", "label": "Translucency (stylized SSS)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
+          {"key": "sss.color", "label": "Translucency color", "type": "color", "default": "#E8B070", "client": true, "when": {"sss.amount": {"gt": 0}}}
         ]
       },
       {
         "id": "coat",
-        "label": "Ytskikt: lack, tyg, skimmer",
+        "label": "Coatings: clearcoat, cloth, sheen",
         "adv": true,
         "params": [
           {"key": "specular.intensity", "label": "Specular", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 1, "client": true},
-          {"key": "specular.color", "label": "Specularens färg", "type": "color", "default": "#FFFFFF", "client": true},
-          {"key": "clearcoat.amount", "label": "Lack (clearcoat)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
-          {"key": "clearcoat.rough", "label": "Lackens ruffighet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.1, "client": true, "when": {"clearcoat.amount": {"gt": 0}}},
-          {"key": "sheen.amount", "label": "Sheen (tyg, sammet)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
-          {"key": "sheen.color", "label": "Sheens färg", "type": "color", "default": "#FFFFFF", "client": true, "when": {"sheen.amount": {"gt": 0}}},
-          {"key": "sheen.rough", "label": "Sheens ruffighet", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "client": true, "when": {"sheen.amount": {"gt": 0}}},
-          {"key": "aniso.amount", "label": "Anisotropi", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true, "help": "Utdragna reflexer, som borstad metall eller hår"},
-          {"key": "aniso.rotation", "label": "Riktning (°)", "type": "number", "min": 0, "max": 180, "step": 1, "default": 0, "client": true, "when": {"aniso.amount": {"gt": 0}}},
-          {"key": "irid.amount", "label": "Iridescens (skimmer)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
-          {"key": "irid.ior", "label": "Skimrets IOR", "type": "number", "min": 1, "max": 2.3, "step": 0.01, "default": 1.3, "client": true, "when": {"irid.amount": {"gt": 0}}},
-          {"key": "irid.thickness", "label": "Skiktets tjocklek (nm)", "type": "number", "min": 100, "max": 1200, "step": 10, "default": 400, "client": true, "when": {"irid.amount": {"gt": 0}}}
+          {"key": "specular.color", "label": "Specular color", "type": "color", "default": "#FFFFFF", "client": true},
+          {"key": "clearcoat.amount", "label": "Clearcoat", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
+          {"key": "clearcoat.rough", "label": "Clearcoat roughness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.1, "client": true, "when": {"clearcoat.amount": {"gt": 0}}},
+          {"key": "sheen.amount", "label": "Sheen (cloth, velvet)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
+          {"key": "sheen.color", "label": "Sheen color", "type": "color", "default": "#FFFFFF", "client": true, "when": {"sheen.amount": {"gt": 0}}},
+          {"key": "sheen.rough", "label": "Sheen roughness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "client": true, "when": {"sheen.amount": {"gt": 0}}},
+          {"key": "aniso.amount", "label": "Anisotropy", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true, "help": "Stretched highlights, like brushed metal or hair"},
+          {"key": "aniso.rotation", "label": "Direction (°)", "type": "number", "min": 0, "max": 180, "step": 1, "default": 0, "client": true, "when": {"aniso.amount": {"gt": 0}}},
+          {"key": "irid.amount", "label": "Iridescence", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true},
+          {"key": "irid.ior", "label": "Iridescence IOR", "type": "number", "min": 1, "max": 2.3, "step": 0.01, "default": 1.3, "client": true, "when": {"irid.amount": {"gt": 0}}},
+          {"key": "irid.thickness", "label": "Film thickness (nm)", "type": "number", "min": 100, "max": 1200, "step": 10, "default": 400, "client": true, "when": {"irid.amount": {"gt": 0}}}
         ]
       },
       {
         "id": "detail",
-        "label": "Detaljkarta",
+        "label": "Detail map",
         "adv": true,
         "params": [
-          {"key": "detail.on", "label": "Detaljkarta", "type": "bool", "default": false, "client": true, "help": "En fin textur i hög upprepning som tonas in på nära håll"},
-          {"key": "detail.texture", "label": "Detaljens textur", "type": "texture", "default": "surface_forestfloor", "client": true, "when": {"detail.on": true}},
-          {"key": "detail.tiling", "label": "Gånger tätare", "type": "number", "min": 2, "max": 32, "step": 1, "default": 8, "client": true, "when": {"detail.on": true}},
-          {"key": "detail.strength", "label": "Styrka", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "client": true, "when": {"detail.on": true}},
-          {"key": "detail.fade", "label": "Tonas ut efter (m)", "type": "number", "min": 1, "max": 40, "step": 1, "default": 8, "client": true, "when": {"detail.on": true}}
+          {"key": "detail.on", "label": "Detail map", "type": "bool", "default": false, "client": true, "help": "A fine texture at high repeat that fades in up close"},
+          {"key": "detail.texture", "label": "Detail texture", "type": "texture", "default": "surface_forestfloor", "client": true, "when": {"detail.on": true}},
+          {"key": "detail.tiling", "label": "Times denser", "type": "number", "min": 2, "max": 32, "step": 1, "default": 8, "client": true, "when": {"detail.on": true}},
+          {"key": "detail.strength", "label": "Strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "client": true, "when": {"detail.on": true}},
+          {"key": "detail.fade", "label": "Fades out after (m)", "type": "number", "min": 1, "max": 40, "step": 1, "default": 8, "client": true, "when": {"detail.on": true}}
         ]
       },
       {
         "id": "tiling",
-        "label": "Upprepning och stora ytor",
+        "label": "Repetition and large areas",
         "adv": true,
         "params": [
-          {"key": "notile", "label": "Upprepningsskydd", "type": "bool", "default": false, "client": true, "help": "Slumpar förskjutningen i plattor (texture bombing), så att mönstret inte syns över stora ytor"},
-          {"key": "macro.amount", "label": "Makrovariation", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true, "help": "Stora ljusare och mörkare partier ovanpå"},
-          {"key": "macro.scale", "label": "Makrots storlek (m)", "type": "number", "min": 2, "max": 100, "step": 1, "default": 20, "client": true, "when": {"macro.amount": {"gt": 0}}},
-          {"key": "uv.offset_x", "label": "Förskjutning vågrätt", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0, "client": true},
-          {"key": "uv.offset_y", "label": "Förskjutning lodrätt", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0, "client": true},
-          {"key": "uv.rotation", "label": "Vridning (°)", "type": "number", "min": 0, "max": 360, "step": 1, "default": 0, "client": true}
+          {"key": "notile", "label": "Anti-tiling", "type": "bool", "default": false, "client": true, "help": "Randomizes the offset in tiles (texture bombing), so the pattern doesn't show across large areas"},
+          {"key": "macro.amount", "label": "Macro variation", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "client": true, "help": "Large lighter and darker areas on top"},
+          {"key": "macro.scale", "label": "Macro size (m)", "type": "number", "min": 2, "max": 100, "step": 1, "default": 20, "client": true, "when": {"macro.amount": {"gt": 0}}},
+          {"key": "uv.offset_x", "label": "Offset horizontal", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0, "client": true},
+          {"key": "uv.offset_y", "label": "Offset vertical", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0, "client": true},
+          {"key": "uv.rotation", "label": "Rotation (°)", "type": "number", "min": 0, "max": 360, "step": 1, "default": 0, "client": true}
         ]
       },
       {
         "id": "sampling",
-        "label": "Texturinställningar",
+        "label": "Texture settings",
         "adv": true,
         "params": [
-          {"key": "tex.filter", "label": "Filtrering", "type": "select", "options": {"Trilinjär": "trilinear", "Linjär (utan mipmappar)": "linear", "Närmaste (pixlig)": "nearest"}, "default": "trilinear", "client": true},
-          {"key": "tex.anisotropy", "label": "Anisotrop filtrering", "type": "select", "options": {"Av": 1, "4×": 4, "8×": 8, "16×": 16}, "default": 8, "client": true},
-          {"key": "tex.wrap", "label": "Kanter (wrap)", "type": "select", "options": {"Upprepa": "repeat", "Spegla": "mirror", "Stopp (clamp)": "clamp"}, "default": "repeat", "client": true},
-          {"key": "tex.color_space", "label": "Färgkartans färgrymd", "type": "select", "options": {"sRGB (rätt)": "srgb", "Linjär": "linear"}, "default": "srgb", "client": true},
-          {"key": "tex.data_space", "label": "Datakartornas färgrymd", "type": "select", "options": {"Linjär (rätt)": "linear", "sRGB": "srgb"}, "default": "linear", "client": true, "help": "Normal, ruffighet, metall, AO och höjd ska vara linjära; sRGB är ett vanligt fel som ger fel ljus"}
+          {"key": "tex.filter", "label": "Filtering", "type": "select", "options": {"Trilinear": "trilinear", "Linear (no mipmaps)": "linear", "Nearest (pixelated)": "nearest"}, "default": "trilinear", "client": true},
+          {"key": "tex.anisotropy", "label": "Anisotropic filtering", "type": "select", "options": {"Off": 1, "4×": 4, "8×": 8, "16×": 16}, "default": 8, "client": true},
+          {"key": "tex.wrap", "label": "Edges (wrap)", "type": "select", "options": {"Repeat": "repeat", "Mirror": "mirror", "Stop (clamp)": "clamp"}, "default": "repeat", "client": true},
+          {"key": "tex.color_space", "label": "Color map color space", "type": "select", "options": {"sRGB (correct)": "srgb", "Linear": "linear"}, "default": "srgb", "client": true},
+          {"key": "tex.data_space", "label": "Data maps color space", "type": "select", "options": {"Linear (correct)": "linear", "sRGB": "srgb"}, "default": "linear", "client": true, "help": "Normal, roughness, metal, AO and height must be linear; sRGB is a common mistake that gives wrong lighting"}
         ]
       }
     ]
   },
   "blend": {
     "params": [
-      {"key": "texture", "label": "Textur", "type": "texture", "default": "moss_painted"},
-      {"key": "tint", "label": "Färgton", "type": "color", "default": "#FFFFFF"},
-      {"key": "amount", "label": "Täckning", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0.6},
-      {"key": "dir", "label": "Riktning", "type": "select", "options": {"Alla håll": "none", "Uppifrån (snö)": "up", "Nerifrån (smuts)": "down", "Norrsidan (+Z)": "north", "Södersidan (−Z)": "south", "Östsidan (+X)": "east", "Västsidan (−X)": "west"}, "default": "up"},
-      {"key": "width", "label": "Vinkelbredd (°)", "type": "number", "min": 5, "max": 180, "step": 1, "default": 70, "when": {"dir": {"not": "none"}}},
-      {"key": "heightmap", "label": "Fyller fördjupningar först", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6},
-      {"key": "sharp", "label": "Skarp kant", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true},
-      {"key": "noise", "label": "Bruten kant (brus)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true},
-      {"key": "noise_scale", "label": "Brusets storlek (m)", "type": "number", "min": 0.05, "max": 10, "step": 0.05, "default": 0.6, "adv": true},
-      {"key": "from", "label": "Från höjd (andel)", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0, "adv": true, "help": "Inom modellens höjd: 0 = marken, 1 = toppen"},
-      {"key": "to", "label": "Till höjd (andel)", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 1, "adv": true},
-      {"key": "curv", "label": "Kanter eller skrymslen", "type": "number", "min": -1, "max": 1, "step": 0.05, "default": 0, "adv": true, "help": "Positivt: bara på utstickande kanter (nötning). Negativt: bara i skrymslen (smuts)."},
-      {"key": "scale", "label": "Lagrets skala (m)", "type": "number", "min": 0.1, "max": 10, "step": 0.1, "default": 1.5, "adv": true},
-      {"key": "rough", "label": "Lagrets ruffighet", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.9, "adv": true},
-      {"key": "flatten", "label": "Täcker reliefen", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true, "help": "Hur mycket lagret jämnar ut basens normalkarta (tjock mossa, snö)"},
-      {"key": "relief", "label": "Lagrets egen relief", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.5, "adv": true}
+      {"key": "texture", "label": "Texture", "type": "texture", "default": "moss_painted"},
+      {"key": "tint", "label": "Tint", "type": "color", "default": "#FFFFFF"},
+      {"key": "amount", "label": "Coverage", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0.6},
+      {"key": "dir", "label": "Direction", "type": "select", "options": {"All directions": "none", "From above (snow)": "up", "From below (dirt)": "down", "North side (+Z)": "north", "South side (−Z)": "south", "East side (+X)": "east", "West side (−X)": "west"}, "default": "up"},
+      {"key": "width", "label": "Angle width (°)", "type": "number", "min": 5, "max": 180, "step": 1, "default": 70, "when": {"dir": {"not": "none"}}},
+      {"key": "heightmap", "label": "Fills hollows first", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6},
+      {"key": "sharp", "label": "Sharp edge", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true},
+      {"key": "noise", "label": "Broken edge (noise)", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "adv": true},
+      {"key": "noise_scale", "label": "Noise size (m)", "type": "number", "min": 0.05, "max": 10, "step": 0.05, "default": 0.6, "adv": true},
+      {"key": "from", "label": "From height (share)", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 0, "adv": true, "help": "Within the model's height: 0 = ground, 1 = top"},
+      {"key": "to", "label": "To height (share)", "type": "number", "min": 0, "max": 1, "step": 0.02, "default": 1, "adv": true},
+      {"key": "curv", "label": "Edges or crevices", "type": "number", "min": -1, "max": 1, "step": 0.05, "default": 0, "adv": true, "help": "Positive: only on protruding edges (wear). Negative: only in crevices (dirt)."},
+      {"key": "scale", "label": "Layer scale (m)", "type": "number", "min": 0.1, "max": 10, "step": 0.1, "default": 1.5, "adv": true},
+      {"key": "rough", "label": "Layer roughness", "type": "number", "min": 0.04, "max": 1, "step": 0.01, "default": 0.9, "adv": true},
+      {"key": "flatten", "label": "Covers the relief", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "adv": true, "help": "How much the layer smooths the base's normal map (thick moss, snow)"},
+      {"key": "relief", "label": "Layer's own relief", "type": "number", "min": 0, "max": 2, "step": 0.05, "default": 0.5, "adv": true}
     ]
   },
   "layer_presets": {
-    "Mossa": {"texture": "moss_painted", "tint": "#FFFFFF", "dir": "up", "width": 80, "amount": 0.55, "heightmap": 0.7, "rough": 0.95, "flatten": 0.5},
-    "Snö": {"texture": "surface_snow", "tint": "#FFFFFF", "dir": "up", "width": 55, "amount": 0.6, "heightmap": 0.4, "sharp": 0.8, "rough": 0.7, "flatten": 0.8, "noise": 0.2},
-    "Smuts nerifrån": {"texture": "surface_dirt", "tint": "#FFFFFF", "dir": "down", "width": 100, "amount": 0.5, "heightmap": 0.5, "to": 0.35, "rough": 0.95, "flatten": 0.2},
-    "Lav på norrsidan": {"texture": "moss_painted", "tint": "#C8D49A", "dir": "north", "width": 90, "amount": 0.45, "heightmap": 0.2, "noise": 0.7, "flatten": 0.1},
-    "Nötta kanter": {"texture": "surface_snow", "tint": "#D8D0C0", "dir": "none", "amount": 0.7, "curv": 0.5, "heightmap": 0, "flatten": 0, "noise": 0.3}
+    "Moss": {"texture": "moss_painted", "tint": "#FFFFFF", "dir": "up", "width": 80, "amount": 0.55, "heightmap": 0.7, "rough": 0.95, "flatten": 0.5},
+    "Snow": {"texture": "surface_snow", "tint": "#FFFFFF", "dir": "up", "width": 55, "amount": 0.6, "heightmap": 0.4, "sharp": 0.8, "rough": 0.7, "flatten": 0.8, "noise": 0.2},
+    "Dirt from below": {"texture": "surface_dirt", "tint": "#FFFFFF", "dir": "down", "width": 100, "amount": 0.5, "heightmap": 0.5, "to": 0.35, "rough": 0.95, "flatten": 0.2},
+    "Lichen on the north side": {"texture": "moss_painted", "tint": "#C8D49A", "dir": "north", "width": 90, "amount": 0.45, "heightmap": 0.2, "noise": 0.7, "flatten": 0.1},
+    "Worn edges": {"texture": "surface_snow", "tint": "#D8D0C0", "dir": "none", "amount": 0.7, "curv": 0.5, "heightmap": 0, "flatten": 0, "noise": 0.3}
   },
   "profiles": {
     "bark": {"label": "Bark", "prefix": "bark_", "model": "cylinder", "maps": ["color", "normal"]},
-    "terrain": {"label": "Terräng (marklager)", "prefix": "surface_", "model": "terrain", "maps": ["color", "normal", "height"]},
-    "terrain_macro": {"label": "Terräng, makro", "prefix": "macro_", "model": "terrain", "maps": ["color"]},
-    "rock": {"label": "Sten och klippa", "prefix": "rock_", "model": "dragon", "maps": ["color", "normal", "height"]},
-    "building": {"label": "Byggnad (fasad, tak, trä)", "prefix": "building_", "model": "block", "maps": ["color", "normal", "rough"]},
-    "blend": {"label": "Blandlager (mossa, snö, smuts)", "prefix": "blend_", "model": "sphere", "maps": ["color", "height"]},
-    "grass": {"label": "Gräs", "prefix": "grass_", "model": "terrain", "maps": ["color"]},
-    "decal": {"label": "Dekal", "prefix": "decal_", "model": "block", "maps": ["color"]}
+    "terrain": {"label": "Terrain (ground layer)", "prefix": "surface_", "model": "terrain", "maps": ["color", "normal", "height"]},
+    "terrain_macro": {"label": "Terrain, macro", "prefix": "macro_", "model": "terrain", "maps": ["color"]},
+    "rock": {"label": "Stone and cliff", "prefix": "rock_", "model": "dragon", "maps": ["color", "normal", "height"]},
+    "building": {"label": "Building (facade, roof, wood)", "prefix": "building_", "model": "block", "maps": ["color", "normal", "rough"]},
+    "blend": {"label": "Blend layer (moss, snow, dirt)", "prefix": "blend_", "model": "sphere", "maps": ["color", "height"]},
+    "grass": {"label": "Grass", "prefix": "grass_", "model": "terrain", "maps": ["color"]},
+    "decal": {"label": "Decal", "prefix": "decal_", "model": "block", "maps": ["color"]}
   },
-  "preset_groups": ["Sten", "Trä och bark", "Mur och tak", "Mark", "Blandlager", "Former", "AI (Krea)"],
+  "preset_groups": ["Stone", "Wood and bark", "Walls and roofs", "Ground", "Blend layers", "Shapes", "AI (Krea)"],
   "presets": {
-    "cobble": {"group": "Sten", "label": "Kullersten", "profile": "rock", "recipe": {"source": {"type": "stone"}, "steps": [{"op": "range"}]}},
-    "cobble_moss": {"group": "Sten", "label": "Mossig kullersten", "profile": "rock", "recipe": {"inputs": {"mossa": {"recipe": {"source": {"type": "noise", "scale": 14, "dark": "#3E5A2B", "light": "#8FB65A"}, "steps": []}}}, "source": {"type": "stone"}, "steps": [{"op": "layer", "input": "mossa", "mask": "low", "amount": 0.45}, {"op": "edges"}, {"op": "range"}]}},
-    "paving": {"group": "Sten", "label": "Gatsten", "profile": "terrain", "recipe": {"source": {"type": "stone", "cells": 64, "round": 0.3, "gap": 0.05, "variation": 0.2}, "steps": [{"op": "range"}]}},
-    "cliff": {"group": "Sten", "label": "Klippa", "profile": "rock", "recipe": {"source": {"type": "noise", "kind": "worley", "scale": 5, "dark": "#5C5850", "light": "#B0AA9C"}, "steps": [{"op": "warp", "amount": 0.04}, {"op": "edges", "edge": 0.5, "cavity": 0.5}, {"op": "range"}], "material": {"normal": {"strength": 1.6}}}},
-    "rock": {"group": "Sten", "label": "Grå sten", "profile": "rock", "recipe": {"source": {"type": "noise", "scale": 4, "sharpness": 0.1, "dark": "#6E6A62", "light": "#B3AEA2"}, "steps": [{"op": "edges", "cavity": 0.6}, {"op": "range"}]}},
-    "planks": {"group": "Trä och bark", "label": "Plankor", "profile": "building", "recipe": {"source": {"type": "planks"}, "steps": [{"op": "range"}]}},
-    "planks_painted": {"group": "Trä och bark", "label": "Målat trä", "profile": "building", "recipe": {"source": {"type": "planks", "dark": "#4E3420", "light": "#B98B5A"}, "steps": [{"op": "paint", "radius": 5}, {"op": "range"}]}},
-    "bark_oak": {"group": "Trä och bark", "label": "Ekbark", "profile": "bark", "recipe": {"source": {"type": "bark"}, "steps": [{"op": "range"}]}},
-    "bark_soft": {"group": "Trä och bark", "label": "Mjuk bark", "profile": "bark", "recipe": {"source": {"type": "bark", "ridges": 9}, "steps": [{"op": "soften"}, {"op": "range"}]}},
-    "bark_light": {"group": "Trä och bark", "label": "Ljus bark", "profile": "bark", "recipe": {"source": {"type": "bark", "ridges": 12, "depth": 0.4, "plates": 0.6, "dark": "#3A332C", "light": "#CFC6B4"}, "steps": [{"op": "range"}]}},
-    "bricks": {"group": "Mur och tak", "label": "Tegel", "profile": "building", "recipe": {"source": {"type": "bricks"}, "steps": [{"op": "range"}]}},
-    "stonewall": {"group": "Mur och tak", "label": "Stenmur", "profile": "building", "recipe": {"source": {"type": "bricks", "rows": 6, "cols": 3, "jitter": 0.6, "chip": 0.6, "light": "#9E9A90", "dark": "#5A564C"}, "steps": [{"op": "edges"}, {"op": "range"}]}},
-    "roof_tiles": {"group": "Mur och tak", "label": "Takpannor", "profile": "building", "recipe": {"source": {"type": "shingles"}, "steps": [{"op": "range"}]}},
-    "roof_shakes": {"group": "Mur och tak", "label": "Spåntak", "profile": "building", "recipe": {"source": {"type": "shingles", "shape": "square", "light": "#8A6A48", "dark": "#3A2A1E"}, "steps": [{"op": "range"}]}},
-    "roof_slate": {"group": "Mur och tak", "label": "Skiffertak", "profile": "building", "recipe": {"source": {"type": "shingles", "shape": "pointed", "light": "#5E6670", "dark": "#22262B"}, "steps": [{"op": "range"}]}},
-    "forestfloor": {"group": "Mark", "label": "Skogsbotten", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.35}, "steps": [{"op": "scatter", "shape": "leaf", "count": 90, "size": 0.04}, {"op": "range"}]}},
-    "meadow": {"group": "Mark", "label": "Gräsmark", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.75, "gravel": 0.05}, "steps": [{"op": "range"}]}},
-    "gravel": {"group": "Mark", "label": "Grus", "profile": "terrain", "recipe": {"source": {"type": "noise", "scale": 20, "dark": "#6A655B", "light": "#A39D90"}, "steps": [{"op": "scatter", "shape": "pebble", "count": 160, "size": 0.035, "dark": "#7E786C", "light": "#C2BCAE"}, {"op": "range"}]}},
-    "path": {"group": "Mark", "label": "Stig", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.15, "gravel": 0.4}, "steps": [{"op": "scatter", "shape": "pebble", "count": 40, "size": 0.04, "dark": "#7E786C", "light": "#C2BCAE"}, {"op": "range"}]}},
-    "autumn": {"group": "Mark", "label": "Höstlöv", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.3}, "steps": [{"op": "scatter", "shape": "leaf", "count": 300, "size": 0.05}, {"op": "range"}]}},
-    "moss": {"group": "Blandlager", "label": "Mossa", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 14, "dark": "#3E5A2B", "light": "#8FB65A"}, "steps": []}},
-    "snow": {"group": "Blandlager", "label": "Snö", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 5, "dark": "#C9D3DE", "light": "#F4F7FA"}, "steps": [{"op": "soften"}]}},
-    "lichen": {"group": "Blandlager", "label": "Lav", "profile": "blend", "recipe": {"source": {"type": "noise", "kind": "blobs", "scale": 8, "dark": "#8E9A6A", "light": "#C8D49A"}, "steps": []}},
-    "dirt": {"group": "Blandlager", "label": "Smuts", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 6, "dark": "#4A3A2A", "light": "#7A6448"}, "steps": []}},
-    "pillows": {"group": "Former", "label": "Kuddar", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "cells", "bands": 6}, "steps": []}},
-    "rings": {"group": "Former", "label": "Ringar", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "radial", "bands": 4}, "steps": []}},
-    "bands": {"group": "Former", "label": "Band", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "linear", "bands": 6}, "steps": []}},
-    "krea_free": {"group": "AI (Krea)", "label": "Krea: fri beskrivning", "profile": "rock", "ai": true, "recipe": {"source": {"type": "krea", "prompt": "mossy grey cobblestones"}, "steps": []}},
-    "krea_stone": {"group": "AI (Krea)", "label": "Krea: målad kullersten", "profile": "rock", "ai": true, "recipe": {"inputs": {"form": {"recipe": {"source": {"type": "stone", "cells": 24}, "steps": []}}}, "source": {"type": "krea", "prompt": "hand-painted grey cobblestones with green moss in the joints", "base": "form", "denoise": 0.6}, "steps": []}}
+    "cobble": {"group": "Stone", "label": "Cobblestone", "profile": "rock", "recipe": {"source": {"type": "stone"}, "steps": [{"op": "range"}]}},
+    "cobble_moss": {"group": "Stone", "label": "Mossy cobblestone", "profile": "rock", "recipe": {"inputs": {"moss": {"recipe": {"source": {"type": "noise", "scale": 14, "dark": "#3E5A2B", "light": "#8FB65A"}, "steps": []}}}, "source": {"type": "stone"}, "steps": [{"op": "layer", "input": "moss", "mask": "low", "amount": 0.45}, {"op": "edges"}, {"op": "range"}]}},
+    "paving": {"group": "Stone", "label": "Paving stone", "profile": "terrain", "recipe": {"source": {"type": "stone", "cells": 64, "round": 0.3, "gap": 0.05, "variation": 0.2}, "steps": [{"op": "range"}]}},
+    "cliff": {"group": "Stone", "label": "Cliff", "profile": "rock", "recipe": {"source": {"type": "noise", "kind": "worley", "scale": 5, "dark": "#5C5850", "light": "#B0AA9C"}, "steps": [{"op": "warp", "amount": 0.04}, {"op": "edges", "edge": 0.5, "cavity": 0.5}, {"op": "range"}], "material": {"normal": {"strength": 1.6}}}},
+    "rock": {"group": "Stone", "label": "Gray stone", "profile": "rock", "recipe": {"source": {"type": "noise", "scale": 4, "sharpness": 0.1, "dark": "#6E6A62", "light": "#B3AEA2"}, "steps": [{"op": "edges", "cavity": 0.6}, {"op": "range"}]}},
+    "planks": {"group": "Wood and bark", "label": "Planks", "profile": "building", "recipe": {"source": {"type": "planks"}, "steps": [{"op": "range"}]}},
+    "planks_painted": {"group": "Wood and bark", "label": "Painted wood", "profile": "building", "recipe": {"source": {"type": "planks", "dark": "#4E3420", "light": "#B98B5A"}, "steps": [{"op": "paint", "radius": 5}, {"op": "range"}]}},
+    "bark_oak": {"group": "Wood and bark", "label": "Oak bark", "profile": "bark", "recipe": {"source": {"type": "bark"}, "steps": [{"op": "range"}]}},
+    "bark_soft": {"group": "Wood and bark", "label": "Soft bark", "profile": "bark", "recipe": {"source": {"type": "bark", "ridges": 9}, "steps": [{"op": "soften"}, {"op": "range"}]}},
+    "bark_light": {"group": "Wood and bark", "label": "Light bark", "profile": "bark", "recipe": {"source": {"type": "bark", "ridges": 12, "depth": 0.4, "plates": 0.6, "dark": "#3A332C", "light": "#CFC6B4"}, "steps": [{"op": "range"}]}},
+    "bricks": {"group": "Walls and roofs", "label": "Brick", "profile": "building", "recipe": {"source": {"type": "bricks"}, "steps": [{"op": "range"}]}},
+    "stonewall": {"group": "Walls and roofs", "label": "Stone wall", "profile": "building", "recipe": {"source": {"type": "bricks", "rows": 6, "cols": 3, "jitter": 0.6, "chip": 0.6, "light": "#9E9A90", "dark": "#5A564C"}, "steps": [{"op": "edges"}, {"op": "range"}]}},
+    "roof_tiles": {"group": "Walls and roofs", "label": "Roof tiles", "profile": "building", "recipe": {"source": {"type": "shingles"}, "steps": [{"op": "range"}]}},
+    "roof_shakes": {"group": "Walls and roofs", "label": "Shingle roof", "profile": "building", "recipe": {"source": {"type": "shingles", "shape": "square", "light": "#8A6A48", "dark": "#3A2A1E"}, "steps": [{"op": "range"}]}},
+    "roof_slate": {"group": "Walls and roofs", "label": "Slate roof", "profile": "building", "recipe": {"source": {"type": "shingles", "shape": "pointed", "light": "#5E6670", "dark": "#22262B"}, "steps": [{"op": "range"}]}},
+    "forestfloor": {"group": "Ground", "label": "Forest floor", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.35}, "steps": [{"op": "scatter", "shape": "leaf", "count": 90, "size": 0.04}, {"op": "range"}]}},
+    "meadow": {"group": "Ground", "label": "Grassland", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.75, "gravel": 0.05}, "steps": [{"op": "range"}]}},
+    "gravel": {"group": "Ground", "label": "Gravel", "profile": "terrain", "recipe": {"source": {"type": "noise", "scale": 20, "dark": "#6A655B", "light": "#A39D90"}, "steps": [{"op": "scatter", "shape": "pebble", "count": 160, "size": 0.035, "dark": "#7E786C", "light": "#C2BCAE"}, {"op": "range"}]}},
+    "path": {"group": "Ground", "label": "Path", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.15, "gravel": 0.4}, "steps": [{"op": "scatter", "shape": "pebble", "count": 40, "size": 0.04, "dark": "#7E786C", "light": "#C2BCAE"}, {"op": "range"}]}},
+    "autumn": {"group": "Ground", "label": "Autumn leaves", "profile": "terrain", "recipe": {"source": {"type": "splat", "grass": 0.3}, "steps": [{"op": "scatter", "shape": "leaf", "count": 300, "size": 0.05}, {"op": "range"}]}},
+    "moss": {"group": "Blend layers", "label": "Moss", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 14, "dark": "#3E5A2B", "light": "#8FB65A"}, "steps": []}},
+    "snow": {"group": "Blend layers", "label": "Snow", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 5, "dark": "#C9D3DE", "light": "#F4F7FA"}, "steps": [{"op": "soften"}]}},
+    "lichen": {"group": "Blend layers", "label": "Lichen", "profile": "blend", "recipe": {"source": {"type": "noise", "kind": "blobs", "scale": 8, "dark": "#8E9A6A", "light": "#C8D49A"}, "steps": []}},
+    "dirt": {"group": "Blend layers", "label": "Dirt", "profile": "blend", "recipe": {"source": {"type": "noise", "scale": 6, "dark": "#4A3A2A", "light": "#7A6448"}, "steps": []}},
+    "pillows": {"group": "Shapes", "label": "Pillows", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "cells", "bands": 6}, "steps": []}},
+    "rings": {"group": "Shapes", "label": "Rings", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "radial", "bands": 4}, "steps": []}},
+    "bands": {"group": "Shapes", "label": "Bands", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "linear", "bands": 6}, "steps": []}},
+    "krea_free": {"group": "AI (Krea)", "label": "Krea: free description", "profile": "rock", "ai": true, "recipe": {"source": {"type": "krea", "prompt": "mossy grey cobblestones"}, "steps": []}},
+    "krea_stone": {"group": "AI (Krea)", "label": "Krea: painted cobblestone", "profile": "rock", "ai": true, "recipe": {"inputs": {"form": {"recipe": {"source": {"type": "stone", "cells": 24}, "steps": []}}}, "source": {"type": "krea", "prompt": "hand-painted grey cobblestones with green moss in the joints", "base": "form", "denoise": 0.6}, "steps": []}}
   },
   "ai": {
     "_doc": "AI-målningen i verkstaden: förslag på beskrivning per källa. house_style och tile läggs till av servern ur tools/style.json",

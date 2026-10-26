@@ -289,6 +289,7 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 
 **Avdelningarna** ([avdelningar.md](avdelningar.md), plan 2026-10-26): Smedjan (grön, tillgångar), Väderkvarnen (blå, vind, vatten och väder), Ateljén (guld, texturer och material), Häxkitteln (lila, spelets effekter) och Skattkammaren (storbiblioteket), med egen underrubrik och accent, en låda per flik som Content Drawer i Unreal, och en landningssida.
 - [x] **A1, landningssidan:** byggd 2026-10-26 (`studio/home.js`, engelska): The Forge, The Windmill, The Atelier, The Cauldron (de två sistnämnda markerade Planned) och The Vault med illustrationer från GPT Image 2 via OpenRouter (`tools/texture/openrouter_image.py`, cirka 9 cent för alla fem), senast sparat, märket i headern leder tillbaka. Kvar: A2b, resten av appen på engelska.
+- [x] **A2b, engelska:** hela appen på engelska 2026-10-26: studion, spakarna i `params.json` och `workshop.json`, biblioteket, materiallabbet och felmeddelandena från servern och texturmotorn; biomerna heter `forest`, `meadow`, `beach`, `mountain`, `village`, `swamp` (även i Tinkertowns standardvärld).
 - [ ] **A2, headern och färgerna:** avdelningsväljare, underrubrik, flikar i en andra rad, accent per avdelning.
 - [ ] **A3, lådorna:** låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag.
 

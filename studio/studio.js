@@ -18,7 +18,7 @@ const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const api = (p, payload) => fetch(p, payload ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) } : {})
   .then((r) => r.json());
-const fmt = (n, d = 0) => (n ?? 0).toLocaleString('sv-SE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (n, d = 0) => (n ?? 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // --- Scen: samma ljus, himmel och mark som visningen (showcase/index.html) ---
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -271,7 +271,7 @@ const snapshot = () => JSON.stringify({ kind: kind.id, recipe: state.recipe, spe
 function commit() { history.push(lastSnapshot); future.length = 0; lastSnapshot = snapshot(); regenerate(); }
 async function regenerate() {
   const id = ++latest;
-  busy(true, 'Bygger…');
+  busy(true, 'Building…');
   const t0 = performance.now();
   const res = await api('/api/generate', { generator: 'tree', recipe: recipeNow() });
   if (id !== latest) return;
@@ -280,27 +280,27 @@ async function regenerate() {
   if (id !== latest) return;
   if (!framed || pinFrame) { frame(current, ...pinned); framed = true; pinFrame = false; }
   showAssetStats(res, performance.now() - t0);
-  measureSoon('modellen byggdes om');
+  measureSoon('the model was rebuilt');
 }
 function busy(on, text) { $('lamp').className = 'lamp' + (on ? ' busy' : ''); if (text) setState(text); }
 // Statusen syns som text i breda fönster och som tooltip på lampan i smala
 function setState(text) { $('state').textContent = text; $('status').title = text; }
-function showError(e) { $('lamp').className = 'lamp bad'; setState('Fel'); $('warn').textContent = e; }
-const LABELS = { floating_clusters: 'bollar som inte sitter på en kvist', uncovered_twigs: 'kvistar som sticker ut', disconnected: 'lösa grenar',
-  nodes_below_ground: 'grenar under marken', thicker_than_parent: 'grenar tjockare än sin förälder', wind_torn: 'hörn som slits isär i vinden' };
+function showError(e) { $('lamp').className = 'lamp bad'; setState('Error'); $('warn').textContent = e; }
+const LABELS = { floating_clusters: 'balls not on a twig', uncovered_twigs: 'twigs sticking out', disconnected: 'loose branches',
+  nodes_below_ground: 'branches below ground', thicker_than_parent: 'branches thicker than their parent', wind_torn: 'vertices torn apart by the wind' };
 function showAssetStats(res, ms) {
   const c = res.checks ?? {};
   $('lamp').className = 'lamp ' + (c.ok ? 'ok' : 'bad');
-  setState(c.ok ? 'Kontrollerna är gröna' : 'Kontrollerna är röda');
+  setState(c.ok ? 'Checks are green' : 'Checks are red');
   const vals = [
-    ['Höjd', res.height_m != null ? `${fmt(res.height_m, 1)} m` : '–'], // med stamhöjden (gen_tree: top)
-    ['Trianglar', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
-    ['varav alfa', (res.alpha_tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
-    ['Bollar', `${c.clusters ?? '–'} (${c.tip_balls ?? 0} spets)`],
-    ['Kort', `${fmt(c.cards)} à ${c.card_m ?? '–'} m`],
-    ['Silhuett', c.silhouette_m2 ? `${c.silhouette_m2} m²` : '–'],
-    ['Grenar i kronan', c.branch_cover != null ? `${Math.round(c.branch_cover * 100)} %` : '–'],
-    ['Byggtid', `${fmt(ms / 1000, 1)} s`],
+    ['Height', res.height_m != null ? `${fmt(res.height_m, 1)} m` : '–'], // med stamhöjden (gen_tree: top)
+    ['Triangles', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
+    ['of which alpha', (res.alpha_tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
+    ['Balls', `${c.clusters ?? '–'} (${c.tip_balls ?? 0} tips)`],
+    ['Cards', `${fmt(c.cards)} à ${c.card_m ?? '–'} m`],
+    ['Silhouette', c.silhouette_m2 ? `${c.silhouette_m2} m²` : '–'],
+    ['Branches in the crown', c.branch_cover != null ? `${Math.round(c.branch_cover * 100)} %` : '–'],
+    ['Build time', `${fmt(ms / 1000, 1)} s`],
   ];
   $('assetStats').innerHTML = vals.map(([a, b]) => `<span>${a} <b>${b}</b></span>`).join('');
   $('warn').textContent = Object.entries(LABELS).filter(([k]) => c[k]).map(([k, t]) => `${c[k]} ${t}`).join(' · ');
@@ -330,16 +330,16 @@ function measure() {
   paused = false;
   const perf = { ms, calls, tris, reason: pendingReason };
   $('perfStats').innerHTML = [
-    `<span><b>${fmt(ms, 1)} ms</b> per bild</span>`,
+    `<span><b>${fmt(ms, 1)} ms</b> per frame</span>`,
     `<span>≈ ${fmt(Math.min(999, 1000 / ms))} fps</span>`,
-    `<span>${fmt(calls)} ritanrop</span>`,
-    `<span>${fmt(tris / 1000)} k trianglar per bild (med skuggpass)</span>`,
+    `<span>${fmt(calls)} draw calls</span>`,
+    `<span>${fmt(tris / 1000)} k triangles per frame (with shadow pass)</span>`,
   ].join('');
   if (prevPerf) {
     const d = ms - prevPerf.ms, pct = (100 * d) / prevPerf.ms, cls = Math.abs(pct) < 5 ? '' : d > 0 ? 'up' : 'down';
     const dc = calls - prevPerf.calls;
     $('perfDelta').innerHTML = `<span class="delta ${cls}"><b>${d >= 0 ? '+' : ''}${fmt(d, 1)} ms (${pct >= 0 ? '+' : ''}${fmt(pct)} %)</b></span>`
-      + `<span>ritanrop ${dc >= 0 ? '+' : ''}${fmt(dc)}</span><span>efter: ${perf.reason}</span>`;
+      + `<span>draw calls ${dc >= 0 ? '+' : ''}${fmt(dc)}</span><span>after: ${perf.reason}</span>`;
   }
   prevPerf = perf;
 }
@@ -355,7 +355,7 @@ function commitParam(p, v) {
   if (p.path === 'recipe.preset') resetSpecies(v);
   else setValue(p, v);
   refreshUi();
-  if (isView(p)) { applyViewAll(); measureSoon(`${p.label}: ${p.type === 'select' ? optionLabel(p, v) : p.type === 'bool' ? (v ? 'på' : 'av') : v}`); }
+  if (isView(p)) { applyViewAll(); measureSoon(`${p.label}: ${p.type === 'select' ? optionLabel(p, v) : p.type === 'bool' ? (v ? 'on' : 'off') : v}`); }
   else commit();
 }
 
@@ -374,7 +374,7 @@ function texturePicker(p) {
     return [t.name, f];
   });
   now.onclick = () => wrap.classList.toggle('open');
-  now.title = 'Klicka för att byta';
+  now.title = 'Click to switch';
   wrap.append(now, grid);
   syncs.push(() => {
     const name = valueOf(p), t = list.find((x) => x.name === name);
@@ -420,10 +420,10 @@ function makeRow(p) {
     syncs.push(() => { c.value = colorOf(valueOf(p)); });
     row.append(label, c);
   } else if (p.type === 'seed') {
-    const n = el('input'), b = el('button', null, 'Nytt');
+    const n = el('input'), b = el('button', null, 'New');
     n.type = 'number'; n.min = 0; n.max = 99999;
     n.onchange = () => commitParam(p, Number(n.value));
-    b.title = 'Slumpa ett nytt frö';
+    b.title = 'Roll a new seed';
     b.onclick = () => commitParam(p, Math.floor(Math.random() * 99999));
     syncs.push(() => { n.value = valueOf(p); });
     row.append(label, n, b);
@@ -483,12 +483,12 @@ const THEME_ICONS = {
   light: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg>',
   dark: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>',
 };
-const THEME_LABELS = { auto: 'Auto', light: 'Ljust', dark: 'Mörkt' };
+const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark' };
 function setTheme(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
   try { localStorage.setItem('studio-theme', t); } catch {}
   $('theme').innerHTML = THEME_ICONS[t];
-  $('theme').title = `Tema: ${THEME_LABELS[t]} (klicka för att byta mellan Auto, Ljust och Mörkt)`;
+  $('theme').title = `Theme: ${THEME_LABELS[t]} (click to cycle Auto, Light and Dark)`;
   $('theme').dataset.t = t;
   dispatchEvent(new Event('studio-theme'));
 }
@@ -500,16 +500,16 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => disp
 for (const k of P.kinds) {
   const b = el('button', null, k.label);
   b.dataset.kind = k.id;
-  if (k.soon) { b.disabled = true; b.title = 'Kommer: generatorn behöver sina spakar (params.json) först'; b.append(el('span', 'soon', 'snart')); }
+  if (k.soon) { b.disabled = true; b.title = 'Coming: the generator needs its sliders (params.json) first'; b.append(el('span', 'soon', 'soon')); }
   else b.onclick = () => selectKind(k);
   $('kinds').append(b);
 }
 // Texturverkstaden (studio/workshop.js): egen vy, egna kort och egen footer; skapas första gången den öppnas
-const texBtn = el('button', null, 'Texturer');
-texBtn.title = 'Texturverkstaden: ta fram och justera texturer för tillgångar, terräng och byggnader';
+const texBtn = el('button', null, 'Textures');
+texBtn.title = 'The Atelier: make and tune textures for assets, terrain and buildings';
 // Biblioteket (studio/library.js): familjer och fasta modeller, som FAB; skapas första gången det öppnas
-const libBtn = el('button', null, 'Bibliotek');
-libBtn.title = 'Biblioteket: allt som sparats, som familjer (recept) och fasta modeller';
+const libBtn = el('button', null, 'Library');
+libBtn.title = 'The Vault: everything saved, as families (recipes) and fixed models';
 $('kinds').append(Object.assign(el('span', 'sep')), libBtn, texBtn);
 let workshop = null, textureMode = false, library = null, libraryMode = false;
 libBtn.onclick = async () => {
@@ -533,7 +533,7 @@ const speciesOf = (item) => String(item.preset ?? '').split('_')[0];
 function canOpen(item) { return !!item.recipe && item.type !== 'imported' && !!G.species[speciesOf(item)] && P.kinds.some((k) => k.species?.includes(speciesOf(item))); }
 async function openInStudio(item) {
   const r = await fetch(`/${item.recipe}`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-  if (!r) { alert(`Receptet för ${item.name} gick inte att läsa`); return; }
+  if (!r) { alert(`Could not read the recipe for ${item.name}`); return; }
   leaveLibraryMode();
   kind = P.kinds.find((k) => k.species?.includes(speciesOf(item))) ?? kind;
   loadRecipe(r);
@@ -542,7 +542,7 @@ async function openInStudio(item) {
   pinned.length = 0;
   refreshUi();
   commit();
-  setState(`Öppnade ${item.name}`);
+  setState(`Opened ${item.name}`);
 }
 texBtn.onclick = async () => {
   leaveHome();
@@ -612,17 +612,17 @@ function thumbnail() {
 async function save() {
   if (!current) return;
   const suggestion = `${state.recipe.preset}_${state.recipe.seed}`;
-  const name = prompt('Namn i biblioteket (a–z, 0–9 och _):', suggestion);
+  const name = prompt('Name in the library (a–z, 0–9 and _):', suggestion);
   if (!name) return;
-  const tags = [kind.label.toLowerCase(), ...(prompt('Taggar, kommaseparerade (t.ex. skog, sommar):', '') ?? '').split(',')];
+  const tags = [kind.label.toLowerCase(), ...(prompt('Tags, comma separated (e.g. forest, summer):', '') ?? '').split(',')];
   const payload = { generator: 'tree', name: name.trim().toLowerCase(), tags, recipe: recipeNow(), thumbnail: thumbnail() };
-  busy(true, 'Sparar…');
+  busy(true, 'Saving…');
   let res = await api('/api/library', payload);
-  if (res.exists && confirm(`${payload.name} finns redan. Skriva över?`)) res = await api('/api/library', { ...payload, overwrite: true });
+  if (res.exists && confirm(`${payload.name} already exists. Overwrite?`)) res = await api('/api/library', { ...payload, overwrite: true });
   busy(false);
   $('lamp').className = 'lamp ' + (res.error ? 'bad' : 'ok');
-  setState(res.error ? 'Sparades inte' : 'Sparad');
-  $('note').textContent = res.error ? res.error : `Sparad i biblioteket: ${res.entry.model}`;
+  setState(res.error ? 'Not saved' : 'Saved');
+  $('note').textContent = res.error ? res.error : `Saved to the library: ${res.entry.model}`;
 }
 
 // För felsökning och automatiska tester. shot(name) sparar 3D-vyn som build/shots/studio_<name>.png.
