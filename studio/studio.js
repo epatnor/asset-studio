@@ -172,6 +172,7 @@ function loadRecipe(r) {
   Object.assign(sp.foliage, r.canopy ?? {});
   Object.assign(state.recipe, { seed: r.seed ?? state.recipe.seed, bark_blend: structuredClone(r.bark_blend ?? state.recipe.bark_blend) });
   for (const k of ['leaves', 'bark', 'leaf_tint', 'bole']) if (r[k] !== undefined) state.recipe[k] = r[k];
+  if (r.bark_uv) state.recipe.bark_uv = { ...r.bark_uv };
 }
 // Fliken startar med sitt startrecept (params.json: kinds[].start, ett namn i biblioteket), annars med sin första art
 async function startKind(k) {
@@ -191,7 +192,29 @@ const recipeNow = () => ({
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
   species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless }, canopy: state.spec.foliage, bark_blend: blendNow(),
+  ...barkUvNow(),
 });
+// Barkens skala på just det här trädet (bark_uv), relativt materialets; bara det som avviker från 1 sparas
+function barkUvNow() {
+  const uv = Object.fromEntries(['tiling', 'along', 'around'].map((k) => [k, valueOf(paramAt(`recipe.bark_uv.${k}`))]).filter(([, v]) => v !== 1));
+  return Object.keys(uv).length ? { bark_uv: uv } : {};
+}
+// Knappar i spakarna (params.json: type action)
+const ACTIONS = {
+  // Use as material default: tilingen blir barkmaterialets egen skala (meter per upprepning) i Ateljén, och trädet
+  // går tillbaka till tiling 1, så att det ser likadant ut. Sträckningarna stannar på trädet.
+  async barkDefault(note) {
+    const name = valueOf(paramAt('recipe.bark')), t = (texLists.bark ?? []).find((x) => x.name === name);
+    const base = t?.meters ?? 1.08, tiling = valueOf(paramAt('recipe.bark_uv.tiling'));
+    if (tiling === 1) { note.textContent = `Already the material's scale: ${base} m per repeat`; return; }
+    const meters = base / tiling;
+    if (!confirm(`Make ${name} repeat every ${meters.toFixed(2)} m (now ${base} m) for every asset that uses it?`)) return;
+    const r = await api('/api/texture/scale', { name, meters });
+    if (r.error) { note.textContent = r.error; return; }
+    if (t) t.meters = r.meters;
+    commitParam(paramAt('recipe.bark_uv.tiling'), 1);
+  },
+};
 
 // --- Modellerna: den aktuella i mitten, fästa till vänster för jämförelse ---
 let current = null, currentUrl = null; // currentUrl: verkstadens materiallabb kan visa det aktuella trädet
@@ -394,6 +417,15 @@ function makeRow(p) {
   if (p.help) row.title = p.help;
   const label = el('label', null, p.label);
   if (p.type === 'texture') { row.classList.add('texrow'); row.append(texturePicker(p)); return row; }
+  if (p.type === 'action') {
+    row.classList.add('span2', 'actrow');
+    const b = el('button', null, p.button ?? p.label), note = el('span', 'note');
+    b.onclick = () => ACTIONS[p.action]?.(note);
+    // Materialets skala visas bredvid knappen
+    if (p.action === 'barkDefault') syncs.push(() => { const t = (texLists.bark ?? []).find((x) => x.name === valueOf(paramAt('recipe.bark'))); note.textContent = `Material: ${t?.meters ?? 1.08} m per repeat`; });
+    row.append(label, b, note);
+    return row;
+  }
   if (p.type === 'select') {
     row.classList.add('span2');
     const sel = el('select');

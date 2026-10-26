@@ -54,7 +54,11 @@ export function barkMesh(sk, o) {
     let [n1] = basis(d0);
     let vAcc = 0;
     const circ = 2 * Math.PI * nodes[0].r;
-    const uRep = Math.max(1, Math.round(circ / o.barkRepeat));
+    // Texturens skala: barkRepeat är materialets meter per upprepning; uv (receptets bark_uv) ändrar den för just den här
+    // tillgången: tiling (fler upprepningar), along (sträckt längs grenen) och around (sträckt runt; runt avrundas till
+    // ett helt antal varv, annars syns en söm)
+    const tiling = o.uv?.tiling ?? 1, repV = (o.barkRepeat * (o.uv?.along ?? 1)) / tiling, repU = (o.barkRepeat * (o.uv?.around ?? 1)) / tiling;
+    const uRep = Math.max(1, Math.round(circ / repU));
     for (let i = 0; i < nodes.length; i++) {
       const d = norm(sub(nodes[Math.min(i + 1, nodes.length - 1)].p, nodes[Math.max(i - 1, 0)].p));
       n1 = norm(sub(n1, mul(d, dot(n1, d)))); // projicera förra ramen på nya planet
@@ -84,7 +88,7 @@ export function barkMesh(sk, o) {
         }
         g.positions.push(...add(nodes[i].p, mul(dir, rad)));
         g.normals.push(...dir);
-        g.uvs.push((s / segs) * uRep + uShift, vAcc / o.barkRepeat);
+        g.uvs.push((s / segs) * uRep + uShift, vAcc / repV);
         // Mörkare nedtill och mot fästen (enkel AO), ljusare upptill
         const ao = b.level === 0 ? 0.62 + 0.38 * Math.min(1, Math.max(0, nodes[i].p[1]) / (o.height * 0.35)) : 0.78 + 0.22 * t;
         // Gröna toppar (tipTint): de minsta grenarna tonas mot lövfärgen ytterst
@@ -134,7 +138,7 @@ export function barkMesh(sk, o) {
     const ti = g.positions.length / 3;
     g.positions.push(...add(tip.p, mul(tipDir, tip.r * 1.5)));
     g.normals.push(...tipDir);
-    g.uvs.push(0.5 * uRep, (vAcc + tip.r) / o.barkRepeat);
+    g.uvs.push(0.5 * uRep, (vAcc + tip.r) / repV);
     g.colors.push(...(o.tipTint && b.level >= o.tipLevel ? o.tipTint : [1, 1, 1]));
     g.wind.push(1);
     g.part.push(bi); g.pt.push(1);

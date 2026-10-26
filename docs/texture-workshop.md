@@ -256,9 +256,11 @@ Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet 
 | T5. Resten | lövark och atlas i verkstaden, alfaverktyg, detaljsteg (frekvens, målad look), varianter och versioner, kontroller, MCP | Alla texturer i projektet kan göras och underhållas i verkstaden |
 | G1–G5. AI-flödet | Form → Måla → Material, bildbandet, utkast, prompter efter profil, referenser; se AI-flödet ovan | Krea är ett tydligt eget steg som inte stoppar arbetet |
 
-## Texturens skala på en tillgång (plan 2026-10-26)
+## Texturens skala på en tillgång (byggd 2026-10-26)
 
 Materialet äger sin verkliga skala (meter per upprepning, `meters` i katalogen) och gäller överallt. En tillgångs recept (ett träd i Smedjan) sparar bara en avvikelse relativt materialet: tiling ×, sträckning längs och runt stammen och förskjutning, som Material Instances i Unreal; trädet har redan `bark_repeat`. Knappen *Use as material default* lyfter en avvikelse till materialet i Ateljén, men bara när man ber om det. Lövkronan är lövkort med en atlas, så där motsvaras skalan av kortens storlek och bladen per kort, i kronans spakar.
+
+Byggt för barken: trädets recept har `bark_uv` (`tiling`, `along`, `around`, relativt materialet; runt avrundas till hela varv så att ingen söm syns), som spakarna Bark tiling, Stretch along och Stretch around under Bark and growth. Materialets skala läses ur katalogen: `meters` för texturer från verkstaden, `scales` för övriga (`make_tree.py`, `material_meters`). Use as material default (`/api/texture/scale`) gör tilingen till materialets skala (katalograden och receptet, eller `scales`) och sätter trädets tiling till 1 igen; sträckningarna stannar på trädet.
 
 ## Frågor till Patrik
 

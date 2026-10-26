@@ -62,7 +62,7 @@ const barkLods = [
   { maxLevel: Math.max(1, sk.maxLevel - 1), segScale: 0.7 },
   { maxLevel: 1, segScale: 0.5 },
 ].map((l) => barkMesh(sk, {
-  ...l, barkRepeat, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height, top,
+  ...l, barkRepeat, uv: recipe.barkUV, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height, top,
   lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas

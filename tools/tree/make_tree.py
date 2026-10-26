@@ -10,7 +10,10 @@ Receptfält (alla utom name är valfria):
   bark, leaves            texturnamn i assets/textures (leaves är en 2x2-atlas; standard enligt arten)
   leaf_mass               sömlös lövmassa för kronans volymer (standard: <atlas>_mass, annars leaf_mass)
   leaf_tint               "#RRGGBB": tinta löven i materialet (t.ex. höstfärg) med gråskaleatlas
-  bark_repeat             meter per upprepning av barktexturen (standard 1,08)
+  bark_repeat             meter per upprepning av barktexturen; utan den gäller materialets skala i
+                          assets/textures/catalog.json (meters, eller scales för texturer utan recept), annars 1,08
+  bark_uv                 texturens skala på just den här tillgången, relativt materialet:
+                          {"tiling": 1 (fler upprepningar), "along": 1 (sträckt längs), "around": 1 (sträckt runt)}
   bark_blend              texturblandning på barken (standard enligt arten), blandas i klientens shader:
                           {"base": {"texture", "height" (m), "strength" 0–1, "dark", "tint", "scale"},
                            "tip": {"texture", "from" 0–1 längs grenen, "level", "strength", "tint", "scale"}}
@@ -33,6 +36,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 TOOL = Path(__file__).resolve().parent
 TEX = ROOT / "assets" / "textures"
+
+
+def material_meters(name, default):
+    """Materialets meter per upprepning: katalogens rad (texturverkstaden) eller scales (övriga texturer)."""
+    try:
+        cat = json.loads((TEX / "catalog.json").read_text())
+    except (OSError, ValueError):
+        return default
+    row = next((t for t in cat.get("textures", []) if t.get("name") == name), None)
+    return float((row or {}).get("meters") or cat.get("scales", {}).get(name) or default)
 
 
 def blender_cmd():
@@ -127,7 +140,9 @@ def main():
         gen["barkBlend"] = {k: {**v, "file": str(TEX / f"{v['texture']}.png")} for k, v in blend.items()
                             if isinstance(v, dict) and v.get("texture") and (TEX / f"{v['texture']}.png").exists()}
     gen |= {"name": name, "out": str(glb), "bark": str(TEX / f"{bark}.png"), "leaves": str(TEX / f"{leaves}.png"),
-            "barkRepeat": recipe.get("bark_repeat", 1.08)}
+            "barkRepeat": recipe.get("bark_repeat") or material_meters(bark, 1.08)}
+    if recipe.get("bark_uv"):
+        gen["barkUV"] = {k: float(v) for k, v in recipe["bark_uv"].items() if k in ("tiling", "along", "around") and float(v) > 0}
     # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.
     # Atlas och lövmassa används i gråskala och tintas via baseColorFactor.
     # Granar: målad barratlas med alfakant om den finns (frond_texture: false ger solida grenar)

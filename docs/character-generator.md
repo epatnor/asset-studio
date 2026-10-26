@@ -109,4 +109,6 @@ Kropparna ska vara rätt innan kläder och hår byggs vidare. Referens: Appariti
 8. Skinning (hm08:s vikter för `game_engine` som grund) och klippen; sockets; lineup-sida med byte av delar och reglage.
 9. Fler delar (byxor, stövlar, handskar, rock), stela delar i sockets, MCP-verktyget `create_character`, parken.
 
+Att titta på (noterat 2026-10-26): [blender-skills](https://github.com/arjun988/blender-skills) (MIT), 94 färdiga färdigheter för AI-agenter som kör Blender via Blender MCP, bland annat character-artist, creature-artist, character-archetypes, sculpting, retopology, hair-groom, rigging och animation, plus export till Unity, Unreal och Godot. Kan bli ett stöd för karaktärsskapandet: retopologi och rigg av importerade eller skulpterade figurer, hårgroom som jämförelse med `hair.mjs`, och granskning i Patriks Blender. Läs först hur djupa färdigheterna är (sidan visar bara namnen), och kopiera bara de som behövs till `.claude/skills/`.
+
 Senare: lösa plagg (nivå D: kjol, rock, kappa, långt hår med egna ben), hjälmar som klipper håret, rasbyte som test (samma utrustning på dvärg och goblin), anpassning av importerade rustningar till våra kroppar, ansiktsuttryck och fler klipp.

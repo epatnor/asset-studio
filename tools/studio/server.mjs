@@ -97,7 +97,7 @@ async function cleanPreviews() {
 
 // Receptet från studion: bara kända fält går vidare till generatorn
 const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) =>
-  ['preset', 'seed', 'height', 'bole', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_blend'].includes(k)));
+  ['preset', 'seed', 'height', 'bole', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_uv', 'bark_blend'].includes(k)));
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];
@@ -131,7 +131,26 @@ async function textures(kind) {
   const match = { bark: /^bark_/, leaves: /^(leaf|leaves|blossom|autumn|needle)/, blend: /^(moss|bark_|surface_|foliage_painted|lichen|blend_|rock_)/ }[kind] ?? /./;
   const names = (await readdir(dir)).filter((f) => f.endsWith('.png') && match.test(f) && !/_(mass|raw|normal|height|rough|metal|ao|emissive|orm)$/.test(f.slice(0, -4))).map((f) => f.slice(0, -4));
   await ensureThumbs(names);
-  return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png`, thumb: `/${THUMBS}/${n}_${THUMB_PX}.jpg` }));
+  const cat = await readJson('assets/textures/catalog.json') ?? {};
+  const metersOf = (n) => cat.textures?.find((t) => t.name === n)?.meters ?? cat.scales?.[n] ?? null;
+  return names.sort().map((n) => ({ name: n, url: `/assets/textures/${n}.png`, thumb: `/${THUMBS}/${n}_${THUMB_PX}.jpg`, meters: metersOf(n) }));
+}
+
+// Materialets skala (meter per upprepning), satt från en tillgång med Use as material default. En textur från
+// verkstaden får den i katalograden och i sitt recept; andra texturer i katalogens scales.
+async function textureScale({ name, meters }) {
+  if (!NAME.test(String(name ?? '')) || !(meters > 0.01 && meters < 100)) return { error: 'bad texture name or scale' };
+  const file = path.join(ROOT, 'assets/textures/catalog.json');
+  const cat = (await readJson('assets/textures/catalog.json')) ?? { textures: [] };
+  const m = Math.round(meters * 1000) / 1000;
+  const row = cat.textures?.find((t) => t.name === name);
+  if (row) {
+    row.meters = m;
+    const rf = row.recipe && (await readJson(row.recipe));
+    if (rf) { rf.meters = m; rf.material = { ...(rf.material ?? {}), meters: m }; await writeFile(path.join(ROOT, row.recipe), JSON.stringify(rf, null, 2) + '\n'); }
+  } else (cat.scales ??= {})[name] = m;
+  await writeFile(file, JSON.stringify(cat, null, 2) + '\n');
+  return { name, meters: m, in: row ? 'catalog' : 'scales' };
 }
 
 // --- Texturverkstaden (docs/texture-workshop.md): recept -> tools/texture/workshop.py ---
@@ -538,6 +557,7 @@ async function api(req, res, url) {
   }
   if (url.pathname === '/api/texture/preview' && req.method === 'POST') return json(res, 200, await texturePreview(await body(req)));
   if (url.pathname === '/api/texture/job' && req.method === 'GET') return json(res, 200, textureJob(url.searchParams.get('id') ?? ''));
+  if (url.pathname === '/api/texture/scale' && req.method === 'POST') return json(res, 200, await textureScale(await body(req)));
   if (url.pathname === '/api/texture/save' && req.method === 'POST') return json(res, 200, await textureSave(await body(req)));
   if (url.pathname === '/api/texture/recipe' && req.method === 'GET') {
     const name = url.searchParams.get('name') ?? '';
