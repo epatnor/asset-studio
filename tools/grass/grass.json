@@ -57,6 +57,15 @@
       "help": "Follow ground texture color: every blade takes its root colour from the ground where it stands, so the grass grows out of the ground"
     },
     {
+      "key": "overall",
+      "group": "color",
+      "label": "Overall color",
+      "type": "color",
+      "default": "#3a7a1a",
+      "reset": true,
+      "help": "One colour for the whole grass: shifts hue, saturation and brightness on top of Root, Middle, Tip and Dry. The default green means no change. Roots that follow the ground only change a little in brightness, so they still match the ground"
+    },
+    {
       "key": "base",
       "group": "color",
       "label": "Root",

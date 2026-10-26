@@ -17,7 +17,7 @@ import { RESPONSE } from './wind.js';
 import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter } from 'three/webgpu';
 import {
   attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, min, pow, mix, smoothstep, normalize, cross, dot, length,
-  varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract, texture,
+  varying, transformNormalToView, positionWorld, cameraPosition, clamp, fract, texture, hue, saturation,
 } from 'three/tsl';
 
 const TAU = Math.PI * 2;
@@ -29,7 +29,18 @@ export const GRASS_SETTINGS = {
   clumpSize: 0.7,
   waveBend: 0.45, waveSheen: 1, waveSize: 9, waveSpeed: 4, waveSharp: 3, waveBreakup: 0.6,
   ground: 'ground_meadow', groundScale: 3, groundBright: 0.85, rootFromGround: true,
+  overall: '#3a7a1a',
 };
+// Overall color: en färg som förskjuter hela gräset (nyans, mättnad, ljushet) ovanpå rot, mitt, topp och torr färg.
+// OVERALL_NEUTRAL betyder ingen ändring; skillnaden mot den (i HSL) blir en vridning av nyansen, en faktor på
+// mättnaden och en på ljusheten.
+export const OVERALL_NEUTRAL = '#3a7a1a';
+export function overallShift(hex) {
+  const a = new Color(OVERALL_NEUTRAL).getHSL({}), b = new Color(hex).getHSL({});
+  let dh = b.h - a.h;
+  if (dh > 0.5) dh -= 1; if (dh < -0.5) dh += 1;
+  return { hue: dh * Math.PI * 2, sat: Math.min(3, b.s / Math.max(a.s, 1e-3)), bright: Math.min(3, Math.max(0.15, b.l / Math.max(a.l, 1e-3))) };
+}
 // Marken under gräset: en färg som textur (1 × 1), tills en riktig textur sätts med setGroundTexture.
 // Den har samma sampler som marktexturerna (upprepning och mipmappar): med WebGPU behåller texturnoden den första
 // texturens sampler när en ny sätts in, och en klampad platshållare gör då marken till streck.
@@ -70,7 +81,9 @@ export function createGrass(wind, field = {}, settings = {}) {
   const f = { ...GRASS_FIELD, ...field };
   const s0 = { ...GRASS_SETTINGS, ...settings };
   // Uniforms för allt utom marktexturens namn (ground); färger som Color, av/på som 0 och 1
-  const u = Object.fromEntries(Object.entries(s0).filter(([k]) => k !== 'ground').map(([k, v]) => [k, uniform(typeof v === 'string' ? new Color(v) : typeof v === 'boolean' ? Number(v) : v)]));
+  const u = Object.fromEntries(Object.entries(s0).filter(([k]) => k !== 'ground' && k !== 'overall').map(([k, v]) => [k, uniform(typeof v === 'string' ? new Color(v) : typeof v === 'boolean' ? Number(v) : v)]));
+  const sh = overallShift(s0.overall);
+  Object.assign(u, { overallHue: uniform(sh.hue), overallSat: uniform(sh.sat), overallBright: uniform(sh.bright) });
   Object.assign(u, { sun: uniform(new Vector3(0.5, 0.7, 0.4).normalize()), lodNear: uniform(f.lod[0]), lodFar: uniform(f.lod[1]) });
   let clumpSize = s0.clumpSize, exclude = f.exclude ?? [];
 
@@ -182,10 +195,14 @@ export function createGrass(wind, field = {}, settings = {}) {
   mat.normalNode = normalize(vN);
   // Färgen: mörk bas, mellanton och ljus topp; torra fläckar (dryAmount) drar topparna mot den torra färgen
   const dryMask = smoothstep(float(0.95).sub(u.dryAmount.mul(0.9)), float(1.2).sub(u.dryAmount.mul(0.9)), vPv);
-  const tipCol = mix(u.tip, u.dry, dryMask);
+  // Overall color: gräsets egna färger vrids, mättas och ljusas lika mycket
+  const adj = (c) => hue(saturation(c, u.overallSat), u.overallHue).mul(u.overallBright);
+  const cBase = adj(u.base), cMid = adj(u.mid), cTip = adj(u.tip), cDry = adj(u.dry);
+  const tipCol = mix(cTip, cDry, dryMask);
   // Roten: grässets egen rotfärg, eller markens (Grass root color: Follow ground texture color)
-  const rootCol = mix(u.base, vGround.mul(0.92), u.rootFromGround);
-  const body = mix(rootCol, mix(u.mid, u.dry.mul(0.7), dryMask.mul(0.4)), smoothstep(0.0, 0.45, vT));
+  // (följer roten marken ändras den bara lite i ljushet, så att den fortfarande matchar marktexturen)
+  const rootCol = mix(cBase, vGround.mul(0.92).mul(pow(u.overallBright, 0.5)), u.rootFromGround);
+  const body = mix(rootCol, mix(cMid, cDry.mul(0.7), dryMask.mul(0.4)), smoothstep(0.0, 0.45, vT));
   let col = mix(body, tipCol, smoothstep(0.35, 1.0, vT));
   col = col.mul(mix(1, float(0.75).add(vClump.mul(0.5)), u.clumpShade)); // tuvorna lite olika ljusa
   col = col.mul(mix(float(1).sub(u.ao.mul(mix(0.6, 0.3, u.rootFromGround))), 1.0, smoothstep(0.0, 0.55, vT))); // mörkare vid roten
@@ -233,6 +250,7 @@ export function createGrass(wind, field = {}, settings = {}) {
     set(values) {
       for (const [k, v] of Object.entries(values)) {
         if (k === 'clumpSize') { if (v !== clumpSize) { clumpSize = v; build(); } continue; }
+        if (k === 'overall') { const o2 = overallShift(v); u.overallHue.value = o2.hue; u.overallSat.value = o2.sat; u.overallBright.value = o2.bright; continue; }
         if (!u[k]) continue;
         if (u[k].value?.isColor) u[k].value.set(v); else u[k].value = typeof v === 'boolean' ? Number(v) : v;
       }

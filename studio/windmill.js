@@ -414,8 +414,15 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     c.type = 'color';
     if (q.help) row.title = q.help;
     syncs.push(() => { c.value = get(q.key); });
-    c.oninput = () => { set(q.key, c.value); changed?.(); };
-    row.append(el('label', null, q.label), c);
+    c.oninput = () => { set(q.key, c.value); changed?.(q); };
+    if (q.reset) {
+      // Återställ (till ingen ändring)
+      const wrap = el('div', 'colreset'), b = el('button', 'icon', '↺');
+      b.title = 'Reset (no change)';
+      b.onclick = () => { set(q.key, q.default); c.value = q.default; changed?.(q); };
+      wrap.append(c, b);
+      row.append(el('label', null, q.label), wrap);
+    } else row.append(el('label', null, q.label), c);
     return row;
   }
   const windCard = card('Wind', '#4a90d9');
@@ -423,10 +430,15 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
 
   // Gräset: ett kort per grupp i grass.json
   const grassGet = (k) => grassVals[k];
+  // Drar man själv i Root slutar rötterna följa marken (reglaget Follow ground texture color slås av)
+  const grassChanged = (q) => {
+    markGrass(null);
+    if (q?.key === 'base' && grassVals.rootFromGround) { setGrass('rootFromGround', false); for (const s of syncs) s(); }
+  };
   for (const g of G.groups) {
-    const body = card(g.label, '#5aa43c', { closed: !['waves', 'ground'].includes(g.id) });
+    const body = card(g.label, '#5aa43c', { closed: !['waves', 'ground', 'color'].includes(g.id) });
     const rowFor = { color: colorRow, texture: textureRow, bool: toggleRow };
-    for (const q of G.params.filter((x) => x.group === g.id)) body.append((rowFor[q.type] ?? slider)(q, grassGet, setGrass, () => markGrass(null)));
+    for (const q of G.params.filter((x) => x.group === g.id)) body.append((rowFor[q.type] ?? slider)(q, grassGet, setGrass, grassChanged));
   }
 
   // Blomklungorna: vilka växter, och hur de slumpas ut
