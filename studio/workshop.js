@@ -3,7 +3,7 @@
 // tools/texture/workshop.json; förhandsvisning och sparande går via studioserverns API. 2D-vyn visar kartorna
 // upprepade, 3D-vyn (lab3d.js) materialet på testmodeller. Detaljer ligger under Avancerat i varje kort.
 
-import { createLab, MODELS, LIGHTS } from './lab3d.js';
+import { createLab, MODELS, LIGHTS, HDRI_DIR } from './lab3d.js';
 
 const fmt = (n, d = 0) => (n ?? 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -80,6 +80,17 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   popRow('Projection', sel([['auto', 'Auto (triplanar on the statue)'], ['uv', 'UV'], ['tri', 'Triplanar']], 'auto', (v) => lab.setProjection(v)));
   popRow('Exposure', range(0.4, 2.5, 0.05, 1, (v) => lab.setExposure(v)));
   popRow('Environment reflections', range(0, 3, 0.05, 1, (v) => lab.setEnv(v)));
+  // Miljön: studiorummet eller en HDRI (Poly Haven, CC0), som komplement till ljuset ovan
+  const envSel = sel([['', 'Studio room']], '', async (v) => { status.textContent = v ? 'Loading the HDRI…' : ''; try { await lab.setHdri(v || null); status.textContent = ''; } catch (e) { status.textContent = `HDRI: ${e.message}`; } },
+    'Environment light and reflections: the studio room, or an HDRI next to the sun');
+  popRow('Environment', envSel);
+  fetch(`${HDRI_DIR}index.json`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).then((idx) => {
+    for (const h of Object.values(idx)) { const o = el('option', null, `HDRI: ${h.name}`); o.value = h.file; envSel.append(o); }
+  }).catch(() => {});
+  popRow('HDRI as background', sw(false, (v) => lab.setHdriBackground(v), 'Show the HDRI behind the model'));
+  const glowRow = range(0, 3, 0.05, 1, (v) => lab.setGlow(v));
+  glowRow.title = 'How much glowing materials (emission) light the plinth and the surroundings';
+  popRow('Glow on the plinth', glowRow);
   popRow('Wireframe', sw(false, (v) => lab.setWire(v)));
   advBtn.onclick = () => pop.classList.toggle('open');
   g3.append(modelSel, lightSel, el('span', null, 'Turntable'), sw(false, (v) => lab.setTurntable(v)), distSel, advBtn);

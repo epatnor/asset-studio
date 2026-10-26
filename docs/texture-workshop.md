@@ -201,7 +201,7 @@ Förhandsvisningen i 3D har en modellväljare, så att material och blandning ka
 - **Stiliserad drakstaty:** en avancerad form med veck, fjäll och utskott, där AO, krökning, höjdblandning och riktningar syns tydligt.
 - **Den aktuella tillgången från studion.**
 
-Varje modell finns i en tät version för höjdförskjutning. Visningen har vridbord, ljusförval (spelets sol och himmel, studioljus, motljus) och en HDR-miljö för reflexer.
+Varje modell finns i en tät version för höjdförskjutning. Visningen har vridbord, ljusförval (spelets sol och himmel, studioljus, motljus, kväll och Lights off, där bara det som lyser själv syns) och en miljö för reflexer och omgivningsljus: studiorummet eller en HDRI från Poly Haven (CC0, `third_party/polyhaven_hdri/`, hämtas med `tools/hdri/fetch_hdri.py`), valfritt också som bakgrund. Lysande material (emission) lyser upp plattan: ett punktljus i modellen med emissionskartans medelfärg, starkare ju mer som lyser och ju större modellen är (Advanced: Glow on the plinth). Material och texturer i lådan byter aldrig modell; det gör bara profilväljaren.
 
 ## Terräng och stora ytor
 

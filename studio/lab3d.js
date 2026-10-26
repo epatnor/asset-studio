@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const MAX_LAYERS = 4;
@@ -25,7 +26,11 @@ export const LIGHTS = {
   studio: { label: 'Studio light', sun: [0xffffff, 2.0, [4, 6, 6]], hemi: [0xffffff, 0x444444, 0.35], env: 1.0, bg: 0x4a4f58 },
   back: { label: 'Backlight', sun: [0xffe0b0, 3.4, [-6, 5, -7]], hemi: [0x9fb7d9, 0x3a3328, 0.7], env: 0.3, bg: 0x2f3a4a },
   evening: { label: 'Evening', sun: [0xffa860, 2.6, [8, 2.2, 2]], hemi: [0x6f86b8, 0x2a2018, 0.6], env: 0.25, bg: 0x5c6f9a },
+  // Släckt: bara det som lyser själv (emission) och miljön om man skruvar upp den; glöden lyser upp plattan
+  dark: { label: 'Lights off', sun: [0xffffff, 0, [4, 6, 6]], hemi: [0xffffff, 0x000000, 0], env: 0, bg: 0x0b0d11 },
 };
+// HDRI som miljöljus (third_party/polyhaven_hdri, hämtas med tools/hdri/fetch_hdri.py): listan läses ur index.json
+export const HDRI_DIR = '/third_party/polyhaven_hdri/';
 const DIRS = { up: [0, 1, 0], down: [0, -1, 0], north: [0, 0, 1], south: [0, 0, -1], east: [1, 0, 0], west: [-1, 0, 0] };
 
 // --- Krökning per hörn (positivt på utstickande kanter, negativt i skrymslen), för kantmasker ---
@@ -98,7 +103,9 @@ export function createLab({ getAssetUrl }) {
   camera.position.set(2.2, 1.6, 2.6);
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
-  scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const roomEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = roomEnv;
 
   const sun = new THREE.DirectionalLight(0xffffff, 3);
   sun.castShadow = true;
@@ -110,6 +117,37 @@ export function createLab({ getAssetUrl }) {
   const ground = new THREE.Mesh(new THREE.CircleGeometry(9, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x8a8577, roughness: 0.95 }));
   ground.receiveShadow = true;
   scene.add(ground);
+  // Glöden: lysande material (emission) lyser upp plattan och omgivningen. Ett punktljus i modellen med
+  // emissionskartans medelfärg, starkare ju mer av ytan som lyser och ju större modellen är. Inga skuggor:
+  // ljuset sitter inne i modellen och kommer ut genom sprickorna.
+  const glow = new THREE.PointLight(0xffffff, 0, 0, 2);
+  scene.add(glow);
+  let glowScale = 1, glowMean = { color: new THREE.Color(0, 0, 0), lum: 0 };
+  function meanOf(tex) {
+    const img = tex?.image;
+    if (!img || !img.width || tex === BLANK.emissive) return { color: new THREE.Color(0, 0, 0), lum: 0 };
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, 16, 16);
+    const d = g.getImageData(0, 0, 16, 16).data, sum = [0, 0, 0];
+    const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) sum[k] += lin(d[i + k]);
+    const col = new THREE.Color(sum[0] / 256, sum[1] / 256, sum[2] / 256);
+    return { color: col, lum: 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b };
+  }
+  function updateGlow() {
+    const on = mat.emissiveIntensity > 0 && glowMean.lum > 0 && model;
+    glow.visible = !!on;
+    if (!on) return;
+    const size = model.box.getSize(new THREE.Vector3()), c = model.box.getCenter(new THREE.Vector3());
+    const m = Math.max(glowMean.color.r, glowMean.color.g, glowMean.color.b) || 1;
+    glow.color.setRGB(glowMean.color.r / m, glowMean.color.g / m, glowMean.color.b / m);
+    const r = Math.max(size.x, size.z) * 0.5;
+    glow.position.set(c.x, model.box.min.y + Math.min(size.y * 0.35, r), c.z);
+    // Lysande yta ungefär 4 r², halva strålar nedåt mot plattan
+    glow.intensity = mat.emissiveIntensity * glowMean.lum * 4 * r * r * 2.5 * glowScale;
+  }
 
   // --- Texturer: platshållare så att shaderns defines aldrig ändras när en karta slås av och på ---
   const px = (r, g, b, srgb) => { const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1); t.needsUpdate = true; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
@@ -351,6 +389,7 @@ export function createLab({ getAssetUrl }) {
     scene.add(e.group);
     ground.visible = modelId !== 'terrain';
     U.uBounds.value.set(e.box.min.y, e.box.max.y);
+    updateGlow();
     applyProjection();
     frame();
   }
@@ -418,6 +457,7 @@ export function createLab({ getAssetUrl }) {
     mat.displacementBias = m.displace?.on ? -m.displace.scale * 0.5 : 0;
     if (dense !== !!m.displace?.on) { dense = !!m.displace?.on; showModel(); }
     mat.emissiveIntensity = m.emission?.on ? m.emission.intensity : 0;
+    updateGlow();
     const mode = m.alpha?.mode ?? 'off';
     const alphaTest = mode === 'cutout' ? m.alpha.test : 0;
     if ((mat.alphaTest > 0) !== (alphaTest > 0) || mat.transparent !== (mode === 'blend')) mat.needsUpdate = true;
@@ -466,6 +506,8 @@ export function createLab({ getAssetUrl }) {
     for (const [k, t] of entries) if (t) maps[k] = t;
     mat.map = maps.color; mat.roughnessMap = maps.rough; mat.metalnessMap = maps.metal; mat.aoMap = maps.ao;
     mat.emissiveMap = maps.emissive; mat.displacementMap = maps.height; U.uHeightF.value = maps.height;
+    glowMean = meanOf(maps.emissive);
+    updateGlow();
     if (mat.normalMap) mat.normalMap = maps.normal;
     if (mat.bumpMap) mat.bumpMap = maps.height;
     if (lastMaterial) applySampling(lastMaterial);
@@ -490,10 +532,25 @@ export function createLab({ getAssetUrl }) {
     const L = LIGHTS[id] ?? LIGHTS.sun;
     sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; sun.position.set(...L.sun[2]).multiplyScalar(modelId === 'terrain' ? 6 : 1);
     hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2];
-    scene.environmentIntensity = L.env * envScale;
-    scene.background = new THREE.Color(L.bg);
+    scene.environmentIntensity = (hdri ? Math.max(L.env, L.env > 0 ? 0.6 : 0) : L.env) * envScale;
+    scene.background = hdri && hdriBg ? hdri.bg : new THREE.Color(L.bg);
+    scene.backgroundIntensity = L.env > 0 ? 1 : 0.15;
     lightId = id;
     needsRender = true;
+  }
+  // HDRI: miljön (reflexer och omgivningsljus) byts från rummet till bilden; valfritt också som bakgrund
+  const hdrLoader = new HDRLoader(), hdriCache = new Map();
+  let hdri = null, hdriBg = false;
+  async function setHdri(id) {
+    if (!id) { hdri = null; scene.environment = roomEnv; setLight(lightId); return; }
+    if (!hdriCache.has(id)) {
+      const tex = await hdrLoader.loadAsync(`${HDRI_DIR}${id}`);
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      hdriCache.set(id, { env: pmrem.fromEquirectangular(tex).texture, bg: tex });
+    }
+    hdri = hdriCache.get(id);
+    scene.environment = hdri.env;
+    setLight(lightId);
   }
   let lightId = 'sun', envScale = 1, turntable = false, visible = false, needsRender = true, wire = false;
 
@@ -533,6 +590,9 @@ export function createLab({ getAssetUrl }) {
     setProjection(p) { projection = p; applyProjection(); },
     setExposure(v) { renderer.toneMappingExposure = v; needsRender = true; },
     setEnv(v) { envScale = v; setLight(lightId); },
+    setHdri, // filnamn i third_party/polyhaven_hdri, eller null för studiorummet
+    setHdriBackground(on) { hdriBg = on; setLight(lightId); },
+    setGlow(v) { glowScale = v; updateGlow(); needsRender = true; },
     setWire(on) { wire = on; mat.wireframe = on; needsRender = true; },
     shot() { renderer.render(scene, camera); return canvas.toDataURL('image/jpeg', 0.85); },
     stats() { return { tris: renderer.info.render.triangles, calls: renderer.info.render.calls }; },
