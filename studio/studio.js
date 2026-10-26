@@ -15,7 +15,7 @@ import { createLibrary } from './library.js';
 import { createHome, DEPARTMENTS, VAULT } from './home.js';
 import { createForgeDrawer } from './drawer.js';
 import { createWindmill } from './windmill.js';
-import { createGpuMenu, gpuPreference } from './gpu.js';
+import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -120,8 +120,9 @@ addEventListener('resize', () => {
 });
 const timer = new THREE.Timer();
 let paused = false;
+const gate = frameGate(); // bildtakten (grafikkortsmenyn): taket gäller alla 3D-vyer
 renderer.setAnimationLoop((t) => {
-  if (paused) return;
+  if (paused || !gate(performance.now())) return;
   timer.update(t);
   wind.uTime.value = timer.getElapsed();
   controls.update();

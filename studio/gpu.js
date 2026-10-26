@@ -13,6 +13,32 @@ export function gpuPreference() {
   } catch { return 'high-performance'; }
 }
 
+// Bildtakten: ett tak för hur många bilder per sekund 3D-vyerna ritar (0 = skärmens takt). Bärbara datorer har ofta
+// skärmar på 165–240 Hz; full takt med tungt gräs ger värme, fläktljud och coilwhine (spolarna på grafikkortet
+// sjunger i bildtakten). 60 är standard.
+const FPS_KEY = 'studio-fps';
+// ?fps= i adressen (0, 30, 60 …) sätter taket för den profilen, som ?gpu= gör för kortet
+let fpsCap = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get('fps');
+    if (q !== null && /^\d{1,3}$/.test(q)) localStorage.setItem(FPS_KEY, q);
+    const v = localStorage.getItem(FPS_KEY);
+    return v === null ? 60 : Number(v);
+  } catch { return 60; }
+})();
+export const fpsLimit = () => fpsCap;
+// En spärr per ritslinga: frameGate()(now) är sann när det är dags för nästa bild under taket
+export function frameGate() {
+  let last = -Infinity;
+  return (now) => {
+    if (!fpsCap) return true;
+    // Lite marginal, så att en skärm på 165 Hz ger cirka 55 och en på 240 Hz exakt 60 bilder per sekund
+    if (now - last < (1000 / fpsCap) * 0.92) return false;
+    last = now;
+    return true;
+  };
+}
+
 // Kortets namn ur WebGL (ANGLE (AMD, AMD Radeon 780M Graphics (radeonsi ...), OpenGL ES 3.2)) och WebGPU:s adapter
 export async function detectGpu() {
   let gl = null;
@@ -71,6 +97,16 @@ export async function createGpuMenu({ el, api, button, root }) {
     }
     const hint = el('div', 'note', 'Sent to every 3D view. Windows and macOS often switch cards on it; on Linux the browser picks its card when it starts, so open the studio on a card below.');
     pop.append(seg, hint);
+
+    pop.append(el('h3', null, 'Frame rate'));
+    const fseg = el('div', 'seg');
+    for (const [v, l, tip] of [[0, 'Display', 'As fast as the screen refreshes (165–240 Hz on many laptops)'], [60, '60 fps', 'Smooth, and much less load'], [30, '30 fps', 'Coolest and quietest']]) {
+      const b = el('button', fpsCap === v ? 'on' : null, l);
+      b.title = tip;
+      b.onclick = () => { fpsCap = v; try { localStorage.setItem(FPS_KEY, String(v)); } catch {} render(); };
+      fseg.append(b);
+    }
+    pop.append(fseg, el('div', 'note', 'A cap on how often the 3D views draw. Lower is cooler and quieter: coil whine and fan noise usually come from very high frame rates.'));
 
     const L = await api('/api/gpus').catch(() => null);
     if (L?.gpus?.length) {

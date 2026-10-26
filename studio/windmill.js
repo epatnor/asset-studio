@@ -9,7 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
 import { createGrass, colorTexture, groundSampler } from '../shared/effects/grass.js';
-import { gpuPreference } from './gpu.js';
+import { gpuPreference, frameGate } from './gpu.js';
 import { createCloth } from '../shared/effects/cloth.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
@@ -568,8 +568,11 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     camera.updateProjectionMatrix();
   }
   addEventListener('resize', () => { if (running) resize(); });
+  const gate = frameGate(); // bildtakten (grafikkortsmenyn)
   function frame() {
-    const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000);
+    const now = performance.now();
+    if (!gate(now)) return;
+    const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) wind.update(dt);
     if (cloth && !paused && cloth.step(dt * wind.state.timeScale, clothWind)) updateCloth();
@@ -594,7 +597,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
     // Ett provfönster (test=1, egen profil) stängs av servern när bilden är sparad
     const test = new URLSearchParams(location.search).get('test') === '1' ? '&test=1' : '';
-    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}${test}`, { method: 'POST', body: blob });
+    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}_${fps}fps${test}`, { method: 'POST', body: blob });
   }, 4000);
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },

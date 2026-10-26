@@ -9,7 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
-import { gpuPreference } from './gpu.js';
+import { gpuPreference, frameGate } from './gpu.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const MAX_LAYERS = 4;
@@ -566,6 +566,7 @@ export function createLab({ getAssetUrl }) {
   addEventListener('resize', resize);
   controls.addEventListener('change', () => { needsRender = true; });
   let lastT = performance.now();
+  const gate = frameGate();
   function loop() {
     if (!visible) return;
     requestAnimationFrame(loop);
@@ -573,7 +574,7 @@ export function createLab({ getAssetUrl }) {
     lastT = now;
     if (turntable && model) { model.group.rotation.y += dt * 0.35; needsRender = true; }
     controls.update();
-    if (needsRender) { renderer.render(scene, camera); needsRender = false; }
+    if (needsRender && gate(now)) { renderer.render(scene, camera); needsRender = false; }
   }
   resize();
   setLight('sun');
