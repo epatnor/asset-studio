@@ -590,8 +590,10 @@ async function gpuList() {
 }
 async function gpuLaunch({ id, path: page }) {
   const { gpus, browser, canLaunch } = await gpuList();
-  const gpu = gpus.find((g) => g.id === id);
+  // id: kortets nummer, eller 'discrete' för det snabba kortet (genvägen i appmenyn, tools/studio/launch.sh)
+  const gpu = id === 'discrete' ? gpus.find((g) => g.discrete) ?? gpus[0] : gpus.find((g) => g.id === id);
   if (!canLaunch || !gpu) return { error: 'cannot start on that graphics card here' };
+  id = gpu.id;
   if (!/^\/studio\/[\w./?=&#%-]*$/.test(String(page ?? ''))) return { error: 'bad page' };
   // Fönstret får sitt kortval med sig (gpu=), som förval för WebGPU:s adapter i den profilen
   const u = new URL(page, 'http://localhost');
@@ -602,7 +604,8 @@ async function gpuLaunch({ id, path: page }) {
   // av Vulkan-drivrutinerna gör att Vulkan inte startar i Flatpak-Chrome, och då hamnar WebGPU på processorn
   // (SwiftShader). X11 (XWayland) i stället för Wayland: Chrome med Vulkan och NVIDIA fungerar inte på Wayland.
   const env = /nvidia/i.test(gpu.name) && !gpu.default ? ['__NV_PRIME_RENDER_OFFLOAD=1', '__GLX_VENDOR_LIBRARY_NAME=nvidia'] : gpu.default ? [] : ['DRI_PRIME=1'];
-  const [c, ...args] = onHost(['env', ...env, 'flatpak', 'run', browser, `--user-data-dir=${profile}`, '--ozone-platform=x11',
+  // --class: fönstrets klass i X11, så att dockan och aktivitetsfältet visar Asset Studio med sin ikon (StartupWMClass)
+  const [c, ...args] = onHost(['env', ...env, 'flatpak', 'run', browser, `--user-data-dir=${profile}`, '--ozone-platform=x11', '--class=asset-studio',
     `--app=${url}`, '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check']); // WebGPU går på Vulkan; --enable-unsafe-webgpu behövs inte och ger en varningsrad
   const p = spawn(c, args, { detached: true, stdio: 'ignore' });
   p.unref();

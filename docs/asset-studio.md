@@ -127,6 +127,8 @@ Knappen i headern (`studio/gpu.js`) visar vilket kort fönstret ritar på (WebGL
 
 Lärt på den här datorn: webbläsarpanelen i Claude-appen ritar på det inbyggda Radeon 780M och har ingen WebGPU. `cardwire launch` låser Vulkan till NVIDIA:s drivrutin, och då startar inte Vulkan i Flatpak-Chrome, så WebGPU hamnar på processorn (SwiftShader); Chrome med Vulkan och NVIDIA kraschar på Wayland (dmabuf). Med X11 och bara PRIME-variablerna ritar både WebGL och WebGPU på RTX 4070, och `--enable-unsafe-webgpu` behövs inte. Väderkvarnen använder WebGL2 om WebGPU bara finns som mjukvara.
 
+**Genvägen i appmenyn** (Asset Studio, med bonsaiikonen): `tools/studio/launch.sh` körs på värden, startar studioservern som systemd-enheten `asset-studio-server` i containern claude-desktop om den inte svarar, och ber den öppna studion på det snabba kortet (`/api/gpu/launch` med `id: "discrete"`); går det inte öppnas studion i standardwebbläsaren. Fönstret får klassen `asset-studio` (`--class`), som posten anger i `StartupWMClass`, så att aktivitetsfältet visar appens ikon. Posten och ikonerna (ikontemat hicolor, 32–512 px) installeras med `sh tools/studio/install_launcher.sh` på värden; kör den igen om mappen flyttas.
+
 ## Faser
 
 | Fas | Innehåll | Klart när | Status |
