@@ -41,7 +41,7 @@ def main():
     if preset not in props or preset.startswith("_"):
         sys.exit(json.dumps({"error": f"unknown preset {preset}"}))
     sp = {**props[preset], **recipe.get("params", {})}
-    out_dir = ROOT / "assets" / "props" / name
+    out_dir = (ROOT / recipe.get("out_root", "assets/props")).resolve() / name  # out_root: t.ex. bibliotekets variantpool
     out_dir.mkdir(parents=True, exist_ok=True)
     glb = out_dir / f"{name}.gltf"
 
@@ -62,7 +62,7 @@ def main():
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
-    (out_dir / "recipe.json").write_text(json.dumps(recipe, indent=2))
+    (out_dir / "recipe.json").write_text(json.dumps({k: v for k, v in recipe.items() if k != "out_root"}, indent=2))
     result["model"] = str(glb.relative_to(ROOT))
     print(json.dumps(result))
 

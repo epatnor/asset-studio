@@ -100,6 +100,23 @@ Asset Studio ska leverera färdiga tillgångar (hus, stenar, växter, props) til
 
 Katalograden får `kind: "family" | "fixed"`, för familjer `variants` (poolen) och `scatter` (utplaceringsdata), för fasta modeller `from` (receptet den frystes från).
 
+Formatet som världen (Tinkertown, B3) läser, byggt 2026-10-26:
+
+```json
+{
+  "model": "assets/props/boulder1/boulder1.gltf", "kind": "family", "category": "rock",
+  "bounds": { "width": 2.47, "depth": 2.3, "height": 1.07, "radius": 1.24 },
+  "variants": { "built": "2026-10-26T13:40:00Z", "items": [
+    { "seed": 6, "model": "assets/props/boulder1/boulder1.gltf", "main": true },
+    { "seed": 8105, "model": "assets/props/boulder1/variants/boulder1_s8105/boulder1_s8105.gltf", "checks_ok": true, "thumbnail": "…_thumb.png" }
+  ] },
+  "scatter": { "scale": [0.6, 1.5], "align": 0.8, "max_slope": 60, "rotate": "free", "radius": 1.24, "spacing": 1, "weight": 1, "biomes": ["skog"] }
+}
+```
+
+- `variants.items` börjar med familjens egen modell (`main`). Världen sparar familj och frö per punkt och tar varianten med närmast frö.
+- `scatter`: `scale` är skalans intervall, `align` hur mycket exemplaret lutar med marken (0 rakt upp, 1 följer marken), `max_slope` största marklutning i grader, `rotate` `y` eller `free`, `radius` fotavtrycket i meter (standard ur `bounds`), `spacing` minsta avstånd i radier och `weight` hur ofta familjen väljs. Standardvärdena per kategori finns i `SCATTER_DEFAULTS` i `tools/studio/server.mjs`.
+
 ### 5. AI:n i samma loop
 
 MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem varianter av björken jag sparade i går") och använda samma API som studion. Studion kan senare få en knapp "Be Claude …" som skickar receptet och en fråga.
@@ -114,7 +131,7 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 | 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props | Flikarna finns, markerade som kommande |
 | 5. Hopkoppling | Tinkertown visar biblioteket; Electron-paketering tillsammans med Tinkertown | Det som sparas i studion går att placera i världen | Återstår |
 | B1. Biblioteksvy | FAB-lik vy: kategorier, taggar, sök, märkning Familj och Fast; Frys och Tina | Biblioteket är där man hittar och väljer allt | Byggd 2026-10-26 (`studio/library.js`, `/api/library/*`); Öppna i studion bara för träd och buskar än |
-| B2. Familjer | variantpool (8–16 färdigbyggda), utplaceringsdata (`scatter`), fler varianter i bakgrunden | En familj kan spridas ut utan att byggas om per exemplar | Planerad |
+| B2. Familjer | variantpool (4–16 färdigbyggda), utplaceringsdata (`scatter`), mått (`bounds`) | En familj kan spridas ut utan att byggas om per exemplar | Byggd 2026-10-26: Varianter och Utplacering i bibliotekets detaljpanel, `/api/library/variants` som jobb |
 | B3. Proxys och PCG | Tinkertown läser familjerna; proxys (familj och frö) och en PCG-graf som sprider ut dem | Skog och stenar sprids med regler, med variation per frö | Planerad |
 | B4. Texturera modellen | lagerpanel i verkstaden (Marmoset-lik); kartor bakade i Blender; lagren bakas till modellens UV-texturer | En egen prop får egna texturer och blir en fast modell | Planerad |
 | B5. Sammansättningar och pensel | recept av recept (sten med svampar, lägereld); maskpensel | Egna props byggs av biblioteket | Planerad |

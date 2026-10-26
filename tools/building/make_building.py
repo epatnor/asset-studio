@@ -86,7 +86,7 @@ def main():
         subprocess.run(["uv", "run", "--quiet", "--script", str(ROOT / "tools" / "texture" / "to_webp.py"), str(TEX)],
                        cwd=ROOT, capture_output=True, text=True, timeout=600)
 
-    out_dir = ROOT / "assets" / "buildings" / name
+    out_dir = (ROOT / recipe.get("out_root", "assets/buildings")).resolve() / name  # out_root: t.ex. bibliotekets variantpool
     out_dir.mkdir(parents=True, exist_ok=True)
     gltf = out_dir / f"{name}.gltf"
     gen = {k: v for k, v in recipe.items() if k != "textures"}
@@ -95,7 +95,7 @@ def main():
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-800:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
-    (out_dir / "recipe.json").write_text(json.dumps(recipe, indent=2, ensure_ascii=False))
+    (out_dir / "recipe.json").write_text(json.dumps({k: v for k, v in recipe.items() if k != "out_root"}, indent=2, ensure_ascii=False))
     result["model"] = str(gltf.relative_to(ROOT))
     if log:
         result["texture_log"] = log

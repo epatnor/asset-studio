@@ -324,6 +324,20 @@
   button.danger:hover:not(:disabled) { border-color: var(--bad); }
   .lsec { padding: 0; gap: 8px; }
   .lsec .lab { color: var(--muted); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; }
+  .poolb { position: absolute; bottom: 8px; left: 8px; font-size: 10px; font-weight: 650; padding: 2px 6px; border-radius: 4px; background: rgba(0, 0, 0, 0.55); color: #fff; }
+  .lsec2 { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .lsec2 h3 { margin: 0; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .lsec2 .rows { padding: 0; }
+  .lsec2 .row { grid-template-columns: 112px 1fr 44px; }
+  .lsec2 .row.span2 { grid-template-columns: 112px 1fr; }
+  .pair { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .pair input { width: 70px; }
+  .vstrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .vstrip figure { margin: 0; position: relative; aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--line); overflow: hidden;
+                   background: radial-gradient(circle at 50% 38%, var(--btn-hover), var(--field) 75%); }
+  .vstrip figure.bad { border-color: var(--bad); }
+  .vstrip img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .vstrip figcaption { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9.5px; text-align: center; color: var(--muted); background: var(--surface); padding: 1px 0; }
   .linfo { display: grid; grid-template-columns: 96px 1fr; gap: 5px 10px; margin: 0; font-size: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
   .linfo dt { color: var(--muted); }
   .linfo dd { margin: 0; word-break: break-word; color: var(--ink-2); }

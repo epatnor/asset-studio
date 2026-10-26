@@ -28,7 +28,7 @@ def main():
     preset = recipe.get("preset", "grass_tuft")
     if preset not in plants or preset.startswith("_"):
         sys.exit(json.dumps({"error": f"unknown preset {preset}"}))
-    out_dir = ROOT / "assets" / "plants" / name
+    out_dir = (ROOT / recipe.get("out_root", "assets/plants")).resolve() / name  # out_root: t.ex. bibliotekets variantpool
     out_dir.mkdir(parents=True, exist_ok=True)
     model = out_dir / f"{name}.gltf"
     gen = {"name": name, "preset": preset, "seed": recipe.get("seed", 0), "out": str(model), "params": recipe.get("params", {})}
@@ -36,7 +36,7 @@ def main():
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
-    (out_dir / "recipe.json").write_text(json.dumps(recipe, indent=2))
+    (out_dir / "recipe.json").write_text(json.dumps({k: v for k, v in recipe.items() if k != "out_root"}, indent=2))
     result["model"] = str(model.relative_to(ROOT))
     print(json.dumps(result))
 

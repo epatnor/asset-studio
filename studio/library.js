@@ -157,6 +157,8 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     kb.title = KIND_HELP[i.kind];
     box.append(kb);
     if (i.checks_ok === false) box.append(Object.assign(el('span', 'warnb', '!'), { title: 'Kontrollerna gick inte igenom när den sparades' }));
+    const nv = (i.variants?.items.length ?? 0);
+    if (nv > 1) box.append(Object.assign(el('span', 'poolb', `×${nv}`), { title: `Variantpool: ${nv} färdiga varianter` }));
     if (f.source === 'loose') {
       const add = el('button', 'mini primary addb', '+ Lägg till');
       add.onclick = (e) => { e.stopPropagation(); addToLibrary(i); };
@@ -235,6 +237,9 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     }
     detail.append(acts);
 
+    if (inLib && i.kind === 'family') detail.append(variantSection(i));
+    if (inLib) detail.append(scatterSection(i));
+
     // Kategori och taggar (bara för det som ligger i biblioteket)
     if (inLib) {
       const catRow = el('div', 'row span2');
@@ -273,6 +278,133 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     fact('Sparad', i.saved ? new Date(i.saved).toLocaleString('sv-SE', { dateStyle: 'medium', timeStyle: 'short' }) : null);
     fact('Modell', i.model);
     detail.append(dl);
+  }
+
+  // --- Variantpoolen (B2): familjens modell plus N varianter med nya frön, byggda av servern ---
+  const jobs = new Map(); // modell -> förlopp medan poolen byggs
+  function variantSection(i) {
+    const sec = el('section', 'lsec2');
+    const pool = i.variants?.items ?? [];
+    sec.append(el('h3', null, `Varianter${pool.length ? ` (${pool.length})` : ''}`));
+    if (pool.length) {
+      const strip = el('div', 'vstrip');
+      for (const v of pool) {
+        const f = el('figure');
+        if (v.thumbnail) f.append(Object.assign(el('img'), { src: `/${v.thumbnail}${bust.has(v.model) ? `?v=${bust.get(v.model)}` : ''}`, alt: '' }));
+        else f.append(el('span', 'ph', '…'));
+        f.append(el('figcaption', null, v.main ? `${v.seed} (egen)` : String(v.seed)));
+        if (v.checks_ok === false) f.classList.add('bad');
+        f.title = `frö ${v.seed}${v.height_m ? `, ${v.height_m} m` : ''}${v.checks_ok === false ? ', kontrollerna röda' : ''}`;
+        strip.append(f);
+      }
+      sec.append(strip);
+    } else sec.append(el('div', 'note', 'Ingen pool än. Världen behöver några färdiga varianter av familjen att sprida ut; den väljer den som ligger närmast fröet.'));
+    const row = el('div', 'btns');
+    const n = el('select');
+    for (const k of [4, 8, 12, 16]) { const o = el('option', null, `${k} nya`); o.value = k; n.append(o); }
+    n.value = String(Math.min(16, Math.max(4, Math.round(((pool.length || 9) - 1) / 4) * 4)));
+    const build = el('button', 'primary', pool.length ? 'Bygg om poolen' : 'Bygg variantpool');
+    build.title = 'Samma recept med nya frön; servern bygger dem en i taget';
+    const prog = el('span', 'note');
+    const job = jobs.get(i.model);
+    if (job) { build.disabled = true; prog.textContent = job; }
+    build.onclick = () => buildPool(i, Number(n.value));
+    row.append(n, build);
+    if (pool.length > 1) {
+      const del = el('button', 'danger', 'Ta bort');
+      del.title = 'Ta bort variantpoolen (familjens egen modell ligger kvar)';
+      del.onclick = async () => { if (!confirm('Ta bort variantpoolen?')) return; await post('variants', { model: i.model, count: 0 }); await load(); };
+      row.append(del);
+    }
+    sec.append(row, prog);
+    return sec;
+  }
+  async function buildPool(i, count) {
+    const r = await post('variants', { model: i.model, count });
+    if (r.error || !r.job) return;
+    jobs.set(i.model, `Bygger 0/${count} …`);
+    renderDetail();
+    let st;
+    for (;;) {
+      await new Promise((ok) => setTimeout(ok, 1200));
+      st = await api(`/api/library/job?id=${r.job}`);
+      if (st.error || st.done) break;
+      jobs.set(i.model, `Bygger ${st.k}/${st.n} …`);
+      if (sel === i.model) renderDetail();
+    }
+    // Miniatyrer för de nya varianterna, sedan läses biblioteket om
+    const items = st.entry?.variants?.items ?? [];
+    for (const [k, v] of items.entries()) {
+      jobs.set(i.model, `Miniatyrer ${k + 1}/${items.length} …`);
+      if (sel === i.model) renderDetail();
+      if (!v.thumbnail) await makeThumb(v);
+    }
+    jobs.delete(i.model);
+    if (st.errors?.length) alert(`Några varianter misslyckades:\n${st.errors.join('\n')}`);
+    await load();
+  }
+
+  // --- Utplacering (B2): hur världen sprider ut familjen (läses av Tinkertowns PCG i B3) ---
+  function scatterSection(i) {
+    const s = i.scatter ?? {};
+    const sec = el('section', 'lsec2');
+    sec.append(el('h3', null, 'Utplacering'));
+    if (i.bounds) sec.append(el('div', 'note', `Mått: ${i.bounds.width} × ${i.bounds.depth} m, ${i.bounds.height} m hög`));
+    const save = (patch) => { Object.assign(s, patch); post('update', { model: i.model, scatter: patch }); };
+    const rows = el('div', 'rows');
+    const slider = (label, key, min, max, step, help, fmt = (v) => v) => {
+      const r = el('div', 'row');
+      r.title = help;
+      const inp = Object.assign(el('input'), { type: 'range', min, max, step, value: s[key] ?? min });
+      const out = el('output', null, String(fmt(s[key] ?? min)));
+      inp.oninput = () => { out.textContent = String(fmt(Number(inp.value))); };
+      inp.onchange = () => save({ [key]: Number(inp.value) });
+      r.append(el('label', null, label), inp, out);
+      rows.append(r);
+    };
+    // Storlek: två tal (min och max)
+    const sz = el('div', 'row span2');
+    sz.title = 'Slumpad skala per exemplar';
+    const pair = el('div', 'pair');
+    const [a, b] = s.scale ?? [1, 1];
+    const lo = Object.assign(el('input'), { type: 'number', min: 0.05, max: 20, step: 0.05, value: a });
+    const hi = Object.assign(el('input'), { type: 'number', min: 0.05, max: 20, step: 0.05, value: b });
+    lo.onchange = hi.onchange = () => save({ scale: [Number(lo.value), Number(hi.value)] });
+    pair.append(lo, el('span', null, '–'), hi);
+    sz.append(el('label', null, 'Storlek (×)'), pair);
+    rows.append(sz);
+    slider('Luta med marken', 'align', 0, 1, 0.05, '0: står alltid rakt upp (träd). 1: följer markens lutning (stenar, mossa)', (v) => v.toFixed(2));
+    slider('Största lutning', 'max_slope', 0, 90, 1, 'Placeras inte där marken lutar mer än så', (v) => `${v}°`);
+    slider('Radie (m)', 'radius', 0.1, Math.max(20, Math.ceil((i.bounds?.radius ?? 5) * 2)), 0.1, 'Fotavtryck: hur stor plats ett exemplar tar (standard ur modellens mått)', (v) => v.toFixed(1));
+    slider('Avstånd (× radie)', 'spacing', 0.1, 4, 0.05, 'Minsta avstånd mellan exemplar, i radier. Under 1 får de gå in i varandra', (v) => v.toFixed(2));
+    slider('Vikt', 'weight', 0, 10, 0.1, 'Hur ofta familjen väljs jämfört med andra på samma plats', (v) => v.toFixed(1));
+    const rot = el('div', 'row span2');
+    const rs = el('select');
+    for (const [v, l] of [['y', 'Bara runt höjdaxeln'], ['free', 'Fritt (även lutad)']]) { const o = el('option', null, l); o.value = v; rs.append(o); }
+    rs.value = s.rotate ?? 'y';
+    rs.onchange = () => save({ rotate: rs.value });
+    rot.append(el('label', null, 'Vridning'), rs);
+    rows.append(rot);
+    // Biomer: taggar för var familjen hör hemma
+    const bio = el('div', 'chips');
+    const setBiomes = async (list) => { await post('update', { model: i.model, scatter: { biomes: list } }); await load(); };
+    for (const t of s.biomes ?? []) {
+      const c = el('span', 'chip on', t);
+      const x = el('button', 'x', '×');
+      x.onclick = () => setBiomes(s.biomes.filter((y) => y !== t));
+      c.append(x);
+      bio.append(c);
+    }
+    for (const t of ['skog', 'äng', 'strand', 'berg', 'by', 'träsk'].filter((t) => !(s.biomes ?? []).includes(t))) {
+      const c = el('button', 'chip', `+ ${t}`);
+      c.onclick = () => setBiomes([...(s.biomes ?? []), t]);
+      bio.append(c);
+    }
+    const lab = el('div', 'row span2');
+    lab.append(el('label', null, 'Biomer'), bio);
+    rows.append(lab);
+    sec.append(rows);
+    return sec;
   }
 
   function renderAll() { renderSide(); renderGrid(); renderDetail(); }

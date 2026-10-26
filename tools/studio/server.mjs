@@ -9,8 +9,10 @@
 // GET  /api/textures?kind=bark      texturer att välja bland (leaves, bark)
 // GET  /api/library                 bibliotekets katalog (assets/library.json), med kind (family, fixed) och category
 // GET  /api/library/scan            tillgångar under assets/ som inte finns i katalogen
-// POST /api/library/add|update|remove|freeze|thumb   { model, ... }: lägg till, taggar och kategori, ta bort raden,
-//                                   frys till assets/fixed/<name>/, spara en miniatyr (PNG) bredvid modellen
+// POST /api/library/add|update|remove|freeze|thumb   { model, ... }: lägg till, taggar, kategori och utplacering
+//                                   (scatter), ta bort raden, frys till assets/fixed/<name>/, spara en miniatyr (PNG)
+// POST /api/library/variants        { model, count } -> { job }: bygg familjens variantpool (count 0 tar bort den)
+// GET  /api/library/job?id=         variantjobbets förlopp { k, n, done, errors, entry }
 // POST /api/library                 { generator, name, tags, recipe, thumbnail } -> assets/ + rad i katalogen
 // POST /api/shot?name=             skärmdump av 3D-vyn (PNG i kroppen) -> build/shots/studio_<namn>.png
 // GET  /api/workshop                texturverkstadens spakar (tools/texture/workshop.json)
@@ -239,6 +241,7 @@ async function libraryView() {
              thumbnail: i.thumbnail ?? thumbFor(path.dirname(i.model), i.name), preset: recipe?.preset ?? null, seed: recipe?.seed ?? null,
              license: recipe?.license ?? null, origin: recipe?.origin ?? null };
   }));
+  for (const i of items) { i.bounds ??= await gltfBounds(i.model); i.scatter = scatterFor(i, i.bounds); }
   return { items };
 }
 // Tillgångar på disken som inte finns i katalogen, att lägga till
@@ -272,10 +275,11 @@ async function libraryAdd({ model, tags }) {
   await writeLibrary(lib);
   return { entry };
 }
-async function libraryUpdate({ model, tags, category }) {
+async function libraryUpdate({ model, tags, category, scatter }) {
   const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
   if (!e) return { error: 'finns inte i biblioteket' };
   if (tags) e.tags = cleanTags(tags);
+  if (scatter && typeof scatter === 'object') e.scatter = { ...e.scatter, ...cleanScatter(scatter) };
   if (category) { if (!CATEGORIES.has(category)) return { error: `okänd kategori ${category}` }; e.category = category; }
   await writeLibrary(lib);
   return { entry: e };
@@ -313,7 +317,7 @@ async function libraryFreeze({ model, name }) {
   const lib = await readLibrary();
   const entry = { name, type: src.type, kind: 'fixed', category: src.category, tags: src.tags ?? [], model: `${to}/${name}${ext}`, recipe,
                   thumbnail: thumbFor(to, name), checks_ok: src.checks_ok ?? null, saved: new Date().toISOString(),
-                  from: { name: src.name, model, recipe: src.recipe } };
+                  scatter: src.scatter, from: { name: src.name, model, recipe: src.recipe } };
   lib.items.push(entry);
   await writeLibrary(lib);
   return { entry };
@@ -321,13 +325,100 @@ async function libraryFreeze({ model, name }) {
 // Miniatyr som studion renderat (PNG med alfa) bredvid modellen; raden i katalogen pekar på den
 async function libraryThumb({ model, thumbnail }) {
   const m = /^data:image\/png;base64,(.+)$/.exec(thumbnail ?? '');
-  if (!m || typeof model !== 'string' || !/^assets\/[a-z]+\/[a-z0-9_]+\/[a-z0-9_]+\.(gltf|glb)$/.test(model) || !existsSync(path.join(ROOT, model)))
+  if (!m || typeof model !== 'string' || !/^assets\/[a-z0-9_/]+\/[a-z0-9_]+\.(gltf|glb)$/.test(model) || !existsSync(path.join(ROOT, model)))
     return { error: 'ogiltig modell eller bild' };
   const name = path.basename(model).replace(/\.(gltf|glb)$/, ''), rel = `${path.dirname(model)}/${name}_thumb.png`;
   await writeFile(path.join(ROOT, rel), Buffer.from(m[1], 'base64'));
   const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
-  if (e) { e.thumbnail = rel; await writeLibrary(lib); }
+  const v = lib.items.flatMap((i) => i.variants?.items ?? []).find((x) => x.model === model);
+  if (e) e.thumbnail = rel;
+  if (v) v.thumbnail = rel;
+  if (e || v) await writeLibrary(lib);
   return { thumbnail: rel };
+}
+
+// --- Familjernas variantpool och utplacering (B2) ---
+// Poolen är familjens egen modell plus N varianter med nya frön, byggda med samma recept under
+// <familjens mapp>/variants/<namn>_s<frö>/. Världen sparar familj och frö per punkt och tar närmaste färdiga variant.
+const GEN_TOOLS = { tree: 'tools/tree/make_tree.py', prop: 'tools/props/make_prop.py', plant: 'tools/plants/make_plant.py', building: 'tools/building/make_building.py' };
+// Utplaceringens standard per kategori: storleksintervall, hur mycket den lutar med marken (0–1), största lutning
+// (grader), vridning (y = bara runt höjdaxeln, free = även lutad), avstånd i radier och vikt mot andra familjer
+const SCATTER_DEFAULTS = {
+  tree: { scale: [0.85, 1.2], align: 0.1, max_slope: 35, rotate: 'y', spacing: 1, weight: 1 },
+  bush: { scale: [0.8, 1.25], align: 0.3, max_slope: 40, rotate: 'y', spacing: 0.8, weight: 1 },
+  plant: { scale: [0.7, 1.3], align: 0.7, max_slope: 45, rotate: 'y', spacing: 0.6, weight: 1 },
+  rock: { scale: [0.6, 1.5], align: 0.8, max_slope: 60, rotate: 'free', spacing: 1, weight: 1 },
+  prop: { scale: [0.85, 1.15], align: 0.6, max_slope: 40, rotate: 'y', spacing: 1, weight: 1 },
+  building: { scale: [1, 1], align: 0, max_slope: 8, rotate: 'y', spacing: 1.2, weight: 1 },
+};
+// Modellens mått ur glTF-filens accessorer (POSITION min/max, LOD0 om den finns): bredd, djup, höjd och radie i meter
+async function gltfBounds(model) {
+  let g;
+  try {
+    const buf = await readFile(path.join(ROOT, model));
+    g = model.endsWith('.glb') ? JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString()) : JSON.parse(buf.toString());
+  } catch { return null; }
+  const meshes = (g.meshes ?? []).filter((m) => /LOD0/.test(m.name ?? ''));
+  const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+  for (const m of meshes.length ? meshes : g.meshes ?? []) for (const p of m.primitives) {
+    const a = g.accessors[p.attributes.POSITION];
+    if (!a?.min) continue;
+    for (let i = 0; i < 3; i++) { mn[i] = Math.min(mn[i], a.min[i]); mx[i] = Math.max(mx[i], a.max[i]); }
+  }
+  if (!Number.isFinite(mn[0])) return null;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  return { width: r2(mx[0] - mn[0]), depth: r2(mx[2] - mn[2]), height: r2(mx[1] - Math.max(mn[1], 0)), radius: r2(Math.max(mx[0] - mn[0], mx[2] - mn[2]) / 2) };
+}
+const scatterFor = (e, bounds) => ({ ...SCATTER_DEFAULTS[e.category] ?? SCATTER_DEFAULTS.prop, radius: bounds?.radius ?? 1, biomes: [], ...e.scatter });
+function cleanScatter(s) {
+  const num = (v, lo, hi) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Number(v))) : undefined);
+  const out = {};
+  if (Array.isArray(s.scale)) { const a = num(s.scale[0], 0.05, 20), b = num(s.scale[1], 0.05, 20); if (a !== undefined && b !== undefined) out.scale = [Math.min(a, b), Math.max(a, b)]; }
+  for (const [k, lo, hi] of [['align', 0, 1], ['max_slope', 0, 90], ['spacing', 0.1, 10], ['weight', 0, 100], ['radius', 0.01, 200]]) if (s[k] !== undefined) out[k] = num(s[k], lo, hi);
+  if (s.rotate === 'y' || s.rotate === 'free') out.rotate = s.rotate;
+  if (Array.isArray(s.biomes)) out.biomes = cleanTags(s.biomes);
+  return out;
+}
+const variantJobs = new Map();
+let variantJobCounter = 0;
+async function libraryVariants({ model, count = 8 }) {
+  const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
+  if (!e) return { error: 'lägg till den i biblioteket först' };
+  const view = (await libraryView()).items.find((i) => i.model === model);
+  if (view.kind !== 'family' || !GEN_TOOLS[e.type] || !e.recipe) return { error: 'bara familjer från en generator kan få varianter' };
+  const dir = `${path.dirname(model)}/variants`;
+  count = Math.max(0, Math.min(16, Math.round(Number(count) || 0)));
+  if (!count) { // tom pool: ta bort varianterna
+    await rm(path.join(ROOT, dir), { recursive: true, force: true });
+    delete e.variants;
+    await writeLibrary(lib);
+    return { entry: e };
+  }
+  const recipe = await readJson(e.recipe), base = Number(recipe.seed ?? 1);
+  const seeds = Array.from({ length: count }, (_, k) => (base * 31 + (k + 1) * 7919) % 99999);
+  const id = String(++variantJobCounter), job = { done: false, k: 0, n: count, errors: [] };
+  variantJobs.set(id, job);
+  (async () => {
+    await rm(path.join(ROOT, dir), { recursive: true, force: true });
+    const items = [{ seed: base, model, main: true }];
+    for (const seed of seeds) {
+      const name = `${e.name}_s${seed}`;
+      const res = await serial(() => runTool(GEN_TOOLS[e.type], { ...recipe, name, seed, out_root: dir }));
+      job.k++;
+      if (res.error) { job.errors.push(`frö ${seed}: ${res.error}`); continue; }
+      items.push({ seed, model: res.model, checks_ok: res.checks?.ok ?? null, ...(res.height_m ? { height_m: res.height_m } : {}) });
+    }
+    const lib2 = await readLibrary(), e2 = lib2.items.find((i) => i.model === model);
+    if (e2) {
+      e2.variants = { items, built: new Date().toISOString() };
+      e2.bounds = await gltfBounds(model);
+      e2.scatter = scatterFor(e2, e2.bounds);
+      await writeLibrary(lib2);
+    }
+    Object.assign(job, { done: true, entry: e2 });
+    setTimeout(() => variantJobs.delete(id), 600000);
+  })().catch((err) => Object.assign(job, { done: true, errors: [...job.errors, String(err)] }));
+  return { job: id, n: count };
 }
 
 async function api(req, res, url) {
@@ -344,7 +435,11 @@ async function api(req, res, url) {
   if (url.pathname === '/api/textures' && req.method === 'GET') return json(res, 200, await textures(url.searchParams.get('kind')));
   if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await libraryView());
   if (url.pathname === '/api/library/scan' && req.method === 'GET') return json(res, 200, await libraryScan());
-  const LIB_POST = { add: libraryAdd, update: libraryUpdate, remove: libraryRemove, freeze: libraryFreeze, thumb: libraryThumb };
+  const LIB_POST = { add: libraryAdd, update: libraryUpdate, remove: libraryRemove, freeze: libraryFreeze, thumb: libraryThumb, variants: libraryVariants };
+  if (url.pathname === '/api/library/job' && req.method === 'GET') {
+    const j = variantJobs.get(url.searchParams.get('id') ?? '');
+    return json(res, 200, j ?? { error: 'jobbet finns inte (servern kan ha startats om)' });
+  }
   const lm = /^\/api\/library\/([a-z]+)$/.exec(url.pathname);
   if (lm && LIB_POST[lm[1]] && req.method === 'POST') return json(res, 200, await LIB_POST[lm[1]](await body(req)));
   if (url.pathname === '/api/library' && req.method === 'POST') return json(res, 200, await saveToLibrary(await body(req)));
