@@ -8,6 +8,9 @@
     { "key": "gustSpeed", "label": "Gust speed (m/s)", "min": 0, "max": 20, "step": 0.1, "default": 6, "help": "How fast the gusts travel with the wind" },
     { "key": "sway", "label": "Sway", "min": 0, "max": 1, "step": 0.01, "default": 0.35, "help": "Every part swings at its own rate around its lean: trunks slowly, twigs and stalks faster" },
     { "key": "flutter", "label": "Leaf flutter", "min": 0, "max": 1.5, "step": 0.01, "default": 0.5, "help": "Small, quick motion of leaves and cards, strongest at the tips" },
+    { "key": "grassHeight", "label": "Grass height (×)", "min": 0.3, "max": 2.5, "step": 0.05, "default": 1, "help": "Taller or shorter grass in the glade", "view": true, "grass": "height" },
+    { "key": "grassDensity", "label": "Grass density", "min": 0.1, "max": 1, "step": 0.05, "default": 1, "help": "Share of the blades that are drawn", "view": true, "grass": "density" },
+    { "key": "grassStiffness", "label": "Grass stiffness", "min": 0.4, "max": 3, "step": 0.05, "default": 1, "help": "Stiffer blades bend less in the wind", "view": true, "grass": "stiffness" },
     { "key": "timeScale", "label": "Speed", "min": 0.05, "max": 1, "step": 0.01, "default": 1, "help": "Slow motion: lower to watch how the parts move", "view": true }
   ],
   "presets": {
@@ -17,21 +20,21 @@
     "storm": { "label": "Storm", "strength": 1.1, "gust": 0.65, "gustScale": 14, "gustSpeed": 12, "sway": 0.25, "flutter": 0.9 }
   },
   "glade": [
-    { "id": "oak", "library": "cardtree_71924", "pos": [-7, 0, -6], "rot": 20 },
-    { "id": "birch", "library": "cardbirch_3", "pos": [6.5, 0, -8], "rot": 140 },
-    { "id": "bush", "library": "cardbush_78676", "pos": [-3.2, 0, 1.2], "rot": 0 },
-    { "id": "ballbush", "library": "ballbush_v2", "pos": [3.6, 0, 1.8], "rot": 60 },
-    { "id": "fern", "library": "fern1", "pos": [-5.2, 0, 3.5], "rot": 0 },
-    { "id": "daisy1", "generator": "plant", "recipe": { "preset": "daisy", "seed": 1 }, "pos": [-0.8, 0, 3.4] },
-    { "id": "daisy2", "generator": "plant", "recipe": { "preset": "daisy", "seed": 2 }, "pos": [0.4, 0, 4.1] },
-    { "id": "poppy", "generator": "plant", "recipe": { "preset": "poppy", "seed": 3 }, "pos": [1.6, 0, 3.2] },
-    { "id": "lupine", "generator": "plant", "recipe": { "preset": "lupine", "seed": 1 }, "pos": [-2.2, 0, 4.4] },
-    { "id": "cornflower", "generator": "plant", "recipe": { "preset": "cornflower", "seed": 4 }, "pos": [2.4, 0, 4.6] },
-    { "id": "wheat1", "generator": "plant", "recipe": { "preset": "wheat", "seed": 1 }, "pos": [5.6, 0, 4.2] },
-    { "id": "wheat2", "generator": "plant", "recipe": { "preset": "wheat", "seed": 2 }, "pos": [6.3, 0, 4.9] },
+    { "id": "oak", "library": "cardtree_71924", "pos": [-7, 0, -6], "rot": 20, "clear": 0.8 },
+    { "id": "birch", "library": "cardbirch_3", "pos": [6.5, 0, -8], "rot": 140, "clear": 0.45 },
+    { "id": "bush", "library": "cardbush_78676", "pos": [-3.2, 0, 1.2], "rot": 0, "clear": 0.6 },
+    { "id": "ballbush", "library": "ballbush_v2", "pos": [3.6, 0, 1.8], "rot": 60, "clear": 0.5 },
+    { "id": "fern", "library": "fern1", "pos": [-5.2, 0, 3.5], "rot": 0, "clear": 0.35 },
+    { "id": "daisy1", "generator": "plant", "recipe": { "preset": "daisy", "seed": 1, "short": 0.35 }, "pos": [-0.8, 0, 3.4] },
+    { "id": "daisy2", "generator": "plant", "recipe": { "preset": "daisy", "seed": 2, "short": 0.35 }, "pos": [0.4, 0, 4.1] },
+    { "id": "poppy", "generator": "plant", "recipe": { "preset": "poppy", "seed": 3, "short": 0.35 }, "pos": [1.6, 0, 3.2] },
+    { "id": "lupine", "generator": "plant", "recipe": { "preset": "lupine", "seed": 1, "short": 0.35 }, "pos": [-2.2, 0, 4.4] },
+    { "id": "cornflower", "generator": "plant", "recipe": { "preset": "cornflower", "seed": 4, "short": 0.35 }, "pos": [2.4, 0, 4.6] },
+    { "id": "wheat1", "generator": "plant", "recipe": { "preset": "wheat", "seed": 1, "short": 0.35 }, "pos": [5.6, 0, 4.2] },
+    { "id": "wheat2", "generator": "plant", "recipe": { "preset": "wheat", "seed": 2, "short": 0.35 }, "pos": [6.3, 0, 4.9] },
     { "id": "reed", "generator": "plant", "recipe": { "preset": "feather_grass", "seed": 2 }, "pos": [-6.8, 0, 0.5] },
-    { "id": "boulder", "library": "boulder1", "pos": [1.2, 0, -2.6], "rot": 30, "still": true }
+    { "id": "boulder", "library": "boulder1", "pos": [1.2, 0, -2.6], "rot": 30, "still": true, "clear": 1.5 }
   ],
-  "grass": { "radius": 12, "blades": 24000, "height": [0.08, 0.24], "angle": 0.55 },
+  "grass": { "radius": 32, "inner": 14, "density": [280, 70], "height": [0.17, 0.38], "lod": [12, 30] },
   "flag": { "pos": [9, 0, -1.5], "pole": 5, "length": 1.8, "height": 1.1 }
 }

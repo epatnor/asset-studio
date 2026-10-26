@@ -149,6 +149,7 @@ export function createWind(params = {}) {
     },
     update(dt) { state.time += dt * state.timeScale; u.time.value = state.time; },
     rigged, blades, flag,
+    force: forceAt, // kraften som nod (styrka² och byar) vid en punkt xz i världen
     gust: gustAt, // byarna som nod (0–1) vid en punkt xz i världen, t.ex. för att ljusa gräset
     // Samma byar på processorn (vindpilen, mätare)
     gustAt(x, z) {

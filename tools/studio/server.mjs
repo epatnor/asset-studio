@@ -459,7 +459,8 @@ const RIG_SOURCES = ['tools/wind', 'tools/tree', 'tools/plants'];
 async function newestSource() {
   let t = 0;
   for (const d of RIG_SOURCES) for (const f of await readdir(path.join(ROOT, d))) {
-    if (/\.(mjs|json|py)$/.test(f)) t = Math.max(t, (await stat(path.join(ROOT, d, f))).mtimeMs);
+    // wind.json är gläntans och spakarnas data, inte modellernas: ändras den byggs inget om
+    if (/\.(mjs|json|py)$/.test(f) && f !== 'wind.json') t = Math.max(t, (await stat(path.join(ROOT, d, f))).mtimeMs);
   }
   return t;
 }

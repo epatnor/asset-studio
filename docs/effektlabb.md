@@ -37,6 +37,8 @@ Alla tre läser samma tid och samma vind, så att ett oväder gör att träden b
 
 **Deformationen** roterar uppifrån och ned i hierarkin (fladder, gren, föräldragren, stammens böjning), så att inget sträcks ut. Gräset använder samma vindfält och böjs med rotation.
 
+**Gräset** (`shared/effects/grass.js`, byggt 2026-10-26, i stil med Ghost of Tsushima och Genshin Impact): hundratals strån per m² nära kameran (gläntan cirka 300 000), i rutor med två detaljnivåer, glesare och bredare på avstånd. Varje strå är en båge med konstant krökning, så att det behåller sin längd när vinden böjer det; stråna växer i tuvor och lutar ut från mitten. Färgen går från en mörk bas till en ljus topp, med stora fläckar (varmare och gulare, mörkare och blågrönare), och normalerna är kupade och lutar mot uppåt så att ängen skuggas som en yta. Genomlysning i motljus och en glans där byarna går. Det som står i gläntan (`clear` i `wind.json`) får inget gräs runt foten, och blommorna (`short`) kortare gräs. Spakarna Grass height, Grass density och Grass stiffness. Parkens gräs (`showcase/grass.js`) och Tinkertown går över till modulen i E2.
+
 **Grundscenen:** en glänta med ett par träd av olika arter ur biblioteket, buskar, blommor, en gräsplätt och en flagga, med en vindpil. Spakar: styrka, riktning, byar (våglängd, fart, styrka), fladder; slow motion; felsökningsvy som färgar per del och visar fästen. Vindprofiler sparas som recept (bris, blåsigt, storm).
 
 ## Fliken Vatten

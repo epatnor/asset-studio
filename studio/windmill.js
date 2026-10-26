@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
+import { createGrass } from '../shared/effects/grass.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
 const DEG = Math.PI / 180;
@@ -37,7 +38,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   sun.shadow.normalBias = 0.03;
   Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 1, far: 80 });
   scene.add(sun);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshStandardNodeMaterial({ color: '#6c9a44', roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(60, 64), new THREE.MeshStandardNodeMaterial({ color: '#557f2a', roughness: 1 })); // som gräset på avstånd
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
@@ -92,7 +93,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
       for (const c of [...(Object.entries(it.checks ?? {}))].filter(([k, v]) => /^rig_(torn|still_moves|ground_moves)$/.test(k) && v)) stats.failed.push(`${it.id}: ${c[0]} ${c[1]}`);
     }
     stats.failed.push(...g.errors);
-    addGrass(g.grass);
+    addGrass(g.grass, g.items, g.flag);
     addFlag(g.flag);
     applyDebug();
     setNote(stats.failed.length ? `Glade built, with problems: ${stats.failed.join('; ')}` : '');
@@ -116,55 +117,18 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     pivotGroup.add(im);
   }
 
-  // --- Gräsplätten: strån som roteras runt roten med samma vind (wind.blades), ljusare i byarna ---
-  function addGrass(o) {
+  // --- Gräset: tätt, böjt och i tuvor (shared/effects/grass.js), med samma vind; inte där träd, buskar och stenar står ---
+  let grass = null;
+  function addGrass(o, items, flag) {
     if (!o) return;
-    const rnd = (() => { let a = 1234567; return () => ((a = (a * 16807) % 2147483647) / 2147483647); })();
-    const N = o.blades, SEG = 3, perBlade = SEG * 2 + 1;
-    const pos = new Float32Array(N * perBlade * 3), root = new Float32Array(N * perBlade * 3), gt = new Float32Array(N * perBlade);
-    const blade = new Float32Array(N * perBlade * 3), col = new Float32Array(N * perBlade * 3), nrm = new Float32Array(N * perBlade * 3);
-    const idx = [];
-    for (let b = 0; b < N; b++) {
-      const r = o.radius * Math.sqrt(rnd()), a = rnd() * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const h = o.height[0] + (o.height[1] - o.height[0]) * rnd() * (1 - 0.5 * (r / o.radius) ** 3);
-      const yaw = rnd() * Math.PI, w = 0.012 + rnd() * 0.01, lean = (rnd() - 0.5) * 0.3;
-      const sx = Math.cos(yaw), sz = Math.sin(yaw), base = b * perBlade;
-      const amp = o.angle * (0.7 + 0.6 * rnd()), freq = 1.2 + rnd() * 1.4, ph = rnd() * Math.PI * 2, tone = 0.8 + rnd() * 0.35;
-      for (let k = 0; k < perBlade; k++) {
-        const s = Math.floor(k / 2), t = Math.min(1, s / SEG), side = k === perBlade - 1 ? 0 : k % 2 ? 1 : -1;
-        const half = w * (1 - t * 0.85) * side, y = h * t, off = lean * t * t * h;
-        const i = base + k;
-        pos.set([x + sx * half + -sz * off, y, z + sz * half + sx * off], i * 3);
-        root.set([x, 0, z], i * 3);
-        gt[i] = t;
-        blade.set([amp, freq, ph], i * 3);
-        nrm.set([0, 1, 0], i * 3);
-        const c = [0.16 + 0.22 * t, 0.3 + 0.32 * t, 0.08 + 0.1 * t].map((v) => v * tone);
-        col.set(c, i * 3);
-      }
-      for (let s = 0; s < SEG; s++) {
-        const a0 = base + s * 2, a1 = a0 + 1, b0 = a0 + 2, b1 = a0 + 3;
-        if (s === SEG - 1) idx.push(a0, a1, base + perBlade - 1);
-        else idx.push(a0, a1, b1, a0, b1, b0);
-      }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.setAttribute('groot', new THREE.BufferAttribute(root, 3));
-    g.setAttribute('gt', new THREE.BufferAttribute(gt, 1));
-    g.setAttribute('gblade', new THREE.BufferAttribute(blade, 3));
-    g.setIndex(idx);
-    const m = new THREE.MeshStandardNodeMaterial({ side: THREE.DoubleSide, roughness: 0.9 });
-    m.positionNode = wind.blades();
-    // Byarna syns som ljusare stråk i gräset (som i showcase/grass.js)
-    const rootXZ = attribute('groot', 'vec3').xz;
-    m.colorNode = vertexColor().mul(float(1).add(wind.gust(rootXZ).mul(wind.uniforms.strength).mul(attribute('gt', 'float')).mul(0.35)));
-    const mesh = new THREE.Mesh(g, m);
-    mesh.receiveShadow = true;
-    mesh.frustumCulled = false;
-    scene.add(mesh);
+    const exclude = items.filter((it) => it.clear).map((it) => ({ x: it.pos[0], z: it.pos[2], r: it.clear }));
+    // short: kortare gräs runt blommorna, så att de sticker upp
+    for (const it of items.filter((x) => x.short)) exclude.push({ x: it.pos[0], z: it.pos[2], r: 0.6, h: it.short });
+    if (flag) exclude.push({ x: flag.pos[0], z: flag.pos[2], r: 0.2 });
+    grass = createGrass(wind, { ...o, exclude });
+    grass.uniforms.sun.value.copy(sun.position).normalize();
+    for (const q of info.params.filter((x) => x.grass)) grass.uniforms[q.grass].value = viewVals[q.key];
+    scene.add(grass.group);
   }
 
   // --- Flaggan: stång och duk ---
@@ -186,13 +150,13 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     scene.add(grp);
   }
 
-  // --- Vindpilen på marken: pekar dit det blåser, längre och mer opak ju starkare ---
+  // --- Vindpilen över gräset: pekar dit det blåser, längre och mer opak ju starkare ---
   const arrowShape = new THREE.Shape([[0, -0.18], [1.4, -0.18], [1.4, -0.45], [2.2, 0], [1.4, 0.45], [1.4, 0.18], [0, 0.18]].map(([x, y]) => new THREE.Vector2(x, y)));
   const arrowMat = new THREE.MeshBasicNodeMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false });
   const arrow = new THREE.Mesh(new THREE.ShapeGeometry(arrowShape), arrowMat);
   arrow.rotation.x = -Math.PI / 2;
   const arrowPivot = new THREE.Group();
-  arrowPivot.position.set(-1.2, 0.03, 8.5);
+  arrowPivot.position.set(-1.2, 0.75, 8.5); // svävar över gräset
   arrowPivot.add(arrow);
   scene.add(arrowPivot);
   function updateArrow() {
@@ -212,8 +176,13 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
 
   // --- Spakar, profiler och vy (kort till höger) ---
   const syncs = [];
-  const valueFor = (k) => (k === 'dir' ? Math.round(((wind.state.dir / DEG) % 360 + 360) % 360) : wind.state[k]);
-  const setParam = (k, v) => wind.set({ [k]: k === 'dir' ? v * DEG : v });
+  // Gräsets spakar (grass i wind.json) hör till gläntan, inte till vindprofilen
+  const viewVals = Object.fromEntries(info.params.filter((q) => q.grass).map((q) => [q.key, q.default]));
+  const valueFor = (k) => (P[k]?.grass ? viewVals[k] : k === 'dir' ? Math.round(((wind.state.dir / DEG) % 360 + 360) % 360) : wind.state[k]);
+  const setParam = (k, v) => {
+    if (P[k]?.grass) { viewVals[k] = v; if (grass) grass.uniforms[P[k].grass].value = v; return; }
+    wind.set({ [k]: k === 'dir' ? v * DEG : v });
+  };
   function card(title, accent) {
     const c = el('section', 'card glass');
     c.style.setProperty('--part', accent);
@@ -313,12 +282,13 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     last = now;
     if (!paused) wind.update(dt);
     controls.update();
+    grass?.update(camera);
     updateArrow();
     renderer.render(scene, camera);
     frames++;
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
-      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.parts} parts · ${fps} fps`);
+      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.parts} parts · ${Math.round((grass?.visibleBlades() ?? 0) / 1000)}k blades · ${fps} fps`);
       const f = wind.forceAt(controls.target.x, controls.target.z);
       block(fWind, 'Wind here', `toward ${valueFor('dir')}° · force ${f.toFixed(2)} · gust ${wind.gustAt(controls.target.x, controls.target.z).toFixed(2)}`);
     }
