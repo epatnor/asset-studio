@@ -287,6 +287,13 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [ ] MCP: AI:n läser biblioteket och de sparade recepten, och en knapp "Be Claude" i studion.
 - [x] Professionellt utseende: designtokens, ljust och mörkt tema (följer systemet eller väljs i headern). Byggt 2026-10-26.
 
+**Effektlabben** ([effektlabb.md](effektlabb.md), plan 2026-10-26): tre nya flikar i studion, Vind, Vatten och Väder, var och en med en grundscen att prova effekterna i och recept att spara. Effekterna blir gemensamma moduler i TSL (`shared/effects/`) som studion, visningen och Tinkertown delar.
+- [ ] **E1, fliken Vind:** vindriggen (`tools/wind/`, hierarki stam → grenar → klasar, stjälk → blomhuvud, med luftmotstånd och styvhet) i träd- och växtgeneratorn; vindmodulen; gläntan med spakar och felsökningsvy; gräset böjs med rotation och läser samma vind.
+- [ ] **E2, vinden i alla klienter:** visningen och Tinkertown (batchar, växter, impostors); vindlager i världen som havet delar; flaggor, rankor och lyktor.
+- [ ] **E3, fliken Vatten:** vattenmodulen från visningens vattengenerator och Tinkertowns hav; testbassäng med damm, sjö, bäck, å, vattenfall, hav och pöl; vattentyper som recept.
+- [ ] **E4, fliken Väder:** vädermodulen från visningens atmosfär och effekter; dygn, moln, regn, snö, dimma och storm; väderlägen som recept som styr vind och vatten.
+- [ ] **E5, export:** vindriggen för Pivot Painter (Unreal, Godot, Unity).
+
 **Öppna verktyg:** vad vi kan låna eller härma i stället för att bygga själva (RedGPU, impostors, EZ-Tree, Material Maker, KTX2) står i [oppna-verktyg.md](oppna-verktyg.md).
 
 **Biblioteket: familjer och fasta modeller** (plan 2026-10-26, [asset-studio.md](asset-studio.md)): en *familj* är ett recept som ger obegränsat med varianter och sprids ut som proxys (familj och frö); en *fast modell* är en bestämd modell med egna texturer. Frys och Tina växlar mellan dem.

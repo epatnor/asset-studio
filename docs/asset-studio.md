@@ -135,6 +135,7 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 | B3. Proxys och PCG | Tinkertown läser familjerna; proxys (familj och frö) och en PCG-graf som sprider ut dem | Skog och stenar sprids med regler, med variation per frö | Planerad |
 | B4. Texturera modellen | lagerpanel i verkstaden (Marmoset-lik); kartor bakade i Blender; lagren bakas till modellens UV-texturer | En egen prop får egna texturer och blir en fast modell | Planerad |
 | B5. Sammansättningar och pensel | recept av recept (sten med svampar, lägereld); maskpensel | Egna props byggs av biblioteket | Planerad |
+| E1–E5. Effektlabben | flikarna Vind, Vatten och Väder med grundscener och recept, och effekterna som gemensamma TSL-moduler; se [effektlabb.md](effektlabb.md) | Effekterna provas i studion och delas av alla klienter | Planerad 2026-10-26 |
 | GUI | professionellt utseende med designtokens, ljust och mörkt tema, väljare i headern | Studion ser ut som ett verktyg | Byggd 2026-10-26 |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.
