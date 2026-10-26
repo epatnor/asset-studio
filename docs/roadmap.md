@@ -284,6 +284,14 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [ ] Debugvyer: bara korten, normaler, bollarna, LOD-växling på avstånd.
 - [ ] Fotoläge: spårad stillbild (path tracing) för miniatyrer och jämförelser. Raytracing i realtid finns inte i WebGL.
 - [ ] MCP: AI:n läser biblioteket och de sparade recepten, och en knapp "Be Claude" i studion.
+- [x] Professionellt utseende: designtokens, ljust och mörkt tema (följer systemet eller väljs i headern). Byggt 2026-10-26.
+
+**Biblioteket: familjer och fasta modeller** (plan 2026-10-26, [asset-studio.md](asset-studio.md)): en *familj* är ett recept som ger obegränsat med varianter och sprids ut som proxys (familj och frö); en *fast modell* är en bestämd modell med egna texturer. Frys och Tina växlar mellan dem.
+- [ ] **B1, biblioteksvy:** FAB-lik, med kategorier, taggar, sök, märkning Familj och Fast, Frys och Tina (bygger vidare på fas 3).
+- [ ] **B2, familjer:** variantpool med 8–16 färdigbyggda varianter, utplaceringsdata (`scatter`: storlek, radie, lutning, biomer, vikt), fler varianter i bakgrunden.
+- [ ] **B3, proxys och PCG i Tinkertown:** världen sparar familj och frö per punkt; PCG-graf (punkter → täthet → filter → familj → frö → instans).
+- [ ] **B4, texturera modellen:** lagerpanel i verkstaden (Marmoset-lik); krökning, AO, position och tjocklek bakade i Blender; lagren bakas till modellens UV-texturer, och modellen blir fast.
+- [ ] **B5, sammansättningar och maskpensel:** egna props som recept av recept (sten med svampar, lägereld); måla var ett lager syns.
 
 **Texturverkstaden** ([texture-workshop.md](texture-workshop.md)): fliken Texturer i studion, men projektets gemensamma texturkälla. Den försörjer tillgångarna i studion, terrängen och marken i Tinkertown, gräset, byggnaderna och stenarna via en texturkatalog med målprofiler (bark, löv, terräng, makro, gräs, sten, byggnad, blandlager, dekaler). En textur är ett recept: en källa (procedurell algoritm, lokal Krea-2, extern generator via OpenRouter eller import) och en stapel steg med spakar. Byggordning: T1, T1b och T3a klara; T3c, T2, T3b, T4 och T5 till största delen byggda (se varje punkt för det som är kvar).
 - [x] **T1, grund:** `workshop.py` med recept; procedurella källor (brus, bark, sten, tegel, plankor) och import; stegen sömlöst, nivåer, nyans och mättnad, palett, gråskala, mjukare kontrast och skala; 2D-vy med zoom och 3×3-tiling; spara till katalogen. Byggd 2026-10-25: fliken Texturer i studion, källorna bark, sten, tegel, plankor, brus och befintlig textur, nio steg, kontroller (söm, palett, medelfärg, valörer) och `assets/textures/catalog.json`.

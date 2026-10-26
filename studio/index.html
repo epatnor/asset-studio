@@ -4,144 +4,227 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Azshara Asset Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<script>
+  // Tema före första ritningen (ingen blinkning): sparat val, annars systemets (Auto)
+  try { const t = localStorage.getItem('studio-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+</script>
 <style>
-  :root { --ink: #1f2a1c; --muted: #5f6b5a; --panel: rgba(255, 255, 255, 0.9); --line: rgba(31, 42, 28, 0.12);
-          --accent: #4e8a2f; --bad: #c0392b; --good: #2e7d32; --radius: 12px; --head: 58px; --foot: 64px; }
-  html, body { margin: 0; height: 100%; background: #9cc4ec; font-family: system-ui, sans-serif; color: var(--ink); overflow: hidden; font-size: 13px; }
-  #app { position: fixed; inset: 0; }
-  .glass { background: var(--panel); backdrop-filter: blur(8px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15); }
-  button { font: inherit; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; color: var(--ink); }
-  button:hover:not(:disabled) { border-color: var(--accent); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  /* Designtokens: ljust tema som grund, mörkt via systemet (Auto) eller data-theme på <html> (väljaren i headern).
+     Färger i komponenterna kommer bara härifrån. */
+  :root {
+    color-scheme: light;
+    --bg: #eceef0; --surface: rgba(251, 251, 250, 0.93); --surface-solid: #fafaf9; --field: #ffffff;
+    --btn: #ffffff; --btn-hover: #f0f2f0; --raised: #ffffff; --line: rgba(20, 28, 22, 0.11); --line-strong: rgba(20, 28, 22, 0.22);
+    --ink: #1a201c; --ink-2: #39423c; --muted: #6a736d; --accent: #3d8628; --accent-hover: #33731f; --accent-ink: #ffffff;
+    --accent-soft: rgba(61, 134, 40, 0.12); --track: #d3d8d3; --good: #2b7a2f; --bad: #c0392b; --warn: #b77b0c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 28px rgba(0, 0, 0, 0.10); --focus: rgba(61, 134, 40, 0.4);
+    --viewport: #c8ccd0; --lift: 0%;
+    --radius: 10px; --radius-sm: 6px; --head: 48px; --foot: 56px; --gap: 10px;
+  }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --bg: #131417; --surface: rgba(29, 31, 35, 0.95); --surface-solid: #1c1e22; --field: #25282d;
+    --btn: #2a2d33; --btn-hover: #34383f; --raised: #3b4048; --line: rgba(255, 255, 255, 0.08); --line-strong: rgba(255, 255, 255, 0.17);
+    --ink: #e6e8eb; --ink-2: #c2c7cd; --muted: #8b929b; --accent: #6bbd44; --accent-hover: #7cca56; --accent-ink: #0e1a0a;
+    --accent-soft: rgba(107, 189, 68, 0.16); --track: #3a3e45; --good: #6cc070; --bad: #ef6b5e; --warn: #e3ae48;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45); --focus: rgba(107, 189, 68, 0.45);
+    --viewport: #1a1c20; --lift: 30%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme=light]) {
+      color-scheme: dark;
+      --bg: #131417; --surface: rgba(29, 31, 35, 0.95); --surface-solid: #1c1e22; --field: #25282d;
+      --btn: #2a2d33; --btn-hover: #34383f; --raised: #3b4048; --line: rgba(255, 255, 255, 0.08); --line-strong: rgba(255, 255, 255, 0.17);
+      --ink: #e6e8eb; --ink-2: #c2c7cd; --muted: #8b929b; --accent: #6bbd44; --accent-hover: #7cca56; --accent-ink: #0e1a0a;
+      --accent-soft: rgba(107, 189, 68, 0.16); --track: #3a3e45; --good: #6cc070; --bad: #ef6b5e; --warn: #e3ae48;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(0, 0, 0, 0.45); --focus: rgba(107, 189, 68, 0.45);
+      --viewport: #1a1c20; --lift: 30%;
+    }
+  }
 
-  /* Header: rubrik, flikar för tillgångstyp, verktyg */
-  header#top { position: fixed; top: 0; left: 0; right: 0; height: var(--head); display: flex; align-items: center; gap: 18px; padding: 0 16px; z-index: 2; }
-  header#top h1 { margin: 0; font-size: 19px; letter-spacing: 0.2px; white-space: nowrap; }
-  #kinds { display: flex; gap: 4px; }
-  #kinds button { border-radius: 999px; padding: 6px 14px; }
-  #kinds button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
-  #kinds button .soon { font-size: 10px; margin-left: 4px; opacity: 0.8; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; font-size: 13px; line-height: 1.35;
+               font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; font-feature-settings: 'cv11', 'ss01'; -webkit-font-smoothing: antialiased; }
+  * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  #app { position: fixed; inset: 0; }
+  .glass { background: var(--surface); backdrop-filter: blur(14px) saturate(1.2); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  /* Knappar: neutral, primär (accent), mini och ikon */
+  button { font: inherit; font-size: 12.5px; font-weight: 500; border: 1px solid var(--line); background: var(--btn); border-radius: var(--radius-sm);
+           height: 28px; padding: 0 10px; cursor: pointer; color: var(--ink); display: inline-flex; align-items: center; gap: 6px;
+           transition: background 0.12s, border-color 0.12s, color 0.12s; }
+  button:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--line-strong); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: transparent; }
+  button.mini { height: 22px; padding: 0 7px; font-size: 11.5px; border-radius: 5px; }
+  button.icon { width: 28px; padding: 0; justify-content: center; }
+  button svg { width: 15px; height: 15px; flex: none; }
+
+  /* Header: märke, flikar för tillgångstyp, verktyg */
+  header#top { position: fixed; top: 0; left: 0; right: 0; height: var(--head); display: flex; align-items: center; gap: 16px; padding: 0 12px; z-index: 2;
+               background: var(--surface-solid); border-bottom: 1px solid var(--line); box-sizing: border-box; }
+  header#top h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: 0.1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  header#top h1 .mark { width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, #8fd16a, #3d8628 55%, #2b5f86); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+  header#top h1 small { font-weight: 500; color: var(--muted); font-size: 12px; }
+  #kinds { display: flex; gap: 2px; padding: 2px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
+  #kinds button { height: 26px; border: 0; background: transparent; color: var(--ink-2); padding: 0 12px; border-radius: 6px; }
+  #kinds button:hover:not(:disabled) { background: var(--btn-hover); }
+  #kinds button.on { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line); }
+  #kinds button .soon { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 4px; border-radius: 4px; background: var(--accent-soft); color: var(--muted); }
+  #kinds .sep { width: 1px; background: var(--line-strong); margin: 5px 4px; }
   #tools { margin-left: auto; display: flex; gap: 6px; align-items: center; }
-  .lamp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #aaa; margin-right: 6px; vertical-align: middle; }
-  .lamp.ok { background: var(--accent); } .lamp.bad { background: var(--bad); } .lamp.busy { background: #e0a020; }
-  #status { white-space: nowrap; margin-right: 6px; }
+  #tools .div { width: 1px; height: 20px; background: var(--line-strong); margin: 0 2px; }
+  .lamp { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); margin-right: 6px; vertical-align: middle; }
+  .lamp.ok { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); } .lamp.bad { background: var(--bad); } .lamp.busy { background: var(--warn); }
+  #status { white-space: nowrap; margin-right: 4px; color: var(--muted); font-size: 12px; }
   #tools button, #kinds button { white-space: nowrap; }
   /* Smalare fönster: kompaktare header, statusen bara som lampa (texten finns som tooltip) */
   @media (max-width: 1280px) {
-    header#top { gap: 10px; padding: 0 10px; }
-    header#top h1 { font-size: 16px; }
-    #kinds button { padding: 5px 9px; }
+    header#top { gap: 10px; padding: 0 8px; }
+    header#top h1 small { display: none; }
+    #kinds button { padding: 0 8px; }
     #kinds button .soon { display: none; }
     #tools { gap: 4px; }
-    #tools button { padding: 5px 7px; }
+    #tools button:not(.icon) { padding: 0 8px; }
     #state { display: none; }
   }
-  @media (max-width: 900px) { #unpin, #redo { display: none; } }
+  @media (max-width: 900px) { #unpin, #redo, header#top h1 span { display: none; } }
 
-  /* Höger: ett kort per del av tillgången */
-  #side { position: fixed; top: calc(var(--head) + 10px); right: 12px; bottom: calc(var(--foot) + 10px); width: min(350px, calc(100vw - 24px));
-          overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
-  .card { overflow: hidden; flex: none; border-radius: var(--radius); }
-  .card > header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-left: 5px solid var(--part); }
-  .card > header h2 { margin: 0; font-size: 15px; flex: 1; }
+  /* Paneler till höger (tillgångarnas kort, verkstadens kort): en dockad panel med kort som sektioner */
+  #side, #wside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
+                  overflow-y: auto; flex-direction: column; gap: 0; background: var(--surface); backdrop-filter: blur(14px) saturate(1.2);
+                  border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); box-sizing: border-box; }
+  #side { display: flex; }
+  #side:empty { display: none; }
+  #side > .glass, #wside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+  .card { flex: none; border-bottom: 1px solid var(--line); }
+  .card > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
+  .card > header::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--part, var(--accent)); flex: none; }
+  .card > header h2 { margin: 0; font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; flex: 1; color: var(--ink); }
   .hero { display: flex; gap: 8px; padding: 0 12px 10px; }
   .group { border-top: 1px solid var(--line); }
-  .group > summary { list-style: none; cursor: pointer; padding: 7px 12px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; }
-  .group > summary::after { content: '▸'; transition: transform 0.15s; }
+  .group > summary { list-style: none; cursor: pointer; padding: 7px 12px; font-weight: 600; font-size: 12px; color: var(--ink-2); display: flex; justify-content: space-between; }
+  .group > summary:hover { color: var(--ink); }
+  .group > summary::-webkit-details-marker { display: none; }
+  .group > summary::after { content: '›'; color: var(--muted); font-size: 15px; line-height: 1; transition: transform 0.15s; }
   .group[open] > summary::after { transform: rotate(90deg); }
-  .rows { padding: 2px 12px 10px; display: grid; gap: 4px; }
+  .rows { padding: 2px 12px 10px; display: grid; gap: 5px; }
   .row { display: grid; grid-template-columns: 124px 1fr 46px; align-items: center; gap: 8px; min-height: 24px; }
-  .row label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
-  .row input[type=range] { width: 100%; accent-color: var(--part); }
-  .row select, .row input[type=number] { width: 100%; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .row label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); font-size: 12.5px; }
+  .row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
   .row.span2 { grid-template-columns: 124px 1fr; }
-  .row input[type=color] { width: 100%; height: 22px; border: 1px solid var(--line); border-radius: 6px; padding: 0 2px; background: #fff; }
   .row.texrow { grid-template-columns: 1fr; }
-  /* Av/på-reglage i iOS-stil */
-  input.switch { appearance: none; width: 40px; height: 22px; border-radius: 11px; background: #c9cfc5; position: relative;
-                 cursor: pointer; transition: background 0.15s; margin: 0; justify-self: start; }
-  input.switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
-                         background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.15s; }
-  input.switch:checked { background: var(--part); }
-  input.switch:checked::before { transform: translateX(18px); }
+
+  /* Fält: val, tal, text, färg */
+  select, input[type=number], input.text, textarea.text, input.search {
+    font: inherit; font-size: 12.5px; color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 5px;
+    padding: 3px 6px; box-sizing: border-box; min-height: 24px; }
+  select:hover, input[type=number]:hover, input.text:hover, textarea.text:hover, input.search:hover { border-color: var(--line-strong); }
+  .row select, .row input[type=number], .row input.text, .row textarea.text { width: 100%; }
+  .row textarea.text { resize: vertical; }
+  input[type=color] { width: 100%; height: 24px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 2px; background: var(--field); box-sizing: border-box; cursor: pointer; }
+
+  /* Spakar: tunn bana, rund knopp i kortets färg (ljusare i mörkt tema) */
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; margin: 0; cursor: pointer;
+                      --knob: color-mix(in srgb, var(--part, var(--accent)), #fff var(--lift)); }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--track); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+                                            background: var(--knob); border: 2px solid var(--surface-solid); box-shadow: 0 0 0 1px var(--line-strong), 0 1px 3px rgba(0, 0, 0, 0.25); }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+  input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--track); }
+  input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--knob); }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--knob); border: 2px solid var(--surface-solid); }
+
+  /* Av/på-reglage */
+  input.switch { appearance: none; width: 32px; height: 18px; border-radius: 9px; background: var(--track); position: relative;
+                 cursor: pointer; transition: background 0.15s; margin: 0; justify-self: start; flex: none; }
+  input.switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+                         background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: transform 0.15s; }
+  input.switch:checked { background: color-mix(in srgb, var(--part, var(--accent)), #fff var(--lift)); }
+  input.switch:checked::before { transform: translateX(14px); }
 
   /* Texturväljare: förhandsbild i kortet, klick öppnar miniatyrer att välja bland */
   .tex { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-  .tex .now { display: flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #fff; }
+  .tex .now { display: flex; align-items: center; gap: 8px; cursor: pointer; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: var(--field); }
   .tex .now:hover { border-color: var(--part); }
-  .tex .now img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; background: #3a3e46; flex: none; }
+  .tex .now img { width: 56px; height: 56px; border-radius: 5px; object-fit: cover; background: #3a3e46; flex: none; }
   .hero .tex .now img { width: 84px; height: 84px; }
   .tex .now span { font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
-  .tex .now span b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
-  .tex .grid { display: none; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 210px; overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .tex .now span b { display: block; font-size: 10.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .tex .grid { display: none; grid-template-columns: repeat(4, 1fr); gap: 4px; max-height: 210px; overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
   .tex.open .grid { display: grid; }
   .tex .grid figure { margin: 0; cursor: pointer; text-align: center; font-size: 10px; color: var(--muted); }
-  .tex .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; border: 2px solid transparent; background: #3a3e46; }
+  .tex .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; border: 2px solid transparent; background: #3a3e46; box-sizing: border-box; }
   .tex .grid figure.sel img { border-color: var(--part); }
   .tex .grid figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* Footer: tillgångens siffror och renderingens kostnad, jämfört med förra mätningen */
-  footer#bottom { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); display: flex; gap: 24px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px; }
-  footer .block { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  footer .block > b { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
-  footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  /* Footer: siffror i block med små rubriker */
+  footer#bottom, #wfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
+                          background: var(--surface-solid); border-top: 1px solid var(--line); box-sizing: border-box; }
+  footer#bottom { display: flex; }
+  footer#bottom.glass, #wfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
+  footer .block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  footer .block > b { font-size: 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   footer .vals span { white-space: nowrap; }
+  footer .vals b { color: var(--ink); font-weight: 600; }
   footer .delta.up { color: var(--bad); } footer .delta.down { color: var(--good); }
   #warn { color: var(--bad); }
+  #msg { color: var(--muted); margin-left: auto; text-align: right; }
 
   /* Texturverkstaden: 2D-vy, kort till höger, egen footer. Läget styrs av body.texture-mode */
   #wview, #wside, #wfoot { display: none; }
   body.texture-mode #app, body.texture-mode #side, body.texture-mode #bottom, body.texture-mode .asset-tool { display: none; }
-  body.texture-mode #wview { display: block; position: fixed; inset: 0; }
+  body.texture-mode #wview { display: block; position: fixed; inset: 0; background: var(--viewport); }
   body.texture-mode #wside { display: flex; }
   body.texture-mode #wfoot { display: flex; }
-  #wside { position: fixed; top: calc(var(--head) + 10px); right: 12px; bottom: calc(var(--foot) + 10px); width: min(350px, calc(100vw - 24px));
-           overflow-y: auto; flex-direction: column; gap: 10px; padding-right: 2px; }
-  #wfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 24px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px; }
-  .wbar { position: fixed; top: calc(var(--head) + 10px); left: 12px; display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; z-index: 1; }
-  .wbar select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+  .wbar { position: fixed; top: calc(var(--head) + var(--gap)); left: 12px; display: flex; gap: 6px; align-items: center; padding: 5px 8px; border-radius: var(--radius); z-index: 1;
+          flex-wrap: wrap; max-width: calc(100vw - 400px); }
+  .wbar select { height: 26px; max-width: 112px; }
+  .wbar button { height: 26px; }
   .wbar .zoom { min-width: 48px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-  #wview canvas { cursor: grab; display: block; }
+  .wbar .grp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+  #wview canvas { cursor: grab; display: block; position: absolute; left: 0; top: 0; }
   .steps { display: grid; gap: 6px; }
-  .step { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
-  .step.off { opacity: 0.55; }
+  .step { border: 1px solid var(--line); border-radius: 8px; background: var(--field); }
+  .step.off { opacity: 0.5; }
   .step > summary { list-style: none; display: flex; align-items: center; gap: 6px; padding: 5px 6px; cursor: pointer; }
+  .step > summary::-webkit-details-marker { display: none; }
   .step > summary .name { flex: 1; font-weight: 600; }
   .step .rows { padding: 4px 8px 8px; }
-  button.mini { padding: 1px 6px; font-size: 12px; border-radius: 6px; }
-  .row input.text { width: 100%; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; }
-  .row input[type=number] { box-sizing: border-box; }
-  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 4px; border: 1px solid var(--line); }
-  b.good { color: var(--good); } b.bad, span.bad { color: var(--bad); }
-  .note { color: var(--muted); font-size: 12px; min-height: 16px; }
-  /* Verkstadens verktygsrad, Avancerat-menyer, ingredienser och varianter */
-  .wbar { flex-wrap: wrap; max-width: calc(100vw - 400px); }
-  .wbar .grp { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-  .seg button { border: 0; border-radius: 0; padding: 4px 12px; }
-  .seg button.on { background: var(--ink); color: #fff; }
-  .popover { display: none; position: fixed; top: calc(var(--head) + 60px); left: 12px; width: 320px; padding: 10px 12px; border-radius: 10px; z-index: 3; gap: 6px; }
+  .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin: 0 4px; border: 1px solid var(--line-strong); }
+  b.good { color: var(--good) !important; } b.bad, span.bad { color: var(--bad) !important; }
+  .note { color: var(--muted); font-size: 12px; min-height: 16px; line-height: 1.4; }
+  .seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--field); border: 1px solid var(--line); border-radius: 7px; }
+  .seg button { height: 22px; border: 0; background: transparent; border-radius: 5px; padding: 0 10px; color: var(--ink-2); }
+  .seg button.on { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--line); }
+  .popover { display: none; position: fixed; top: calc(var(--head) + 58px); left: 12px; width: 320px; padding: 10px 12px; border-radius: var(--radius); z-index: 3; gap: 6px; }
   .popover.open { display: grid; }
-  details.adv { border-top: 1px dashed var(--line); margin-top: 4px; }
-  details.adv > summary, details.sub > summary { cursor: pointer; color: var(--muted); font-weight: 600; padding: 5px 0; list-style: none; }
-  details.adv > summary::before, details.sub > summary::before { content: '▸ '; }
-  details.adv[open] > summary::before, details.sub[open] > summary::before { content: '▾ '; }
-  details.sub { margin: 0 0 2px 6px; border-left: 2px solid var(--line); padding-left: 8px; }
-  details.sub > summary { color: var(--ink); font-weight: 500; }
+  details.adv { border-top: 1px dashed var(--line-strong); margin-top: 4px; }
+  details.adv > summary, details.sub > summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 0; list-style: none; }
+  details.adv > summary::-webkit-details-marker, details.sub > summary::-webkit-details-marker { display: none; }
+  details.adv > summary::before, details.sub > summary::before { content: '› '; display: inline-block; width: 12px; transition: transform 0.15s; }
+  details.adv[open] > summary::before, details.sub[open] > summary::before { transform: rotate(90deg); }
+  details.sub { margin: 0 0 2px 4px; border-left: 2px solid var(--line); padding-left: 8px; }
+  details.sub > summary { color: var(--ink-2); font-weight: 500; }
   details.adv > .rows, details.sub > .rows { padding: 2px 0 6px; }
-  .crumbs { padding: 8px 12px; border-radius: var(--radius); display: flex; align-items: center; gap: 4px; flex: none; }
-  .crumbs a { color: var(--accent); cursor: pointer; text-decoration: underline; }
+  .crumbs { padding: 8px 12px; display: flex; align-items: center; gap: 4px; flex: none; border-bottom: 1px solid var(--line); background: var(--accent-soft); }
+  .crumbs a { color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 600; }
+  .crumbs a:hover { text-decoration: underline; }
   .crumbs button { margin-left: auto; }
   .ings { display: grid; gap: 6px; }
-  .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin: -4px 40px 4px 96px; }
-  .prompt { font-size: 11px; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; line-height: 1.35; }
-  .ing { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: #fff; }
-  .ing img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; background: #3a3e46; }
-  .ing .info { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; align-items: flex-start; }
-  .ing .info select { font: inherit; max-width: 100%; }
-  .btns { display: flex; gap: 6px; }
+  .ends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin: -4px 54px 4px 132px; }
+  .prompt { font-size: 11px; color: var(--muted); background: var(--field); border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; line-height: 1.4; }
+  .ing { display: grid; grid-template-columns: 48px 1fr auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 4px; background: var(--field); }
+  .ing img { width: 48px; height: 48px; border-radius: 5px; object-fit: cover; background: #3a3e46; }
+  .ing .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 12px; align-items: flex-start; }
+  .ing .info select { max-width: 100%; }
+  .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .rows > button.primary { justify-content: center; height: 30px; margin-top: 2px; }
   .wvar { display: none; position: fixed; left: calc(50% - 180px); top: 50%; transform: translate(-50%, -50%); padding: 12px; border-radius: 12px; z-index: 4; gap: 8px; justify-items: end; }
   .wvar.open { display: grid; }
   .wvar .vhead { justify-self: start; font-weight: 600; }
@@ -149,41 +232,38 @@
   .vgrid figure { margin: 0; cursor: pointer; text-align: center; font-size: 11px; color: var(--muted); }
   .vgrid img { width: 200px; height: 200px; border-radius: 8px; background: #3a3e46; display: block; border: 2px solid transparent; }
   .vgrid figure:hover img { border-color: var(--accent); }
-  .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: #e8e2d0; }
-  .row textarea.text { width: 100%; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; box-sizing: border-box; resize: vertical; }
-  #wview canvas { position: absolute; left: 0; top: 0; }
+  .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
+
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib { display: none; position: fixed; top: calc(var(--head) + 10px); left: 12px; bottom: calc(var(--foot) + 10px); width: 288px;
+  #wlib { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
           border-radius: var(--radius); flex-direction: column; overflow: hidden; }
   body.texture-mode #wlib { display: flex; }
-  .libhead { padding: 10px 12px 8px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
-  .libhead h2 { margin: 0; font-size: 15px; }
+  .libhead { padding: 10px 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+  .libhead h2 { margin: 0; font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; }
   .libhead .seg { display: flex; }
-  .libhead .seg button { flex: 1; padding: 4px 4px; }
-  .libhead input.search { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .libhead .seg button { flex: 1; justify-content: center; padding: 0 4px; }
+  .libhead input.search { padding: 4px 8px; border-radius: 6px; min-height: 28px; }
   .libbody { overflow-y: auto; padding: 0 10px 12px; }
-  .libgroup h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin: 12px 2px 6px; }
+  .libgroup h3 { font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 14px 2px 6px; }
   .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-  .tile { margin: 0; position: relative; cursor: pointer; font-size: 11px; text-align: center; min-width: 0; }
-  .tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; border: 2px solid transparent; box-sizing: border-box;
-              background: repeating-conic-gradient(#5a5f68 0 25%, #4a4e56 0 50%) 0 0 / 12px 12px; }
+  .tile { margin: 0; position: relative; cursor: pointer; font-size: 11px; text-align: center; min-width: 0; color: var(--ink-2); }
+  .tile img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 7px; display: block; border: 2px solid transparent; box-sizing: border-box;
+              background: repeating-conic-gradient(#5a5f68 0 25%, #4a4e56 0 50%) 0 0 / 12px 12px; transition: border-color 0.12s; }
   .tile:hover img { border-color: var(--accent); }
-  .tile figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-  .tile .badge { position: absolute; top: 6px; left: 6px; background: #6b4fa0; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 6px; }
+  .tile figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+  .tile .badge { position: absolute; top: 6px; left: 6px; background: #6b4fa0; color: #fff; font-size: 9.5px; font-weight: 600; padding: 1px 5px; border-radius: 4px; }
   .tile .acts { display: none; position: absolute; left: 4px; right: 4px; bottom: 22px; gap: 3px; justify-content: center; }
   .tile:hover .acts { display: flex; }
-  .tile .acts button { font-size: 10px; padding: 1px 4px; }
-  body.texture-mode .wbar { left: 312px; max-width: calc(100vw - 312px - 384px); }
-  body.texture-mode .popover { left: 312px; }
+  .tile .acts button { height: 20px; font-size: 10px; padding: 0 5px; }
+  body.texture-mode .wbar { left: 310px; max-width: calc(100vw - 310px - 366px); }
+  body.texture-mode .popover { left: 310px; }
   body.texture-mode .wnote { left: 324px; }
   body.texture-mode .wvar { left: calc(50% - 36px); }
-  .curname { font-weight: 600; white-space: nowrap; }
+  .curname { font-weight: 600; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
   #wside .card > header { cursor: pointer; }
-  #wside .card > header h2::before { content: '▾ '; color: var(--muted); }
-  #wside .card.closed > header h2::before { content: '▸ '; }
+  #wside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #wside .card.closed > header h2::after { transform: none; }
   #wside .card.closed > .rows { display: none; }
-  #kinds .sep { width: 1px; background: var(--line); margin: 4px 6px; }
-  #msg { color: var(--muted); margin-left: auto; text-align: right; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -195,16 +275,18 @@
 <body>
 <div id="app"></div>
 <header id="top" class="glass">
-  <h1>Asset Studio</h1>
+  <h1><i class="mark"></i><span>Asset Studio</span> <small>Azshara</small></h1>
   <nav id="kinds"></nav>
   <div id="tools">
     <span id="status" class="asset-tool"><span class="lamp" id="lamp"></span><span id="state">Startar…</span></span>
     <button class="asset-tool" id="pin" title="Ställ det här bredvid och fortsätt ändra, för att jämföra">Fäst</button>
-    <button class="asset-tool" id="unpin">Ta bort fästa</button>
-    <button class="asset-tool" id="undo">Ångra</button>
-    <button class="asset-tool" id="redo">Gör om</button>
-    <button class="asset-tool" id="frame">Rama in</button>
+    <button class="asset-tool" id="unpin" title="Ta bort de fästa jämförelserna">Ta bort fästa</button>
+    <button class="asset-tool icon" id="undo" title="Ångra"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5 2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/></svg></button>
+    <button class="asset-tool icon" id="redo" title="Gör om"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 3.5 3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/></svg></button>
+    <button class="asset-tool icon" id="frame" title="Rama in"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
     <button id="save" class="primary asset-tool">Spara till biblioteket…</button>
+    <span class="div"></span>
+    <button id="theme" class="icon"></button>
   </div>
 </header>
 <div id="side"></div>

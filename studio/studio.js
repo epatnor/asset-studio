@@ -474,6 +474,25 @@ function refreshUi() {
   for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : b.dataset.kind === kind.id);
 }
 
+// --- Tema: Auto (systemets), Ljust eller Mörkt; sparas i webbläsaren och sätts före första ritningen (index.html) ---
+const THEME_ICONS = {
+  auto: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>',
+  light: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg>',
+  dark: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>',
+};
+const THEME_LABELS = { auto: 'Auto', light: 'Ljust', dark: 'Mörkt' };
+function setTheme(t) {
+  if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('studio-theme', t); } catch {}
+  $('theme').innerHTML = THEME_ICONS[t];
+  $('theme').title = `Tema: ${THEME_LABELS[t]} (klicka för att byta mellan Auto, Ljust och Mörkt)`;
+  $('theme').dataset.t = t;
+  dispatchEvent(new Event('studio-theme'));
+}
+$('theme').onclick = () => setTheme({ auto: 'light', light: 'dark', dark: 'auto' }[$('theme').dataset.t]);
+setTheme(document.documentElement.dataset.theme ?? 'auto');
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => dispatchEvent(new Event('studio-theme')));
+
 // --- Header: flikar för tillgångstyp och verktyg ---
 for (const k of P.kinds) {
   const b = el('button', null, k.label);
@@ -584,3 +603,5 @@ refreshUi();
 lastSnapshot = snapshot();
 applyViewAll();
 regenerate();
+// En länk till …/studio/#texturer öppnar verkstaden direkt
+if (location.hash === '#texturer') texBtn.onclick();

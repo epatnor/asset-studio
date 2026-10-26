@@ -81,6 +81,25 @@ En katalog med en rad per tillgång: namn, typ (träd, buske, sten ...), taggar,
 
 Det stämmer med roadmapens "Bibliotek (första version)" och generatorkontraktet (`recipe.json` och miniatyr per tillgång).
 
+#### Familjer och fasta modeller (plan 2026-10-26)
+
+Asset Studio ska leverera färdiga tillgångar (hus, stenar, växter, props) till ett bibliotek som liknar FAB eller Quixel. Biblioteket har två sorters tillgångar:
+
+| | **Familj** (procedurell) | **Fast modell** |
+|---|---|---|
+| Vad | ett recept och en generator ("mossig bumling", "björk") | en bestämd modell med egna texturer |
+| I världen | en proxy: familj och frö, utplacerad för hand eller av en PCG-graf | placeras som den är |
+| Varianter | obegränsat, med nya frön; en pool med färdigbyggda varianter (8–16) som instansieras | en, eller några sparade |
+| Exempel | träd, stenar, växter, gräsknippen | egna props, Tripo-importer, AI-målade föremål, hjältemodeller |
+
+- **Frys** gör en familj (eller ett visst frö av den) till en fast modell. Receptet följer med, så att den kan **tinas** upp och ändras igen.
+- En familj bär **utplaceringsdata**: storleksintervall, radie eller fotavtryck, luta efter marken, biomer och vikt. Världen sparar bara familj och frö per punkt och väljer närmaste färdiga variant ur poolen; fler varianter byggs i bakgrunden.
+- **PCG** bor i Tinkertown (samma kedja som gräsets planerade graf): punkter → täthet → filter (lutning, höjd, biom) → välj familj med vikter → frö → instans. Asset Studio levererar familjerna.
+- **Sammansättningar:** egna props byggs av det som finns i biblioteket (en sten med svampar och mossa, en lägereld, ett staket med rankor) och sparas som ett recept av recept. De kan också frysas eller spridas ut.
+- **Texturera den här modellen** (texturverkstaden, lagerpanelen): Blender bakar modellens kartor utan fönster (krökning, AO, position, tjocklek); verkstadens lagerstack använder dem som masker (bas, mossa i skrymslen, nötta kanter, smuts nerifrån), och resultatet bakas till modellens egna UV-texturer. Modellen blir en fast modell. Sedan en **maskpensel** (måla var ett lager syns), och full målning först om det behövs (eller i Blender).
+
+Katalograden får `kind: "family" | "fixed"`, för familjer `variants` (poolen) och `scatter` (utplaceringsdata), för fasta modeller `from` (receptet den frystes från).
+
 ### 5. AI:n i samma loop
 
 MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem varianter av björken jag sparade i går") och använda samma API som studion. Studion kan senare få en knapp "Be Claude …" som skickar receptet och en fråga.
@@ -94,6 +113,12 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 | 3. Bibliotek | Biblioteksvy med miniatyrer, sökning och taggar; ladda tillbaka i studion; "Fler varianter" | Sparade träd går att hitta, ändra och variera | Återstår (katalogen finns) |
 | 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props | Flikarna finns, markerade som kommande |
 | 5. Hopkoppling | Tinkertown visar biblioteket; Electron-paketering tillsammans med Tinkertown | Det som sparas i studion går att placera i världen | Återstår |
+| B1. Biblioteksvy | FAB-lik vy: kategorier, taggar, sök, märkning Familj och Fast; Frys och Tina | Biblioteket är där man hittar och väljer allt | Planerad 2026-10-26 (bygger vidare på fas 3) |
+| B2. Familjer | variantpool (8–16 färdigbyggda), utplaceringsdata (`scatter`), fler varianter i bakgrunden | En familj kan spridas ut utan att byggas om per exemplar | Planerad |
+| B3. Proxys och PCG | Tinkertown läser familjerna; proxys (familj och frö) och en PCG-graf som sprider ut dem | Skog och stenar sprids med regler, med variation per frö | Planerad |
+| B4. Texturera modellen | lagerpanel i verkstaden (Marmoset-lik); kartor bakade i Blender; lagren bakas till modellens UV-texturer | En egen prop får egna texturer och blir en fast modell | Planerad |
+| B5. Sammansättningar och pensel | recept av recept (sten med svampar, lägereld); maskpensel | Egna props byggs av biblioteket | Planerad |
+| GUI | professionellt utseende med designtokens, ljust och mörkt tema, väljare i headern | Studion ser ut som ett verktyg | Byggd 2026-10-26 |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.
 

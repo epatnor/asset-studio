@@ -62,7 +62,10 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   const mapSel = sel(Object.entries(MAP_LABELS), 'color', (v) => { vs.map = v; showMap(); }, 'Vilken karta som visas');
   const tilesSel = sel([[1, '1 × 1'], [3, '3 × 3'], [5, '5 × 5']], 3, (v) => { vs.tiles = Number(v); fit(); });
   const zoomOut = el('span', 'zoom');
-  const fitBtn = el('button', null, 'Rama in');
+  // Ikonknappar som i headern (index.html): ram, ångra, gör om
+  const SVG = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const iconBtn = (title, d) => Object.assign(el('button', 'icon'), { title, innerHTML: SVG(d) });
+  const fitBtn = iconBtn('Rama in', '<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>');
   fitBtn.onclick = () => (vs.mode === '2d' ? fit() : lab.setDistance('fit'));
   const g2 = el('span', 'grp');
   g2.append(mapSel, el('span', null, 'Upprepning'), tilesSel, el('span', null, 'Sömmar'), sw(true, (v) => { vs.seams = v; draw(); }), zoomOut);
@@ -80,7 +83,8 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   popRow('Trådram', sw(false, (v) => lab.setWire(v)));
   advBtn.onclick = () => pop.classList.toggle('open');
   g3.append(modelSel, lightSel, el('span', null, 'Vridbord'), sw(false, (v) => lab.setTurntable(v)), distSel, advBtn);
-  const undoBtn = el('button', null, 'Ångra'), redoBtn = el('button', null, 'Gör om');
+  const undoBtn = iconBtn('Ångra', '<path d="M5.5 3.5 2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/>');
+  const redoBtn = iconBtn('Gör om', '<path d="m10.5 3.5 3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/>');
   const nameTag = el('span', 'curname');
   bar.append(seg, nameTag, g2, g3, fitBtn, undoBtn, redoBtn);
   view.append(bar, pop);
@@ -122,7 +126,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   function draw() {
     const dpr = devicePixelRatio, w = canvas.width, h = canvas.height;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#2b2f36';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--viewport').trim() || '#2b2f36';
     ctx.fillRect(0, 0, w, h);
     const img = vs.img;
     if (!img) return;
@@ -158,6 +162,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   canvas.addEventListener('pointermove', (e) => { if (!drag) return; vs.panX = drag.px + e.clientX - drag.x; vs.panY = drag.py + e.clientY - drag.y; draw(); });
   canvas.addEventListener('pointerup', () => { drag = null; });
   addEventListener('resize', () => { if (vs.mode === '2d') resize(); });
+  addEventListener('studio-theme', () => { if (vs.mode === '2d') draw(); });
   const note2d = el('div', 'wnote');
   view.append(note2d);
   let firstFit = true;
@@ -446,7 +451,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
     free.title = W.sources.krea.params.find((p) => p.key === 'denoise').help;
     free.append(el('label', null, 'Fri tolkning'), r, out);
     const ends = el('div', 'ends');
-    ends.append(el('span', null, 'behåll formen'), el('span', null, 'måla fritt'));
+    ends.append(el('span', null, '← formen'), el('span', null, 'fritt →'));
     const go = el('button', 'primary', 'Måla med AI');
     go.title = 'Cirka 3 minuter. Du kan dra i andra spakar under tiden; svaret sparas i cachen';
     go.onclick = paintWithAI;
