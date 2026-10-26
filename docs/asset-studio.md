@@ -121,6 +121,12 @@ Formatet som världen (Tinkertown, B3) läser, byggt 2026-10-26:
 
 MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem varianter av björken jag sparade i går") och använda samma API som studion. Studion kan senare få en knapp "Be Claude …" som skickar receptet och en fråga.
 
+## Grafikkort (byggt 2026-10-26)
+
+Knappen i headern (`studio/gpu.js`) visar vilket kort fönstret ritar på (WebGL:s namn och WebGPU:s adapter) och har ett önskemål till alla renderare: Performance (standard), Power saving eller Auto (`powerPreference`, sparat i webbläsaren). På Windows och Mac byter webbläsaren ofta kort efter önskemålet; på Linux väljer den kort när den startar. Därför kan studioservern öppna studion i ett eget appfönster på ett valt kort (`/api/gpus`, `/api/gpu/launch`): den listar korten med `cardwire` (Bazzite) eller `switcherooctl`, och startar Chrome (Flatpak) med en egen profil per kort, i X11, med PRIME-variablerna för NVIDIA (`__NV_PRIME_RENDER_OFFLOAD`, `__GLX_VENDOR_LIBRARY_NAME`) eller `DRI_PRIME` och med Vulkan påslaget för WebGPU. Sidorna rapporterar vilket kort de ritar på (`/api/gpu/seen`).
+
+Lärt på den här datorn: webbläsarpanelen i Claude-appen ritar på det inbyggda Radeon 780M och har ingen WebGPU. `cardwire launch` låser Vulkan till NVIDIA:s drivrutin, och då startar inte Vulkan i Flatpak-Chrome, så WebGPU hamnar på processorn (SwiftShader); Chrome med Vulkan och NVIDIA kraschar på Wayland (dmabuf). Med X11 och bara PRIME-variablerna ritar både WebGL och WebGPU på RTX 4070, och `--enable-unsafe-webgpu` behövs inte. Väderkvarnen använder WebGL2 om WebGPU bara finns som mjukvara.
+
 ## Faser
 
 | Fas | Innehåll | Klart när | Status |

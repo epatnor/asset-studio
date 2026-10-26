@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { gpuPreference } from './gpu.js';
 
 const CATS = [['all', 'All'], ['tree', 'Trees'], ['bush', 'Bushes'], ['plant', 'Plants'], ['rock', 'Rocks'], ['prop', 'Props'], ['building', 'Buildings'], ['texture', 'Materials']];
 const CAT_LABEL = Object.fromEntries(CATS);
@@ -23,7 +24,7 @@ const THUMB_PX = 384;
 let R = null;
 function thumbRenderer() {
   if (R) return R;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: gpuPreference() });
   renderer.setPixelRatio(1);
   renderer.setSize(THUMB_PX, THUMB_PX, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;

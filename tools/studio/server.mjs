@@ -552,7 +552,71 @@ async function windGlade() {
   return { items, errors, grass: W.grass, flag: W.flag };
 }
 
+// --- Grafikkort (docs/asset-studio.md, Grafikkort): en webbsida kan inte byta grafikkort själv (på Linux väljer
+// webbläsaren kort när den startar). Servern listar korten med cardwire eller switcherooctl och kan starta studion i ett eget
+// appfönster på valt kort, med en egen profil per kort (annars öppnas bara en flik i den Chrome som redan kör).
+// Sidorna rapporterar vilket kort de faktiskt ritar på (/api/gpu/seen), så att menyn kan visa det.
+const onHost = (cmd) => (existsSync('/run/.toolboxenv') || existsSync('/run/.containerenv') ? ['host-spawn', ...cmd] : cmd);
+function capture(cmd) {
+  return new Promise((resolve) => {
+    const [c, ...args] = onHost(cmd);
+    const p = spawn(c, args);
+    let out = '';
+    p.stdout.on('data', (d) => (out += d));
+    p.on('error', () => resolve(null));
+    p.on('close', (code) => resolve(code === 0 ? out : null));
+  });
+}
+const gpuSeen = [];
+// cardwire (Bazzite) eller switcherooctl (Fedora m.fl.; på Bazzite ett avvecklat omslag som bara varnar utan terminal)
+let gpuTool = null;
+async function gpuTool_() {
+  if (gpuTool) return gpuTool;
+  for (const t of ['cardwire', 'switcherooctl']) if ((await capture(['sh', '-c', `command -v ${t}`]))?.trim()) return (gpuTool = t);
+  return null;
+}
+async function gpuList() {
+  const tool = await gpuTool_();
+  const out = tool ? await capture([tool, 'list']) : null;
+  const gpus = [];
+  for (const line of (out ?? '').split(/\r?\n/)) {
+    const m = line.match(/^(\d+)\s+(.+?)\s{2,}\S+\s+(renderD\d+)\s+\S+\s+\((.)\)\s+\((.)\)/);
+    if (m) gpus.push({ id: Number(m[1]), name: m[2].trim(), render: m[3], default: m[4] === '*', discrete: m[5] === '*' });
+  }
+  const apps = (await capture(['flatpak', 'list', '--app', '--columns=application'])) ?? '';
+  const browser = ['com.google.Chrome', 'org.chromium.Chromium'].find((b) => apps.split(/\r?\n/).map((x) => x.trim()).includes(b)) ?? null;
+  return { gpus, browser, canLaunch: gpus.length > 1 && !!browser, seen: gpuSeen.slice(-6) };
+}
+async function gpuLaunch({ id, path: page }) {
+  const { gpus, browser, canLaunch } = await gpuList();
+  const gpu = gpus.find((g) => g.id === id);
+  if (!canLaunch || !gpu) return { error: 'cannot start on that graphics card here' };
+  if (!/^\/studio\/[\w./?=&#%-]*$/.test(String(page ?? ''))) return { error: 'bad page' };
+  // Fönstret får sitt kortval med sig (gpu=), som förval för WebGPU:s adapter i den profilen
+  const u = new URL(page, 'http://localhost');
+  u.searchParams.set('gpu', gpu.discrete ? 'high-performance' : 'low-power');
+  const url = `http://localhost:${PORT}${u.pathname}${u.search}${u.hash}`;
+  const profile = path.join(process.env.HOME, `.var/app/${browser}/data/asset-studio-gpu${id}`);
+  // Kortet väljs med miljövariabler (PRIME för NVIDIA, DRI_PRIME för Mesa), inte med cardwire launch: dess låsning
+  // av Vulkan-drivrutinerna gör att Vulkan inte startar i Flatpak-Chrome, och då hamnar WebGPU på processorn
+  // (SwiftShader). X11 (XWayland) i stället för Wayland: Chrome med Vulkan och NVIDIA fungerar inte på Wayland.
+  const env = /nvidia/i.test(gpu.name) && !gpu.default ? ['__NV_PRIME_RENDER_OFFLOAD=1', '__GLX_VENDOR_LIBRARY_NAME=nvidia'] : gpu.default ? [] : ['DRI_PRIME=1'];
+  const [c, ...args] = onHost(['env', ...env, 'flatpak', 'run', browser, `--user-data-dir=${profile}`, '--ozone-platform=x11',
+    `--app=${url}`, '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check']); // WebGPU går på Vulkan; --enable-unsafe-webgpu behövs inte och ger en varningsrad
+  const p = spawn(c, args, { detached: true, stdio: 'ignore' });
+  p.unref();
+  return { ok: true, gpu: gpu.name, url };
+}
+
 async function api(req, res, url) {
+  if (url.pathname === '/api/gpus' && req.method === 'GET') return json(res, 200, await gpuList());
+  if (url.pathname === '/api/gpu/launch' && req.method === 'POST') return json(res, 200, await gpuLaunch(await body(req)));
+  if (url.pathname === '/api/gpu/seen' && req.method === 'POST') {
+    const b = await body(req);
+    gpuSeen.push({ gpu: String(b.gpu ?? '').slice(0, 160), api: String(b.api ?? '').slice(0, 40), webgpu: b.webgpu ? String(b.webgpu).slice(0, 80) : null, page: String(b.page ?? '').slice(0, 80), at: new Date().toISOString() });
+    if (gpuSeen.length > 50) gpuSeen.shift();
+    return json(res, 200, { ok: true });
+  }
   if (url.pathname === '/api/wind' && req.method === 'GET') return json(res, 200, await windInfo());
   if (url.pathname === '/api/wind/save' && req.method === 'POST') return json(res, 200, await windSave(await body(req)));
   if (url.pathname === '/api/wind/plant' && req.method === 'GET') return json(res, 200, await windPlant(url.searchParams.get('preset'), Number(url.searchParams.get('seed'))));

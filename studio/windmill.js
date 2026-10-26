@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
 import { createGrass } from '../shared/effects/grass.js';
+import { gpuPreference } from './gpu.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
 const DEG = Math.PI / 180;
@@ -19,7 +20,12 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   const wind = createWind(Object.fromEntries(info.params.map((q) => [q.key, q.key === 'dir' ? q.default * DEG : q.default])));
 
   // --- Scenen: himmel, sol, mark ---
-  const renderer = new THREE.WebGPURenderer({ antialias: true });
+  // WebGPU bara på ett riktigt grafikkort: en mjukvarulösning (SwiftShader, när Vulkan inte startar) ritar på
+  // processorn och är mycket långsammare än WebGL2, så då används WebGL2 i stället
+  const pref = gpuPreference() === 'default' ? undefined : gpuPreference();
+  const adapter = navigator.gpu ? await navigator.gpu.requestAdapter({ powerPreference: pref }).catch(() => null) : null;
+  const software = !adapter || adapter.info?.isFallbackAdapter || adapter.isFallbackAdapter || /swiftshader|llvmpipe/i.test(`${adapter.info?.architecture} ${adapter.info?.description}`);
+  const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: pref, forceWebGL: software });
   await renderer.init();
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.toneMapping = THREE.AgXToneMapping;
@@ -447,7 +453,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     frames++;
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
-      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.flowers ?? 0} flowers · ${Math.round((grass?.visibleBlades() ?? 0) / 1000)}k blades · ${fps} fps`);
+      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.flowers ?? 0} flowers · ${Math.round((grass?.visibleBlades() ?? 0) / 1000)}k blades · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'}`);
       const f = wind.forceAt(controls.target.x, controls.target.z);
       block(fWind, 'Wind here', `toward ${valueFor('dir')}° · force ${f.toFixed(2)} · gust ${wind.gustAt(controls.target.x, controls.target.z).toFixed(2)}`);
     }

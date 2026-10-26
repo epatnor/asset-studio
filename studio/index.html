@@ -328,6 +328,20 @@
   .wprof b { font-weight: 600; }
   .wbar2 { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--s) * 100%), var(--line) 0); }
   .wmeta { font-size: 11px; color: var(--muted); }
+  /* Grafikkortet (studio/gpu.js): knappen i headern och menyn under den */
+  #hdrtools { display: flex; gap: 6px; align-items: center; }
+  .gpubtn { height: 28px; gap: 6px; padding: 0 8px; font-size: 12px; color: var(--ink-2); }
+  .gpubtn .gpuicon { display: inline-flex; width: 16px; height: 16px; }
+  .gpubtn .gpuicon svg { width: 16px; height: 16px; }
+  .gpupop { display: none; position: fixed; top: calc(var(--bar) + 6px); right: 12px; width: 300px; padding: 12px; border-radius: var(--radius); z-index: 6; gap: 8px; flex-direction: column; }
+  .gpupop.open { display: flex; }
+  .gpupop h3 { margin: 4px 0 0; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .gpunow, .gpuopen { display: grid; gap: 2px; text-align: left; }
+  .gpunow span, .gpuopen span { font-size: 11.5px; color: var(--muted); }
+  .gpuopen { height: auto; padding: 7px 10px; justify-items: start; }
+  .gpupop .seg { display: flex; }
+  .gpupop .seg button { flex: 1; justify-content: center; padding: 0 4px; }
+  @media (max-width: 1000px) { .gpubtn .gpuname { display: none; } }
   .gswatch { width: 100%; height: 6px; border-radius: 3px; }
   #wmside .card > header { cursor: pointer; }
   #wmside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
@@ -470,7 +484,7 @@
   <h1 title="Home"><i class="mark"></i><span>Asset Studio</span></h1>
   <div id="dept"><b></b><span></span></div>
   <nav id="depts"></nav>
-  <div id="hdrtools"><button id="theme" class="icon"></button></div>
+  <div id="hdrtools"><button id="gpu" class="gpubtn" title="Graphics card"></button><button id="theme" class="icon"></button></div>
 </header>
 <div id="subbar">
   <button id="drawerbtn" class="icon" title="Drawer (Ctrl+Space)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6 2.5v11"/></svg></button>

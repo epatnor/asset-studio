@@ -15,6 +15,7 @@ import { createLibrary } from './library.js';
 import { createHome, DEPARTMENTS, VAULT } from './home.js';
 import { createForgeDrawer } from './drawer.js';
 import { createWindmill } from './windmill.js';
+import { createGpuMenu, gpuPreference } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -23,7 +24,7 @@ const api = (p, payload) => fetch(p, payload ? { method: 'POST', headers: { 'Con
 const fmt = (n, d = 0) => (n ?? 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // --- Scen: samma ljus, himmel och mark som visningen (showcase/index.html) ---
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: gpuPreference() });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.AgXToneMapping; // stilguiden: AgX
@@ -791,6 +792,7 @@ applyViewAll();
 regenerate();
 // Landningssidan (studio/home.js): visas vid start och när man klickar på märket i headern
 const home = createHome({ el, api, root: $('home'), open: openDept });
+createGpuMenu({ el, api, button: $('gpu'), root: document.body });
 function goHome() {
   leaveTextureMode(); leaveLibraryMode(); leaveWindMode();
   homeMode = true;
