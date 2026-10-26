@@ -210,7 +210,7 @@ async function saveToLibrary({ generator = 'tree', name, tags = [], recipe, thum
     model: result.model, recipe: `${g.assets}/${name}/recipe.json`, thumbnail: thumb, checks_ok: result.checks?.ok ?? null,
     saved: new Date().toISOString(),
   };
-  lib.items = [...lib.items.filter((i) => !(i.type === generator && i.name === name)), entry];
+  lib.items = [...lib.items.filter((i) => !(i.type === generator && i.name === name)), await completeEntry(entry)];
   await writeFile(LIBRARY, JSON.stringify(lib, null, 2) + '\n');
   return { entry, checks: result.checks };
 }
@@ -271,7 +271,7 @@ async function libraryAdd({ model, tags }) {
   const lib = await readLibrary();
   const entry = { name: found.name, type: found.type, kind: found.kind, category: found.category, tags: cleanTags(tags), model, recipe: found.recipe,
                   thumbnail: found.thumbnail, checks_ok: null, saved: new Date().toISOString() };
-  lib.items.push(entry);
+  lib.items.push(await completeEntry(entry));
   await writeLibrary(lib);
   return { entry };
 }
@@ -281,6 +281,7 @@ async function libraryUpdate({ model, tags, category, scatter }) {
   if (tags) e.tags = cleanTags(tags);
   if (scatter && typeof scatter === 'object') e.scatter = { ...e.scatter, ...cleanScatter(scatter) };
   if (category) { if (!CATEGORIES.has(category)) return { error: `okänd kategori ${category}` }; e.category = category; }
+  await completeEntry(e);
   await writeLibrary(lib);
   return { entry: e };
 }
@@ -318,7 +319,7 @@ async function libraryFreeze({ model, name }) {
   const entry = { name, type: src.type, kind: 'fixed', category: src.category, tags: src.tags ?? [], model: `${to}/${name}${ext}`, recipe,
                   thumbnail: thumbFor(to, name), checks_ok: src.checks_ok ?? null, saved: new Date().toISOString(),
                   scatter: src.scatter, from: { name: src.name, model, recipe: src.recipe } };
-  lib.items.push(entry);
+  lib.items.push(await completeEntry(entry));
   await writeLibrary(lib);
   return { entry };
 }
@@ -378,6 +379,16 @@ function cleanScatter(s) {
   if (s.rotate === 'y' || s.rotate === 'free') out.rotate = s.rotate;
   if (Array.isArray(s.biomes)) out.biomes = cleanTags(s.biomes);
   return out;
+}
+// Katalograden ska vara självbärande för den som läser assets/library.json direkt (Tinkertown): sort, kategori,
+// mått och hela utplaceringen med standardvärden ifyllda
+async function completeEntry(e) {
+  const recipe = e.recipe ? await readJson(e.recipe) : null;
+  e.kind ??= e.type === 'imported' || e.model.startsWith('assets/fixed/') ? 'fixed' : 'family';
+  e.category ??= categoryOf(e.type, recipe ?? {});
+  e.bounds ??= await gltfBounds(e.model);
+  e.scatter = scatterFor(e, e.bounds);
+  return e;
 }
 const variantJobs = new Map();
 let variantJobCounter = 0;

@@ -1,0 +1,144 @@
+{
+  "preset": "cardtree_medium",
+  "seed": 45504,
+  "height": 9,
+  "leaves": "leaffine_sprig",
+  "bark": "bark_painted_hd3",
+  "leaf_tint": "palette:foliage_light",
+  "species": {
+    "trunk": {
+      "length": 0.42,
+      "radius": 0.07,
+      "sections": 8,
+      "segments": 14,
+      "gnarl": 0.1,
+      "photo": 0.05,
+      "flare": 0.7,
+      "roots": 5,
+      "bend": 0.13,
+      "bendFreq": 1.6,
+      "rootAmp": 0.6,
+      "flareHeight": 0.08,
+      "lobes": 4,
+      "lobeAmp": 0.2,
+      "twist": 1.3,
+      "bulge": 0.06
+    },
+    "levels": [
+      {
+        "count": [
+          5,
+          7
+        ],
+        "start": 0.45,
+        "angle": [
+          48,
+          12
+        ],
+        "length": 1.05,
+        "lenFalloff": 0.35,
+        "radius": 0.62,
+        "gnarl": 0.28,
+        "photo": 0.18,
+        "gravity": 0.05,
+        "sections": 7,
+        "segments": 7
+      },
+      {
+        "count": [
+          3,
+          5
+        ],
+        "start": 0.3,
+        "angle": [
+          42,
+          12
+        ],
+        "length": 0.55,
+        "lenFalloff": 0.3,
+        "radius": 0.55,
+        "gnarl": 0.28,
+        "photo": 0.25,
+        "gravity": 0.03,
+        "sections": 5,
+        "segments": 5
+      },
+      {
+        "count": [
+          3,
+          4
+        ],
+        "start": 0.35,
+        "angle": [
+          45,
+          15
+        ],
+        "length": 0.45,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.3,
+        "photo": 0.25,
+        "gravity": 0.02,
+        "sections": 3,
+        "segments": 4
+      }
+    ],
+    "stemless": false
+  },
+  "canopy": {
+    "type": "cardball",
+    "clusters": 6,
+    "ballsPerCluster": 1,
+    "cardsPerBall": [
+      30,
+      36
+    ],
+    "ballScale": 2.1,
+    "cardScale": 0.37,
+    "minBall": 0.15,
+    "normalBlend": 0.9,
+    "normalOffset": 0.4,
+    "normalLift": 0.15,
+    "innerTint": [
+      0.34,
+      0.42,
+      0.36
+    ],
+    "bottomCool": [
+      0.6,
+      0.7,
+      0.85
+    ],
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardOffset": 0.75,
+    "cardGrid": 3,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    },
+    "tip": {
+      "strength": 0,
+      "texture": "foliage_painted",
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  },
+  "name": "cardtree_71924_s45504",
+  "leaf_mass": "leaf_mass"
+}

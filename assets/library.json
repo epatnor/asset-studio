@@ -10,7 +10,600 @@
       "recipe": "assets/trees/cardtree_71924/recipe.json",
       "thumbnail": "assets/trees/cardtree_71924/cardtree_71924_thumb.jpg",
       "checks_ok": true,
-      "saved": "2026-10-24T23:52:22.831Z"
+      "saved": "2026-10-24T23:52:22.831Z",
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 2,
+        "radius": 6.04,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "kind": "family",
+      "category": "tree",
+      "bounds": {
+        "width": 11.77,
+        "depth": 12.08,
+        "height": 11.44,
+        "radius": 6.04
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 71924,
+            "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+            "main": true
+          },
+          {
+            "seed": 37585,
+            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
+            "checks_ok": true,
+            "height_m": 9
+          },
+          {
+            "seed": 45504,
+            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s45504/cardtree_71924_s45504.gltf",
+            "checks_ok": true,
+            "height_m": 9
+          },
+          {
+            "seed": 53423,
+            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s53423/cardtree_71924_s53423.gltf",
+            "checks_ok": true,
+            "height_m": 9
+          },
+          {
+            "seed": 61342,
+            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s61342/cardtree_71924_s61342.gltf",
+            "checks_ok": true,
+            "height_m": 9
+          }
+        ],
+        "built": "2026-10-26T14:15:27.218Z"
+      }
+    },
+    {
+      "name": "bj_1",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/trees/bj_1/bj_1.gltf",
+      "recipe": "assets/trees/bj_1/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:15:28.160Z",
+      "bounds": {
+        "width": 5.4,
+        "depth": 4.62,
+        "height": 10.5,
+        "radius": 2.7
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 2.7,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 3,
+            "model": "assets/trees/bj_1/bj_1.gltf",
+            "main": true
+          },
+          {
+            "seed": 8012,
+            "model": "assets/trees/bj_1/variants/bj_1_s8012/bj_1_s8012.gltf",
+            "checks_ok": true,
+            "height_m": 10
+          },
+          {
+            "seed": 15931,
+            "model": "assets/trees/bj_1/variants/bj_1_s15931/bj_1_s15931.gltf",
+            "checks_ok": true,
+            "height_m": 10
+          },
+          {
+            "seed": 23850,
+            "model": "assets/trees/bj_1/variants/bj_1_s23850/bj_1_s23850.gltf",
+            "checks_ok": true,
+            "height_m": 10
+          },
+          {
+            "seed": 31769,
+            "model": "assets/trees/bj_1/variants/bj_1_s31769/bj_1_s31769.gltf",
+            "checks_ok": true,
+            "height_m": 10
+          }
+        ],
+        "built": "2026-10-26T14:15:43.136Z"
+      }
+    },
+    {
+      "name": "ballbush_v2",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
+      "recipe": "assets/trees/ballbush_v2/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:15:43.290Z",
+      "bounds": {
+        "width": 2.4,
+        "depth": 2.45,
+        "height": 1.47,
+        "radius": 1.23
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.23,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 3,
+            "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
+            "main": true
+          },
+          {
+            "seed": 8012,
+            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s8012/ballbush_v2_s8012.gltf",
+            "checks_ok": true,
+            "height_m": 1.2
+          },
+          {
+            "seed": 15931,
+            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s15931/ballbush_v2_s15931.gltf",
+            "checks_ok": true,
+            "height_m": 1.2
+          },
+          {
+            "seed": 23850,
+            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s23850/ballbush_v2_s23850.gltf",
+            "checks_ok": true,
+            "height_m": 1.2
+          },
+          {
+            "seed": 31769,
+            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s31769/ballbush_v2_s31769.gltf",
+            "checks_ok": true,
+            "height_m": 1.2
+          }
+        ],
+        "built": "2026-10-26T14:16:07.601Z"
+      }
+    },
+    {
+      "name": "boulder1",
+      "type": "prop",
+      "kind": "family",
+      "category": "rock",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/props/boulder1/boulder1.gltf",
+      "recipe": "assets/props/boulder1/recipe.json",
+      "thumbnail": "assets/props/boulder1/boulder1_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:08.954Z",
+      "bounds": {
+        "width": 2.47,
+        "depth": 2.3,
+        "height": 1.07,
+        "radius": 1.23
+      },
+      "scatter": {
+        "scale": [
+          0.6,
+          1.5
+        ],
+        "align": 0.8,
+        "max_slope": 60,
+        "rotate": "free",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 1.23,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 6,
+            "model": "assets/props/boulder1/boulder1.gltf",
+            "main": true
+          },
+          {
+            "seed": 8105,
+            "model": "assets/props/boulder1/variants/boulder1_s8105/boulder1_s8105.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 16024,
+            "model": "assets/props/boulder1/variants/boulder1_s16024/boulder1_s16024.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 23943,
+            "model": "assets/props/boulder1/variants/boulder1_s23943/boulder1_s23943.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 31862,
+            "model": "assets/props/boulder1/variants/boulder1_s31862/boulder1_s31862.gltf",
+            "checks_ok": true
+          }
+        ],
+        "built": "2026-10-26T14:16:17.125Z"
+      }
+    },
+    {
+      "name": "mossy_stone1",
+      "type": "prop",
+      "kind": "family",
+      "category": "rock",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+      "recipe": "assets/props/mossy_stone1/recipe.json",
+      "thumbnail": "assets/props/mossy_stone1/mossy_stone1_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:18.041Z",
+      "bounds": {
+        "width": 0.7,
+        "depth": 0.55,
+        "height": 0.29,
+        "radius": 0.35
+      },
+      "scatter": {
+        "scale": [
+          0.6,
+          1.5
+        ],
+        "align": 0.8,
+        "max_slope": 60,
+        "rotate": "free",
+        "spacing": 1,
+        "weight": 2,
+        "radius": 0.35,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 7,
+            "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+            "main": true
+          },
+          {
+            "seed": 8136,
+            "model": "assets/props/mossy_stone1/variants/mossy_stone1_s8136/mossy_stone1_s8136.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 16055,
+            "model": "assets/props/mossy_stone1/variants/mossy_stone1_s16055/mossy_stone1_s16055.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 23974,
+            "model": "assets/props/mossy_stone1/variants/mossy_stone1_s23974/mossy_stone1_s23974.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 31893,
+            "model": "assets/props/mossy_stone1/variants/mossy_stone1_s31893/mossy_stone1_s31893.gltf",
+            "checks_ok": true
+          }
+        ],
+        "built": "2026-10-26T14:16:26.065Z"
+      }
+    },
+    {
+      "name": "mossy_stump1",
+      "type": "prop",
+      "kind": "family",
+      "category": "prop",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/props/mossy_stump1/mossy_stump1.gltf",
+      "recipe": "assets/props/mossy_stump1/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:27.154Z",
+      "bounds": {
+        "width": 1.53,
+        "depth": 1.5,
+        "height": 0.44,
+        "radius": 0.76
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.15
+        ],
+        "align": 0.6,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 0.76,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 5,
+            "model": "assets/props/mossy_stump1/mossy_stump1.gltf",
+            "main": true
+          },
+          {
+            "seed": 8074,
+            "model": "assets/props/mossy_stump1/variants/mossy_stump1_s8074/mossy_stump1_s8074.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 15993,
+            "model": "assets/props/mossy_stump1/variants/mossy_stump1_s15993/mossy_stump1_s15993.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 23912,
+            "model": "assets/props/mossy_stump1/variants/mossy_stump1_s23912/mossy_stump1_s23912.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 31831,
+            "model": "assets/props/mossy_stump1/variants/mossy_stump1_s31831/mossy_stump1_s31831.gltf",
+            "checks_ok": true
+          }
+        ],
+        "built": "2026-10-26T14:16:35.544Z"
+      }
+    },
+    {
+      "name": "fly_agaric1",
+      "type": "prop",
+      "kind": "family",
+      "category": "prop",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/props/fly_agaric1/fly_agaric1.gltf",
+      "recipe": "assets/props/fly_agaric1/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:36.266Z",
+      "bounds": {
+        "width": 0.31,
+        "depth": 0.34,
+        "height": 0.2,
+        "radius": 0.17
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.15
+        ],
+        "align": 0.6,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 0.5,
+        "radius": 0.17,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 1,
+            "model": "assets/props/fly_agaric1/fly_agaric1.gltf",
+            "main": true
+          },
+          {
+            "seed": 7950,
+            "model": "assets/props/fly_agaric1/variants/fly_agaric1_s7950/fly_agaric1_s7950.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 15869,
+            "model": "assets/props/fly_agaric1/variants/fly_agaric1_s15869/fly_agaric1_s15869.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 23788,
+            "model": "assets/props/fly_agaric1/variants/fly_agaric1_s23788/fly_agaric1_s23788.gltf",
+            "checks_ok": true
+          },
+          {
+            "seed": 31707,
+            "model": "assets/props/fly_agaric1/variants/fly_agaric1_s31707/fly_agaric1_s31707.gltf",
+            "checks_ok": true
+          }
+        ],
+        "built": "2026-10-26T14:16:40.280Z"
+      }
+    },
+    {
+      "name": "fern1",
+      "type": "plant",
+      "kind": "family",
+      "category": "plant",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/plants/fern1/fern1.gltf",
+      "recipe": "assets/plants/fern1/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:40.869Z",
+      "bounds": {
+        "width": 1.22,
+        "depth": 1.74,
+        "height": 0.48,
+        "radius": 0.87
+      },
+      "scatter": {
+        "scale": [
+          0.7,
+          1.3
+        ],
+        "align": 0.7,
+        "max_slope": 45,
+        "rotate": "y",
+        "spacing": 0.6,
+        "weight": 1,
+        "radius": 0.87,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 1,
+            "model": "assets/plants/fern1/fern1.gltf",
+            "main": true
+          },
+          {
+            "seed": 7950,
+            "model": "assets/plants/fern1/variants/fern1_s7950/fern1_s7950.gltf",
+            "checks_ok": false,
+            "height_m": 0.55
+          },
+          {
+            "seed": 15869,
+            "model": "assets/plants/fern1/variants/fern1_s15869/fern1_s15869.gltf",
+            "checks_ok": false,
+            "height_m": 0.57
+          },
+          {
+            "seed": 23788,
+            "model": "assets/plants/fern1/variants/fern1_s23788/fern1_s23788.gltf",
+            "checks_ok": false,
+            "height_m": 0.58
+          },
+          {
+            "seed": 31707,
+            "model": "assets/plants/fern1/variants/fern1_s31707/fern1_s31707.gltf",
+            "checks_ok": false,
+            "height_m": 0.54
+          }
+        ],
+        "built": "2026-10-26T14:16:46.172Z"
+      }
+    },
+    {
+      "name": "grass_tuft1",
+      "type": "plant",
+      "kind": "family",
+      "category": "plant",
+      "tags": [
+        "skog"
+      ],
+      "model": "assets/plants/grass_tuft1/grass_tuft1.gltf",
+      "recipe": "assets/plants/grass_tuft1/recipe.json",
+      "thumbnail": null,
+      "checks_ok": null,
+      "saved": "2026-10-26T14:16:46.984Z",
+      "bounds": {
+        "width": 0.39,
+        "depth": 0.58,
+        "height": 0.31,
+        "radius": 0.29
+      },
+      "scatter": {
+        "scale": [
+          0.7,
+          1.3
+        ],
+        "align": 0.7,
+        "max_slope": 45,
+        "rotate": "y",
+        "spacing": 0.6,
+        "weight": 2,
+        "radius": 0.29,
+        "biomes": [
+          "skog"
+        ]
+      },
+      "variants": {
+        "items": [
+          {
+            "seed": 1,
+            "model": "assets/plants/grass_tuft1/grass_tuft1.gltf",
+            "main": true
+          },
+          {
+            "seed": 7950,
+            "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s7950/grass_tuft1_s7950.gltf",
+            "checks_ok": true,
+            "height_m": 0.32
+          },
+          {
+            "seed": 15869,
+            "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s15869/grass_tuft1_s15869.gltf",
+            "checks_ok": true,
+            "height_m": 0.31
+          },
+          {
+            "seed": 23788,
+            "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s23788/grass_tuft1_s23788.gltf",
+            "checks_ok": true,
+            "height_m": 0.33
+          },
+          {
+            "seed": 31707,
+            "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s31707/grass_tuft1_s31707.gltf",
+            "checks_ok": true,
+            "height_m": 0.35
+          }
+        ],
+        "built": "2026-10-26T14:16:50.933Z"
+      }
     }
   ]
 }
