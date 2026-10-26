@@ -17,7 +17,7 @@ Rekommendation: stanna på three.js (vi har r186, som har WebGPU-renderaren och 
 | Terräng: strömmade 16-bitars höjdkartor i rutor, LOD med geomorphing, frustum- och ocklusionsval på GPU:n | Tinkertowns terräng är ett rutnät; "terrängen i rutor med LOD" står i [skogen-prestanda.md](skogen-prestanda.md) | Härma: rutor med CDLOD och geomorphing |
 | Splatting med 4 PBR-lager, stokastisk tiling, bakad virtuell texturatlas | Stokastisk tiling och lagerregler finns i verkstadens labb (T3b); Tinkertown läser inte katalogen än | Härma bakningen av en atlas per ruta |
 | Utspridning på GPU:n efter terränglagrens vikter och lutning | Planerad som PCG (B3) | Samma idé; räkna utspridningen i en compute-shader (TSL) |
-| Tre mesh-LOD:er plus octahedral impostors med ditherövergång | Träden har LOD0–2; impostors saknas | Låna eller härma: se impostors nedan |
+| Tre mesh-LOD:er plus octahedral impostors med ditherövergång | Byggt 2026-10-26 i Tinkertown (`impostor.js`): LOD0–2 i en BatchedMesh per familj och material, impostors bortom 220 m; ingen ditherövergång än | Klart utom övergången |
 | Strömmat gräs per ruta som tar markens färg | Finns (`showcase/grass.js`, rotfärg från marken) | Klart; jämför prestanda |
 | Sjö: absorption efter djup, mjuk strandkant, SSR, kaustik, krusningar från figurer | Saknas | Härma när Azshara Island behöver vatten |
 | Global vind som styr både löv och vågor | Vind i vertexshadern står som punkt i roadmapen | Gör vinden till en gemensam tjänst från början |
