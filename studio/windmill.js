@@ -60,10 +60,10 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   const rigged = []; // { mesh, normal, debug } för felsökningsvyn
   const pivots = [];
   const partColor = (n) => { const h = fract(n.mul(0.61803)); return mix(color('#e0533d'), color('#3d8be0'), h).mul(float(0.55).add(fract(n.mul(0.37)).mul(0.6))); };
-  function windMaterial(src, tex, stem, place = false) {
+  function windMaterial(src, tex, stem, place = false, response = 'tree') {
     const m = new THREE.MeshStandardNodeMaterial();
     for (const k of ['name', 'color', 'map', 'roughness', 'metalness', 'alphaTest', 'transparent', 'side', 'vertexColors', 'normalMap', 'emissive']) if (src[k] !== undefined) m[k] = src[k];
-    m.positionNode = wind.rigged(tex, { flutter: LEAFY.test(src.name), stem, place });
+    m.positionNode = wind.rigged(tex, { flutter: LEAFY.test(src.name), stem, place, response });
     if (place) m.normalNode = wind.placedNormal();
     if (src.userData?.shadowProxy) { m.colorWrite = false; m.depthWrite = false; }
     const d = new THREE.MeshStandardNodeMaterial({ roughness: 0.8, side: src.side, alphaTest: src.alphaTest, map: src.map });
@@ -74,6 +74,15 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     return [m, d];
   }
   const tableOf = (o) => { for (let p = o; p; p = p.parent) if (p.userData?.wind) return p.userData.wind; return null; };
+  // Vilken svarskurva (RESPONSE i wind.js) en modell har: växtgeneratorns växter, buskar eller träd
+  function responseOf(root) {
+    let info = null;
+    root.traverse((o) => { if (o.userData?.generator) info ??= o.userData; });
+    if (String(info?.generator ?? '').startsWith('tinkertown/plant')) return 'plant';
+    // Buskar: arten bush, eller allt från trädgeneratorn som är lägre än 2,5 m (kortbuskar heter lövträd i receptet)
+    if (info?.recipe?.kind === 'bush') return 'bush';
+    return new THREE.Box3().setFromObject(root).max.y < 2.5 ? 'bush' : 'tree';
+  }
   let stats = { models: 0, parts: 0, failed: [] };
   async function loadGlade() {
     setNote('Building the glade with the generators… (the first time takes a little while)');
@@ -82,7 +91,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
       const root = (await loader.loadAsync(it.url)).scene;
       root.position.set(...it.pos);
       root.rotation.y = (it.rot ?? 0) * DEG;
-      const texes = new Map();
+      const texes = new Map(), response = responseOf(root);
       root.traverse((o) => {
         if (/_LOD[12]$/.test(o.name)) o.visible = false; // gläntan visar LOD0
         if (!o.isMesh) return;
@@ -92,7 +101,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
         const w = it.rigged && tableOf(o);
         if (!w || !o.geometry.attributes._part) return;
         if (!texes.has(w)) { texes.set(w, rigTexture(w)); stats.parts += w.count; addPivots(w, root); }
-        const [m, d] = windMaterial(src, texes.get(w), !!o.geometry.attributes._stem);
+        const [m, d] = windMaterial(src, texes.get(w), !!o.geometry.attributes._stem, false, response);
         o.material = m;
         rigged.push({ mesh: o, normal: m, debug: d });
       });
@@ -181,7 +190,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
         const w = tableOf(o);
         if (!w) return;
         if (!texes.has(w)) texes.set(w, rigTexture(w));
-        const [m, d] = windMaterial(o.material, texes.get(w), !!o.geometry.attributes._stem, true);
+        const [m, d] = windMaterial(o.material, texes.get(w), !!o.geometry.attributes._stem, true, 'plant');
         parts.push({ geometry: o.geometry, normal: m, debug: d });
       });
       return parts;

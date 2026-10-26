@@ -13,6 +13,7 @@
 //
 //   const grass = createGrass(wind, { radius: 30, exclude: [{ x, z, r }] }, settings);
 //   scene.add(grass.group); varje bild: grass.update(camera)
+import { RESPONSE } from './wind.js';
 import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace } from 'three/webgpu';
 import {
   attribute, positionGeometry, uniform, vec2, vec3, float, cos, sin, max, min, pow, mix, smoothstep, normalize, cross, dot, length,
@@ -129,19 +130,23 @@ export function createGrass(wind, field = {}, settings = {}) {
   const w1 = pow(float(0.5).add(sin(ph).mul(0.5)), u.waveSharp);
   const w2 = pow(float(0.5).add(sin(ph.mul(1.73).add(1.3).add(across.div(u.waveSize).mul(2.1))).mul(0.5)), u.waveSharp).mul(0.45);
   const wave = max(w1, w2).mul(smoothstep(0.0, 0.25, S).mul(0.7).add(S.mul(0.5))); // syns redan i en bris, starkare i blåst
-  // Vinden: kraften vid roten (byarna), en svängning med stråets egen fas och vågen; mjuka strån böjer mer
-  const osc = sin(time.mul(float(2.1).add(iVar.y.mul(1.6))).add(iVar.z)).add(sin(time.mul(5.3).add(iVar.z.mul(3.1))).mul(0.3));
-  const windA = wind.force(root.xz).mul(1.25).add(S.mul(wind.uniforms.sway).mul(osc).mul(0.35)).add(wave.mul(u.waveBend))
-    .div(u.stiffness.mul(float(0.7).add(iVar.y.mul(0.6))));
-  // Lutningen: stråets egen böj (med variation) ut från tuvan plus vinden; bågen har vinkeln theta i spetsen
-  const ownBend = u.curve.mul(mix(1, float(0.3).add(iShape.w.mul(1.4)), u.curveVar)).add(u.clumpLean.mul(iVar.w).mul(1.5));
-  const lean = facing.mul(ownBend).add(W.mul(windA));
-  const theta = max(length(lean), 0.001), L = lean.div(theta);
   // Gallring på avstånd, per strå (inte per ruta): strån vars ordningstal ligger över andelen som ska synas krymper bort
   const distC = length(root.xz.sub(cameraPosition.xz));
   const keep = min(max(float(0.28), float(1).sub(distC.sub(u.lodNear).div(u.lodFar.sub(u.lodNear)).mul(0.72))), 1).mul(u.density);
   const thin = float(1).sub(smoothstep(keep.sub(0.06), keep, attribute('iRank', 'float')));
   const h = mix(u.heightMin, u.heightMax, clumpH.mul(0.35).add(patchN.mul(0.65))).mul(float(0.78).add(iShape.x.mul(0.4))).mul(iShape.y).mul(thin);
+  // Vinden: kraften vid roten (byarna), en svängning med stråets egen fas och vågen; mjuka strån böjer mer.
+  // Gräset har en egen svarskurva (RESPONSE.grass i wind.js): det rör sig redan i en svag bris, när träden står still.
+  // Långa strån böjer mer (längre hävarm): ungefär längden^0,6 mot ett strå på 30 cm.
+  const osc = sin(time.mul(float(2.1).add(iVar.y.mul(1.6))).add(iVar.z)).add(sin(time.mul(5.3).add(iVar.z.mul(3.1))).mul(0.3));
+  const lenGain = clamp(pow(max(h, 0.01).div(0.3), 0.6), 0.6, 2.2);
+  const windA = wind.forceFor(root.xz, RESPONSE.grass.force).mul(1.25).add(wind.swayFor(RESPONSE.grass.sway).mul(wind.uniforms.sway).mul(osc).mul(0.35))
+    .add(wave.mul(u.waveBend)).mul(lenGain).div(u.stiffness.mul(float(0.7).add(iVar.y.mul(0.6))));
+  // Lutningen: stråets egen böj (med variation) ut från tuvan plus vinden; bågen har vinkeln theta i spetsen
+  const ownBend = u.curve.mul(mix(1, float(0.3).add(iShape.w.mul(1.4)), u.curveVar)).add(u.clumpLean.mul(iVar.w).mul(1.5));
+  const lean = facing.mul(ownBend).add(W.mul(windA));
+  const theta = max(length(lean), 0.001), L = lean.div(theta);
+
   const a = theta.mul(t);
   // Mittlinjen: en båge med konstant krökning, längden h * t
   const center = L.mul(float(1).sub(cos(a))).add(vec3(0, 1, 0).mul(sin(a))).mul(h.div(theta));

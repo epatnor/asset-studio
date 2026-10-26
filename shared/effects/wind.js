@@ -16,7 +16,16 @@ import {
   select, round, sign, smoothstep, fract, transformNormalToView,
 } from 'three/tsl';
 
-export const WIND_DEFAULTS = { strength: 0.5, dir: 0, gust: 0.5, gustScale: 18, gustSpeed: 6, sway: 0.35, flutter: 0.5, timeScale: 1 };
+export const WIND_DEFAULTS = { strength: 0.5, dir: 0, gust: 0.5, gustScale: 18, gustSpeed: 6, sway: 0.35, flutter: 0.5, separation: 1, timeScale: 1 };
+// Hur olika slags föremål svarar på vindstyrkan S (0–1,5): kraften går som S^(2 + separation * force) och svängningen
+// som S^(1 + separation * sway). Tunga träd står nästan still i en bris och vaknar först i blåst; gräs och blommor
+// rör sig redan i en svag bris. Vid S = 1 ger alla samma kraft, så riggens kontroller (full storm) gäller oförändrat.
+export const RESPONSE = {
+  tree: { force: 0.4, sway: 0.8 },
+  bush: { force: 0.1, sway: 0.3 },
+  plant: { force: -0.6, sway: -0.2 },
+  grass: { force: -0.9, sway: -0.3 },
+};
 export const MAX_DEPTH = 6, STRIDE = 12, GROUND_BLEND = 0.15;
 const TAU = Math.PI * 2;
 
@@ -36,6 +45,7 @@ export function createWind(params = {}) {
   const u = {
     time: uniform(0), strength: uniform(state.strength), dir: uniform(state.dir), gust: uniform(state.gust),
     gustScale: uniform(state.gustScale), gustSpeed: uniform(state.gustSpeed), sway: uniform(state.sway), flutter: uniform(state.flutter),
+    separation: uniform(state.separation),
   };
   const UP = vec3(0, 1, 0);
   const rotY = (v, a) => vec3(v.x.mul(cos(a)).sub(v.z.mul(sin(a))), v.y, v.x.mul(sin(a)).add(v.z.mul(cos(a))));
@@ -49,6 +59,10 @@ export function createWind(params = {}) {
     return pow(clamp(s, 0, 1), 1.5);
   });
   const forceAt = Fn(([xz]) => u.strength.mul(u.strength).mul(float(1).sub(u.gust).add(u.gust.mul(gustAt(xz)))));
+  // Styrkan genom ett föremåls svarskurva (RESPONSE): exponenten 2 + separation * d (aldrig under 0,3)
+  const strengthFor = (d) => pow(max(u.strength, 0), max(float(2).add(u.separation.mul(d)), 0.3));
+  const swayFor = (d) => pow(max(u.strength, 0), max(float(1).add(u.separation.mul(d)), 0.3));
+  const forceFor = (xz, d) => strengthFor(d).mul(float(1).sub(u.gust).add(u.gust.mul(gustAt(xz))));
   const bendShape = (t) => { const x = clamp(t, 0, 1); return x.mul(float(3).sub(x)).mul(0.5); };
   // Rodrigues: v roterad vinkeln a runt enhetsaxeln k
   const rotate = (v, k, a) => {
@@ -64,13 +78,15 @@ export function createWind(params = {}) {
 
   /**
    * Position för en riggad modell. tex = rigTexture(userData.wind).
+   * response: 'tree', 'bush' eller 'plant' (RESPONSE), hur föremålet svarar på svag och stark vind,
    * flutter: löven fladdrar lite (efter _WIND och _CLUSTER-fasen), stem: platta stjälkar (_STEM) vrids mot kameran,
    * place: många exemplar i en ritning (InstancedBufferGeometry med attributet iPlace = x, z, vridning, skala). Riggen
    * räknas då i modellens eget rum och placeras sist; byarna läses där exemplaret står. Använd placedNormal() som
    * materialets normal, så att ljuset följer vridningen.
    */
-  function rigged(tex, { flutter = false, stem = false, place = false } = {}) {
+  function rigged(tex, { flutter = false, stem = false, place = false, response = 'tree' } = {}) {
     const pl = place ? attribute('iPlace', 'vec4') : null;
+    const R = RESPONSE[response] ?? RESPONSE.tree;
     // Modellens rum -> världen: vrid runt y, skala, flytta (utan place: modellens matris)
     const toWorld = (p) => (pl ? rotY(p.mul(pl.w), pl.z).add(vec3(pl.x, 0, pl.y)) : modelWorldMatrix.mul(vec4(p, 1)).xyz);
     const dirToLocal = (d) => (pl ? rotY(d, pl.z.negate()) : modelWorldMatrixInverse.mul(vec4(d, 0)).xyz);
@@ -95,7 +111,7 @@ export function createWind(params = {}) {
         const r0 = textureLoad(tex, ivec2(cur, int(0))), r1 = textureLoad(tex, ivec2(cur, int(1))), r2 = textureLoad(tex, ivec2(cur, int(2)));
         const pivot = r0.xyz, pw = toWorld(pivot);
         const osc = sin(u.time.mul(r2.y).mul(TAU).add(r2.z));
-        const a = r2.x.mul(forceAt(pw.xz).add(u.sway.mul(u.strength).mul(osc))).mul(bendShape(t));
+        const a = r2.x.mul(forceFor(pw.xz, R.force).add(u.sway.mul(swayFor(R.sway)).mul(osc))).mul(bendShape(t));
         pos.assign(pivot.add(rotate(pos.sub(pivot), bendAxis(r1.xyz, W), a)));
         t.assign(r1.w);
         cur.assign(int(round(r0.w)));
@@ -156,11 +172,12 @@ export function createWind(params = {}) {
     state,
     set(p) {
       Object.assign(state, p);
-      for (const k of ['strength', 'dir', 'gust', 'gustScale', 'gustSpeed', 'sway', 'flutter']) u[k].value = state[k];
+      for (const k of ['strength', 'dir', 'gust', 'gustScale', 'gustSpeed', 'sway', 'flutter', 'separation']) u[k].value = state[k];
     },
     update(dt) { state.time += dt * state.timeScale; u.time.value = state.time; },
     rigged, placedNormal, blades, flag,
     force: forceAt, // kraften som nod (styrka² och byar) vid en punkt xz i världen
+    forceFor, swayFor, // samma genom en svarskurva (RESPONSE.grass m.fl.): forceFor(xz, d), swayFor(d)
     gust: gustAt, // byarna som nod (0–1) vid en punkt xz i världen, t.ex. för att ljusa gräset
     // Samma byar på processorn (vindpilen, mätare)
     gustAt(x, z) {
