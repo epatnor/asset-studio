@@ -58,15 +58,19 @@ export function barkMesh(sk, o) {
       const n2 = cross(d, n1);
       if (i > 0) vAcc += len(sub(nodes[i].p, nodes[i - 1].p));
       const t = i / (nodes.length - 1);
+      // Vridningen: flikarna vrider sig twist/lobes radianer per höjdenhet, och texturen förskjuts lika mycket runt
+      // stammen, så att barkens fåror följer flikarna i en spiral i stället för att gå rakt upp
+      const lobed = o.lobes && b.level <= 1;
+      const twist = lobed ? (vAcc / o.height) * Math.PI * 2 * (o.twist ?? 1) : 0;
+      const uShift = lobed ? (twist / o.lobes / (Math.PI * 2)) * uRep : 0;
       for (let s = 0; s <= segs; s++) {
         const a = (s / segs) * Math.PI * 2;
         const dir = add(mul(n1, Math.cos(a)), mul(n2, Math.sin(a)));
         let rad = nodes[i].r;
         // Vriden, flikig stam: tvärsnittet får några utbuktningar som vrider sig uppåt och avtar
         // med höjden (stammen fullt ut, första grennivån svagare), plus mjuka svällningar längs grenen
-        if (o.lobes && b.level <= 1) {
+        if (lobed) {
           const fade = b.level === 0 ? 1 - 0.6 * t : 0.5 * (1 - t);
-          const twist = (vAcc / o.height) * Math.PI * 2 * (o.twist ?? 1);
           rad *= 1 + (o.lobeAmp ?? 0.15) * fade * Math.cos(o.lobes * a + twist + b.phase);
           rad *= 1 + (o.bulge ?? 0.05) * Math.sin(vAcc / o.height * 9 + b.phase * 3);
         }
@@ -77,7 +81,7 @@ export function barkMesh(sk, o) {
         }
         g.positions.push(...add(nodes[i].p, mul(dir, rad)));
         g.normals.push(...dir);
-        g.uvs.push((s / segs) * uRep, vAcc / o.barkRepeat);
+        g.uvs.push((s / segs) * uRep + uShift, vAcc / o.barkRepeat);
         // Mörkare nedtill och mot fästen (enkel AO), ljusare upptill
         const ao = b.level === 0 ? 0.62 + 0.38 * Math.min(1, Math.max(0, nodes[i].p[1]) / (o.height * 0.35)) : 0.78 + 0.22 * t;
         // Gröna toppar (tipTint): de minsta grenarna tonas mot lövfärgen ytterst
