@@ -29,6 +29,8 @@ Studion öppnar på en landningssida: en illustration per avdelning i dess färg
 
 Varje flik har en låda med den typ av tillgångar den arbetar med: Träd visar trädfamiljer och fasta träd, Vatten vattentyper, Partiklar partikelrecept, Texturer material och texturer. Ett klick laddar in saken i scenen; därifrån finns Spara som ny, Frys, Varianter och **Visa i Skattkammaren**. Texturverkstadens bibliotek till vänster (Material, Texturer, Filter, Mina) är mallen. Lådan ligger till vänster i alla avdelningar, kan fällas ihop och öppnas och stängs med Ctrl+Mellanslag.
 
+Byggt (A3): Smedjans låda (`studio/drawer.js`) visar bibliotekets familjer och fasta modeller av flikens typ; ett klick öppnar familjen med spakarna (en fast modell tinas), och Vault visar den i Skattkammaren. Ateljéns låda är texturverkstadens bibliotek; under Mine har varje sparat material Vault. Skattkammaren har kategorin Materials med Ateljéns sparade material (`assets/textures/catalog.json`) och Open in The Atelier, och dess sidopanel är dess låda. Knappen längst till vänster i flikraden och Ctrl+Mellanslag fäller ihop lådan; läget sparas per avdelning i webbläsaren. Miniatyrer som saknas renderas i lådan med studions material, utan skuggformen.
+
 ## Länkar mellan avdelningarna
 
 Det en annan avdelning äger öppnas där: trädets bark i Ateljén, trädets vindprofil i Väderkvarnen, allt sparat i Skattkammaren. Färgen byts, så man ser vart man går.
@@ -39,6 +41,6 @@ Det en annan avdelning äger öppnas där: trädets bark i Ateljén, trädets vi
 |---|---|---|
 | A1. Landningssidan | Illustrationer, kort per avdelning, märket tar en tillbaka; befintliga vyer (trädstudion, texturverkstaden, biblioteket) nås därifrån | Studion öppnar på en sida som visar vad den kan |
 | A2. Headern och färgerna | Avdelningsväljaren, underrubriken, flikarna i en andra rad, accent per avdelning | Man ser alltid vilken avdelning man är i  (byggd 2026-10-26) |
-| A3. Lådorna | Låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag | Det man arbetar med finns alltid ett klick bort |
+| A3. Lådorna | Låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag | Det man arbetar med finns alltid ett klick bort (byggd 2026-10-26) |
 | A2b. Engelska | All text i appen på engelska: studio/, spakarna i params.json och workshop.json, biblioteket, felmeddelanden som visas | Appen är på engelska rakt igenom |
 | A4. Väderkvarnen och Häxkitteln | Flikarna enligt effektlabb.md | Alla fyra verkstäder är i bruk |

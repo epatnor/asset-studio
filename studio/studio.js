@@ -13,6 +13,7 @@ import { createMaterialPatcher, applyShadowRole } from '../showcase/materials.js
 import { createWorkshop } from './workshop.js';
 import { createLibrary } from './library.js';
 import { createHome, DEPARTMENTS, VAULT } from './home.js';
+import { createForgeDrawer } from './drawer.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -475,6 +476,7 @@ function refreshUi() {
     row.style.display = show ? '' : 'none';
   }
   for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : b.dataset.kind === kind.id);
+  drawer?.setKind(kind);
   applyDept();
 }
 
@@ -515,6 +517,11 @@ libBtn.dataset.dept = 'vault';
 libBtn.title = 'The Vault: everything saved, as families (recipes) and fixed models';
 $('kinds').append(libBtn, texBtn);
 let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false;
+// Miniatyrerna (The Vault och lådan) får samma material som studion, utan vind
+const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
+const thumbPatch = createMaterialPatcher(THREE, { wind: thumbWind, sunDir });
+function prepareThumb(o, url) { applyShadowRole(o); thumbPatch(o.material, url); }
+const drawer = createForgeDrawer({ api, el, root: $('fdrawer'), canOpen: (i) => canOpen(i), open: (i) => openInStudio(i), reveal: showInVault, prepare: prepareThumb });
 
 // --- Avdelningarna (docs/avdelningar.md): väljaren i headern, namnet och underrubriken, flikarna och accentfärgen ---
 // Flikarna i andra raden hör till en avdelning (data-dept; utan är det The Forge). Läget bestämmer avdelningen.
@@ -542,6 +549,37 @@ function applyDept() {
   $('dept').querySelector('span').textContent = d ? DEPTS[d].sub : '';
   for (const b of $('kinds').children) b.hidden = (b.dataset.dept ?? 'forge') !== d;
   for (const b of $('depts').children) b.classList.toggle('on', b.dataset.dept === d);
+  applyDrawer();
+}
+
+// --- Lådorna (docs/avdelningar.md): en per avdelning till vänster; Ctrl+Mellanslag eller knappen fäller ihop den.
+// Smedjans låda är studio/drawer.js, Ateljéns är texturverkstadens bibliotek och The Vaults är dess sidopanel.
+const drawers = (() => { try { return JSON.parse(localStorage.getItem('studio-drawers')) ?? {}; } catch { return {}; } })();
+function applyDrawer() {
+  const d = currentDept(), open = !d || drawers[d] !== false;
+  document.body.classList.toggle('drawer-closed', !open);
+  $('drawerbtn').classList.toggle('on', open);
+  $('drawerbtn').title = `${open ? 'Hide' : 'Show'} the drawer (Ctrl+Space)`;
+}
+function toggleDrawer() {
+  const d = currentDept();
+  if (!d) return;
+  drawers[d] = drawers[d] === false;
+  try { localStorage.setItem('studio-drawers', JSON.stringify(drawers)); } catch {}
+  applyDrawer();
+}
+$('drawerbtn').onclick = toggleDrawer;
+addEventListener('keydown', (e) => {
+  if (e.ctrlKey && !e.altKey && !e.metaKey && e.code === 'Space') { e.preventDefault(); toggleDrawer(); }
+});
+// Visa i The Vault: lådorna pekar ut saken där (nyckeln är modellens sökväg, eller texture:<namn>)
+async function showInVault(key) {
+  await libBtn.onclick();
+  if (key) await library.reveal(key);
+}
+async function openInAtelier(name) {
+  await texBtn.onclick();
+  await workshop.open(name);
 }
 libBtn.onclick = async () => {
   leaveHome();
@@ -550,8 +588,8 @@ libBtn.onclick = async () => {
   document.body.classList.add('library-mode');
   paused = true;
   refreshUi();
-  library ??= createLibrary({ api, el, root: $('libview'), canOpen, openInStudio });
-  library.show();
+  library ??= createLibrary({ api, el, root: $('libview'), canOpen, openInStudio, openInAtelier, prepare: prepareThumb });
+  await library.show();
 };
 function leaveLibraryMode() {
   if (!libraryMode) return;
@@ -573,6 +611,7 @@ async function openInStudio(item) {
   pinned.length = 0;
   refreshUi();
   commit();
+  drawer.mark(item.model);
   setState(`Opened ${item.name}`);
 }
 texBtn.onclick = async () => {
@@ -582,7 +621,7 @@ texBtn.onclick = async () => {
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
   refreshUi();
-  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), tools: $('tools'), getAssetUrl: () => currentUrl });
+  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), tools: $('tools'), getAssetUrl: () => currentUrl, reveal: showInVault });
   workshop.show();
 };
 function leaveTextureMode() {
@@ -654,12 +693,14 @@ async function save() {
   $('lamp').className = 'lamp ' + (res.error ? 'bad' : 'ok');
   setState(res.error ? 'Not saved' : 'Saved');
   $('note').textContent = res.error ? res.error : `Saved to the library: ${res.entry.model}`;
+  if (!res.error) { await drawer.refresh(); drawer.mark(res.entry.model); }
 }
 
 // För felsökning och automatiska tester. shot(name) sparar 3D-vyn som build/shots/studio_<name>.png.
 window.__studio = {
   camera, controls, state, frame: () => frame(current, ...pinned), measure,
   get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
+  prepareThumb, // för att rendera om miniatyrer: renderThumb(url, __studio.prepareThumb) i library.js
   shot: async (name) => {
     controls.update();
     draw();

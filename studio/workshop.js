@@ -14,7 +14,7 @@ const MAP_LABELS = { color: 'Color', height: 'Height', normal: 'Normal', rough: 
 
 const LIB_W = 300, SIDE_W = 372; // bibliotekets och panelens bredd (index.html)
 
-export async function createWorkshop({ api, el, side, view, footer, lib, tools, getAssetUrl }) {
+export async function createWorkshop({ api, el, side, view, footer, lib, tools, getAssetUrl, reveal }) {
   const W = await api('/api/workshop');
   let allTextures = await api('/api/textures?kind=all');
   const doc = { source: { type: 'stone' }, steps: [{ op: 'range' }], inputs: {}, material: {}, blend: { layers: [] } };
@@ -743,7 +743,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   const libSearch = Object.assign(el('input', 'search'), { type: 'search', placeholder: 'Search…' });
   libSearch.oninput = () => { libQuery = libSearch.value.trim().toLowerCase(); renderLib(); };
   const libHint = el('div', 'note');
-  libHead.append(el('h2', null, 'Library'), libSeg, libSearch, libHint);
+  libHead.append(el('h2', null, 'Texture drawer'), libSeg, libSearch, libHint);
   const libBody = el('div', 'libbody');
   lib.append(libHead, libBody);
 
@@ -817,7 +817,8 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
     } else {
       libHint.textContent = catalog.length ? 'Textures you saved in the Atelier. Click to open them again.' : 'Nothing saved yet. What you save in the Save card ends up here.';
       libGroup('Saved', catalog.filter((t) => match(t.name, ...(t.tags ?? []))).map((t) => tile(t.name, {
-        src: `/assets/textures/${t.name}.png?v=${encodeURIComponent(t.saved)}`, title: `${t.name} (${W.profiles[t.profile]?.label ?? t.profile})`, onclick: () => openSaved(t.name) })));
+        src: `/assets/textures/${t.name}.png?v=${encodeURIComponent(t.saved)}`, title: `${t.name} (${W.profiles[t.profile]?.label ?? t.profile})`, onclick: () => openSaved(t.name),
+        actions: reveal ? [['Vault', 'Show in The Vault', () => reveal(`texture:${t.name}`)]] : [] })));
     }
   }
   const openCard = (c) => c.card.classList.remove('closed');
@@ -891,6 +892,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
     show() { if (vs.mode === '3d') lab.show(); else resize(); if (!maps.color) update(); },
     hide() { lab.hide(); },
     shot: () => lab.shot(),
+    open: openSaved, // ett sparat material, från The Vault
     lab,
   };
 }

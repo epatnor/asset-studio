@@ -261,9 +261,24 @@
   .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
 
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
-          border-radius: var(--radius); flex-direction: column; overflow: hidden; }
+  #wlib, #fdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
+          border-radius: var(--radius); flex-direction: column; overflow: hidden; z-index: 1; }
   body.texture-mode #wlib { display: flex; }
+  /* Lådan (studio/drawer.js och verkstadens bibliotek): till vänster i varje avdelning, Ctrl+Mellanslag fäller ihop den */
+  body:not(.texture-mode):not(.library-mode):not(.home-mode) #fdrawer { display: flex; }
+  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed .lside { display: none !important; }
+  #drawerbtn { align-self: center; margin-right: 4px; }
+  #drawerbtn.on { color: var(--accent); }
+  body.home-mode #drawerbtn { display: none; }
+  #fdrawer .libbody { flex: 1; }
+  .drawerfoot { padding: 8px 10px; border-top: 1px solid var(--line); display: flex; }
+  .drawerfoot button { flex: 1; justify-content: center; }
+  .tile.model img { object-fit: contain; background: var(--field); border-color: var(--line); }
+  .tile.model img.ph { background: var(--field) linear-gradient(90deg, transparent, var(--accent-soft), transparent) 0 0 / 200% 100%; animation: ph 1.4s linear infinite; }
+  @keyframes ph { to { background-position: -200% 0; } }
+  .tile.model.on img { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .tile .badge.fixed { background: #2f6fa8; }
+  .tile .badge.pool { left: auto; right: 6px; background: rgba(0, 0, 0, 0.55); }
   .libhead { padding: 10px 12px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
   .libhead h2 { margin: 0; font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; }
   .libhead .seg { display: flex; }
@@ -285,6 +300,11 @@
   body.texture-mode .popover { left: 310px; }
   body.texture-mode .wnote { left: 324px; }
   body.texture-mode .wvar { left: calc(50% - 36px); }
+  body.texture-mode.drawer-closed .wbar { left: 12px; max-width: calc(100vw - 12px - 366px); }
+  body.texture-mode.drawer-closed .popover { left: 12px; }
+  body.texture-mode.drawer-closed .wnote { left: 24px; }
+  body.texture-mode.drawer-closed .wvar { left: calc(50% - 180px); }
+  body.drawer-closed .lmain { left: var(--gap); }
   .curname { font-weight: 600; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
   #wside .card > header { cursor: pointer; }
   #wside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
@@ -329,6 +349,8 @@
   .lthumb .kindb { position: absolute; top: 8px; left: 8px; }
   .kindb.family { background: #3d8628; color: #fff; }
   .kindb.fixed { background: #2f6fa8; color: #fff; }
+  .kindb.material { background: #a07a10; color: #fff; }
+  .lcard.tex .lthumb img { object-fit: cover; }
   .catb { background: var(--field); color: var(--ink-2); border: 1px solid var(--line); }
   .warnb { position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border-radius: 50%; background: var(--bad); color: #fff; font-weight: 700; font-size: 11px; display: grid; place-items: center; }
   .addb { position: absolute; bottom: 8px; right: 8px; opacity: 0; transition: opacity 0.12s; }
@@ -424,6 +446,7 @@
   <div id="hdrtools"><button id="theme" class="icon"></button></div>
 </header>
 <div id="subbar">
+  <button id="drawerbtn" class="icon" title="Drawer (Ctrl+Space)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M6 2.5v11"/></svg></button>
   <nav id="kinds"></nav>
   <div id="tools">
     <span id="status" class="asset-tool"><span class="lamp" id="lamp"></span><span id="state">Starting…</span></span>
@@ -440,6 +463,7 @@
 <div id="libview"></div>
 <div id="home"></div>
 <div id="wlib" class="glass"></div>
+<div id="fdrawer" class="glass"></div>
 <div id="wside"></div>
 <footer id="wfoot" class="glass"></footer>
 <footer id="bottom" class="glass">

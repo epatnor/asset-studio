@@ -84,7 +84,7 @@
       ],
       "model": "assets/trees/bj_1/bj_1.gltf",
       "recipe": "assets/trees/bj_1/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/trees/bj_1/bj_1_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:15:28.160Z",
       "bounds": {
@@ -113,31 +113,36 @@
           {
             "seed": 3,
             "model": "assets/trees/bj_1/bj_1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/trees/bj_1/bj_1_thumb.png"
           },
           {
             "seed": 8012,
             "model": "assets/trees/bj_1/variants/bj_1_s8012/bj_1_s8012.gltf",
             "checks_ok": true,
-            "height_m": 10
+            "height_m": 10,
+            "thumbnail": "assets/trees/bj_1/variants/bj_1_s8012/bj_1_s8012_thumb.png"
           },
           {
             "seed": 15931,
             "model": "assets/trees/bj_1/variants/bj_1_s15931/bj_1_s15931.gltf",
             "checks_ok": true,
-            "height_m": 10
+            "height_m": 10,
+            "thumbnail": "assets/trees/bj_1/variants/bj_1_s15931/bj_1_s15931_thumb.png"
           },
           {
             "seed": 23850,
             "model": "assets/trees/bj_1/variants/bj_1_s23850/bj_1_s23850.gltf",
             "checks_ok": true,
-            "height_m": 10
+            "height_m": 10,
+            "thumbnail": "assets/trees/bj_1/variants/bj_1_s23850/bj_1_s23850_thumb.png"
           },
           {
             "seed": 31769,
             "model": "assets/trees/bj_1/variants/bj_1_s31769/bj_1_s31769.gltf",
             "checks_ok": true,
-            "height_m": 10
+            "height_m": 10,
+            "thumbnail": "assets/trees/bj_1/variants/bj_1_s31769/bj_1_s31769_thumb.png"
           }
         ],
         "built": "2026-10-26T14:15:43.136Z"
@@ -153,7 +158,7 @@
       ],
       "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
       "recipe": "assets/trees/ballbush_v2/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/trees/ballbush_v2/ballbush_v2_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:15:43.290Z",
       "bounds": {
@@ -182,31 +187,36 @@
           {
             "seed": 3,
             "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/trees/ballbush_v2/ballbush_v2_thumb.png"
           },
           {
             "seed": 8012,
             "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s8012/ballbush_v2_s8012.gltf",
             "checks_ok": true,
-            "height_m": 1.2
+            "height_m": 1.2,
+            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s8012/ballbush_v2_s8012_thumb.png"
           },
           {
             "seed": 15931,
             "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s15931/ballbush_v2_s15931.gltf",
             "checks_ok": true,
-            "height_m": 1.2
+            "height_m": 1.2,
+            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s15931/ballbush_v2_s15931_thumb.png"
           },
           {
             "seed": 23850,
             "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s23850/ballbush_v2_s23850.gltf",
             "checks_ok": true,
-            "height_m": 1.2
+            "height_m": 1.2,
+            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s23850/ballbush_v2_s23850_thumb.png"
           },
           {
             "seed": 31769,
             "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s31769/ballbush_v2_s31769.gltf",
             "checks_ok": true,
-            "height_m": 1.2
+            "height_m": 1.2,
+            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s31769/ballbush_v2_s31769_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:07.601Z"
@@ -251,27 +261,32 @@
           {
             "seed": 6,
             "model": "assets/props/boulder1/boulder1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/props/boulder1/boulder1_thumb.png"
           },
           {
             "seed": 8105,
             "model": "assets/props/boulder1/variants/boulder1_s8105/boulder1_s8105.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/boulder1/variants/boulder1_s8105/boulder1_s8105_thumb.png"
           },
           {
             "seed": 16024,
             "model": "assets/props/boulder1/variants/boulder1_s16024/boulder1_s16024.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/boulder1/variants/boulder1_s16024/boulder1_s16024_thumb.png"
           },
           {
             "seed": 23943,
             "model": "assets/props/boulder1/variants/boulder1_s23943/boulder1_s23943.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/boulder1/variants/boulder1_s23943/boulder1_s23943_thumb.png"
           },
           {
             "seed": 31862,
             "model": "assets/props/boulder1/variants/boulder1_s31862/boulder1_s31862.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/boulder1/variants/boulder1_s31862/boulder1_s31862_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:17.125Z"
@@ -316,27 +331,32 @@
           {
             "seed": 7,
             "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/props/mossy_stone1/mossy_stone1_thumb.png"
           },
           {
             "seed": 8136,
             "model": "assets/props/mossy_stone1/variants/mossy_stone1_s8136/mossy_stone1_s8136.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stone1/variants/mossy_stone1_s8136/mossy_stone1_s8136_thumb.png"
           },
           {
             "seed": 16055,
             "model": "assets/props/mossy_stone1/variants/mossy_stone1_s16055/mossy_stone1_s16055.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stone1/variants/mossy_stone1_s16055/mossy_stone1_s16055_thumb.png"
           },
           {
             "seed": 23974,
             "model": "assets/props/mossy_stone1/variants/mossy_stone1_s23974/mossy_stone1_s23974.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stone1/variants/mossy_stone1_s23974/mossy_stone1_s23974_thumb.png"
           },
           {
             "seed": 31893,
             "model": "assets/props/mossy_stone1/variants/mossy_stone1_s31893/mossy_stone1_s31893.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stone1/variants/mossy_stone1_s31893/mossy_stone1_s31893_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:26.065Z"
@@ -352,7 +372,7 @@
       ],
       "model": "assets/props/mossy_stump1/mossy_stump1.gltf",
       "recipe": "assets/props/mossy_stump1/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/props/mossy_stump1/mossy_stump1_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:16:27.154Z",
       "bounds": {
@@ -381,27 +401,32 @@
           {
             "seed": 5,
             "model": "assets/props/mossy_stump1/mossy_stump1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/props/mossy_stump1/mossy_stump1_thumb.png"
           },
           {
             "seed": 8074,
             "model": "assets/props/mossy_stump1/variants/mossy_stump1_s8074/mossy_stump1_s8074.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stump1/variants/mossy_stump1_s8074/mossy_stump1_s8074_thumb.png"
           },
           {
             "seed": 15993,
             "model": "assets/props/mossy_stump1/variants/mossy_stump1_s15993/mossy_stump1_s15993.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stump1/variants/mossy_stump1_s15993/mossy_stump1_s15993_thumb.png"
           },
           {
             "seed": 23912,
             "model": "assets/props/mossy_stump1/variants/mossy_stump1_s23912/mossy_stump1_s23912.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stump1/variants/mossy_stump1_s23912/mossy_stump1_s23912_thumb.png"
           },
           {
             "seed": 31831,
             "model": "assets/props/mossy_stump1/variants/mossy_stump1_s31831/mossy_stump1_s31831.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/mossy_stump1/variants/mossy_stump1_s31831/mossy_stump1_s31831_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:35.544Z"
@@ -417,7 +442,7 @@
       ],
       "model": "assets/props/fly_agaric1/fly_agaric1.gltf",
       "recipe": "assets/props/fly_agaric1/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/props/fly_agaric1/fly_agaric1_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:16:36.266Z",
       "bounds": {
@@ -446,27 +471,32 @@
           {
             "seed": 1,
             "model": "assets/props/fly_agaric1/fly_agaric1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/props/fly_agaric1/fly_agaric1_thumb.png"
           },
           {
             "seed": 7950,
             "model": "assets/props/fly_agaric1/variants/fly_agaric1_s7950/fly_agaric1_s7950.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/fly_agaric1/variants/fly_agaric1_s7950/fly_agaric1_s7950_thumb.png"
           },
           {
             "seed": 15869,
             "model": "assets/props/fly_agaric1/variants/fly_agaric1_s15869/fly_agaric1_s15869.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/fly_agaric1/variants/fly_agaric1_s15869/fly_agaric1_s15869_thumb.png"
           },
           {
             "seed": 23788,
             "model": "assets/props/fly_agaric1/variants/fly_agaric1_s23788/fly_agaric1_s23788.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/fly_agaric1/variants/fly_agaric1_s23788/fly_agaric1_s23788_thumb.png"
           },
           {
             "seed": 31707,
             "model": "assets/props/fly_agaric1/variants/fly_agaric1_s31707/fly_agaric1_s31707.gltf",
-            "checks_ok": true
+            "checks_ok": true,
+            "thumbnail": "assets/props/fly_agaric1/variants/fly_agaric1_s31707/fly_agaric1_s31707_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:40.280Z"
@@ -482,7 +512,7 @@
       ],
       "model": "assets/plants/fern1/fern1.gltf",
       "recipe": "assets/plants/fern1/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/plants/fern1/fern1_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:16:40.869Z",
       "bounds": {
@@ -511,31 +541,36 @@
           {
             "seed": 1,
             "model": "assets/plants/fern1/fern1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/plants/fern1/fern1_thumb.png"
           },
           {
             "seed": 7950,
             "model": "assets/plants/fern1/variants/fern1_s7950/fern1_s7950.gltf",
             "checks_ok": false,
-            "height_m": 0.55
+            "height_m": 0.55,
+            "thumbnail": "assets/plants/fern1/variants/fern1_s7950/fern1_s7950_thumb.png"
           },
           {
             "seed": 15869,
             "model": "assets/plants/fern1/variants/fern1_s15869/fern1_s15869.gltf",
             "checks_ok": false,
-            "height_m": 0.57
+            "height_m": 0.57,
+            "thumbnail": "assets/plants/fern1/variants/fern1_s15869/fern1_s15869_thumb.png"
           },
           {
             "seed": 23788,
             "model": "assets/plants/fern1/variants/fern1_s23788/fern1_s23788.gltf",
             "checks_ok": false,
-            "height_m": 0.58
+            "height_m": 0.58,
+            "thumbnail": "assets/plants/fern1/variants/fern1_s23788/fern1_s23788_thumb.png"
           },
           {
             "seed": 31707,
             "model": "assets/plants/fern1/variants/fern1_s31707/fern1_s31707.gltf",
             "checks_ok": false,
-            "height_m": 0.54
+            "height_m": 0.54,
+            "thumbnail": "assets/plants/fern1/variants/fern1_s31707/fern1_s31707_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:46.172Z"
@@ -551,7 +586,7 @@
       ],
       "model": "assets/plants/grass_tuft1/grass_tuft1.gltf",
       "recipe": "assets/plants/grass_tuft1/recipe.json",
-      "thumbnail": null,
+      "thumbnail": "assets/plants/grass_tuft1/grass_tuft1_thumb.png",
       "checks_ok": null,
       "saved": "2026-10-26T14:16:46.984Z",
       "bounds": {
@@ -580,31 +615,36 @@
           {
             "seed": 1,
             "model": "assets/plants/grass_tuft1/grass_tuft1.gltf",
-            "main": true
+            "main": true,
+            "thumbnail": "assets/plants/grass_tuft1/grass_tuft1_thumb.png"
           },
           {
             "seed": 7950,
             "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s7950/grass_tuft1_s7950.gltf",
             "checks_ok": true,
-            "height_m": 0.32
+            "height_m": 0.32,
+            "thumbnail": "assets/plants/grass_tuft1/variants/grass_tuft1_s7950/grass_tuft1_s7950_thumb.png"
           },
           {
             "seed": 15869,
             "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s15869/grass_tuft1_s15869.gltf",
             "checks_ok": true,
-            "height_m": 0.31
+            "height_m": 0.31,
+            "thumbnail": "assets/plants/grass_tuft1/variants/grass_tuft1_s15869/grass_tuft1_s15869_thumb.png"
           },
           {
             "seed": 23788,
             "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s23788/grass_tuft1_s23788.gltf",
             "checks_ok": true,
-            "height_m": 0.33
+            "height_m": 0.33,
+            "thumbnail": "assets/plants/grass_tuft1/variants/grass_tuft1_s23788/grass_tuft1_s23788_thumb.png"
           },
           {
             "seed": 31707,
             "model": "assets/plants/grass_tuft1/variants/grass_tuft1_s31707/grass_tuft1_s31707.gltf",
             "checks_ok": true,
-            "height_m": 0.35
+            "height_m": 0.35,
+            "thumbnail": "assets/plants/grass_tuft1/variants/grass_tuft1_s31707/grass_tuft1_s31707_thumb.png"
           }
         ],
         "built": "2026-10-26T14:16:50.933Z"

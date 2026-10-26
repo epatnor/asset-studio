@@ -1,19 +1,21 @@
 // Biblioteket i Asset Studio (docs/asset-studio.md, Familjer och fasta modeller): en vy som FAB eller Quixel, med
 // kategorier, Familj och Fast, taggar och sök. En familj är ett recept som kan öppnas i studion och varieras; en fast
 // modell ligger kvar som den är. Frys gör en familj till en fast modell, Tina öppnar en fast modells recept i studion.
+// Texturverkstadens sparade material (assets/textures/catalog.json) ligger här som Material och öppnas i The Atelier.
 // Miniatyrer som saknas renderas här (three.js, PNG med alfa) och sparas bredvid modellen via servern.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-const CATS = [['all', 'All'], ['tree', 'Trees'], ['bush', 'Bushes'], ['plant', 'Plants'], ['rock', 'Rocks'], ['prop', 'Props'], ['building', 'Buildings']];
+const CATS = [['all', 'All'], ['tree', 'Trees'], ['bush', 'Bushes'], ['plant', 'Plants'], ['rock', 'Rocks'], ['prop', 'Props'], ['building', 'Buildings'], ['texture', 'Materials']];
 const CAT_LABEL = Object.fromEntries(CATS);
-const SOURCE_LABEL = { tree: 'Tree generator', prop: 'Prop generator', plant: 'Plant generator', building: 'Building generator', imported: 'Imported', fixed: 'Fixed model' };
-const KIND_LABEL = { family: 'Family', fixed: 'Fixed' };
+const SOURCE_LABEL = { tree: 'Tree generator', prop: 'Prop generator', plant: 'Plant generator', building: 'Building generator', imported: 'Imported', fixed: 'Fixed model', texture: 'Texture workshop' };
+const KIND_LABEL = { family: 'Family', fixed: 'Fixed', material: 'Material' };
 const KIND_HELP = {
   family: 'Family: a recipe the generator can rebuild, with new seeds and changed sliders',
   fixed: 'Fixed model: one specific model that stays as it is',
+  material: 'Material: a texture recipe from The Atelier, with its maps',
 };
 const THUMB_PX = 384;
 
@@ -44,9 +46,15 @@ function dispose(obj) {
     }
   });
 }
-async function renderThumb(modelUrl) {
+// prepare(mesh, url): studions materialpatch (löv, bark, mossa), så att miniatyren ser ut som i studion
+export async function renderThumb(modelUrl, prepare) {
   const { renderer, scene, camera, loader } = thumbRenderer();
   const obj = (await loader.loadAsync(modelUrl)).scene;
+  // Skuggformen (bollarna som bara kastar skugga, applyShadowRole i showcase/materials.js) ska inte synas
+  const proxies = [];
+  obj.traverse((o) => { if (o.isMesh && o.material?.userData?.shadowProxy) proxies.push(o); });
+  for (const o of proxies) { o.removeFromParent(); o.geometry.dispose(); o.material.dispose(); }
+  if (prepare) obj.traverse((o) => { if (o.isMesh) prepare(o, modelUrl); });
   scene.add(obj);
   const box = new THREE.Box3().setFromObject(obj), center = box.getCenter(new THREE.Vector3());
   const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.01);
@@ -62,7 +70,7 @@ async function renderThumb(modelUrl) {
   return url;
 }
 
-export function createLibrary({ api, el, root, canOpen, openInStudio }) {
+export function createLibrary({ api, el, root, canOpen, openInStudio, openInAtelier, prepare }) {
   let items = [], loose = [];
   const f = { source: 'lib', kind: 'all', cat: 'all', tags: new Set(), q: '', sort: 'new' };
   let sel = null; // modellsökvägen för det valda kortet
@@ -148,7 +156,7 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   // --- Rutnätet ---
   const thumbUrl = (i) => (i.thumbnail ? `/${i.thumbnail}${bust.has(i.model) ? `?v=${bust.get(i.model)}` : ''}` : null);
   function card(i) {
-    const fig = el('figure', `lcard${i.model === sel ? ' sel' : ''}`);
+    const fig = el('figure', `lcard${i.model === sel ? ' sel' : ''}${i.type === 'texture' ? ' tex' : ''}`);
     const box = el('div', 'lthumb');
     const url = thumbUrl(i);
     if (url) box.append(Object.assign(el('img'), { src: url, loading: 'lazy', alt: '' }));
@@ -168,13 +176,13 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     cap.append(el('b', null, i.name), el('span', null, [CAT_LABEL[i.category], i.seed != null ? `seed ${i.seed}` : SOURCE_LABEL[i.type]].filter(Boolean).join(' · ')));
     fig.append(box, cap);
     fig.onclick = () => { sel = i.model; renderGrid(); renderDetail(); };
-    fig.ondblclick = () => { if (canOpen(i)) openInStudio(i); };
+    fig.ondblclick = () => { if (i.type === 'texture') openInAtelier(i.name); else if (canOpen(i)) openInStudio(i); };
     return fig;
   }
   function renderGrid() {
     const list = visible();
     count.textContent = `${list.length} items`;
-    const missing = list.filter((i) => !i.thumbnail).length;
+    const missing = list.filter((i) => !i.thumbnail && i.type !== 'texture').length;
     thumbsBtn.textContent = missing ? `Make thumbnails (${missing})` : 'Thumbnails done';
     thumbsBtn.disabled = !missing || making;
     grid.replaceChildren(...list.map(card));
@@ -206,6 +214,25 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     // Åtgärder
     const acts = el('div', 'lacts');
     const openable = canOpen(i);
+    if (i.type === 'texture') {
+      const open = el('button', 'primary', 'Open in The Atelier');
+      open.title = 'Open the texture recipe in the texture workshop';
+      open.onclick = () => openInAtelier(i.name);
+      acts.append(open);
+      detail.append(acts);
+      const dl = el('dl', 'linfo');
+      const fact = (k, v) => { if (v != null && v !== '') dl.append(el('dt', null, k), el('dd', null, String(v))); };
+      fact('Source', SOURCE_LABEL.texture);
+      fact('Profile', i.profile);
+      fact('Maps', i.maps?.join(', '));
+      fact('Size', i.size ? `${i.size} px` : null);
+      fact('Tile', i.meters ? `${i.meters} m` : null);
+      fact('Tags', i.tags?.join(', '));
+      fact('Saved', i.saved ? new Date(i.saved).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : null);
+      fact('Recipe', i.recipe);
+      detail.append(dl);
+      return;
+    }
     if (i.kind === 'family') {
       const open = el('button', 'primary', 'Open in the studio');
       open.disabled = !openable;
@@ -432,14 +459,14 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
   }
   async function makeThumb(i) {
     try {
-      const png = await renderThumb(`/${i.model}`);
+      const png = await renderThumb(`/${i.model}`, prepare);
       const r = await api('/api/library/thumb', { model: i.model, thumbnail: png });
       if (r.thumbnail) { i.thumbnail = r.thumbnail; bust.set(i.model, Date.now()); }
     } catch (e) { console.warn('miniatyr', i.model, e); }
   }
   let making = false;
   thumbsBtn.onclick = async () => {
-    const todo = visible().filter((i) => !i.thumbnail);
+    const todo = visible().filter((i) => !i.thumbnail && i.type !== 'texture');
     making = true;
     thumbsBtn.disabled = true;
     for (const [k, i] of todo.entries()) {
@@ -453,13 +480,31 @@ export function createLibrary({ api, el, root, canOpen, openInStudio }) {
     renderAll();
   };
 
+  // Ateljéns material: nyckeln (model) är texture:<namn>, miniatyren färgkartan
+  const texItem = (t) => ({ name: t.name, model: `texture:${t.name}`, type: 'texture', kind: 'material', category: 'texture',
+    thumbnail: `${t.files?.color ?? `assets/textures/${t.name}.png`}?v=${encodeURIComponent(t.saved ?? '')}`,
+    tags: t.tags ?? [], saved: t.saved, profile: t.profile, maps: t.maps, size: t.size, meters: t.meters, recipe: t.recipe });
   async function load() {
-    const [lib, scan] = await Promise.all([api('/api/library'), api('/api/library/scan')]);
-    items = lib.items ?? [];
+    const [lib, scan, cat] = await Promise.all([api('/api/library'), api('/api/library/scan'),
+      fetch('/assets/textures/catalog.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}))]);
+    items = [...(lib.items ?? []), ...(cat.textures ?? []).map(texItem)];
     loose = scan.items ?? [];
     if (sel && !find(sel)) sel = null;
     renderAll();
   }
 
-  return { show: load, hide() {} };
+  // Visa i The Vault (lådorna): välj saken, rensa urvalet och visa dess kategori; null visar bara biblioteket
+  async function reveal(key) {
+    await load();
+    const i = key && find(key);
+    if (!i) return;
+    Object.assign(f, { source: items.includes(i) ? 'lib' : 'loose', kind: 'all', cat: i.category ?? 'all', q: '' });
+    f.tags.clear();
+    search.value = '';
+    sel = key;
+    renderAll();
+    grid.querySelector('.lcard.sel')?.scrollIntoView({ block: 'center' });
+  }
+
+  return { show: load, reveal, hide() {} };
 }
