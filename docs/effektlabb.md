@@ -66,7 +66,7 @@ Texturerna (flipbooks, gnistor, rökmoln, runor) görs i Ateljén, gärna med Kr
 
 | Fas | Innehåll | Klart när |
 |---|---|---|
-| E1. Fliken Vind | Vindriggen (W1) i träd- och växtgeneratorn; `shared/effects/wind.js`; fliken med gläntan, spakar och felsökningsvyn; gräset böjs med rotation och läser samma vind | Ett träd böjer sig från roten, grenarna svajar på sina fästen och blommorna nickar, i samma byar som gräset |
+| E1. Fliken Vind | Vindriggen (W1) i träd- och växtgeneratorn; `shared/effects/wind.js`; fliken med gläntan, spakar och felsökningsvyn; gräset böjs med rotation och läser samma vind | Ett träd böjer sig från roten, grenarna svajar på sina fästen och blommorna nickar, i samma byar som gräset (byggd 2026-10-26) |
 | E2. Vinden i alla klienter | Visningen och Tinkertown läser vindmodulen (batchar, instansierade växter och impostors); vinden blir ett lager i Tinkertowns värld som havet delar; flaggor, rankor och lyktor riggas | Samma vind överallt |
 | E3. Fliken Vatten | `shared/effects/water.js` från visningens vattengenerator och Tinkertowns hav; bassängen med alla typer; vattentyper som recept | Alla sorters vatten provas och sparas i en scen |
 | E4. Fliken Väder | `shared/effects/weather.js` från visningens atmosfär och effekter; platsen; väderlägen som recept | Väderlägen provas och sparas, och styr vind och vatten |

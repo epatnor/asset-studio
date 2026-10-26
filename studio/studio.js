@@ -14,6 +14,7 @@ import { createWorkshop } from './workshop.js';
 import { createLibrary } from './library.js';
 import { createHome, DEPARTMENTS, VAULT } from './home.js';
 import { createForgeDrawer } from './drawer.js';
+import { createWindmill } from './windmill.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -475,7 +476,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || valueOf(paramAt(p.when.path)) === p.when.equals);
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : b.dataset.kind === kind.id);
   drawer?.setKind(kind);
   applyDept();
 }
@@ -516,7 +517,20 @@ const libBtn = el('button', null, 'Library');
 libBtn.dataset.dept = 'vault';
 libBtn.title = 'The Vault: everything saved, as families (recipes) and fixed models';
 $('kinds').append(libBtn, texBtn);
-let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false;
+// Väderkvarnen (studio/windmill.js): Vind är byggd, Vatten och Väder kommer (docs/effektlabb.md)
+const windBtn = el('button', null, 'Wind');
+windBtn.dataset.dept = 'windmill';
+windBtn.title = 'The Windmill: one wind for trees, bushes, flowers, grass and flags, tried in a glade';
+$('kinds').append(windBtn);
+for (const [label, tip] of [['Water', 'Every kind of water in one basin'], ['Weather', 'Time of day, clouds, rain, snow and storms']]) {
+  const b = el('button', null, label);
+  b.dataset.dept = 'windmill';
+  b.disabled = true;
+  b.title = `Coming: ${tip} (docs/effektlabb.md)`;
+  b.append(el('span', 'soon', 'soon'));
+  $('kinds').append(b);
+}
+let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false, windmill = null, windMode = false;
 // Miniatyrerna (The Vault och lådan) får samma material som studion, utan vind
 const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
 const thumbPatch = createMaterialPatcher(THREE, { wind: thumbWind, sunDir });
@@ -539,9 +553,10 @@ for (const d of Object.values(DEPTS)) {
 function openDept(id) {
   if (id === 'atelier') texBtn.onclick();
   else if (id === 'vault') libBtn.onclick();
+  else if (id === 'windmill') windBtn.onclick();
   else selectKind(kind);
 }
-const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : 'forge');
+const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode ? 'windmill' : 'forge');
 function applyDept() {
   const d = currentDept();
   if (d) document.documentElement.dataset.dept = d; else delete document.documentElement.dataset.dept;
@@ -584,6 +599,7 @@ async function openInAtelier(name) {
 libBtn.onclick = async () => {
   leaveHome();
   leaveTextureMode();
+  leaveWindMode();
   libraryMode = true;
   document.body.classList.add('library-mode');
   paused = true;
@@ -617,6 +633,7 @@ async function openInStudio(item) {
 texBtn.onclick = async () => {
   leaveHome();
   leaveLibraryMode();
+  leaveWindMode();
   textureMode = true;
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
@@ -624,6 +641,30 @@ texBtn.onclick = async () => {
   workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), tools: $('tools'), getAssetUrl: () => currentUrl, reveal: showInVault });
   workshop.show();
 };
+windBtn.onclick = async () => {
+  leaveHome();
+  leaveLibraryMode();
+  leaveTextureMode();
+  windMode = true;
+  document.body.classList.add('wind-mode');
+  paused = true; // studions egen 3D-vy behövs inte; gläntan har sin egen renderare
+  refreshUi();
+  try {
+    windmill ??= await createWindmill({ api, el, view: $('wmview'), side: $('wmside'), drawer: $('wmdrawer'), footer: $('wmfoot') });
+  } catch (e) {
+    $('wmfoot').replaceChildren(el('div', 'msg', `The Windmill could not start: ${e.message ?? e}`));
+    console.error(e);
+    return;
+  }
+  if (windMode) windmill.show();
+};
+function leaveWindMode() {
+  if (!windMode) return;
+  windMode = false;
+  document.body.classList.remove('wind-mode');
+  windmill?.hide();
+  paused = false;
+}
 function leaveTextureMode() {
   if (!textureMode) return;
   textureMode = false;
@@ -632,7 +673,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (homeMode || textureMode || libraryMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); if (k.id === kind.id) return refreshUi(); }
+  if (homeMode || textureMode || libraryMode || windMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -700,6 +741,7 @@ async function save() {
 window.__studio = {
   camera, controls, state, frame: () => frame(current, ...pinned), measure,
   get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
+  get windmill() { return windmill; }, // Väderkvarnen (wind, scene, stats), när den har öppnats
   prepareThumb, // för att rendera om miniatyrer: renderThumb(url, __studio.prepareThumb) i library.js
   shot: async (name) => {
     controls.update();
@@ -718,7 +760,7 @@ regenerate();
 // Landningssidan (studio/home.js): visas vid start och när man klickar på märket i headern
 const home = createHome({ el, api, root: $('home'), open: openDept });
 function goHome() {
-  leaveTextureMode(); leaveLibraryMode();
+  leaveTextureMode(); leaveLibraryMode(); leaveWindMode();
   homeMode = true;
   paused = true; // 3D-vyn behövs inte under landningssidan
   home.show();
@@ -731,7 +773,8 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #bibliotek, #vind eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
+else if (location.hash === '#vind') windBtn.onclick();
 else if (location.hash !== '#smedjan') goHome();

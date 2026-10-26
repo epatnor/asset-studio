@@ -432,7 +432,71 @@ async function libraryVariants({ model, count = 8 }) {
   return { job: id, n: count };
 }
 
+// --- Väderkvarnen, fliken Vind (docs/effektlabb.md): spakar och profiler (tools/wind/wind.json), sparade profiler i
+// assets/wind/ och gläntan: riggade modeller byggda med generatorerna i build/wind/glade/, om igen när riggen,
+// generatorerna eller receptet har ändrats ---
+const WIND_JSON = 'tools/wind/wind.json', WIND_SAVED = 'assets/wind', GLADE = 'build/wind/glade';
+const RIG_SOURCES = ['tools/wind', 'tools/tree', 'tools/plants'];
+async function newestSource() {
+  let t = 0;
+  for (const d of RIG_SOURCES) for (const f of await readdir(path.join(ROOT, d))) {
+    if (/\.(mjs|json|py)$/.test(f)) t = Math.max(t, (await stat(path.join(ROOT, d, f))).mtimeMs);
+  }
+  return t;
+}
+async function windInfo() {
+  const W = await readJson(WIND_JSON);
+  const dir = path.join(ROOT, WIND_SAVED);
+  const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.wind.json')).map((f) => readJson(`${WIND_SAVED}/${f}`)))).filter(Boolean) : [];
+  return { ...W, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
+}
+async function windSave({ name, profile, overwrite }) {
+  name = String(name ?? '').trim().toLowerCase();
+  if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
+  const W = await readJson(WIND_JSON);
+  const clean = Object.fromEntries(W.params.filter((q) => !q.view).map((q) => [q.key, Math.min(q.max, Math.max(q.min, Number(profile?.[q.key] ?? q.default)))]));
+  const file = path.join(ROOT, WIND_SAVED, `${name}.wind.json`);
+  if (existsSync(file) && !overwrite) return { exists: true };
+  await mkdir(path.dirname(file), { recursive: true });
+  const entry = { name, ...clean, saved: new Date().toISOString() };
+  await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
+  return { entry, file: `${WIND_SAVED}/${name}.wind.json` };
+}
+let gladeBusy = null;
+async function windGlade() {
+  const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();
+  const items = [], errors = [];
+  for (const it of W.glade) {
+    let gen = it.generator, recipe = it.recipe;
+    if (it.library) {
+      const e = lib.items.find((i) => i.name === it.library);
+      if (!e) { errors.push(`${it.id}: ${it.library} is not in the library`); continue; }
+      if (it.still || !e.recipe || !['tree', 'plant'].includes(e.type)) { items.push({ ...it, url: `/${e.model}`, rigged: false }); continue; }
+      gen = e.type; recipe = await readJson(e.recipe);
+    }
+    const { name: _n, out_root: _o, ...r } = recipe ?? {};
+    const rel = `${GLADE}/${it.id}/${it.id}.gltf`, file = path.join(ROOT, rel), stampFile = path.join(ROOT, GLADE, it.id, 'glade.json');
+    const key = JSON.stringify({ gen, r });
+    const stamp = existsSync(stampFile) ? await readJson(`${GLADE}/${it.id}/glade.json`) : null;
+    let checks = stamp?.checks;
+    if (!(existsSync(file) && stamp?.key === key && statSync(file).mtimeMs > newest)) {
+      const res = await serial(() => runTool(GEN_TOOLS[gen], { ...r, name: it.id, out_root: GLADE }));
+      if (res.error) { errors.push(`${it.id}: ${res.error}`); continue; }
+      checks = res.checks;
+      await writeFile(stampFile, JSON.stringify({ key, checks }));
+    }
+    items.push({ ...it, url: `/${rel}?v=${Math.round(statSync(file).mtimeMs)}`, rigged: true, checks });
+  }
+  return { items, errors, grass: W.grass, flag: W.flag };
+}
+
 async function api(req, res, url) {
+  if (url.pathname === '/api/wind' && req.method === 'GET') return json(res, 200, await windInfo());
+  if (url.pathname === '/api/wind/save' && req.method === 'POST') return json(res, 200, await windSave(await body(req)));
+  if (url.pathname === '/api/wind/glade' && req.method === 'GET') {
+    gladeBusy ??= windGlade().finally(() => { gladeBusy = null; }); // flera flikar som frågar samtidigt får samma bygge
+    return json(res, 200, await gladeBusy);
+  }
   if (url.pathname === '/api/generators' && req.method === 'GET') {
     const out = {};
     for (const [id, g] of Object.entries(GENERATORS)) {

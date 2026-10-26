@@ -256,6 +256,10 @@ Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet 
 | T5. Resten | lövark och atlas i verkstaden, alfaverktyg, detaljsteg (frekvens, målad look), varianter och versioner, kontroller, MCP | Alla texturer i projektet kan göras och underhållas i verkstaden |
 | G1–G5. AI-flödet | Form → Måla → Material, bildbandet, utkast, prompter efter profil, referenser; se AI-flödet ovan | Krea är ett tydligt eget steg som inte stoppar arbetet |
 
+## Texturens skala på en tillgång (plan 2026-10-26)
+
+Materialet äger sin verkliga skala (meter per upprepning, `meters` i katalogen) och gäller överallt. En tillgångs recept (ett träd i Smedjan) sparar bara en avvikelse relativt materialet: tiling ×, sträckning längs och runt stammen och förskjutning, som Material Instances i Unreal; trädet har redan `bark_repeat`. Knappen *Use as material default* lyfter en avvikelse till materialet i Ateljén, men bara när man ber om det. Lövkronan är lövkort med en atlas, så där motsvaras skalan av kortens storlek och bladen per kort, i kronans spakar.
+
 ## Frågor till Patrik
 
 0. ~~Drakstatyn~~: beställd från Tripo P2 (`assets/imported/dragon_statue`), används i labbet.

@@ -689,11 +689,13 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
     const m = fullMaterial();
     for (const k of Object.keys(mapBoxes)) mapBoxes[k].checked = pr.maps.includes(k) || (k === 'metal' && m.metal.on) || (k === 'emissive' && m.emission.on);
   }
-  profSel.onchange = () => {
+  // Modellen byts bara när man själv väljer profil (e är då ändringshändelsen). Material och texturer i lådan
+  // byter aldrig modell, så att man kan prova bark på drakstatyn.
+  profSel.onchange = (e) => {
     const pre = W.profiles[profSel.value].prefix;
     if (!nameIn.value || Object.values(W.profiles).some((x) => nameIn.value === x.prefix)) nameIn.value = pre;
     profileDefaults();
-    if (!vs.model) { modelSel.value = W.profiles[profSel.value].model; if (vs.mode === '3d') setModel(modelSel.value); }
+    if (e && !vs.model) { modelSel.value = W.profiles[profSel.value].model; if (vs.mode === '3d') setModel(modelSel.value); }
   };
   saveCard.body.append(
     rowOf('Profile', profSel, 'Who uses the texture: sets the name, the maps and which model the 3D view shows'),
@@ -888,6 +890,8 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   renderLib();
   setMode('3d');
   applyPreset('cobble');
+  modelSel.value = W.profiles[profSel.value].model; // startmodellen: profilens, en gång
+  setModel(modelSel.value);
   return {
     show() { if (vs.mode === '3d') lab.show(); else resize(); if (!maps.color) update(); },
     hide() { lab.hide(); },

@@ -1,0 +1,37 @@
+{
+  "_doc": "Fliken Vind i Väderkvarnen (docs/effektlabb.md): spakarna för vindfältet (shared/effects/wind.js), färdiga vindprofiler och gläntan som vinden provas i. Texten som visas är på engelska. Sparade profiler hamnar i assets/wind/<namn>.wind.json.",
+  "params": [
+    { "key": "strength", "label": "Strength", "min": 0, "max": 1.5, "step": 0.01, "default": 0.5, "help": "How hard it blows. The force grows with the square, like drag." },
+    { "key": "dir", "label": "Direction (°)", "min": 0, "max": 360, "step": 1, "default": 30, "help": "Where the wind blows to, in degrees around the glade" },
+    { "key": "gust", "label": "Gusts", "min": 0, "max": 1, "step": 0.01, "default": 0.5, "help": "How much of the force comes in gusts that roll across the ground" },
+    { "key": "gustScale", "label": "Gust size (m)", "min": 4, "max": 60, "step": 1, "default": 18, "help": "Distance between the gust fronts" },
+    { "key": "gustSpeed", "label": "Gust speed (m/s)", "min": 0, "max": 20, "step": 0.1, "default": 6, "help": "How fast the gusts travel with the wind" },
+    { "key": "sway", "label": "Sway", "min": 0, "max": 1, "step": 0.01, "default": 0.35, "help": "Every part swings at its own rate around its lean: trunks slowly, twigs and stalks faster" },
+    { "key": "flutter", "label": "Leaf flutter", "min": 0, "max": 1.5, "step": 0.01, "default": 0.5, "help": "Small, quick motion of leaves and cards, strongest at the tips" },
+    { "key": "timeScale", "label": "Speed", "min": 0.05, "max": 1, "step": 0.01, "default": 1, "help": "Slow motion: lower to watch how the parts move", "view": true }
+  ],
+  "presets": {
+    "calm": { "label": "Calm", "strength": 0.12, "gust": 0.3, "gustScale": 22, "gustSpeed": 2, "sway": 0.4, "flutter": 0.4 },
+    "breeze": { "label": "Breeze", "strength": 0.35, "gust": 0.5, "gustScale": 20, "gustSpeed": 4, "sway": 0.35, "flutter": 0.6 },
+    "windy": { "label": "Windy", "strength": 0.7, "gust": 0.55, "gustScale": 18, "gustSpeed": 7, "sway": 0.3, "flutter": 0.7 },
+    "storm": { "label": "Storm", "strength": 1.1, "gust": 0.65, "gustScale": 14, "gustSpeed": 12, "sway": 0.25, "flutter": 0.9 }
+  },
+  "glade": [
+    { "id": "oak", "library": "cardtree_71924", "pos": [-7, 0, -6], "rot": 20 },
+    { "id": "birch", "library": "cardbirch_3", "pos": [6.5, 0, -8], "rot": 140 },
+    { "id": "bush", "library": "cardbush_78676", "pos": [-3.2, 0, 1.2], "rot": 0 },
+    { "id": "ballbush", "library": "ballbush_v2", "pos": [3.6, 0, 1.8], "rot": 60 },
+    { "id": "fern", "library": "fern1", "pos": [-5.2, 0, 3.5], "rot": 0 },
+    { "id": "daisy1", "generator": "plant", "recipe": { "preset": "daisy", "seed": 1 }, "pos": [-0.8, 0, 3.4] },
+    { "id": "daisy2", "generator": "plant", "recipe": { "preset": "daisy", "seed": 2 }, "pos": [0.4, 0, 4.1] },
+    { "id": "poppy", "generator": "plant", "recipe": { "preset": "poppy", "seed": 3 }, "pos": [1.6, 0, 3.2] },
+    { "id": "lupine", "generator": "plant", "recipe": { "preset": "lupine", "seed": 1 }, "pos": [-2.2, 0, 4.4] },
+    { "id": "cornflower", "generator": "plant", "recipe": { "preset": "cornflower", "seed": 4 }, "pos": [2.4, 0, 4.6] },
+    { "id": "wheat1", "generator": "plant", "recipe": { "preset": "wheat", "seed": 1 }, "pos": [5.6, 0, 4.2] },
+    { "id": "wheat2", "generator": "plant", "recipe": { "preset": "wheat", "seed": 2 }, "pos": [6.3, 0, 4.9] },
+    { "id": "reed", "generator": "plant", "recipe": { "preset": "feather_grass", "seed": 2 }, "pos": [-6.8, 0, 0.5] },
+    { "id": "boulder", "library": "boulder1", "pos": [1.2, 0, -2.6], "rot": 30, "still": true }
+  ],
+  "grass": { "radius": 12, "blades": 24000, "height": [0.08, 0.24], "angle": 0.55 },
+  "flag": { "pos": [9, 0, -1.5], "pole": 5, "length": 1.8, "height": 1.1 }
+}

@@ -11,6 +11,7 @@ import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { writeGltf } from '../tree/gltf_write.mjs';
 import { add, sub, mul, dot, cross, norm, lerp, len, rng, UP } from '../tree/vec.mjs';
+import { solveRig, rigExtras, rigChecks } from '../wind/rig.mjs';
 
 const PLANTS = JSON.parse(fs.readFileSync(new URL('./plants.json', import.meta.url)));
 const STYLE = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -52,10 +53,21 @@ function at(pts, t) { // punkt och ram längs kurvan, t i [0, 1]
 const angles = (d) => ({ th: Math.acos(clamp(d[1], -1, 1)), phi: Math.atan2(d[2], d[0]) });
 
 // ---------- Geometri per färg (en mesh och ett material per färgnyckel) ----------
-const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], stem: [], indices: [] });
+const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], stem: [], part: [], pt: [], indices: [] });
 let parts = {};
 const part = (key) => (parts[key] ??= empty());
-const vtx = (g, p, n, uv, shade = 1, stem = [0, 0, 0]) => { g.positions.push(...p); g.normals.push(...n); g.uvs.push(...uv); g.colors.push(shade, shade, shade); g.stem.push(...stem); return g.positions.length / 3 - 1; };
+// Vindriggen (tools/wind/rig.mjs): strån och stjälkar är rotdelar med fäste i marken, blad och tofsens strån sitter
+// på stjälken, och blomhuvudet är en egen del i stjälkens topp som nickar. rig.cur och rig.t sätts av den som bygger
+// (strå, rör, band) och följer med varje hörn som _PART och _PT.
+let rig = { parts: [], cur: -1, t: 0 };
+function rigPart(pts, radius, parent, tAttach, area) {
+  const a = pts[0].p, b = pts[pts.length - 1].p;
+  let L = 0;
+  for (let i = 1; i < pts.length; i++) L += len(sub(pts[i].p, pts[i - 1].p));
+  rig.parts.push({ pivot: [...a], dir: len(sub(b, a)) > 1e-6 ? sub(b, a) : pts[0].d ?? UP, length: L, radius, parent, tAttach, area });
+  return (rig.cur = rig.parts.length - 1);
+}
+const vtx = (g, p, n, uv, shade = 1, stem = [0, 0, 0]) => { g.positions.push(...p); g.normals.push(...n); g.uvs.push(...uv); g.colors.push(shade, shade, shade); g.stem.push(...stem); g.part.push(rig.cur); g.pt.push(rig.t); return g.positions.length / 3 - 1; };
 const tri = (g, a, b, c) => g.indices.push(a, b, c);
 // Öppna ytor (strån, blad, kronblad) får en riktig baksida med SAMMA normaler. Med dubbelsidiga material
 // vänder renderaren normalen på baksidan, och då blir "rakt upp" rakt ner och undersidan svart.
@@ -78,6 +90,7 @@ function blade(key, pts, w, { shape = 'grass', fold = 0.4, twist = 0, upNormals 
   const g = part(key), fw = WIDTH[shape] ?? WIDTH.grass, rows = [];
   pts.forEach((q, i) => {
     const t = i / (pts.length - 1), a = twist * t;
+    rig.t = t;
     const s = norm(add(mul(q.b1, Math.cos(a)), mul(q.b2, Math.sin(a))));
     const m = cross(s, q.d), half = (w * fw(t)) / 2, nrm = upNormals ? UP : m, shade = 0.55 + 0.45 * Math.min(1, t * 1.6);
     if (half < 1e-5) { rows.push([vtx(g, q.p, nrm, [0.5, t], shade)]); return; }
@@ -95,6 +108,7 @@ function tube(key, pts, radius, sides, upBlend = 0.5, from = 0, to = 1, cap = tr
   const ts = Array.from({ length: n + 1 }, (_, i) => from + (to - from) * (i / n));
   ts.forEach((t, i) => {
     const q = at(pts, t), r = radius(i / n), row = [];
+    rig.t = t;
     for (let k = 0; k < sides; k++) {
       const a = (k / sides) * Math.PI * 2, dir = add(mul(q.b1, Math.cos(a)), mul(q.b2, Math.sin(a)));
       row.push(vtx(g, add(q.p, mul(dir, r)), norm(lerp(dir, UP, upBlend)), [k / sides, t], 0.6 + 0.4 * t));
@@ -105,7 +119,7 @@ function tube(key, pts, radius, sides, upBlend = 0.5, from = 0, to = 1, cap = tr
     const k2 = (k + 1) % sides;
     triOut(g, ring[i][k], ring[i + 1][k], ring[i + 1][k2]); triOut(g, ring[i][k], ring[i + 1][k2], ring[i][k2]);
   }
-  if (cap) { const q = at(pts, to), c = vtx(g, add(q.p, mul(q.d, radius(1) * 0.8)), q.d, [0.5, 1]); for (let k = 0; k < sides; k++) triOut(g, ring[n][k], c, ring[n][(k + 1) % sides]); }
+  if (cap) { rig.t = to; const q = at(pts, to), c = vtx(g, add(q.p, mul(q.d, radius(1) * 0.8)), q.d, [0.5, 1]); for (let k = 0; k < sides; k++) triOut(g, ring[n][k], c, ring[n][(k + 1) % sides]); }
 }
 // Stjälk som platt band (två hörn per rad). _STEM är förskjutningen från stjälkens mittlinje; klienten vrider
 // bandet mot kameran runt mittlinjen, så att det ser ut som ett rör för en tredjedel av trianglarna.
@@ -113,6 +127,7 @@ function ribbon(key, pts, radius) {
   const g = part(key), n = pts.length - 1, rows = [];
   pts.forEach((q, i) => {
     const t = i / n, o = mul(q.b1, radius(t)), sh = 0.6 + 0.4 * t;
+    rig.t = t;
     rows.push([vtx(g, sub(q.p, o), UP, [0, t], sh, mul(o, -1)), vtx(g, add(q.p, o), UP, [1, t], sh, o)]);
   });
   for (let i = 0; i < n; i++) { const [a, b] = [rows[i], rows[i + 1]]; tri2(g, a[0], a[1], b[1]); tri2(g, a[0], b[1], b[0]); }
@@ -158,6 +173,7 @@ function petal(key, base, axis, o, L, W, cup, curl, segs) {
 // Flytblad (näckros): en platt, rund skiva med ett snitt in mot mitten och en lätt uppvikt kant.
 // Ligger vid y = 0, som klienten placerar på vattenytan.
 function pad(key, c, r, rot, notch, segs) {
+  rig.cur = -1; rig.t = 0; // flytblad ligger på vattnet och rör sig inte i vinden
   const g = part(key), center = vtx(g, [c[0], 0.012, c[2]], UP, [0.5, 0.5], 0.85), rim = [];
   for (let i = 0; i <= segs; i++) {
     const a = rot + notch / 2 + (i / segs) * (Math.PI * 2 - notch), wob = 1 + 0.05 * Math.sin(a * 5 + rot);
@@ -179,7 +195,7 @@ function distToPolyline(p, pts) {
 }
 
 // ---------- Huvuden ----------
-function head(h, st, stalkR, lod, rr, keep) {
+function head(h, st, stalkR, lod, rr, keep, stalkPart) {
   const q = at(st, 1), key = h.color ?? 'head';
   const D = () => rr(); // alla slumptal dras även när delen inte byggs, så att LOD-nivåerna blir samma växt
   if (h.type === 'tuft') { // tofs: några strån eller vippgrenar från toppen
@@ -189,7 +205,9 @@ function head(h, st, stalkR, lod, rr, keep) {
       const L = h.length[0] + (h.length[1] - h.length[0]) * D(), bend = h.bend ?? 0.3;
       if (!keep || i % lod.step) continue;
       const v0 = part(key).positions.length / 3;
-      blade(key, curve(sub(q.p, mul(q.d, 0.01)), th, phi, L, bend, Math.max(2, Math.round(4 * lod.seg))), h.width * Math.sqrt(lod.step), { shape: h.shape ?? 'grass', fold: 0.2 });
+      const tc = curve(sub(q.p, mul(q.d, 0.01)), th, phi, L, bend, Math.max(2, Math.round(4 * lod.seg)));
+      rigPart(tc, h.width / 2, stalkPart, 1, L * h.width * 0.5);
+      blade(key, tc, h.width * Math.sqrt(lod.step), { shape: h.shape ?? 'grass', fold: 0.2 });
       attached(key, v0, st, stalkR + 0.015);
     }
   } else if (h.type === 'spike') { // ax: kärnor i rader runt toppen, gärna med borst (säd, lavendel, lupin)
@@ -197,6 +215,7 @@ function head(h, st, stalkR, lod, rr, keep) {
     for (let k = 0; k < n; k++) {
       const u = (k + 0.5) / n, jit = D(), aw = D();
       if (!keep) continue;
+      rig.cur = stalkPart; rig.t = 1 - h.span + h.span * u; // axet sitter på stjälken och följer den
       const qq = at(st, 1 - h.span + h.span * u), rows = h.rows ?? 4;
       const a = (k % rows) * ((2 * Math.PI) / rows) + Math.floor(k / rows) * (Math.PI / rows) + jit * 0.3;
       const rad = add(mul(qq.b1, Math.cos(a)), mul(qq.b2, Math.sin(a))), ka = (h.angle ?? 25) * DEG;
@@ -208,11 +227,14 @@ function head(h, st, stalkR, lod, rr, keep) {
       attached(key, v0, st, stalkR + kr * 1.2);
       if (h.awn && lod.step < 4) {
         const tip = add(c, mul(kd, kl * 0.45)), { th, phi } = angles(norm(lerp(kd, qq.d, 0.4)));
+        const t0 = rig.t;
         blade(key, curve(tip, th, phi, h.awn * (0.8 + aw * 0.4), 0.08, 2), 0.004, { fold: 0 });
+        rig.t = t0;
       }
     }
   } else if (h.type === 'cattail') { // kolv: tjock, brun cylinder en bit under toppen, stjälken fortsätter som en spets
     if (!keep) return;
+    rig.cur = stalkPart;
     const v0 = part(key).positions.length / 3;
     tube(key, st, (u) => h.radius * (0.35 + 0.65 * Math.sqrt(Math.sin(Math.PI * clamp(u, 0.02, 0.98)))), Math.max(5, lod.sides + 2), 0.2, 1 - h.span - (h.top ?? 0.12), 1 - (h.top ?? 0.12));
     attached(key, v0, st, h.radius * 1.2);
@@ -220,6 +242,10 @@ function head(h, st, stalkR, lod, rr, keep) {
     const isBud = D() < (h.bud?.chance ?? 0), spin = D() * Math.PI * 2, jits = Array.from({ length: 12 }, D);
     if (!keep) return;
     const axis = norm(lerp(q.d, UP, h.faceUp ?? 0.5));
+    // Blomhuvudet: en egen del i stjälkens topp som nickar som en helhet (alla hörn i spetsen, _PT = 1)
+    const size = isBud ? h.bud.length : h.length + h.center[0];
+    rigPart([{ p: q.p }, { p: add(q.p, mul(axis, size)) }], stalkR * 0.8, stalkPart, 1, Math.PI * size * size * 0.5);
+    rig.t = 1;
     const ref = Math.abs(axis[1]) < 0.95 ? UP : [1, 0, 0], b1 = norm(cross(axis, ref)), b2 = cross(axis, b1);
     if (isBud) {
       const v0 = part(h.bud.color ?? 'bud').positions.length / 3;
@@ -250,7 +276,7 @@ function head(h, st, stalkR, lod, rr, keep) {
 // ---------- Lager: knippen av strån eller stjälkar ----------
 const range = (v, r) => (Array.isArray(v) ? v[0] + (v[1] - v[0]) * r() : v);
 function build(lod) {
-  parts = {}; attachments = [];
+  parts = {}; attachments = []; rig = { parts: [], cur: -1, t: 0 };
   const r = rng(seed * 7919 + 17);
   const bases = []; // rötternas startpunkter (kontrolleras: under marken)
   for (const layer of sp.layers) {
@@ -271,11 +297,12 @@ function build(lod) {
       }
       const pts = curve(o, lean * DEG, phi, L + SINK, bend, segs);
       if (layer.type === 'blades') {
-        if (keep) { blade(key, pts, w * Math.sqrt(lod.step), { shape: layer.shape, fold: lod.step >= 4 ? 0 : layer.fold ?? 0.4, twist }); bases.push(o); }
+        if (keep) { rigPart(pts, w / 2, -1, 0, L * w * 0.5); blade(key, pts, w * Math.sqrt(lod.step), { shape: layer.shape, fold: lod.step >= 4 ? 0 : layer.fold ?? 0.4, twist }); bases.push(o); }
         continue;
       }
       // Stjälk med blad och huvud
       const R = layer.radius;
+      const stalkPart = keep ? rigPart(pts, R, -1, 0, L * R * 2) : -1;
       if (keep) { if (layer.ribbon === false) tube(key, pts, (t) => R * (1 - 0.45 * t), lod.sides, 0.5); else ribbon(key, pts, (t) => R * (1 - 0.45 * t)); bases.push(o); }
       const lv = layer.leaves;
       if (lv) {
@@ -288,14 +315,16 @@ function build(lod) {
           if (!keep) continue;
           const q = at(pts, t), lk = lv.color ?? 'leaf', v0 = part(lk).positions.length / 3;
           const th = clamp(q.th + range(lv.lean, () => 0.5) * DEG, 0, 2.6);
-          blade(lk, curve(sub(q.p, mul(norm([Math.cos(lphi), 0, Math.sin(lphi)]), R * 0.5)), th, lphi, ll, lb, Math.max(2, Math.round(4 * lod.seg))), lw, { shape: lv.shape ?? 'strap', fold: 0.3 });
+          const lc = curve(sub(q.p, mul(norm([Math.cos(lphi), 0, Math.sin(lphi)]), R * 0.5)), th, lphi, ll, lb, Math.max(2, Math.round(4 * lod.seg)));
+          rigPart(lc, lw / 2, stalkPart, t, ll * lw * 0.5);
+          blade(lk, lc, lw, { shape: lv.shape ?? 'strap', fold: 0.3 });
           attached(lk, v0, pts, R + 0.01);
         }
       }
-      if (layer.head) head(layer.head, pts, R * 0.55, lod, r, keep);
+      if (layer.head) head(layer.head, pts, R * 0.55, lod, r, keep, stalkPart);
     }
   }
-  return { parts, attachments, bases };
+  return { parts, attachments, bases, rigParts: rig.parts };
 }
 
 // ---------- Bygg alla LOD, attribut och kontroller ----------
@@ -326,6 +355,13 @@ for (const [li, { parts: ps, attachments: at0, bases }] of lods.entries()) {
   for (const k of Object.keys(ps).filter((k) => /^(blade|grass)/.test(k))) for (let i = 1; i < ps[k].normals.length; i += 3) if (ps[k].normals[i] < 0.99) checks.normals_up = false;
 }
 for (const { parts: ps } of lods) for (const g of Object.values(ps)) for (let i = 0; i < g.positions.length; i++) g.positions[i] *= scale;
+// Vindriggen per LOD (LOD-nivåerna har olika många strån): strån och stjälkar svänger snabbare ju kortare växten är
+const fScale = clamp(Math.sqrt(0.6 / Math.max(0.05, H * scale)), 0.6, 1.8);
+for (const l of lods) {
+  for (const q of l.rigParts) { q.pivot = mul(q.pivot, scale); q.length *= scale; q.radius *= scale; q.area *= scale * scale; }
+  l.rig = solveRig(l.rigParts, { angles: sp.wind?.angles ?? [0.3, 0.4, 0.45], freqs: (sp.wind?.freqs ?? [1.1, 1.8, 2.4]).map((f) => f * fScale), seed });
+}
+Object.assign(checks, rigChecks(lods[0].rig.table, Object.values(lods[0].parts), lods[0].rig.depth));
 
 const doc = new Document();
 const buffer = doc.createBuffer();
@@ -339,7 +375,7 @@ const root = doc.createNode(name).setExtras({ generator: 'tinkertown/plant@1', r
 const tris = [];
 let minY = Infinity;
 lods.forEach(({ parts: ps }, i) => {
-  const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i });
+  const lodNode = doc.createNode(`${name}_LOD${i}`).setExtras({ lod: i, wind: rigExtras(lods[i].rig) });
   let t = 0;
   for (const [key, g] of Object.entries(ps)) {
     if (!g.indices.length) continue;
@@ -356,6 +392,8 @@ lods.forEach(({ parts: ps }, i) => {
       .setAttribute('_WIND', acc('SCALAR', Float32Array.from(g.wind)))
       .setAttribute('_GROUND', acc('SCALAR', Float32Array.from(g.ground)))
       .setAttribute('_STEM', acc('VEC3', Float32Array.from(g.stem.map((x) => x * scale))))
+      .setAttribute('_PART', acc('SCALAR', Float32Array.from(g.part)))
+      .setAttribute('_PT', acc('SCALAR', Float32Array.from(g.pt)))
       .setIndices(acc('SCALAR', Uint32Array.from(g.indices)))
       .setMaterial(material(key));
     lodNode.addChild(doc.createNode(`${name}_${key}_LOD${i}`).setMesh(doc.createMesh(`${key}_LOD${i}`).addPrimitive(prim)));
@@ -371,5 +409,6 @@ await writeGltf(doc, out);
 const budget = STYLE.budgets_tris.ground_cover ?? [100, 4000];
 checks.resting_on_ground = minY < 0 && minY > -0.2;
 checks.within_budget = tris[0] <= budget[1];
-checks.ok = checks.rooted && checks.attached && checks.normals_up && checks.wind_torn === 0 && checks.resting_on_ground && checks.within_budget;
+checks.ok = checks.rooted && checks.attached && checks.normals_up && checks.wind_torn === 0 && checks.resting_on_ground && checks.within_budget
+  && checks.rig_torn === 0 && checks.rig_still_moves === 0 && checks.rig_ground_moves === 0 && checks.rig_depth_ok;
 console.log(JSON.stringify({ model: out, preset, height_m: +(H * scale).toFixed(2), parts: Object.keys(lods[0].parts), tris_lod: tris, checks }));

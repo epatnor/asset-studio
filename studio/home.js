@@ -5,7 +5,7 @@ export const DEPARTMENTS = [
   { id: 'forge', name: 'The Forge', sub: 'Build assets from recipes', accent: '#3f9a45', img: 'img/forge.webp',
     text: 'Trees, bushes, rocks, props, buildings and plants, grown from recipes and tuned with sliders.', ready: true },
   { id: 'windmill', name: 'The Windmill', sub: 'Wind, water and weather', accent: '#2f7fd8', img: 'img/windmill.webp',
-    text: 'One wind for every tree and blade of grass, every kind of water, and weather that ties it together.', ready: false },
+    text: 'One wind for every tree and blade of grass, every kind of water, and weather that ties it together.', ready: true },
   { id: 'atelier', name: 'The Atelier', sub: 'Paint materials and textures', accent: '#c99a1c', img: 'img/atelier.webp',
     text: 'Seamless textures and full materials from recipes, painted by algorithms or by AI, tried on real shapes.', ready: true },
   { id: 'cauldron', name: 'The Cauldron', sub: 'Spells and game effects', accent: '#8b5cf6', img: 'img/cauldron.webp',

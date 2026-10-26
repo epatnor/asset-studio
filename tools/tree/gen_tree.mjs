@@ -12,6 +12,7 @@ import { buildConiferFoliage } from './conifer.mjs';
 import { buildCrown } from './crown.mjs';
 import { buildLeafDome } from './leafdome.mjs';
 import { buildCardBalls } from './cardball.mjs';
+import { solveRig, rigExtras, rigChecks, lineIndex } from '../wind/rig.mjs';
 
 const SPECIES = JSON.parse(fs.readFileSync(new URL('./species.json', import.meta.url)));
 const STYLE = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url)));
@@ -164,6 +165,45 @@ else if (sp.stemless) {
 }
 checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs && !checks.floating_cards;
 
+// 3b. Vindriggen (tools/wind/rig.mjs): en del per gren i skelettet, med stammen som rot. Barken vet redan sin gren;
+// lövverket fästs där det sitter: en klunga (boll, klump) följer stelt med punkten på kvisten närmast klungans mitt,
+// barr och blad utan klunga följer sin närmaste grenpunkt hörn för hörn.
+const nearest = lineIndex(sk.branches.map((b, i) => ({ part: i, pts: b.nodes.map((n) => n.p) })), Math.max(0.25, height / 30));
+function attach(g) {
+  if (!g?.positions.length) return;
+  g.part = []; g.pt = [];
+  const centers = new Map();
+  if (g.cluster?.length && foliage.clusters?.length) {
+    for (let i = 0; i < g.cluster.length; i++) {
+      const c = g.cluster[i];
+      if (!centers.has(c)) centers.set(c, foliage.clusters[c]?.center ? nearest(foliage.clusters[c].center) : null);
+    }
+  }
+  for (let i = 0; i < g.positions.length / 3; i++) {
+    const a = centers.get(g.cluster?.[i]) ?? nearest([g.positions[i * 3], g.positions[i * 3 + 1], g.positions[i * 3 + 2]]);
+    g.part.push(a.part); g.pt.push(a.t);
+  }
+}
+for (const lod of foliage.lods) for (const g of [lod, lod.volume, lod.stems, lod.shadow]) attach(g);
+// Luftmotstånd: lövytan (LOD0) per del, ungefär hälften av kortens yta (de korsar varandra)
+const area = new Array(sk.branches.length).fill(0);
+{
+  const g = foliage.lods[0];
+  for (let i = 0; i < (g.indices?.length ?? 0); i += 3) {
+    const [a, b, c] = [g.indices[i], g.indices[i + 1], g.indices[i + 2]].map((k) => [g.positions[k * 3], g.positions[k * 3 + 1], g.positions[k * 3 + 2]]);
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    area[g.part[g.indices[i]]] += 0.25 * Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]);
+  }
+}
+const rig = solveRig(sk.branches.map((b, i) => {
+  const n = b.nodes, d = [n[n.length - 1].p[0] - n[0].p[0], n[n.length - 1].p[1] - n[0].p[1], n[n.length - 1].p[2] - n[0].p[2]];
+  return { pivot: n[0].p, dir: d, length: b.length, radius: n[0].r, parent: b.parent, tAttach: b.t, area: area[i] };
+}), {
+  // Större träd böjer och svänger långsammare; arten kan ange egna värden (species.json: wind.angles, wind.freqs)
+  angles: sp.wind?.angles ?? [0.05, 0.12, 0.18, 0.24].map((a, i) => (i === 0 ? a * Math.sqrt(9 / Math.max(2, top)) : a)),
+  freqs: (sp.wind?.freqs ?? [0.45, 0.9, 1.6, 2.4]).map((f) => f * Math.min(2, Math.sqrt(9 / Math.max(2, top)))), seed: seedEff });
+Object.assign(checks, rigChecks(rig.table, [barkLods[0], foliage.lods[0], foliage.lods[0].volume, foliage.lods[0].stems].filter((g) => g?.part), rig.depth));
+
 // 4. GLB
 const doc = new Document();
 const buffer = doc.createBuffer();
@@ -239,6 +279,7 @@ function mesh(name, g, mat, extra = {}) {
     .setIndices(acc('SCALAR', Uint32Array.from(g.indices)))
     .setMaterial(mat);
   for (const [k, v] of Object.entries(extra)) prim.setAttribute(k, acc('SCALAR', Float32Array.from(v)));
+  if (g.part) prim.setAttribute('_PART', acc('SCALAR', Float32Array.from(g.part))).setAttribute('_PT', acc('SCALAR', Float32Array.from(g.pt)));
   // Vinddata i vertexfärg enligt stilguidens konvention, läsbar direkt i Unreal/Godot/Unity:
   // R = höjd över marken, G = rörlighet (avstånd från gren-pivot), B = slumpmässig fas per kluster
   const nV = g.positions.length / 3, wc = new Float32Array(nV * 4);
@@ -252,7 +293,7 @@ function mesh(name, g, mat, extra = {}) {
 }
 
 const name = recipe.name ?? path.basename(out, path.extname(out));
-const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, ...(lift ? { bole: recipe.bole } : {}), kind } });
+const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, ...(lift ? { bole: recipe.bole } : {}), kind }, wind: rigExtras(rig) });
 const tris = [], alphaTris = [];
 let stemMat;
 foliage.lods.forEach((lod, i) => {
@@ -278,7 +319,7 @@ foliage.lods.forEach((lod, i) => {
 });
 doc.createScene(name).addChild(root);
 checks.wind_torn = WIND_TORN;
-checks.ok = checks.ok && WIND_TORN === 0;
+checks.ok = checks.ok && WIND_TORN === 0 && checks.rig_torn === 0 && checks.rig_still_moves === 0 && checks.rig_ground_moves === 0 && checks.rig_depth_ok;
 await writeGltf(doc, out);
 
 // Kort svar, avsett för en AI-agent
