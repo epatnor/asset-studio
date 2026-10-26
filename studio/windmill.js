@@ -10,6 +10,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createWind, rigTexture } from '../shared/effects/wind.js';
 import { createGrass, colorTexture, groundSampler } from '../shared/effects/grass.js';
 import { gpuPreference } from './gpu.js';
+import { createCloth } from '../shared/effects/cloth.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
 const DEG = Math.PI / 180;
@@ -249,8 +250,18 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     setNote('');
   }
 
-  // --- Flaggan: stång och duk. Tyget är en textur med alfa (målad av GPT Image 2, fransarna genomskinliga) och
-  // rör sig med wind.flag: hänger i stiltje, lyfts och veckar sig i vinden, med normaler ur den veckade ytan ---
+  // --- Flaggan: stång och duk. Duken är ett simulerat tyg (shared/effects/cloth.js, implicit efter Baraff och Witkin)
+  // med fäst stångkant, tyngd och vinden ur samma vindfält; texturen har alfa (målad av GPT Image 2, fransarna
+  // genomskinliga). Klicka och dra i flaggan för att dra i tyget. ---
+  let cloth = null, clothGeo = null, flagMesh = null;
+  // Vinden vid tyget: vindfältet (svarar som en blomma) plus turbulens som växer med farten, så att tyget fladdrar
+  function clothWind(x, y, z) {
+    const v = wind.velocityAt(x, z, 'plant'), sp = Math.hypot(v[0], v[2]), t = wind.state.time;
+    const px = -Math.sin(wind.state.dir), pz = Math.cos(wind.state.dir);
+    const lat = sp * 0.16 * Math.sin(t * (2.2 + sp * 0.35) + x * 2.3 + y * 1.7) + sp * 0.06 * Math.sin(t * 7.1 + x * 5.3 - y * 2.9);
+    const up = sp * 0.05 * Math.sin(t * 3.3 + x * 3.1 + z * 2.2);
+    return [v[0] + px * lat, up, v[2] + pz * lat];
+  }
   async function addFlag(o) {
     if (!o) return;
     const grp = new THREE.Group();
@@ -260,23 +271,60 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     pole.castShadow = true;
     const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), new THREE.MeshStandardNodeMaterial({ color: '#d9b440', roughness: 0.35, metalness: 0.6 }));
     knob.position.y = o.pole + 0.04;
+    grp.add(pole, knob);
+    scene.add(grp);
     const tex = o.texture ? await texLoader.loadAsync(`/assets/textures/${o.texture}.png`).catch(() => null) : null;
     if (tex) { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; }
-    // Duken i flaggans proportioner (bildens, med fransarna), överkanten vid stångens topp
+    // Duken i flaggans proportioner (bildens, med fransarna), överkanten vid stångens topp; i världens koordinater
     const L = o.length, H = tex ? (L * tex.image.height) / tex.image.width : o.height;
-    const cloth = new THREE.PlaneGeometry(L, H, 48, 20);
-    cloth.translate(L / 2, -H / 2, 0);
+    cloth = createCloth({ width: L, height: H, anchor: [o.pos[0] + 0.05, o.pole - 0.06, o.pos[2]], dir: [Math.cos(wind.state.dir), Math.sin(wind.state.dir)] });
+    clothGeo = new THREE.BufferGeometry();
+    clothGeo.setAttribute('position', new THREE.BufferAttribute(cloth.positions, 3).setUsage(THREE.DynamicDrawUsage));
+    clothGeo.setAttribute('normal', new THREE.BufferAttribute(cloth.normals, 3).setUsage(THREE.DynamicDrawUsage));
+    clothGeo.setAttribute('uv', new THREE.BufferAttribute(cloth.uvs, 2));
+    clothGeo.setIndex(cloth.indices);
     const fm = new THREE.MeshStandardNodeMaterial({ color: tex ? '#ffffff' : '#c0412e', map: tex, alphaTest: tex ? 0.5 : 0, roughness: 0.82, side: THREE.DoubleSide });
-    const f = wind.flag(L, H);
-    fm.positionNode = f.positionNode;
-    fm.normalNode = f.normalNode;
-    const flag = new THREE.Mesh(cloth, fm);
-    flag.position.set(0.05, o.pole - 0.06, 0);
-    flag.castShadow = true;
-    flag.frustumCulled = false;
-    grp.add(pole, knob, flag);
-    scene.add(grp);
+    flagMesh = new THREE.Mesh(clothGeo, fm);
+    flagMesh.castShadow = true;
+    flagMesh.frustumCulled = false;
+    scene.add(flagMesh);
+    // Låt tyget falla på plats innan första bilden
+    for (let i = 0; i < 90; i++) cloth.step(1 / 60, clothWind);
+    updateCloth();
   }
+  function updateCloth() {
+    if (!cloth) return;
+    clothGeo.attributes.position.needsUpdate = true;
+    clothGeo.attributes.normal.needsUpdate = true;
+    clothGeo.computeBoundingSphere();
+  }
+  // Dra i tyget: klicka på flaggan, dra i bildens plan; kameran rör sig inte under tiden
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), dragPlane = new THREE.Plane(), hitP = new THREE.Vector3();
+  let dragIdx = -1;
+  const pointerRay = (e) => { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
+  view.addEventListener('pointerdown', (e) => {
+    if (!flagMesh || e.button !== 0) return;
+    pointerRay(e);
+    const hit = ray.intersectObject(flagMesh)[0];
+    if (!hit) return;
+    dragIdx = cloth.nearest(hit.point.toArray());
+    dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), hit.point);
+    cloth.grab(dragIdx, hit.point.toArray());
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture?.(e.pointerId);
+    e.stopPropagation();
+  }, { capture: true });
+  view.addEventListener('pointermove', (e) => {
+    if (dragIdx < 0) return;
+    pointerRay(e);
+    if (ray.ray.intersectPlane(dragPlane, hitP)) cloth.grab(dragIdx, hitP.toArray());
+  });
+  addEventListener('pointerup', () => {
+    if (dragIdx < 0) return;
+    cloth.grab(dragIdx, null);
+    dragIdx = -1;
+    controls.enabled = true;
+  });
 
   // --- Vindpilen över gräset: pekar dit det blåser, längre och mer opak ju starkare ---
   const arrowShape = new THREE.Shape([[0, -0.18], [1.4, -0.18], [1.4, -0.45], [2.2, 0], [1.4, 0.45], [1.4, 0.18], [0, 0.18]].map(([x, y]) => new THREE.Vector2(x, y)));
@@ -512,6 +560,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) wind.update(dt);
+    if (cloth && !paused && cloth.step(dt * wind.state.timeScale, clothWind)) updateCloth();
     controls.update();
     grass?.update(camera);
     updateArrow();
@@ -538,6 +587,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     wind, scene, camera, controls, renderer,
     setDebug(v) { debug = v; applyDebug(); },
+    get cloth() { return cloth; }, get flagMesh() { return flagMesh; }, // för felsökning och prov
     stats: () => ({ ...stats, fps }),
   };
 }

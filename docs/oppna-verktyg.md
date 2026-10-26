@@ -34,6 +34,7 @@ Att undersöka: RedGPU:s licens och hur aktivt projektet är (det är alfa, med 
 | Texturgrafer | [Material Maker](https://www.linuxlinks.com/material-maker-procedural-texture-authoring-3d-painting-tool/) (Godot, nodgraf, PBR-kartor, målning på glTF) | MIT | Härma: nodtyper och export; vår verkstad är receptbaserad och AI-styrd |
 | Målning på modell | ArmorPaint | kontrollera | Alternativ till att bygga en full pensel (B4–B5) |
 | Bakning | Blender (har vi) | GPL | **Använda** för krökning, AO, position och tjocklek (B4) |
+| Tygsimulering | Thom Chiovolonis tygdemo (Baraff och Witkin, implicit med konjugerad gradient) | MIT | **Använd** (portad till `shared/effects/cloth.js`, licensen i filen) |
 | Blender-arbete via agenter | [blender-skills](https://github.com/arjun988/blender-skills) (94 färdigheter för Claude Code m.fl. via Blender MCP: karaktärer, retopologi, rigg, hår, export) | MIT | Titta på för karaktärsskapandet ([character-generator.md](character-generator.md)) |
 | Komprimering | gltf-transform | MIT | **Använda** för KTX2 bredvid meshopt |
 | Utspridning (PCG) | Unreal PCG (som modell), ProtonScatter för Godot | (Unreal: inte öppen) / kontrollera | Härma grafens steg i B3 |

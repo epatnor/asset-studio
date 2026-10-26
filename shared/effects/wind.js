@@ -207,5 +207,13 @@ export function createWind(params = {}) {
       return Math.min(1, Math.max(0, v)) ** 1.5;
     },
     forceAt(x, z) { const s = state; return s.strength * s.strength * (1 - s.gust + s.gust * this.gustAt(x, z)); },
+    // Vindens hastighet (m/s) i en punkt, genom ett föremåls svarskurva (RESPONSE): till tygsimuleringen (cloth.js).
+    // Full storm (S = 1) är 16 m/s; byarna ändrar farten, kraften går som farten i kvadrat.
+    velocityAt(x, z, response = 'plant') {
+      const s = state, d = RESPONSE[response]?.force ?? 0;
+      const f = Math.max(0, s.strength) ** Math.max(0.3, 2 + s.separation * d) * (1 - s.gust + s.gust * this.gustAt(x, z));
+      const v = 16 * Math.sqrt(f);
+      return [Math.cos(s.dir) * v, 0, Math.sin(s.dir) * v];
+    },
   };
 }
