@@ -13,7 +13,7 @@ import { DataTexture, RGBAFormat, FloatType, NearestFilter } from 'three/webgpu'
 import {
   Fn, uniform, attribute, float, int, vec3, vec4, ivec2, textureLoad, Loop, If, Break, positionLocal, normalGeometry,
   modelWorldMatrix, modelWorldMatrixInverse, cameraPosition, cross, normalize, dot, length, sin, cos, clamp, mix, max, pow,
-  select, round, sign, smoothstep, fract,
+  select, round, sign, smoothstep, fract, transformNormalToView,
 } from 'three/tsl';
 
 export const WIND_DEFAULTS = { strength: 0.5, dir: 0, gust: 0.5, gustScale: 18, gustSpeed: 6, sway: 0.35, flutter: 0.5, timeScale: 1 };
@@ -38,6 +38,7 @@ export function createWind(params = {}) {
     gustScale: uniform(state.gustScale), gustSpeed: uniform(state.gustSpeed), sway: uniform(state.sway), flutter: uniform(state.flutter),
   };
   const UP = vec3(0, 1, 0);
+  const rotY = (v, a) => vec3(v.x.mul(cos(a)).sub(v.z.mul(sin(a))), v.y, v.x.mul(sin(a)).add(v.z.mul(cos(a))));
   const windW = () => vec3(cos(u.dir), 0, sin(u.dir)); // vindens riktning i världen (dit den blåser)
 
   // Byarna: band vinkelräta mot vinden som rullar med den, med vågiga fronter (samma som gustAt i rig.mjs)
@@ -63,9 +64,16 @@ export function createWind(params = {}) {
 
   /**
    * Position för en riggad modell. tex = rigTexture(userData.wind).
-   * flutter: löven fladdrar lite (efter _WIND och _CLUSTER-fasen), stem: platta stjälkar (_STEM) vrids mot kameran
+   * flutter: löven fladdrar lite (efter _WIND och _CLUSTER-fasen), stem: platta stjälkar (_STEM) vrids mot kameran,
+   * place: många exemplar i en ritning (InstancedBufferGeometry med attributet iPlace = x, z, vridning, skala). Riggen
+   * räknas då i modellens eget rum och placeras sist; byarna läses där exemplaret står. Använd placedNormal() som
+   * materialets normal, så att ljuset följer vridningen.
    */
-  function rigged(tex, { flutter = false, stem = false } = {}) {
+  function rigged(tex, { flutter = false, stem = false, place = false } = {}) {
+    const pl = place ? attribute('iPlace', 'vec4') : null;
+    // Modellens rum -> världen: vrid runt y, skala, flytta (utan place: modellens matris)
+    const toWorld = (p) => (pl ? rotY(p.mul(pl.w), pl.z).add(vec3(pl.x, 0, pl.y)) : modelWorldMatrix.mul(vec4(p, 1)).xyz);
+    const dirToLocal = (d) => (pl ? rotY(d, pl.z.negate()) : modelWorldMatrixInverse.mul(vec4(d, 0)).xyz);
     return Fn(() => {
       const rest = positionLocal.toVar();
       if (stem) {
@@ -73,7 +81,7 @@ export function createWind(params = {}) {
         const st = attribute('_stem', 'vec3');
         If(dot(st, st).greaterThan(0), () => {
           const c = rest.sub(st);
-          const camL = modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz;
+          const camL = pl ? rotY(cameraPosition.sub(vec3(pl.x, 0, pl.y)), pl.z.negate()).div(pl.w) : modelWorldMatrixInverse.mul(vec4(cameraPosition, 1)).xyz;
           const side = normalize(cross(UP, camL.sub(c))), perp = cross(side, UP);
           rest.assign(c.add(side.mul(length(st)).mul(sign(dot(st, side).mul(1000).add(dot(st, perp))))));
         });
@@ -81,11 +89,11 @@ export function createWind(params = {}) {
       const pos = vec3(rest).toVar();
       const cur = int(round(attribute('_part', 'float'))).toVar();
       const t = attribute('_pt', 'float').toVar();
-      const W = normalize(modelWorldMatrixInverse.mul(vec4(windW(), 0)).xyz).toVar();
+      const W = normalize(dirToLocal(windW())).toVar();
       Loop(MAX_DEPTH, () => {
         If(cur.lessThan(0), () => { Break(); });
         const r0 = textureLoad(tex, ivec2(cur, int(0))), r1 = textureLoad(tex, ivec2(cur, int(1))), r2 = textureLoad(tex, ivec2(cur, int(2)));
-        const pivot = r0.xyz, pw = modelWorldMatrix.mul(vec4(pivot, 1)).xyz;
+        const pivot = r0.xyz, pw = toWorld(pivot);
         const osc = sin(u.time.mul(r2.y).mul(TAU).add(r2.z));
         const a = r2.x.mul(forceAt(pw.xz).add(u.sway.mul(u.strength).mul(osc))).mul(bendShape(t));
         pos.assign(pivot.add(rotate(pos.sub(pivot), bendAxis(r1.xyz, W), a)));
@@ -100,9 +108,12 @@ export function createWind(params = {}) {
         pos.addAssign(normalGeometry.mul(f.mul(w).mul(u.flutter).mul(u.strength).mul(0.035)));
       }
       // Det som rör marken står still
-      return mix(rest, pos, clamp(rest.y.div(GROUND_BLEND), 0, 1));
+      const out = mix(rest, pos, clamp(rest.y.div(GROUND_BLEND), 0, 1));
+      return pl ? toWorld(out) : out;
     })();
   }
+  // Normalen för placerade exemplar (rigged med place): geometrins normal vriden som exemplaret, i kamerans rum
+  const placedNormal = () => normalize(transformNormalToView(rotY(normalGeometry, attribute('iPlace', 'vec4').z)));
 
   /**
    * Gräs: varje strå har roten (groot, vec3 i modellens rum), höjden längs strået (gt, 0–1) och gblade
@@ -148,7 +159,7 @@ export function createWind(params = {}) {
       for (const k of ['strength', 'dir', 'gust', 'gustScale', 'gustSpeed', 'sway', 'flutter']) u[k].value = state[k];
     },
     update(dt) { state.time += dt * state.timeScale; u.time.value = state.time; },
-    rigged, blades, flag,
+    rigged, placedNormal, blades, flag,
     force: forceAt, // kraften som nod (styrka² och byar) vid en punkt xz i världen
     gust: gustAt, // byarna som nod (0–1) vid en punkt xz i världen, t.ex. för att ljusa gräset
     // Samma byar på processorn (vindpilen, mätare)

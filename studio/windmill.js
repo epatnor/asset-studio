@@ -54,14 +54,16 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   const rigged = []; // { mesh, normal, debug } för felsökningsvyn
   const pivots = [];
   const partColor = (n) => { const h = fract(n.mul(0.61803)); return mix(color('#e0533d'), color('#3d8be0'), h).mul(float(0.55).add(fract(n.mul(0.37)).mul(0.6))); };
-  function windMaterial(src, tex, stem) {
+  function windMaterial(src, tex, stem, place = false) {
     const m = new THREE.MeshStandardNodeMaterial();
     for (const k of ['name', 'color', 'map', 'roughness', 'metalness', 'alphaTest', 'transparent', 'side', 'vertexColors', 'normalMap', 'emissive']) if (src[k] !== undefined) m[k] = src[k];
-    m.positionNode = wind.rigged(tex, { flutter: LEAFY.test(src.name), stem });
+    m.positionNode = wind.rigged(tex, { flutter: LEAFY.test(src.name), stem, place });
+    if (place) m.normalNode = wind.placedNormal();
     if (src.userData?.shadowProxy) { m.colorWrite = false; m.depthWrite = false; }
     const d = new THREE.MeshStandardNodeMaterial({ roughness: 0.8, side: src.side, alphaTest: src.alphaTest, map: src.map });
     d.colorNode = partColor(attribute('_part', 'float'));
     d.positionNode = m.positionNode;
+    if (place) d.normalNode = m.normalNode;
     if (src.userData?.shadowProxy) { d.colorWrite = false; d.depthWrite = false; }
     return [m, d];
   }
@@ -94,6 +96,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     }
     stats.failed.push(...g.errors);
     addGrass(g.grass, g.items, g.flag);
+    scatter();
     addFlag(g.flag);
     applyDebug();
     setNote(stats.failed.length ? `Glade built, with problems: ${stats.failed.join('; ')}` : '');
@@ -117,18 +120,103 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     pivotGroup.add(im);
   }
 
-  // --- Gräset: tätt, böjt och i tuvor (shared/effects/grass.js), med samma vind; inte där träd, buskar och stenar står ---
-  let grass = null;
+  // --- Gräset: ett recept (tools/grass/grass.json, shared/effects/grass.js) i samma vind; inget gräs där träd, buskar
+  // och stenar står, och kortare gräs runt blommorna ---
+  const G = await api('/api/grass');
+  const grassVals = Object.fromEntries(G.params.map((q) => [q.key, q.default]));
+  let grass = null, baseExclude = [];
   function addGrass(o, items, flag) {
     if (!o) return;
-    const exclude = items.filter((it) => it.clear).map((it) => ({ x: it.pos[0], z: it.pos[2], r: it.clear }));
-    // short: kortare gräs runt blommorna, så att de sticker upp
-    for (const it of items.filter((x) => x.short)) exclude.push({ x: it.pos[0], z: it.pos[2], r: 0.6, h: it.short });
-    if (flag) exclude.push({ x: flag.pos[0], z: flag.pos[2], r: 0.2 });
-    grass = createGrass(wind, { ...o, exclude });
+    baseExclude = items.filter((it) => it.clear).map((it) => ({ x: it.pos[0], z: it.pos[2], r: it.clear }));
+    for (const it of items.filter((x) => x.short)) baseExclude.push({ x: it.pos[0], z: it.pos[2], r: 0.6, h: it.short });
+    if (flag) baseExclude.push({ x: flag.pos[0], z: flag.pos[2], r: 0.2 });
+    grass = createGrass(wind, { ...o, exclude: baseExclude }, grassVals);
     grass.uniforms.sun.value.copy(sun.position).normalize();
-    for (const q of info.params.filter((x) => x.grass)) grass.uniforms[q.grass].value = viewVals[q.key];
     scene.add(grass.group);
+  }
+  const setGrass = (k, v) => { grassVals[k] = v; grass?.set({ [k]: v }); };
+
+  // --- Blomklungor: växter från växtgeneratorn (riggade, i samma vind), slumpade i klungor över ängen. Varje art
+  // byggs i några frön av servern (/api/wind/plant) och klonas; klonerna delar geometri och material ---
+  const TAU = Math.PI * 2;
+  const rng = (seed) => { let x = seed >>> 0; return () => { x = (x + 0x6d2b79f5) >>> 0; let t = x; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const flowerVals = { plants: [...G.flowers.default.plants], ...Object.fromEntries(G.flowers.params.map((q) => [q.key, q.default])) };
+  const flowerGroup = new THREE.Group();
+  scene.add(flowerGroup);
+  let flowerRigged = [];
+  // Varje art och frö byggs en gång; dess delar (LOD0) ritas sedan instansierat, en ritning per del för alla exemplar
+  const plantCache = new Map();
+  function plantTemplate(preset, seed) {
+    const key = `${preset}_${seed}`;
+    if (!plantCache.has(key)) plantCache.set(key, (async () => {
+      const r = await api(`/api/wind/plant?preset=${preset}&seed=${seed}`);
+      if (r.error) throw new Error(r.error);
+      const root = (await loader.loadAsync(r.url)).scene;
+      const parts = [], texes = new Map();
+      root.traverse((o) => {
+        if (!o.isMesh || /_LOD[12]$/.test(o.parent?.name ?? '') || !o.geometry.attributes._part) return;
+        const w = tableOf(o);
+        if (!w) return;
+        if (!texes.has(w)) texes.set(w, rigTexture(w));
+        const [m, d] = windMaterial(o.material, texes.get(w), !!o.geometry.attributes._stem, true);
+        parts.push({ geometry: o.geometry, normal: m, debug: d });
+      });
+      return parts;
+    })());
+    return plantCache.get(key);
+  }
+  let scatterToken = 0, scatterTimer = 0;
+  const scatterSoon = () => { clearTimeout(scatterTimer); scatterTimer = setTimeout(scatter, 250); };
+  async function scatter() {
+    const token = ++scatterToken, fv = flowerVals, kinds = fv.plants;
+    const r = rng(fv.seed * 7919 + 13), pick = () => kinds[Math.floor(r() * kinds.length)];
+    const clumps = [];
+    for (let tries = 0; kinds.length && clumps.length < fv.clumps && tries < 600; tries++) {
+      const a = r() * TAU, d = Math.sqrt(r()) * fv.area, x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (baseExclude.some((e) => !(e.h > 0) && (x - e.x) ** 2 + (z - e.z) ** 2 < (e.r + fv.spread * 0.6) ** 2)) continue;
+      clumps.push({ x, z, kind: pick() });
+    }
+    // Tätast i klungans mitt (ungefär normalfördelat), en art per klunga utom där mixed slår in
+    const plants = [];
+    for (const c of clumps) for (let k = 0; k < fv.perClump; k++) {
+      const a = r() * TAU, d = fv.spread * Math.min(1.6, Math.sqrt(-2 * Math.log(1 - r() * 0.98)) * 0.5);
+      plants.push({ x: c.x + Math.cos(a) * d, z: c.z + Math.sin(a) * d, kind: r() < fv.mixed ? pick() : c.kind,
+        seed: Math.floor(r() * G.flowers.seeds), yaw: r() * TAU, s: (fv.size ?? 1) * (0.85 + r() * 0.3) });
+    }
+    const keys = [...new Set(plants.map((p) => `${p.kind}|${p.seed}`))];
+    if (keys.some((k) => !plantCache.has(k.replace('|', '_')))) setNote('Growing the plants with the plant generator…');
+    const templates = new Map();
+    for (const k of keys) {
+      const [kind, seed] = k.split('|');
+      templates.set(k, await plantTemplate(kind, Number(seed)).catch((e) => { setNote(`${kind}: ${e.message}`); return null; }));
+      if (token !== scatterToken) return; // en nyare utslumpning har börjat
+    }
+    // (geometrierna kastas inte: de delar attribut med växtens mall, som används igen nästa gång)
+    flowerGroup.clear();
+    flowerRigged = [];
+    for (const k of keys) {
+      const parts = templates.get(k), mine = plants.filter((p) => `${p.kind}|${p.seed}` === k);
+      if (!parts || !mine.length) continue;
+      const place = new THREE.InstancedBufferAttribute(new Float32Array(mine.flatMap((p) => [p.x, p.z, p.yaw, p.s])), 4);
+      const sphere = new THREE.Sphere(new THREE.Vector3(), 0).setFromPoints(mine.map((p) => new THREE.Vector3(p.x, 0.4, p.z)));
+      sphere.radius += 1.5;
+      for (const part of parts) {
+        const geo = new THREE.InstancedBufferGeometry();
+        geo.index = part.geometry.index;
+        for (const [name, attr] of Object.entries(part.geometry.attributes)) geo.setAttribute(name, attr);
+        geo.setAttribute('iPlace', place);
+        geo.instanceCount = mine.length;
+        geo.boundingSphere = sphere;
+        const mesh = new THREE.Mesh(geo, debug ? part.debug : part.normal);
+        mesh.receiveShadow = true; mesh.castShadow = false; // små växter: skuggan syns knappt och kostar ett pass till
+        flowerGroup.add(mesh);
+        flowerRigged.push({ mesh, normal: part.normal, debug: part.debug });
+      }
+    }
+    grass?.setExclude([...baseExclude, ...clumps.map((c) => ({ x: c.x, z: c.z, r: fv.spread + 0.4, h: 0.35 }))]);
+    stats.flowers = plants.length;
+    applyDebug();
+    setNote('');
   }
 
   // --- Flaggan: stång och duk ---
@@ -170,43 +258,80 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   // --- Felsökningsvyn: färg per del och fästena ---
   let debug = false;
   function applyDebug() {
-    for (const r of rigged) r.mesh.material = debug ? r.debug : r.normal;
+    for (const r of [...rigged, ...flowerRigged]) r.mesh.material = debug ? r.debug : r.normal;
     pivotGroup.visible = debug;
   }
 
-  // --- Spakar, profiler och vy (kort till höger) ---
+  // --- Spakar (kort till höger, fälls ihop med ett klick på rubriken) ---
   const syncs = [];
-  // Gräsets spakar (grass i wind.json) hör till gläntan, inte till vindprofilen
-  const viewVals = Object.fromEntries(info.params.filter((q) => q.grass).map((q) => [q.key, q.default]));
-  const valueFor = (k) => (P[k]?.grass ? viewVals[k] : k === 'dir' ? Math.round(((wind.state.dir / DEG) % 360 + 360) % 360) : wind.state[k]);
-  const setParam = (k, v) => {
-    if (P[k]?.grass) { viewVals[k] = v; if (grass) grass.uniforms[P[k].grass].value = v; return; }
-    wind.set({ [k]: k === 'dir' ? v * DEG : v });
-  };
-  function card(title, accent) {
-    const c = el('section', 'card glass');
+  const valueFor = (k) => (k === 'dir' ? Math.round(((wind.state.dir / DEG) % 360 + 360) % 360) : wind.state[k]);
+  const setParam = (k, v) => wind.set({ [k]: k === 'dir' ? v * DEG : v });
+  function card(title, accent, { closed = false, help } = {}) {
+    const c = el('section', `card glass${closed ? ' closed' : ''}`);
     c.style.setProperty('--part', accent);
     const head = el('header'), body = el('div', 'rows');
     head.append(el('h2', null, title));
+    if (help) head.title = help;
+    head.onclick = () => c.classList.toggle('closed');
     c.append(head, body);
     side.append(c);
     return body;
   }
-  function slider(q) {
+  // En spak: get och set läser och skriver värdet, changed körs efter varje ändring
+  function slider(q, get, set, changed) {
     const row = el('div', 'row'), r = el('input'), out = el('output');
     if (q.help) row.title = q.help;
     Object.assign(r, { type: 'range', min: q.min, max: q.max, step: q.step });
-    const dec = q.step >= 1 ? 0 : 2;
-    const sync = () => { r.value = valueFor(q.key); out.textContent = Number(r.value).toFixed(dec); };
-    r.oninput = () => { setParam(q.key, Number(r.value)); out.textContent = Number(r.value).toFixed(dec); markProfile(null); };
+    const dec = q.step >= 1 ? 0 : q.step >= 0.1 ? 1 : q.step >= 0.01 ? 2 : 3;
+    syncs.push(() => { r.value = get(q.key); out.textContent = Number(r.value).toFixed(dec); });
+    // Spakar som bygger om (rebuild) gör det när man släpper, de andra medan man drar
+    const apply = () => { set(q.key, Number(r.value)); out.textContent = Number(r.value).toFixed(dec); changed?.(); };
+    if (q.rebuild) { r.oninput = () => { out.textContent = Number(r.value).toFixed(dec); }; r.onchange = apply; } else r.oninput = apply;
     row.append(el('label', null, q.label), r, out);
-    syncs.push(sync);
+    return row;
+  }
+  function colorRow(q, get, set, changed) {
+    const row = el('div', 'row span2'), c = el('input');
+    c.type = 'color';
+    if (q.help) row.title = q.help;
+    syncs.push(() => { c.value = get(q.key); });
+    c.oninput = () => { set(q.key, c.value); changed?.(); };
+    row.append(el('label', null, q.label), c);
     return row;
   }
   const windCard = card('Wind', '#4a90d9');
-  for (const q of info.params.filter((x) => !x.view)) windCard.append(slider(q));
+  for (const q of info.params.filter((x) => !x.view)) windCard.append(slider(q, valueFor, setParam, () => markProfile(null)));
+
+  // Gräset: ett kort per grupp i grass.json
+  const grassGet = (k) => grassVals[k];
+  for (const g of G.groups) {
+    const body = card(g.label, '#5aa43c', { closed: g.id !== 'waves' });
+    for (const q of G.params.filter((x) => x.group === g.id)) body.append((q.type === 'color' ? colorRow : slider)(q, grassGet, setGrass, () => markGrass(null)));
+  }
+
+  // Blomklungorna: vilka växter, och hur de slumpas ut
+  const flCard = card('Flowers', '#d9a03a', { help: 'Scatter clumps of flowers and grasses over the meadow; they sway in the same wind' });
+  const chips = el('div', 'chips flowerchips');
+  for (const pl of G.flowers.plants) {
+    const c = el('button', 'chip', pl.label);
+    syncs.push(() => c.classList.toggle('on', flowerVals.plants.includes(pl.preset)));
+    c.onclick = () => {
+      flowerVals.plants = flowerVals.plants.includes(pl.preset) ? flowerVals.plants.filter((x) => x !== pl.preset) : [...flowerVals.plants, pl.preset];
+      c.classList.toggle('on', flowerVals.plants.includes(pl.preset));
+      markGrass(null); scatterSoon();
+    };
+    chips.append(c);
+  }
+  flCard.append(chips);
+  const flowerGet = (k) => flowerVals[k], flowerSet = (k, v) => { flowerVals[k] = v; };
+  for (const q of G.flowers.params) flCard.append(slider(q, flowerGet, flowerSet, () => { markGrass(null); scatterSoon(); }));
+  const reroll = el('button', null, 'New scatter');
+  reroll.title = 'A new seed: the same settings, scattered differently';
+  reroll.onclick = () => { flowerVals.seed = Math.floor(Math.random() * 9999); for (const s of syncs) s(); scatterSoon(); };
+  flCard.append(reroll);
+
   const viewCard = card('View', '#7c8a99');
-  for (const q of info.params.filter((x) => x.view)) viewCard.append(slider(q));
+  for (const q of info.params.filter((x) => x.view)) viewCard.append(slider(q, valueFor, setParam));
   const sw = (label, help, onchange) => {
     const row = el('div', 'row span2'), box = el('input', 'switch');
     box.type = 'checkbox';
@@ -218,46 +343,80 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   };
   sw('Show parts', 'Colour every part of the rig and show the pivots (yellow) it bends around', (v) => { debug = v; applyDebug(); });
   sw('Pause', 'Stop the time (the wind keeps its shape)', (v) => { paused = v; });
-  const saveCard = card('Save', '#4a90d9');
-  const saveBtn = el('button', 'primary', 'Save wind profile…');
-  saveBtn.title = 'Saves the sliders as a recipe in assets/wind/, for the studio, the showcase and Tinkertown';
-  const saveMsg = el('div', 'note');
-  saveBtn.onclick = async () => {
-    const name = prompt('Name of the wind profile (a–z, 0–9 and _):', currentProfile ?? 'my_wind');
-    if (!name) return;
-    const profile = Object.fromEntries(info.params.filter((q) => !q.view).map((q) => [q.key, valueFor(q.key)]));
-    let r = await api('/api/wind/save', { name, profile });
-    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/wind/save', { name, profile, overwrite: true });
-    saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
-    if (r.entry) { info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)]; currentProfile = r.entry.name; renderDrawer(); }
-  };
-  saveCard.append(saveBtn, saveMsg);
 
-  // --- Lådan: färdiga profiler och sparade ---
-  let currentProfile = null;
+  const saveCard = card('Save', '#4a90d9');
+  const saveMsg = el('div', 'note');
+  async function saveAs(kind) {
+    const isWind = kind === 'wind';
+    const name = prompt(`Name of the ${isWind ? 'wind profile' : 'grass'} (a–z, 0–9 and _):`, (isWind ? currentProfile : currentGrass) ?? (isWind ? 'my_wind' : 'my_meadow'));
+    if (!name) return;
+    const payload = isWind
+      ? { name, profile: Object.fromEntries(info.params.filter((q) => !q.view).map((q) => [q.key, valueFor(q.key)])) }
+      : { name, settings: { ...grassVals }, flowers: { ...flowerVals } };
+    const url = isWind ? '/api/wind/save' : '/api/grass/save';
+    let r = await api(url, payload);
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api(url, { ...payload, overwrite: true });
+    saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
+    if (!r.entry) return;
+    const list = isWind ? info : G;
+    list.saved = [r.entry, ...list.saved.filter((x) => x.name !== r.entry.name)];
+    if (isWind) currentProfile = r.entry.name; else currentGrass = r.entry.name;
+    renderDrawer();
+  }
+  const saveWind = el('button', 'primary', 'Save wind profile…');
+  saveWind.title = 'Saves the wind sliders as a recipe in assets/wind/, for the studio, the showcase and Tinkertown';
+  saveWind.onclick = () => saveAs('wind');
+  const saveGrass = el('button', null, 'Save grass…');
+  saveGrass.title = 'Saves the grass and the flower clumps as a recipe in assets/grass/';
+  saveGrass.onclick = () => saveAs('grass');
+  saveCard.append(saveWind, saveGrass, saveMsg);
+
+  // --- Lådan: vindprofiler och gräs, färdiga och sparade ---
+  let currentProfile = null, currentGrass = 'meadow';
   const head = el('div', 'libhead'), body = el('div', 'libbody');
-  head.append(el('h2', null, 'Wind drawer'), el('div', 'note', 'Click a profile to blow with it. Save your own in the Save card.'));
+  head.append(el('h2', null, 'Windmill drawer'), el('div', 'note', 'Click a wind profile or a grass to use it. Save your own in the Save card.'));
   drawer.append(head, body);
   function profileTile(id, label, prof) {
     const f = el('button', `wprof${currentProfile === id ? ' on' : ''}`);
+    f.dataset.id = `wind:${id}`;
     const bar = el('span', 'wbar2');
     bar.style.setProperty('--s', Math.min(1, (prof.strength ?? 0) / 1.5));
     f.append(el('b', null, label), bar, el('span', 'wmeta', `strength ${(prof.strength ?? 0).toFixed(2)} · gusts ${(prof.gust ?? 0).toFixed(2)}`));
     f.onclick = () => applyProfile(id, prof);
     return f;
   }
+  function grassTile(id, label, settings, flowers) {
+    const f = el('button', `wprof${currentGrass === id ? ' on' : ''}`);
+    f.dataset.id = `grass:${id}`;
+    const v = { ...Object.fromEntries(G.params.map((q) => [q.key, q.default])), ...settings };
+    const sw2 = el('span', 'gswatch');
+    sw2.style.background = `linear-gradient(90deg, ${v.base}, ${v.mid} 35%, ${v.tip} 75%, ${v.dry})`;
+    f.append(el('b', null, label), sw2, el('span', 'wmeta', `${v.heightMin.toFixed(2)}–${v.heightMax.toFixed(2)} m${flowers ? ` · ${flowers.plants.length} flower kinds` : ''}`));
+    f.onclick = () => applyGrass(id, v, flowers);
+    return f;
+  }
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
-    sec('Profiles', Object.entries(info.presets).map(([id, p]) => profileTile(id, p.label, p)));
-    sec('Saved', info.saved.map((p) => profileTile(p.name, p.name, p)));
+    sec('Wind', Object.entries(info.presets).map(([id, p]) => profileTile(id, p.label, p)));
+    sec('Saved wind', info.saved.map((p) => profileTile(p.name, p.name, p)));
+    sec('Grass', Object.entries(G.presets).map(([id, p]) => { const { label, ...st } = p; return grassTile(id, label, st); }));
+    sec('Saved grass', G.saved.map((p) => grassTile(p.name, p.name, p.settings, p.flowers)));
   }
-  function markProfile(id) { currentProfile = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.querySelector('b').textContent === (info.presets[id]?.label ?? id)); }
+  const markIn = (prefix, id) => { for (const b of body.querySelectorAll(`.wprof[data-id^="${prefix}:"]`)) b.classList.toggle('on', b.dataset.id === `${prefix}:${id}`); };
+  function markProfile(id) { currentProfile = id; markIn('wind', id); }
+  function markGrass(id) { currentGrass = id; markIn('grass', id); }
   function applyProfile(id, prof) {
     const { label: _l, name: _n, saved: _s, ...vals } = prof;
     for (const [k, v] of Object.entries(vals)) if (P[k] && !P[k].view) setParam(k, v);
     for (const s of syncs) s();
     markProfile(id);
+  }
+  function applyGrass(id, settings, flowers) {
+    for (const [k, v] of Object.entries(settings)) if (k in grassVals) setGrass(k, v);
+    if (flowers) { Object.assign(flowerVals, flowers); scatterSoon(); }
+    for (const s of syncs) s();
+    markGrass(id);
   }
   renderDrawer();
   for (const s of syncs) s();
@@ -288,7 +447,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     frames++;
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
-      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.parts} parts · ${Math.round((grass?.visibleBlades() ?? 0) / 1000)}k blades · ${fps} fps`);
+      block(fStats, 'Glade', `${stats.models} rigged models · ${stats.flowers ?? 0} flowers · ${Math.round((grass?.visibleBlades() ?? 0) / 1000)}k blades · ${fps} fps`);
       const f = wind.forceAt(controls.target.x, controls.target.z);
       block(fWind, 'Wind here', `toward ${valueFor('dir')}° · force ${f.toFixed(2)} · gust ${wind.gustAt(controls.target.x, controls.target.z).toFixed(2)}`);
     }

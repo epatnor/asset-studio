@@ -328,6 +328,13 @@
   .wprof b { font-weight: 600; }
   .wbar2 { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--s) * 100%), var(--line) 0); }
   .wmeta { font-size: 11px; color: var(--muted); }
+  .gswatch { width: 100%; height: 6px; border-radius: 3px; }
+  #wmside .card > header { cursor: pointer; }
+  #wmside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #wmside .card.closed > header h2::after { transform: none; }
+  #wmside .card.closed > .rows { display: none; }
+  #wmside .rows > button { justify-content: center; }
+  .flowerchips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
 
   /* Biblioteket (studio/library.js): sidopanel, rutnät som FAB, detaljpanel. Läget styrs av body.library-mode */
   #libview { display: none; }

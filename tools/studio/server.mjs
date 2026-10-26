@@ -482,6 +482,57 @@ async function windSave({ name, profile, overwrite }) {
   await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
   return { entry, file: `${WIND_SAVED}/${name}.wind.json` };
 }
+// En riggad modell från en generator i dir/<id>/, byggd om bara när receptet, riggen eller generatorn har ändrats
+async function riggedModel(dir, id, gen, recipe, newest) {
+  const { name: _n, out_root: _o, ...r } = recipe ?? {};
+  const rel = `${dir}/${id}/${id}.gltf`, file = path.join(ROOT, rel), stampRel = `${dir}/${id}/glade.json`;
+  const key = JSON.stringify({ gen, r });
+  const stamp = existsSync(path.join(ROOT, stampRel)) ? await readJson(stampRel) : null;
+  let checks = stamp?.checks;
+  if (!(existsSync(file) && stamp?.key === key && statSync(file).mtimeMs > newest)) {
+    const res = await serial(() => runTool(GEN_TOOLS[gen], { ...r, name: id, out_root: dir }));
+    if (res.error) return { error: res.error };
+    checks = res.checks;
+    await writeFile(path.join(ROOT, stampRel), JSON.stringify({ key, checks }));
+  }
+  return { url: `/${rel}?v=${Math.round(statSync(file).mtimeMs)}`, checks };
+}
+// Växterna till blomklungorna (tools/grass/grass.json): några frön per art, i build/wind/plants/
+const PLANTS_DIR = 'build/wind/plants';
+async function windPlant(preset, seed) {
+  const G = await readJson('tools/grass/grass.json');
+  if (!G.flowers.plants.some((p) => p.preset === preset) || !(seed >= 0 && seed < 100)) return { error: 'unknown plant' };
+  return riggedModel(PLANTS_DIR, `${preset}_s${seed}`, 'plant', { preset, seed }, await newestSource());
+}
+// Gräset som recept: spakar och färdiga gräs (tools/grass/grass.json), sparade i assets/grass/ med blomklungorna
+const GRASS_SAVED = 'assets/grass';
+async function grassInfo() {
+  const G = await readJson('tools/grass/grass.json');
+  const dir = path.join(ROOT, GRASS_SAVED);
+  const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.grass.json')).map((f) => readJson(`${GRASS_SAVED}/${f}`)))).filter(Boolean) : [];
+  return { ...G, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
+}
+async function grassSave({ name, settings, flowers, overwrite }) {
+  name = String(name ?? '').trim().toLowerCase();
+  if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
+  const G = await readJson('tools/grass/grass.json');
+  const clean = {};
+  for (const q of G.params) {
+    const v = settings?.[q.key];
+    if (q.type === 'color') clean[q.key] = /^#[0-9a-f]{6}$/i.test(v) ? v : q.default;
+    else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
+  }
+  const fl = flowers ? {
+    plants: (flowers.plants ?? []).filter((p) => G.flowers.plants.some((x) => x.preset === p)),
+    ...Object.fromEntries(G.flowers.params.map((q) => [q.key, Math.min(q.max, Math.max(q.min, Number(flowers[q.key] ?? q.default)))])),
+  } : undefined;
+  const file = path.join(ROOT, GRASS_SAVED, `${name}.grass.json`);
+  if (existsSync(file) && !overwrite) return { exists: true };
+  await mkdir(path.dirname(file), { recursive: true });
+  const entry = { name, settings: clean, ...(fl ? { flowers: fl } : {}), saved: new Date().toISOString() };
+  await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
+  return { entry, file: `${GRASS_SAVED}/${name}.grass.json` };
+}
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();
@@ -494,18 +545,9 @@ async function windGlade() {
       if (it.still || !e.recipe || !['tree', 'plant'].includes(e.type)) { items.push({ ...it, url: `/${e.model}`, rigged: false }); continue; }
       gen = e.type; recipe = await readJson(e.recipe);
     }
-    const { name: _n, out_root: _o, ...r } = recipe ?? {};
-    const rel = `${GLADE}/${it.id}/${it.id}.gltf`, file = path.join(ROOT, rel), stampFile = path.join(ROOT, GLADE, it.id, 'glade.json');
-    const key = JSON.stringify({ gen, r });
-    const stamp = existsSync(stampFile) ? await readJson(`${GLADE}/${it.id}/glade.json`) : null;
-    let checks = stamp?.checks;
-    if (!(existsSync(file) && stamp?.key === key && statSync(file).mtimeMs > newest)) {
-      const res = await serial(() => runTool(GEN_TOOLS[gen], { ...r, name: it.id, out_root: GLADE }));
-      if (res.error) { errors.push(`${it.id}: ${res.error}`); continue; }
-      checks = res.checks;
-      await writeFile(stampFile, JSON.stringify({ key, checks }));
-    }
-    items.push({ ...it, url: `/${rel}?v=${Math.round(statSync(file).mtimeMs)}`, rigged: true, checks });
+    const m = await riggedModel(GLADE, it.id, gen, recipe, newest);
+    if (m.error) { errors.push(`${it.id}: ${m.error}`); continue; }
+    items.push({ ...it, url: m.url, rigged: true, checks: m.checks });
   }
   return { items, errors, grass: W.grass, flag: W.flag };
 }
@@ -513,6 +555,9 @@ async function windGlade() {
 async function api(req, res, url) {
   if (url.pathname === '/api/wind' && req.method === 'GET') return json(res, 200, await windInfo());
   if (url.pathname === '/api/wind/save' && req.method === 'POST') return json(res, 200, await windSave(await body(req)));
+  if (url.pathname === '/api/wind/plant' && req.method === 'GET') return json(res, 200, await windPlant(url.searchParams.get('preset'), Number(url.searchParams.get('seed'))));
+  if (url.pathname === '/api/grass' && req.method === 'GET') return json(res, 200, await grassInfo());
+  if (url.pathname === '/api/grass/save' && req.method === 'POST') return json(res, 200, await grassSave(await body(req)));
   if (url.pathname === '/api/wind/glade' && req.method === 'GET') {
     gladeBusy ??= windGlade().finally(() => { gladeBusy = null; }); // flera flikar som frågar samtidigt får samma bygge
     return json(res, 200, await gladeBusy);
