@@ -1,6 +1,6 @@
 # Plan: Texturverkstaden
 
-Status: T1, T1b och T3a byggda 2026-10-25, och det mesta av T3c, T2, T3b, T4 och T5 (se Faser och roadmapen för det som är kvar). Filer: `tools/texture/workshop.py` (motorn), `tools/texture/workshop.json` (alla spakar), `studio/workshop.js` (panelen), `studio/lab3d.js` (materiallabbet i 3D). Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown, gräset, byggnaderna och allt annat som behöver texturer.
+Status: T1, T1b och T3a byggda 2026-10-25, och det mesta av T3c, T2, T3b, T4 och T5 (se Faser och roadmapen för det som är kvar). AI-flödet (G1–G5) planerat 2026-10-26, G1 byggd samma dag. Filer: `tools/texture/workshop.py` (motorn), `tools/texture/workshop.json` (alla spakar), `studio/workshop.js` (panelen), `studio/lab3d.js` (materiallabbet i 3D). Skriven 2026-10-25. Bor i Asset Studio ([asset-studio.md](asset-studio.md)) men är projektets gemensamma texturkälla: den försörjer tillgångarna i studion, terrängen och marken i Tinkertown, gräset, byggnaderna och allt annat som behöver texturer.
 
 ## Så ser den ut (byggd)
 
@@ -120,6 +120,23 @@ Ett recept kan ha namngivna **ingredienser** (`inputs`): en sparad textur ur kat
 ### Import
 - Dra in en egen bild. Den blir källan i ett recept och kan sedan behandlas som allt annat.
 
+## AI-flödet: Form → Måla → Material
+
+Skrivet 2026-10-26, efter att T2 byggts. Krea fanns då som en av tio typer i Bas-kortets lista, och bild till bild krävde att man själv skapade en ingrediens, bytte källa och pekade ut formen. Varje bild tar cirka 3 minuter, resultaten syntes inte efteråt, prompten fick tillägg man inte såg, och höjden räknades ur bildens ljushet fast formen under redan hade rätt höjd. Målet är att AI-målning ska vara ett tydligt eget steg, att väntan inte ska stoppa arbetet och att man ska kunna jämföra försök.
+
+Arbetsgången har tre synliga steg:
+1. **Form:** det som syns i vyn (en algoritm, en sparad textur eller inget alls).
+2. **Måla:** Krea målar formen i husets stil. En spak säger hur fritt (lågt: formen behålls och bara ytan målas; högt: Krea hittar på mer).
+3. **Material:** normal, AO och ruffighet räknas ur formens höjd och Kreas färg, så att reliefen följer stenarna och fårorna.
+
+| Fas | Innehåll | Klart när |
+|---|---|---|
+| G1. En knapp | Kortet **AI-målning** med knappen **Måla med AI**: det som syns blir formen (en ingrediens som skapas automatiskt) och Krea målar den. Spaken *Fri tolkning* i stället för denoise. Hela prompten som skickas kan fällas ut. Relief från formen (eller bilden, eller blandat), och sömmen jämnas ut utan att formerna flyttas. *Tillbaka till formen* tar bort målningen igen. | Från en procedurell sten till en målad sten med ett klick, med relief som följer stenarna |
+| G2. Bildbandet | En remsa längst ner med alla genererade bilder (prompt, frö, form), med status: i kö, målar (steg x/8 från ComfyUI), klar. Klick använder bilden, stjärna behåller den. Kön stoppar inte arbetet och jobb kan avbrytas. | Fyra försök kan köas medan man jobbar vidare, och jämföras efteråt |
+| G3. Snabba utkast | Utkastläge (låg upplösning och färre steg, eller SDXL som får plats i 8 GB) och sedan *Gör klar* i full kvalitet på den valda bilden. Tiderna mäts först. | Varianter kan jämföras på någon minut i stället för 12 |
+| G4. Prompter efter profil | Profilen väljer vy och formulering (`surface_view` för mark, `facade_view` för byggnader, tile för bark och sten); ordknappar för material och stil. Sömmen lagas med `make_surface.py`-metoden (sömkorset målas om). Prompten byggs då bara i `workshop.py`. | Mark och fasader blir rätt vända och sömlösa utan handpåläggning |
+| G5. Referenser och extern generator | Referensbild från en grupp i Apparition som stilstöd (om modellerna klarar det); OpenRouter med pris och bekräftelse (det som är kvar av T2). | Stilen kan styras med en bild, inte bara med ord |
+
 ## Bildbehandling (steg)
 
 | Grupp | Steg | Spakar |
@@ -237,6 +254,7 @@ Ordningen nedan är den föreslagna byggordningen: ingredienser, materiallabbet 
 | T2. Generativt | Krea text till bild och bild till bild från en procedurell bas, med varianter och jobbkö; extern generator med pris och bekräftelse | Målade texturer med kontrollerad form, utan att be Claude |
 | T3b. Terräng | profilen `terrain`: förhandsvisning på en terrängbit med lagerregler (lutning, höjd, fukt), höjdbaserad blandning, upprepningsskydd och makrotextur; katalogen läses av Tinkertown | Marklagren till Tinkertown görs och provas i verkstaden |
 | T5. Resten | lövark och atlas i verkstaden, alfaverktyg, detaljsteg (frekvens, målad look), varianter och versioner, kontroller, MCP | Alla texturer i projektet kan göras och underhållas i verkstaden |
+| G1–G5. AI-flödet | Form → Måla → Material, bildbandet, utkast, prompter efter profil, referenser; se AI-flödet ovan | Krea är ett tydligt eget steg som inte stoppar arbetet |
 
 ## Frågor till Patrik
 

@@ -70,8 +70,9 @@ function runTool(script, recipe) {
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (err += d));
     p.on('close', () => {
-      const line = out.trim().split('\n').pop();
-      try { resolve(JSON.parse(line)); } catch { resolve({ error: (err || out).trim().slice(-500) || 'inget svar' }); }
+      // Fel skrivs som en rad JSON på stderr (sys.exit), så att studion kan visa bara meddelandet
+      const last = (s) => { try { return JSON.parse(s.trim().split('\n').pop()); } catch { return null; } };
+      resolve(last(out) ?? (last(err)?.error ? last(err) : { error: (err || out).trim().slice(-500) || 'inget svar' }));
     });
   });
 }
@@ -234,7 +235,13 @@ async function api(req, res, url) {
     await writeFile(path.join(ROOT, out), Buffer.concat(chunks));
     return json(res, 200, { out });
   }
-  if (url.pathname === '/api/workshop' && req.method === 'GET') return json(res, 200, JSON.parse(await readFile(path.join(ROOT, 'tools/texture/workshop.json'), 'utf8')));
+  if (url.pathname === '/api/workshop' && req.method === 'GET') {
+    // AI-målningen visar hela prompten: stilen som workshop.py lägger till kommer ur tools/style.json
+    const w = JSON.parse(await readFile(path.join(ROOT, 'tools/texture/workshop.json'), 'utf8'));
+    const st = JSON.parse(await readFile(path.join(ROOT, 'tools/style.json'), 'utf8')).prompt;
+    Object.assign(w.ai, { house_style: st.house_style, tile: st.kinds.tile });
+    return json(res, 200, w);
+  }
   if (url.pathname === '/api/texture/preview' && req.method === 'POST') return json(res, 200, await texturePreview(await body(req)));
   if (url.pathname === '/api/texture/job' && req.method === 'GET') return json(res, 200, textureJob(url.searchParams.get('id') ?? ''));
   if (url.pathname === '/api/texture/save' && req.method === 'POST') return json(res, 200, await textureSave(await body(req)));

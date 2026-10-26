@@ -294,6 +294,11 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [ ] **T3b, terräng:** byggt 2026-10-25: terrängbit på 60 m i labbet, lager efter lutning (riktning), höjd och brus, fördjupningar först (höjdkartan), upprepningsskydd och makrovariation, avståndsvyn. Kvar: lagerregler som kan sparas som biomregler, fukt, kontroll av texeltäthet och färgnivå mellan lager, och att Tinkertown läser katalogen.
 - [ ] **T4, blandning med riktningar:** byggt 2026-10-25 i labbets shader: upp till fyra lager med masker för riktning, höjd i modellen, höjdkarta, brus och krökning (kanter eller skrymslen), med egen ruffighet, utjämnad relief och egen relief; sparas i receptet (`blend.layers`). Kvar: vertexvikt, samma lagerstack i klientens shader (`showcase/materials.js`) och att den ersätter barkens `bark_blend` och stenarnas mossa.
 - [ ] **T5, resten:** byggt 2026-10-25: alfaverktyg (urklipp, bleed, mjukare kant, halokontroll), frekvensseparation, målad look (Kuwahara), färre valörer, färgramp, kanter och skrymslen, förvrängning, varianter och versioner (`assets/textures/versions/`), kontroll av små former, MCP-verktyget `texture_recipe`, ångra och gör om. Kvar: lövark och atlas i verkstaden.
+- [x] **G1, AI-flödet med en knapp:** kortet AI-målning med *Måla med AI*: det som syns blir formen och Krea målar den, med spaken *Fri tolkning*, hela prompten synlig, relief från formen, sömutjämning som inte flyttar formerna och *Tillbaka till formen*. Byggd 2026-10-26.
+- [ ] **G2, bildbandet:** alla genererade bilder i en remsa med status (i kö, målar steg x/8, klar), stjärna för att behålla, kö som inte stoppar arbetet, avbryt.
+- [ ] **G3, snabba utkast:** utkast i låg upplösning eller med SDXL, sedan *Gör klar* i full kvalitet. Mät tiderna först.
+- [ ] **G4, prompter efter profil:** vy och formulering per profil (`surface_view`, `facade_view`), ordknappar, sömmen lagas som i `make_surface.py`.
+- [ ] **G5, referenser:** referensbild från Apparition som stilstöd; OpenRouter med pris och bekräftelse.
 
 ## Genomgående: GUI
 

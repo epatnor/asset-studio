@@ -115,8 +115,9 @@
       "help": "Lokal ComfyUI med Krea-2. Första gången tar det cirka 3 minuter; resultatet cachas",
       "params": [
         {"key": "prompt", "label": "Beskrivning", "type": "text", "default": "mossy grey cobblestones", "help": "Beskriv bara materialet; stilen läggs till av Husets stil"},
-        {"key": "base", "label": "Form från ingrediens", "type": "input", "default": "", "help": "Bild till bild: en ingrediens (t.ex. sten) bestämmer formen och Krea målar den"},
-        {"key": "denoise", "label": "Hur mycket Krea får ändra", "type": "number", "min": 0.1, "max": 1, "step": 0.05, "default": 0.6, "when": {"base": {"not": ""}}},
+        {"key": "base", "label": "Form från ingrediens", "type": "input", "default": "", "help": "Bild till bild: en ingrediens bestämmer formen och Krea målar den. Knappen Måla med AI gör det automatiskt"},
+        {"key": "denoise", "label": "Fri tolkning", "type": "number", "min": 0.1, "max": 1, "step": 0.05, "default": 0.6, "when": {"base": {"not": ""}}, "help": "Lågt: formen behålls och Krea målar bara ytan. Högt: Krea hittar på mer och formen följer med mindre"},
+        {"key": "relief", "label": "Relief från", "type": "select", "options": {"Formen": "form", "Bilden": "image", "Blandad": "mix"}, "default": "form", "when": {"base": {"not": ""}}, "help": "Höjden (normal, AO) från formens algoritm, som har rätt höjd, eller ur bildens ljushet"},
         {"key": "seed", "label": "Frö", "type": "seed", "default": 1},
         {"key": "style", "label": "Husets stil", "type": "bool", "default": true, "adv": true},
         {"key": "seamless", "label": "Gör sömlös", "type": "bool", "default": true, "adv": true}
@@ -483,5 +484,20 @@
     "bands": {"group": "Former", "label": "Band", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "linear", "bands": 6}, "steps": []}},
     "krea_free": {"group": "AI (Krea)", "label": "Krea: fri beskrivning", "profile": "rock", "ai": true, "recipe": {"source": {"type": "krea", "prompt": "mossy grey cobblestones"}, "steps": []}},
     "krea_stone": {"group": "AI (Krea)", "label": "Krea: målad kullersten", "profile": "rock", "ai": true, "recipe": {"inputs": {"form": {"recipe": {"source": {"type": "stone", "cells": 24}, "steps": []}}}, "source": {"type": "krea", "prompt": "hand-painted grey cobblestones with green moss in the joints", "base": "form", "denoise": 0.6}, "steps": []}}
+  },
+  "ai": {
+    "_doc": "AI-målningen i verkstaden: förslag på beskrivning per källa. house_style och tile läggs till av servern ur tools/style.json",
+    "suggest": {
+      "stone": "hand-painted grey cobblestones with green moss in the joints",
+      "bark": "painted tree bark with deep vertical furrows",
+      "bricks": "old red brick wall with worn mortar",
+      "planks": "weathered wooden planks",
+      "shingles": "wooden roof shingles with moss",
+      "splat": "forest floor with dirt, grass and small stones",
+      "noise": "",
+      "gradient": "",
+      "image": "",
+      "input": ""
+    }
   }
 }

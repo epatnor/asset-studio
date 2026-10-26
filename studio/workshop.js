@@ -356,7 +356,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   srcCard.head.append(varBtn);
   const srcType = el('select');
   for (const [k, v] of Object.entries(W.sources)) { const o = el('option', null, v.label); o.value = k; srcType.append(o); }
-  srcType.onchange = () => { cur().source = { type: srcType.value }; renderSource(); commit(); };
+  srcType.onchange = () => { cur().source = { type: srcType.value }; renderSource(); renderAI(); commit(); };
   const srcRow = el('div', 'row span2');
   srcRow.append(el('label', null, 'Typ'), srcType);
   const srcRows = el('div', 'rows sub');
@@ -366,7 +366,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
     srcRows.replaceChildren();
     const def = W.sources[cur().source.type];
     srcType.title = def.help ?? '';
-    paramRows(def.params, () => cur().source, commit, srcRows);
+    paramRows(def.params, () => cur().source, () => { renderAI(); commit(); }, srcRows);
   }
 
   // Varianter: samma recept med fyra nya frön
@@ -390,6 +390,70 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
       preview({ ...levelRecipe(256), source: { ...src, seed } }).then((r) => { if (r.maps) img.src = r.maps.color; else fig.lastChild.textContent = r.error ?? 'fel'; });
     }
   };
+
+  // AI-målning (docs/texture-workshop.md, AI-flödet): Form → Måla → Material. Det som syns blir en ingrediens, och
+  // Krea målar den som bild till bild. Prompten som skickas visas i sin helhet.
+  const aiCard = card('AI-målning', '#6a4c93', { help: 'Krea-2 i den lokala ComfyUI målar det som syns i husets stil. Cirka 3 minuter första gången; resultatet cachas' });
+  const aiRows = el('div', 'rows');
+  aiCard.body.append(aiRows);
+  const KREA = Object.fromEntries(W.sources.krea.params.map((p) => [p.key, p.default]));
+  const aiDraft = { prompt: '', denoise: KREA.denoise };
+  const fullPrompt = (s) => [s.prompt ?? KREA.prompt, (s.style ?? KREA.style) ? W.ai.house_style : '', W.ai.tile].filter(Boolean).join(', ');
+  function freeName(base) { let k = 1, n = base; while (scope()[n]) n = `${base}${++k}`; return n; }
+  function paintWithAI() {
+    const r = cur(), prompt = aiDraft.prompt.trim();
+    if (!prompt) { status.textContent = 'Skriv vad Krea ska måla'; return; }
+    const name = freeName('form');
+    (r.inputs ??= {})[name] = { recipe: { source: r.source, steps: r.steps ?? [] } };
+    r.source = { type: 'krea', prompt, base: name, denoise: aiDraft.denoise, seed: KREA.seed };
+    r.steps = [];
+    renderAll(); commit();
+  }
+  function backToForm() {
+    const r = cur(), name = r.source.base, form = r.inputs?.[name]?.recipe;
+    if (!form) return;
+    r.source = form.source; r.steps = form.steps ?? [];
+    delete r.inputs[name];
+    renderAll(); commit();
+  }
+  function renderAI() {
+    aiRows.replaceChildren();
+    const src = cur().source;
+    if (src.type === 'krea') {
+      const form = src.base && cur().inputs?.[src.base]?.recipe;
+      aiRows.append(el('div', 'note', form ? `Krea målar formen ${src.base}. Beskrivning, fri tolkning och relief ställs i Bas.` : 'Krea målar fritt utifrån beskrivningen i Bas.'));
+      const det = el('details', 'sub');
+      det.append(el('summary', null, 'Prompten som skickas'), el('div', 'prompt', fullPrompt(src)));
+      const again = el('button', 'mini', 'Nytt försök'), back = el('button', 'mini', 'Tillbaka till formen');
+      again.title = 'Samma beskrivning med ett nytt frö';
+      again.onclick = () => { src.seed = Math.floor(Math.random() * 99999); renderSource(); commit(); };
+      back.title = 'Ta bort målningen och fortsätt med formen';
+      back.onclick = backToForm;
+      back.disabled = !form;
+      const btns = el('div', 'btns');
+      btns.append(again, back);
+      aiRows.append(det, btns);
+      return;
+    }
+    aiDraft.prompt ||= W.ai.suggest[src.type] ?? '';
+    aiRows.append(el('div', 'note', 'Det som syns blir formen, och Krea målar den. Beskriv bara materialet; husets stil läggs till.'));
+    const t = Object.assign(el('textarea', 'text'), { rows: 2, value: aiDraft.prompt, placeholder: 'mossy grey cobblestones' });
+    t.oninput = () => { aiDraft.prompt = t.value; };
+    const r = Object.assign(el('input'), { type: 'range', min: 0.1, max: 1, step: 0.05, value: aiDraft.denoise });
+    const out = el('output', null, Number(aiDraft.denoise).toFixed(2));
+    r.oninput = () => { aiDraft.denoise = Number(r.value); out.textContent = aiDraft.denoise.toFixed(2); };
+    const free = el('div', 'row');
+    free.title = W.sources.krea.params.find((p) => p.key === 'denoise').help;
+    free.append(el('label', null, 'Fri tolkning'), r, out);
+    const ends = el('div', 'ends');
+    ends.append(el('span', null, 'behåll formen'), el('span', null, 'måla fritt'));
+    const go = el('button', 'primary', 'Måla med AI');
+    go.title = 'Cirka 3 minuter. Du kan dra i andra spakar under tiden; svaret sparas i cachen';
+    go.onclick = paintWithAI;
+    const desc = el('div', 'row span2');
+    desc.append(el('label', null, 'Beskrivning'), t);
+    aiRows.append(desc, free, ends, go);
+  }
 
   // Ingredienser
   const ingCard = card('Ingredienser', '#8a6d1f', { closed: true, help: 'Under-texturer som källan och stegen Lager och Strö ut kan använda: mossa, fläckar, en sparad sten …' });
@@ -801,6 +865,7 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
     renderCrumbs();
     srcCard.h.textContent = path.length ? `Bas: ${path[path.length - 1]}` : 'Bas';
     renderSource();
+    renderAI();
     renderIngredients();
     renderSteps();
     for (const c of [matCard, blendCard, saveCard]) c.card.style.display = path.length ? 'none' : '';

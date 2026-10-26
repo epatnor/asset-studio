@@ -31,6 +31,15 @@
         "8770"
       ],
       "port": 8770
+    },
+    {
+      "name": "studio-test",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/studio/server.mjs",
+        "8771"
+      ],
+      "port": 8771
     }
   ]
 }

@@ -399,10 +399,36 @@ def src_krea(n, p, rng, ctx):
             raise RuntimeError("Krea misslyckades: " + (r.stderr or r.stdout).strip()[-300:])
     img = np.asarray(Image.open(out).convert("RGB"), np.float32) / 255
     if p.get("seamless", True):
-        # Med en sömlös bas är Krea redan nästan sömlös: en smal kant räcker och ger inga dubbla former
-        img = tile_blend(img, 0.08 if base else 0.25)
+        # Med en sömlös bas är Krea redan nästan sömlös och formerna ligger kvar där formen har dem: skarven jämnas då
+        # ut på plats, så att reliefen från formen fortfarande passar
+        img = seam_even(img, 0.06) if base else tile_blend(img, 0.25)
     img = resize_wrap(img, n)
-    return img, wrap_blur(lum(img), n / 512)
+    h = wrap_blur(lum(img), n / 512)
+    relief = p.get("relief", "form")
+    if base and relief != "image":
+        hb = ctx.get(base, n)["h"]
+        h = hb if relief == "form" else 0.7 * hb + 0.3 * norm01(h)
+    return img, h
+
+
+def seam_even(img, width):
+    # Fördelar skillnaden över skarven på en smal kant på båda sidor (utjämnad längs kanten, så att inga streck blir
+    # kvar). Formerna flyttas inte, till skillnad från tile_blend.
+    n = img.shape[0]
+    w = max(2, int(n * width))
+    ramp = (1 - np.arange(w) / w)[:, None] * 0.5
+    out = img.copy()
+    for axis in (1, 0):
+        a, b = np.take(out, 0, axis=axis), np.take(out, -1, axis=axis)
+        d = a - b
+        f = np.exp(-0.5 * (np.fft.fftfreq(n) * 2 * np.pi * n / 64) ** 2)[:, None]
+        d = np.real(np.fft.ifft(np.fft.fft(d, axis=0) * f, axis=0))
+        for k in range(w):
+            sl0 = [slice(None)] * 3; sl0[axis] = k
+            sl1 = [slice(None)] * 3; sl1[axis] = n - 1 - k
+            out[tuple(sl0)] -= d * ramp[k]
+            out[tuple(sl1)] += d * ramp[k]
+    return np.clip(out, 0, 1)
 
 
 SOURCES = {"noise": src_noise, "bark": src_bark, "stone": src_stone, "bricks": src_bricks, "planks": src_planks,
