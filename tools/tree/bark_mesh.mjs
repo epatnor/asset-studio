@@ -30,7 +30,7 @@ function recomputeNormals(g, base, triStart, row) {
 
 /**
  * @param {object} sk  skelett (efter skalning)
- * @param {object} o   { barkRepeat, maxLevel, segScale, flare, roots, height }
+ * @param {object} o   { barkRepeat, maxLevel, segScale, flare, roots, height, top (verklig höjd med stamhöjden) }
  */
 export function barkMesh(sk, o) {
   const g = empty();
@@ -38,7 +38,7 @@ export function barkMesh(sk, o) {
     if (b.level > o.maxLevel) continue;
     const segs = Math.max(3, Math.round(b.segments * o.segScale));
     // topCut: stammen slutar under toppen (granens tofs tar över där)
-    let nodes = b.level === 0 && o.topCut ? b.nodes.filter((n, i) => i < 2 || n.p[1] <= o.topCut * o.height) : b.nodes;
+    let nodes = b.level === 0 && o.topCut ? b.nodes.filter((n, i) => i < 2 || n.p[1] <= o.topCut * (o.top ?? o.height)) : b.nodes;
     // sinkDepth: stammen fortsätter rakt ner under marken, så att en sluttning aldrig visar ett avhugget
     // snitt. Bara geometri: skelettets noder (och grenarnas fästpunkter) ändras inte.
     if (b.level === 0 && o.sinkDepth > 0) {
@@ -83,7 +83,7 @@ export function barkMesh(sk, o) {
         // Gröna toppar (tipTint): de minsta grenarna tonas mot lövfärgen ytterst
         const tw = o.tipTint && b.level >= o.tipLevel ? Math.min(1, Math.max(0, (t - o.tipFrom) / (1 - o.tipFrom))) ** 1.5 : 0;
         g.colors.push(...[0, 1, 2].map((c) => ao + ((o.tipTint?.[c] ?? ao) - ao) * tw));
-        g.wind.push(b.level === 0 ? (nodes[i].p[1] / o.height) ** 2 * 0.15 : Math.min(1, 0.25 * b.level + 0.4 * t));
+        g.wind.push(b.level === 0 ? (nodes[i].p[1] / (o.top ?? o.height)) ** 2 * 0.15 : Math.min(1, 0.25 * b.level + 0.4 * t));
         // Texturblandning (bark_blend): påväxt vid foten upp till baseHeight meter, grön textur ytterst på smågrenarna.
         // Bara vikterna räknas här; texturerna blandas i klientens shader med en brusig kant.
         g.blendBase.push(o.baseHeight ? 1 - smooth(Math.max(0, g.positions[g.positions.length - 2]) / o.baseHeight) : 0);

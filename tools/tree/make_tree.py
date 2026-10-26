@@ -117,7 +117,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     glb = out_dir / f"{name}.gltf"
 
-    gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "species", "canopy", "conifer")}
+    gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "bole", "species", "canopy", "conifer")}
     # Lövmassan till kronans volymer: <atlas utan _atlas>_mass om den finns, annars leaf_mass
     mass = recipe.get("leaf_mass") or next((m for m in (sp.get("mass"), leaves.replace("_atlas", "") + "_mass", "leaf_mass") if m and (TEX / f"{m}.png").exists()), None)
     if mass:

@@ -271,6 +271,7 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [x] Träd och buskar: ombyggnad på under en sekund när en spak släpps, kort per del (Krona och Stam) med texturernas förhandsbilder och en miniatyrväljare.
 - [x] Header med flikar per tillgångstyp och verktyg: Fäst (jämför bredvid), Ångra, Gör om, Rama in, Spara till biblioteket (recept, modell, miniatyr, taggar).
 - [x] Footer med tillgångens siffror (trianglar, alfa, kort, silhuett, grenar i kronan) och renderingens kostnad mätt per bild, jämfört med förra mätningen och vad som ändrades.
+- [x] Spaken Stamhöjd (m) (`bole`): den kala stammen till den lägsta grenen sträcks eller kortas och kronan flyttas oförändrad (`setBoleHeight` i `skeleton.mjs`); Höjd styr då trädets storlek, och footern visar den verkliga höjden. Byggd 2026-10-26.
 - [x] Kortet Rendering och skuggor: skugga på marken (skuggform, lövkort, av), skuggor inom trädet (fejkade, mjuka, fulla), skuggkvalitet och mjukhet, GTAO med alfaklippt djup, sol och exponering.
 
 **Nästa:**

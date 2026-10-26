@@ -97,15 +97,8 @@ export function buildSkeleton(sp, seed, size = {}) {
     parents = next;
   });
 
-  // Kvistpunkter för lövverket: yttre delen av de yngsta grenarna (och spetsarna)
   const maxLevel = Math.max(...branches.map((b) => b.level));
-  const twigs = [];
-  for (const b of branches) {
-    if (b.level < Math.max(1, maxLevel)) continue;
-    const n = b.nodes.length - 1;
-    for (let i = Math.ceil(n * 0.4); i <= n; i++) twigs.push(b.nodes[i].p);
-  }
-  return { branches, twigs, maxLevel };
+  return { branches, twigs: twigsOf(branches, maxLevel), maxLevel };
 }
 
 // Skala hela skelettet (positioner och radier) så att högsta punkten hamnar på höjden h
@@ -119,6 +112,47 @@ export function scaleSkeleton(sk, h, extraTop = 0) {
   }
   sk.twigs = sk.twigs.map((p) => mul(p, s));
   return s;
+}
+
+// Kvistpunkter för lövverket: yttre delen av de yngsta grenarna (och spetsarna)
+export function twigsOf(branches, maxLevel) {
+  const twigs = [];
+  for (const b of branches) {
+    if (b.level < Math.max(1, maxLevel)) continue;
+    const n = b.nodes.length - 1;
+    for (let i = Math.ceil(n * 0.4); i <= n; i++) twigs.push(b.nodes[i].p);
+  }
+  return twigs;
+}
+
+// Stamhöjd: sträck (eller korta) den kala stammen under den lägsta grenen till höjden bole (meter) och flytta kronan
+// upp lika mycket, oförändrad. Varje gren på stammen flyttas stelt med hela sitt underträd till sin nya fästpunkt,
+// så att allt fortfarande sitter ihop. Körs efter scaleSkeleton; returnerar hur mycket kronan flyttades.
+export function setBoleHeight(sk, bole) {
+  const trunk = sk.branches[0];
+  const firsts = sk.branches.filter((b) => b.parent === 0);
+  if (!firsts.length || !(bole > 0)) return 0;
+  const y0 = sampleBranch(trunk, Math.min(...firsts.map((b) => b.t))).p[1];
+  const target = Math.max(bole, 0.15 * y0, 0.3);
+  const dy = target - y0, k = target / y0;
+  // Under den lägsta grenen sträcks stammen, ovanför flyttas den
+  const old = trunk.nodes.map((n) => n.p);
+  for (const n of trunk.nodes) n.p = n.p[1] <= y0 ? [n.p[0], n.p[1] * k, n.p[2]] : [n.p[0], n.p[1] + dy, n.p[2]];
+  let L = 0;
+  for (let i = 1; i < trunk.nodes.length; i++) L += len(sub(trunk.nodes[i].p, trunk.nodes[i - 1].p));
+  trunk.length = L;
+  const kids = new Map();
+  sk.branches.forEach((b, i) => { if (b.parent >= 0) (kids.get(b.parent) ?? kids.set(b.parent, []).get(b.parent)).push(i); });
+  const move = (bi, d) => {
+    for (const n of sk.branches[bi].nodes) n.p = add(n.p, d);
+    for (const c of kids.get(bi) ?? []) move(c, d);
+  };
+  for (const b of firsts) {
+    const was = sampleBranch({ nodes: old.map((p) => ({ p, r: 0 })) }, b.t).p;
+    move(sk.branches.indexOf(b), sub(sampleBranch(trunk, b.t).p, was));
+  }
+  sk.twigs = twigsOf(sk.branches, sk.maxLevel);
+  return dy;
 }
 
 // Korrekthetskontroller, så att ingen behöver titta på en bild för att veta att trädet hänger ihop

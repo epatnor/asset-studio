@@ -95,7 +95,7 @@ async function cleanPreviews() {
 
 // Receptet från studion: bara kända fält går vidare till generatorn
 const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) =>
-  ['preset', 'seed', 'height', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_blend'].includes(k)));
+  ['preset', 'seed', 'height', 'bole', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_blend'].includes(k)));
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];

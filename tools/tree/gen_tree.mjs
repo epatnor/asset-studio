@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
-import { buildSkeleton, scaleSkeleton, validateSkeleton } from './skeleton.mjs';
+import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton } from './skeleton.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
 import { buildConiferFoliage } from './conifer.mjs';
@@ -48,6 +48,10 @@ const seedEff = seed + (/^\d+$/.test(sizeKey) ? Number(sizeKey) * 1000 : 0);
 // 1. Skelett, skalat till höjden (lövkronan sticker upp ovanför grenspetsarna, så lämna marginal)
 const sk = buildSkeleton(sp, seedEff, size);
 scaleSkeleton(sk, height, fronds ? 0 : 0.12);
+// Stamhöjd (bole, meter): den kala stammen till den lägsta grenen, med kronan oförändrad. height styr då trädets
+// storlek (kronan), och top är den verkliga höjden, som vind och stammens topp räknas mot.
+const lift = sp.stemless ? 0 : setBoleHeight(sk, recipe.bole ?? 0);
+const top = height + lift;
 const checks = validateSkeleton(sk);
 
 // 2. Bark med riktig LOD: LOD1 utan yngsta grennivån, LOD2 bara stam och första nivån
@@ -57,7 +61,7 @@ const barkLods = [
   { maxLevel: Math.max(1, sk.maxLevel - 1), segScale: 0.7 },
   { maxLevel: 1, segScale: 0.5 },
 ].map((l) => barkMesh(sk, {
-  ...l, barkRepeat, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height,
+  ...l, barkRepeat, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height, top,
   lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas
@@ -241,14 +245,14 @@ function mesh(name, g, mat, extra = {}) {
   const cl = extra._CLUSTER;
   for (let i = 0; i < nV; i++) {
     const phase = cl ? ((Math.sin((cl[i] + 1) * 12.9898) * 43758.5453) % 1 + 1) % 1 : 0.5;
-    wc.set([Math.min(1, Math.max(0, g.positions[i * 3 + 1] / height)), g.wind[i], phase, 1], i * 4);
+    wc.set([Math.min(1, Math.max(0, g.positions[i * 3 + 1] / top)), g.wind[i], phase, 1], i * 4);
   }
   prim.setAttribute('COLOR_1', acc('VEC4', wc));
   return doc.createMesh(name).addPrimitive(prim);
 }
 
 const name = recipe.name ?? path.basename(out, path.extname(out));
-const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, kind } });
+const root = doc.createNode(name).setExtras({ generator: 'tinkertown/tree@3', recipe: { preset, seed, height, ...(lift ? { bole: recipe.bole } : {}), kind } });
 const tris = [], alphaTris = [];
 let stemMat;
 foliage.lods.forEach((lod, i) => {
@@ -279,6 +283,6 @@ await writeGltf(doc, out);
 
 // Kort svar, avsett för en AI-agent
 console.log(JSON.stringify({
-  model: out, species: spName, kind, height_m: height, tris_lod: tris, alpha_tris_lod: alphaTris,
+  model: out, species: spName, kind, height_m: Math.round(top * 100) / 100, tris_lod: tris, alpha_tris_lod: alphaTris,
   bark_tris_lod: barkLods.map((b) => b.indices.length / 3), checks,
 }));

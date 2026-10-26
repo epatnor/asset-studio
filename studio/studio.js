@@ -168,7 +168,7 @@ function loadRecipe(r) {
   if (ov.stemless !== undefined) sp.stemless = ov.stemless;
   Object.assign(sp.foliage, r.canopy ?? {});
   Object.assign(state.recipe, { seed: r.seed ?? state.recipe.seed, bark_blend: structuredClone(r.bark_blend ?? state.recipe.bark_blend) });
-  for (const k of ['leaves', 'bark', 'leaf_tint']) if (r[k] !== undefined) state.recipe[k] = r[k];
+  for (const k of ['leaves', 'bark', 'leaf_tint', 'bole']) if (r[k] !== undefined) state.recipe[k] = r[k];
 }
 // Fliken startar med sitt startrecept (params.json: kinds[].start, ett namn i biblioteket), annars med sin första art
 async function startKind(k) {
@@ -185,7 +185,7 @@ function blendNow() {
   return out;
 }
 const recipeNow = () => ({
-  preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height,
+  preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
   species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless }, canopy: state.spec.foliage, bark_blend: blendNow(),
 });
@@ -292,6 +292,7 @@ function showAssetStats(res, ms) {
   $('lamp').className = 'lamp ' + (c.ok ? 'ok' : 'bad');
   setState(c.ok ? 'Kontrollerna är gröna' : 'Kontrollerna är röda');
   const vals = [
+    ['Höjd', res.height_m != null ? `${fmt(res.height_m, 1)} m` : '–'], // med stamhöjden (gen_tree: top)
     ['Trianglar', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
     ['varav alfa', (res.alpha_tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
     ['Bollar', `${c.clusters ?? '–'} (${c.tip_balls ?? 0} spets)`],
