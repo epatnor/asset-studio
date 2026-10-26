@@ -7,7 +7,10 @@
 // GET  /api/generators              generatorer med spakar (params.json) och arternas standardvärden
 // POST /api/generate                { generator, recipe } -> förhandsvisning i build/studio/, svar med modell och checks
 // GET  /api/textures?kind=bark      texturer att välja bland (leaves, bark)
-// GET  /api/library                 bibliotekets katalog (assets/library.json)
+// GET  /api/library                 bibliotekets katalog (assets/library.json), med kind (family, fixed) och category
+// GET  /api/library/scan            tillgångar under assets/ som inte finns i katalogen
+// POST /api/library/add|update|remove|freeze|thumb   { model, ... }: lägg till, taggar och kategori, ta bort raden,
+//                                   frys till assets/fixed/<name>/, spara en miniatyr (PNG) bredvid modellen
 // POST /api/library                 { generator, name, tags, recipe, thumbnail } -> assets/ + rad i katalogen
 // POST /api/shot?name=             skärmdump av 3D-vyn (PNG i kroppen) -> build/shots/studio_<namn>.png
 // GET  /api/workshop                texturverkstadens spakar (tools/texture/workshop.json)
@@ -201,13 +204,130 @@ async function saveToLibrary({ generator = 'tree', name, tags = [], recipe, thum
   }
   const lib = await readLibrary();
   const entry = {
-    name, type: generator, tags: tags.filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().toLowerCase()),
+    name, type: generator, kind: 'family', category: categoryOf(generator, recipe), tags: cleanTags(tags),
     model: result.model, recipe: `${g.assets}/${name}/recipe.json`, thumbnail: thumb, checks_ok: result.checks?.ok ?? null,
     saved: new Date().toISOString(),
   };
   lib.items = [...lib.items.filter((i) => !(i.type === generator && i.name === name)), entry];
   await writeFile(LIBRARY, JSON.stringify(lib, null, 2) + '\n');
   return { entry, checks: result.checks };
+}
+
+// --- Biblioteket (docs/asset-studio.md, Familjer och fasta modeller) ---
+// En familj är ett recept som generatorn kan göra om och variera; en fast modell är en bestämd modell som ligger
+// kvar som den är (importerad, eller frusen ur en familj, under assets/fixed/). Raden heter sin modellsökväg.
+const ASSET_DIRS = { trees: 'tree', props: 'prop', plants: 'plant', buildings: 'building', imported: 'imported', fixed: 'fixed' };
+const ROCKS = /stone|boulder|rock|pebble|cliff/;
+function categoryOf(type, recipe = {}) {
+  const preset = String(recipe.preset ?? '');
+  if (type === 'tree') return /bush/.test(preset) ? 'bush' : 'tree';
+  if (type === 'prop') return ROCKS.test(preset) ? 'rock' : 'prop';
+  if (type === 'plant') return 'plant';
+  if (type === 'building') return 'building';
+  if (type === 'imported') return /building/.test(recipe.category ?? '') ? 'building' : 'prop';
+  return 'prop';
+}
+async function readJson(rel) { try { return JSON.parse(await readFile(path.join(ROOT, rel), 'utf8')); } catch { return null; } }
+const thumbFor = (dir, name) => ['png', 'jpg'].map((x) => `${dir}/${name}_thumb.${x}`).find((p) => existsSync(path.join(ROOT, p))) ?? null;
+// Katalogen med standardvärden för äldre rader (kind och category saknades före B1)
+async function libraryView() {
+  const lib = await readLibrary();
+  const items = await Promise.all(lib.items.map(async (i) => {
+    const recipe = i.recipe ? await readJson(i.recipe) : null;
+    const fixed = i.type === 'imported' || i.model.startsWith('assets/fixed/');
+    return { kind: fixed ? 'fixed' : 'family', category: categoryOf(i.type, recipe ?? {}), tags: [], ...i,
+             thumbnail: i.thumbnail ?? thumbFor(path.dirname(i.model), i.name), preset: recipe?.preset ?? null, seed: recipe?.seed ?? null,
+             license: recipe?.license ?? null, origin: recipe?.origin ?? null };
+  }));
+  return { items };
+}
+// Tillgångar på disken som inte finns i katalogen, att lägga till
+async function libraryScan() {
+  const inLib = new Set((await readLibrary()).items.map((i) => i.model));
+  const out = [];
+  for (const [dir, type] of Object.entries(ASSET_DIRS)) {
+    let names = [];
+    try { names = await readdir(path.join(ROOT, 'assets', dir)); } catch { continue; }
+    for (const name of names) {
+      const model = ['gltf', 'glb'].map((x) => `assets/${dir}/${name}/${name}.${x}`).find((p) => existsSync(path.join(ROOT, p)));
+      if (!model || inLib.has(model)) continue;
+      const recipe = `assets/${dir}/${name}/recipe.json`, r = await readJson(recipe);
+      out.push({ name, type, model, recipe: r ? recipe : null, kind: type === 'imported' || dir === 'fixed' ? 'fixed' : 'family',
+                 category: categoryOf(type, r ?? {}), thumbnail: thumbFor(`assets/${dir}/${name}`, name), preset: r?.preset ?? null, seed: r?.seed ?? null,
+                 license: r?.license ?? null, origin: r?.origin ?? null, tags: [], saved: null });
+    }
+  }
+  return { items: out };
+}
+async function writeLibrary(lib) { await writeFile(LIBRARY, JSON.stringify(lib, null, 2) + '\n'); }
+const cleanTags = (tags) => [...new Set((tags ?? []).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().toLowerCase()))];
+const CATEGORIES = new Set(['tree', 'bush', 'plant', 'rock', 'prop', 'building']);
+async function libraryAdd({ model, tags }) {
+  const found = (await libraryScan()).items.find((i) => i.model === model);
+  if (!found) return { error: 'finns inte, eller ligger redan i biblioteket' };
+  const lib = await readLibrary();
+  const entry = { name: found.name, type: found.type, kind: found.kind, category: found.category, tags: cleanTags(tags), model, recipe: found.recipe,
+                  thumbnail: found.thumbnail, checks_ok: null, saved: new Date().toISOString() };
+  lib.items.push(entry);
+  await writeLibrary(lib);
+  return { entry };
+}
+async function libraryUpdate({ model, tags, category }) {
+  const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
+  if (!e) return { error: 'finns inte i biblioteket' };
+  if (tags) e.tags = cleanTags(tags);
+  if (category) { if (!CATEGORIES.has(category)) return { error: `okänd kategori ${category}` }; e.category = category; }
+  await writeLibrary(lib);
+  return { entry: e };
+}
+async function libraryRemove({ model }) {
+  // Bara raden i katalogen: filerna ligger kvar och syns under Ej tillagda
+  const lib = await readLibrary(), n = lib.items.length;
+  lib.items = lib.items.filter((i) => i.model !== model);
+  if (lib.items.length === n) return { error: 'finns inte i biblioteket' };
+  await writeLibrary(lib);
+  return { ok: true };
+}
+// Frys: kopiera familjens modell till assets/fixed/<namn>/ (samma djup, så att texturernas relativa sökvägar gäller),
+// med receptet bredvid och en hänvisning till familjen den kom från
+async function libraryFreeze({ model, name }) {
+  if (!NAME.test(name ?? '')) return { error: 'namnet får bara ha a–z, 0–9 och _ (högst 48 tecken)' };
+  const src = (await libraryView()).items.find((i) => i.model === model) ?? (await libraryScan()).items.find((i) => i.model === model);
+  if (!src) return { error: 'modellen finns inte' };
+  if (src.kind === 'fixed') return { error: 'den är redan en fast modell' };
+  const from = path.dirname(model), to = `assets/fixed/${name}`;
+  if (existsSync(path.join(ROOT, to))) return { error: `${name} finns redan bland de fasta modellerna`, exists: true };
+  await mkdir(path.join(ROOT, to), { recursive: true });
+  const old = path.basename(model).replace(/\.(gltf|glb)$/, ''), ext = path.extname(model);
+  for (const f of await readdir(path.join(ROOT, from))) {
+    const target = f.startsWith(`${old}.`) || f.startsWith(`${old}_`) ? name + f.slice(old.length) : f;
+    let data = await readFile(path.join(ROOT, from, f));
+    if (f === `${old}.gltf`) {
+      const g = JSON.parse(data.toString());
+      for (const b of g.buffers ?? []) if (b.uri?.startsWith(`${old}.`)) b.uri = name + b.uri.slice(old.length);
+      data = JSON.stringify(g);
+    }
+    await writeFile(path.join(ROOT, to, target), data);
+  }
+  const recipe = existsSync(path.join(ROOT, to, 'recipe.json')) ? `${to}/recipe.json` : null;
+  const lib = await readLibrary();
+  const entry = { name, type: src.type, kind: 'fixed', category: src.category, tags: src.tags ?? [], model: `${to}/${name}${ext}`, recipe,
+                  thumbnail: thumbFor(to, name), checks_ok: src.checks_ok ?? null, saved: new Date().toISOString(),
+                  from: { name: src.name, model, recipe: src.recipe } };
+  lib.items.push(entry);
+  await writeLibrary(lib);
+  return { entry };
+}
+// Miniatyr som studion renderat (PNG med alfa) bredvid modellen; raden i katalogen pekar på den
+async function libraryThumb({ model, thumbnail }) {
+  const m = /^data:image\/png;base64,(.+)$/.exec(thumbnail ?? '');
+  if (!m || typeof model !== 'string' || !/^assets\/[a-z]+\/[a-z0-9_]+\/[a-z0-9_]+\.(gltf|glb)$/.test(model) || !existsSync(path.join(ROOT, model)))
+    return { error: 'ogiltig modell eller bild' };
+  const name = path.basename(model).replace(/\.(gltf|glb)$/, ''), rel = `${path.dirname(model)}/${name}_thumb.png`;
+  await writeFile(path.join(ROOT, rel), Buffer.from(m[1], 'base64'));
+  const lib = await readLibrary(), e = lib.items.find((i) => i.model === model);
+  if (e) { e.thumbnail = rel; await writeLibrary(lib); }
+  return { thumbnail: rel };
 }
 
 async function api(req, res, url) {
@@ -222,7 +342,11 @@ async function api(req, res, url) {
   }
   if (url.pathname === '/api/generate' && req.method === 'POST') return json(res, 200, await generate(await body(req)));
   if (url.pathname === '/api/textures' && req.method === 'GET') return json(res, 200, await textures(url.searchParams.get('kind')));
-  if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await readLibrary());
+  if (url.pathname === '/api/library' && req.method === 'GET') return json(res, 200, await libraryView());
+  if (url.pathname === '/api/library/scan' && req.method === 'GET') return json(res, 200, await libraryScan());
+  const LIB_POST = { add: libraryAdd, update: libraryUpdate, remove: libraryRemove, freeze: libraryFreeze, thumb: libraryThumb };
+  const lm = /^\/api\/library\/([a-z]+)$/.exec(url.pathname);
+  if (lm && LIB_POST[lm[1]] && req.method === 'POST') return json(res, 200, await LIB_POST[lm[1]](await body(req)));
   if (url.pathname === '/api/library' && req.method === 'POST') return json(res, 200, await saveToLibrary(await body(req)));
   if (url.pathname === '/api/shot' && req.method === 'POST') {
     // Skärmdump av studions 3D-vy (för tavlor och dokumentation): PNG-data -> build/shots/studio_<namn>.png

@@ -286,8 +286,10 @@ Verkstaden där Patrik själv drar i generatorernas spakar, ser resultatet direk
 - [ ] MCP: AI:n läser biblioteket och de sparade recepten, och en knapp "Be Claude" i studion.
 - [x] Professionellt utseende: designtokens, ljust och mörkt tema (följer systemet eller väljs i headern). Byggt 2026-10-26.
 
+**Öppna verktyg:** vad vi kan låna eller härma i stället för att bygga själva (RedGPU, impostors, EZ-Tree, Material Maker, KTX2) står i [oppna-verktyg.md](oppna-verktyg.md).
+
 **Biblioteket: familjer och fasta modeller** (plan 2026-10-26, [asset-studio.md](asset-studio.md)): en *familj* är ett recept som ger obegränsat med varianter och sprids ut som proxys (familj och frö); en *fast modell* är en bestämd modell med egna texturer. Frys och Tina växlar mellan dem.
-- [ ] **B1, biblioteksvy:** FAB-lik, med kategorier, taggar, sök, märkning Familj och Fast, Frys och Tina (bygger vidare på fas 3).
+- [x] **B1, biblioteksvy:** fliken Bibliotek (`studio/library.js`): sidopanel med Biblioteket och Ej tillagda (modeller under `assets/` som inte ligger i katalogen), Familj och Fast, kategorier med antal och taggar; rutnät med sök och sortering; detaljpanel med Öppna i studion, Frys (kopia under `assets/fixed/`), Tina i studion, kategori, taggar och fakta; miniatyrer renderas i studion och sparas bredvid modellen. Byggd 2026-10-26. Kvar: Öppna i studion för andra generatorer än träd och buskar (fas 4), och mossan syns inte i miniatyrerna (den läggs på av spelets shader).
 - [ ] **B2, familjer:** variantpool med 8–16 färdigbyggda varianter, utplaceringsdata (`scatter`: storlek, radie, lutning, biomer, vikt), fler varianter i bakgrunden.
 - [ ] **B3, proxys och PCG i Tinkertown:** världen sparar familj och frö per punkt; PCG-graf (punkter → täthet → filter → familj → frö → instans).
 - [ ] **B4, texturera modellen:** lagerpanel i verkstaden (Marmoset-lik); krökning, AO, position och tjocklek bakade i Blender; lagren bakas till modellens UV-texturer, och modellen blir fast.

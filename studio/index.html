@@ -264,6 +264,69 @@
   #wside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #wside .card.closed > header h2::after { transform: none; }
   #wside .card.closed > .rows { display: none; }
+
+  /* Biblioteket (studio/library.js): sidopanel, rutnät som FAB, detaljpanel. Läget styrs av body.library-mode */
+  #libview { display: none; }
+  body.library-mode #app, body.library-mode #side, body.library-mode #bottom, body.library-mode .asset-tool { display: none; }
+  body.library-mode #libview { display: block; position: fixed; inset: var(--head) 0 0 0; background: var(--bg); }
+  .lside { position: absolute; top: var(--gap); left: var(--gap); bottom: var(--gap); width: 232px; border-radius: var(--radius); padding: 12px; box-sizing: border-box;
+           display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+  .lside h2 { margin: 0 0 2px; font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; }
+  .lside h3 { margin: 8px 0 0; font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .lside .seg { display: flex; }
+  .lside .seg button { flex: 1; justify-content: center; padding: 0 4px; font-size: 11.5px; }
+  .lcats { display: grid; gap: 1px; }
+  .lcats button { height: 30px; border: 0; background: transparent; justify-content: space-between; padding: 0 8px; color: var(--ink-2); }
+  .lcats button.on { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+  .lcats .n { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 500; font-size: 11.5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .chip { height: 22px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px;
+          background: var(--field); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer; }
+  .chip.on { background: var(--accent-soft); border-color: transparent; color: var(--ink); }
+  .chip .x { height: 16px; width: 16px; padding: 0; border: 0; background: transparent; justify-content: center; color: var(--muted); font-size: 13px; }
+  input.tagin { width: 90px; min-height: 22px; border-radius: 11px; padding: 0 8px; font-size: 11.5px; }
+  .lmain { position: absolute; top: var(--gap); left: calc(232px + 2 * var(--gap)); right: var(--gap); bottom: 0; display: flex; flex-direction: column; gap: var(--gap); transition: right 0.15s; }
+  .lmain.narrow { right: calc(340px + 2 * var(--gap)); }
+  .lbar { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: var(--radius); flex: none; }
+  .lbar input.search { flex: 1; min-height: 28px; border-radius: 6px; padding: 0 10px; }
+  .lbar select { height: 28px; }
+  .lcount { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+  .lgrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; align-content: start; padding: 2px 2px 16px; }
+  .lcard { margin: 0; cursor: pointer; min-width: 0; }
+  .lthumb { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
+            background: radial-gradient(circle at 50% 38%, var(--btn-hover), var(--field) 75%); transition: border-color 0.12s, box-shadow 0.12s; }
+  .lthumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .lcard:hover .lthumb { border-color: var(--line-strong); box-shadow: var(--shadow); }
+  .lcard.sel .lthumb { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kindb, .catb { font-size: 10px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+  .lthumb .kindb { position: absolute; top: 8px; left: 8px; }
+  .kindb.family { background: #3d8628; color: #fff; }
+  .kindb.fixed { background: #2f6fa8; color: #fff; }
+  .catb { background: var(--field); color: var(--ink-2); border: 1px solid var(--line); }
+  .warnb { position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border-radius: 50%; background: var(--bad); color: #fff; font-weight: 700; font-size: 11px; display: grid; place-items: center; }
+  .addb { position: absolute; bottom: 8px; right: 8px; opacity: 0; transition: opacity 0.12s; }
+  .lcard:hover .addb { opacity: 1; }
+  .lcard figcaption { padding: 6px 2px 0; display: grid; gap: 1px; }
+  .lcard figcaption b { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lcard figcaption span { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lempty { grid-column: 1 / -1; color: var(--muted); padding: 40px; text-align: center; }
+  .ldetail { position: absolute; top: var(--gap); right: var(--gap); bottom: var(--gap); width: 340px; border-radius: var(--radius); box-sizing: border-box;
+             display: none; flex-direction: column; gap: 12px; padding: 12px; overflow-y: auto; }
+  .ldetail.open { display: flex; }
+  .lclose { position: absolute; top: 18px; right: 18px; z-index: 1; }
+  .lbig { position: relative; aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--line); flex: none;
+          background: radial-gradient(circle at 50% 38%, var(--btn-hover), var(--field) 75%); }
+  .lbig img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .lhead h2 { margin: 0 0 6px; font-size: 16px; font-weight: 650; word-break: break-all; }
+  .lacts { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.danger { color: var(--bad); }
+  button.danger:hover:not(:disabled) { border-color: var(--bad); }
+  .lsec { padding: 0; gap: 8px; }
+  .lsec .lab { color: var(--muted); font-size: 10px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.08em; }
+  .linfo { display: grid; grid-template-columns: 96px 1fr; gap: 5px 10px; margin: 0; font-size: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .linfo dt { color: var(--muted); }
+  .linfo dd { margin: 0; word-break: break-word; color: var(--ink-2); }
 </style>
 <script type="importmap">
 { "imports": {
@@ -291,6 +354,7 @@
 </header>
 <div id="side"></div>
 <div id="wview"></div>
+<div id="libview"></div>
 <div id="wlib" class="glass"></div>
 <div id="wside"></div>
 <footer id="wfoot" class="glass"></footer>

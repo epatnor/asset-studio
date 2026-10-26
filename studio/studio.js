@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { shareTextures } from '../showcase/shared_textures.js';
 import { createMaterialPatcher, applyShadowRole } from '../showcase/materials.js';
 import { createWorkshop } from './workshop.js';
+import { createLibrary } from './library.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -471,7 +472,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || valueOf(paramAt(p.when.path)) === p.when.equals);
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : b.dataset.kind === kind.id);
 }
 
 // --- Tema: Auto (systemets), Ljust eller Mörkt; sparas i webbläsaren och sätts före första ritningen (index.html) ---
@@ -504,9 +505,44 @@ for (const k of P.kinds) {
 // Texturverkstaden (studio/workshop.js): egen vy, egna kort och egen footer; skapas första gången den öppnas
 const texBtn = el('button', null, 'Texturer');
 texBtn.title = 'Texturverkstaden: ta fram och justera texturer för tillgångar, terräng och byggnader';
-$('kinds').append(Object.assign(el('span', 'sep')), texBtn);
-let workshop = null, textureMode = false;
+// Biblioteket (studio/library.js): familjer och fasta modeller, som FAB; skapas första gången det öppnas
+const libBtn = el('button', null, 'Bibliotek');
+libBtn.title = 'Biblioteket: allt som sparats, som familjer (recept) och fasta modeller';
+$('kinds').append(Object.assign(el('span', 'sep')), libBtn, texBtn);
+let workshop = null, textureMode = false, library = null, libraryMode = false;
+libBtn.onclick = async () => {
+  leaveTextureMode();
+  libraryMode = true;
+  document.body.classList.add('library-mode');
+  paused = true;
+  refreshUi();
+  library ??= createLibrary({ api, el, root: $('libview'), canOpen, openInStudio });
+  library.show();
+};
+function leaveLibraryMode() {
+  if (!libraryMode) return;
+  libraryMode = false;
+  document.body.classList.remove('library-mode');
+  paused = false;
+}
+// En familj (eller en fast modells recept) kan öppnas när studion har spakar för dess art
+const speciesOf = (item) => String(item.preset ?? '').split('_')[0];
+function canOpen(item) { return !!item.recipe && item.type !== 'imported' && !!G.species[speciesOf(item)] && P.kinds.some((k) => k.species?.includes(speciesOf(item))); }
+async function openInStudio(item) {
+  const r = await fetch(`/${item.recipe}`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+  if (!r) { alert(`Receptet för ${item.name} gick inte att läsa`); return; }
+  leaveLibraryMode();
+  kind = P.kinds.find((k) => k.species?.includes(speciesOf(item))) ?? kind;
+  loadRecipe(r);
+  framed = false;
+  for (const p of pinned) { scene.remove(p); dispose(p); }
+  pinned.length = 0;
+  refreshUi();
+  commit();
+  setState(`Öppnade ${item.name}`);
+}
 texBtn.onclick = async () => {
+  leaveLibraryMode();
   textureMode = true;
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
@@ -522,7 +558,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (textureMode) { leaveTextureMode(); if (k.id === kind.id) return refreshUi(); }
+  if (textureMode || libraryMode) { leaveTextureMode(); leaveLibraryMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -603,5 +639,6 @@ refreshUi();
 lastSnapshot = snapshot();
 applyViewAll();
 regenerate();
-// En länk till …/studio/#texturer öppnar verkstaden direkt
+// En länk till …/studio/#texturer eller #bibliotek öppnar verkstaden eller biblioteket direkt
 if (location.hash === '#texturer') texBtn.onclick();
+if (location.hash === '#bibliotek') libBtn.onclick();

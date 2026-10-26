@@ -113,7 +113,7 @@ MCP-servern kan läsa biblioteket och Patriks sparade recept ("gör fem variante
 | 3. Bibliotek | Biblioteksvy med miniatyrer, sökning och taggar; ladda tillbaka i studion; "Fler varianter" | Sparade träd går att hitta, ändra och variera | Återstår (katalogen finns) |
 | 4. Fler generatorer | `params.json` för props (stenar, stubbar), växter och byggnadsdelar; studion väljer generator | Samma studio gör stenar och props | Flikarna finns, markerade som kommande |
 | 5. Hopkoppling | Tinkertown visar biblioteket; Electron-paketering tillsammans med Tinkertown | Det som sparas i studion går att placera i världen | Återstår |
-| B1. Biblioteksvy | FAB-lik vy: kategorier, taggar, sök, märkning Familj och Fast; Frys och Tina | Biblioteket är där man hittar och väljer allt | Planerad 2026-10-26 (bygger vidare på fas 3) |
+| B1. Biblioteksvy | FAB-lik vy: kategorier, taggar, sök, märkning Familj och Fast; Frys och Tina | Biblioteket är där man hittar och väljer allt | Byggd 2026-10-26 (`studio/library.js`, `/api/library/*`); Öppna i studion bara för träd och buskar än |
 | B2. Familjer | variantpool (8–16 färdigbyggda), utplaceringsdata (`scatter`), fler varianter i bakgrunden | En familj kan spridas ut utan att byggas om per exemplar | Planerad |
 | B3. Proxys och PCG | Tinkertown läser familjerna; proxys (familj och frö) och en PCG-graf som sprider ut dem | Skog och stenar sprids med regler, med variation per frö | Planerad |
 | B4. Texturera modellen | lagerpanel i verkstaden (Marmoset-lik); kartor bakade i Blender; lagren bakas till modellens UV-texturer | En egen prop får egna texturer och blir en fast modell | Planerad |
