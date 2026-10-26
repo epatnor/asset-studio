@@ -14,7 +14,7 @@ const MAP_LABELS = { color: 'Color', height: 'Height', normal: 'Normal', rough: 
 
 const LIB_W = 300, SIDE_W = 372; // bibliotekets och panelens bredd (index.html)
 
-export async function createWorkshop({ api, el, side, view, footer, lib, getAssetUrl }) {
+export async function createWorkshop({ api, el, side, view, footer, lib, tools, getAssetUrl }) {
   const W = await api('/api/workshop');
   let allTextures = await api('/api/textures?kind=all');
   const doc = { source: { type: 'stone' }, steps: [{ op: 'range' }], inputs: {}, material: {}, blend: { layers: [] } };
@@ -86,7 +86,10 @@ export async function createWorkshop({ api, el, side, view, footer, lib, getAsse
   const undoBtn = iconBtn('Undo', '<path d="M5.5 3.5 2.5 6.5l3 3"/><path d="M2.5 6.5h7a4 4 0 0 1 0 8H7"/>');
   const redoBtn = iconBtn('Redo', '<path d="m10.5 3.5 3 3-3 3"/><path d="M13.5 6.5h-7a4 4 0 0 0 0 8H9"/>');
   const nameTag = el('span', 'curname');
-  bar.append(seg, nameTag, g2, g3, fitBtn, undoBtn, redoBtn);
+  bar.append(seg, nameTag, g2, g3, fitBtn);
+  // Ångra och Gör om sitter i flikraden, som i The Forge (studions verktygsfält, synliga i texturläget)
+  for (const b of [undoBtn, redoBtn]) b.classList.add('atelier-tool');
+  tools.prepend(undoBtn, redoBtn);
   view.append(bar, pop);
   const varBox = el('div', 'wvar glass');
   view.append(varBox);

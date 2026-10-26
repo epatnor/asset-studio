@@ -12,7 +12,7 @@ import { shareTextures } from '../showcase/shared_textures.js';
 import { createMaterialPatcher, applyShadowRole } from '../showcase/materials.js';
 import { createWorkshop } from './workshop.js';
 import { createLibrary } from './library.js';
-import { createHome } from './home.js';
+import { createHome, DEPARTMENTS, VAULT } from './home.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -475,6 +475,7 @@ function refreshUi() {
     row.style.display = show ? '' : 'none';
   }
   for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : b.dataset.kind === kind.id);
+  applyDept();
 }
 
 // --- Tema: Auto (systemets), Ljust eller Mörkt; sparas i webbläsaren och sätts före första ritningen (index.html) ---
@@ -505,13 +506,43 @@ for (const k of P.kinds) {
   $('kinds').append(b);
 }
 // Texturverkstaden (studio/workshop.js): egen vy, egna kort och egen footer; skapas första gången den öppnas
-const texBtn = el('button', null, 'Textures');
+const texBtn = el('button', null, 'Texture workshop');
+texBtn.dataset.dept = 'atelier';
 texBtn.title = 'The Atelier: make and tune textures for assets, terrain and buildings';
 // Biblioteket (studio/library.js): familjer och fasta modeller, som FAB; skapas första gången det öppnas
 const libBtn = el('button', null, 'Library');
+libBtn.dataset.dept = 'vault';
 libBtn.title = 'The Vault: everything saved, as families (recipes) and fixed models';
-$('kinds').append(Object.assign(el('span', 'sep')), libBtn, texBtn);
-let workshop = null, textureMode = false, library = null, libraryMode = false;
+$('kinds').append(libBtn, texBtn);
+let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false;
+
+// --- Avdelningarna (docs/avdelningar.md): väljaren i headern, namnet och underrubriken, flikarna och accentfärgen ---
+// Flikarna i andra raden hör till en avdelning (data-dept; utan är det The Forge). Läget bestämmer avdelningen.
+const DEPTS = Object.fromEntries([...DEPARTMENTS, VAULT].map((d) => [d.id, d]));
+for (const d of Object.values(DEPTS)) {
+  const b = el('button');
+  b.dataset.dept = d.id;
+  b.style.setProperty('--dot', d.accent);
+  b.append(el('span', null, d.name.replace(/^The /, '')));
+  b.title = `${d.name}: ${d.sub}${d.ready ? '' : ' (planned)'}`;
+  b.disabled = !d.ready;
+  b.onclick = () => openDept(d.id);
+  $('depts').append(b);
+}
+function openDept(id) {
+  if (id === 'atelier') texBtn.onclick();
+  else if (id === 'vault') libBtn.onclick();
+  else selectKind(kind);
+}
+const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : 'forge');
+function applyDept() {
+  const d = currentDept();
+  if (d) document.documentElement.dataset.dept = d; else delete document.documentElement.dataset.dept;
+  $('dept').querySelector('b').textContent = d ? DEPTS[d].name : '';
+  $('dept').querySelector('span').textContent = d ? DEPTS[d].sub : '';
+  for (const b of $('kinds').children) b.hidden = (b.dataset.dept ?? 'forge') !== d;
+  for (const b of $('depts').children) b.classList.toggle('on', b.dataset.dept === d);
+}
 libBtn.onclick = async () => {
   leaveHome();
   leaveTextureMode();
@@ -551,7 +582,7 @@ texBtn.onclick = async () => {
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
   refreshUi();
-  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), getAssetUrl: () => currentUrl });
+  workshop ??= await createWorkshop({ api, el, side: $('wside'), view: $('wview'), footer: $('wfoot'), lib: $('wlib'), tools: $('tools'), getAssetUrl: () => currentUrl });
   workshop.show();
 };
 function leaveTextureMode() {
@@ -644,17 +675,13 @@ lastSnapshot = snapshot();
 applyViewAll();
 regenerate();
 // Landningssidan (studio/home.js): visas vid start och när man klickar på märket i headern
-let homeMode = false;
-const home = createHome({ el, api, root: $('home'), open: (id) => {
-  if (id === 'atelier') texBtn.onclick();
-  else if (id === 'vault') libBtn.onclick();
-  else selectKind(P.kinds[0]);
-} });
+const home = createHome({ el, api, root: $('home'), open: openDept });
 function goHome() {
   leaveTextureMode(); leaveLibraryMode();
   homeMode = true;
   paused = true; // 3D-vyn behövs inte under landningssidan
   home.show();
+  applyDept();
 }
 function leaveHome() {
   if (!homeMode) return;

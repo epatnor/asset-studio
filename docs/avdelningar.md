@@ -38,7 +38,7 @@ Det en annan avdelning äger öppnas där: trädets bark i Ateljén, trädets vi
 | Fas | Innehåll | Klart när |
 |---|---|---|
 | A1. Landningssidan | Illustrationer, kort per avdelning, märket tar en tillbaka; befintliga vyer (trädstudion, texturverkstaden, biblioteket) nås därifrån | Studion öppnar på en sida som visar vad den kan |
-| A2. Headern och färgerna | Avdelningsväljaren, underrubriken, flikarna i en andra rad, accent per avdelning | Man ser alltid vilken avdelning man är i |
+| A2. Headern och färgerna | Avdelningsväljaren, underrubriken, flikarna i en andra rad, accent per avdelning | Man ser alltid vilken avdelning man är i  (byggd 2026-10-26) |
 | A3. Lådorna | Låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag | Det man arbetar med finns alltid ett klick bort |
 | A2b. Engelska | All text i appen på engelska: studio/, spakarna i params.json och workshop.json, biblioteket, felmeddelanden som visas | Appen är på engelska rakt igenom |
 | A4. Väderkvarnen och Häxkitteln | Flikarna enligt effektlabb.md | Alla fyra verkstäder är i bruk |
