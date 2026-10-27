@@ -252,21 +252,24 @@ export function createWater({ geometry, level = 0, sky }) {
 
     // Skum: strand och stenar, vassa krön, strömt grunt vatten
     const fuvB = Pw.xz.div(u.foamScale.mul(8)).add(vec2(t.mul(0.011), t.mul(-0.007)));
-    const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.1);
+    const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.04);
     const fuvA = Pw.xz.div(u.foamScale.mul(6)).sub(f.mul(t.mul(0.33))).add(warp);
     const blot = texture(T.misc, fuvB).g;
     // De stora fläckarna formar skummets kant, bubblorna ger rundade hål och tungor i den
-    const noise = mix(blot, texture(T.misc, fuvA).r, 0.45);
+    const noise = mix(blot, texture(T.misc, fuvA).r, 0.3);
     const shore = float(1).sub(smoothstep(0, u.foamWidth, dv)).mul(u.shoreFoam);
     const crest = smoothstep(0.5, 0.9, vPinch.div(max(u.steep, 0.01))).mul(u.crestFoam).mul(1.4);
-    const rapids = saturate(fl.mul(0.8)).mul(float(1).sub(smoothstep(0.05, 0.45, dv))).mul(u.flowFoam).mul(1.3);
-    const mask = saturate(max(max(shore, crest), max(rapids, vBore.mul(u.shoreFoam).mul(1.4))));
-    // Mjuk kant: skummet blir runda fläckar som tonar ut, inte vassa trådar
+    // Forsskummet har sin topp en bit ut från kanten (där strömmen bryts över stenarna), inte ända in mot land
+    const rapids = saturate(fl.mul(0.8)).mul(float(1).sub(smoothstep(0.08, 0.45, dv))).mul(smoothstep(0.0, 0.1, dv)).mul(u.flowFoam).mul(1.3);
+    // Taket 0,8: även tätt skum bryts upp i fläckar (vid 1 släpper tröskeln igenom allt och det blir ett vitt band)
+    const mask = saturate(max(max(shore, crest), max(rapids, vBore.mul(u.shoreFoam).mul(1.4)))).mul(0.8);
+    // Mjuk kant: skummet blir runda fläckar som tonar ut, inte vassa trådar, och tonar bort mot strandlinjen
     const edge0 = float(1).sub(mask);
-    const foam = smoothstep(edge0, edge0.add(0.22), noise).mul(saturate(mask.mul(2)));
-    col = mix(col, vec3(0.92, 0.95, 0.96).mul(lightAmt.add(u.sunColor.mul(u.sunI).mul(max(u.sunDir.y, 0).mul(0.3)))), foam);
+    const foam = smoothstep(edge0.sub(0.1), edge0.add(0.4), noise).mul(saturate(mask.mul(2))).mul(smoothstep(0, u.edge.mul(3).add(0.02), dv));
+    // Lite genomskinligt skum (0,85), så att vattnet skymtar igenom och kanten blandas mjukt
+    col = mix(col, vec3(0.92, 0.95, 0.96).mul(lightAmt.add(u.sunColor.mul(u.sunI).mul(max(u.sunDir.y, 0).mul(0.3)))), foam.mul(0.85));
     // Mot stranden tonar ytan ut (inget hårt snitt där vattnet möter marken)
-    return vec4(col, smoothstep(0, u.edge, dv));
+    return vec4(col, smoothstep(0, u.edge.mul(1.8), dv));
   })();
 
   // Speglingen av scenen: ett plan i ytans nivå som ritar scenen spegelvänd (halv upplösning), byggt först när det behövs
