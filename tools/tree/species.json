@@ -1766,12 +1766,12 @@
       "cardGrid": 3
     },
     "leaves": "leaffine_sprig",
-    "bark": "bark_painted",
+    "bark": "bark_smooth_stylized",
     "leaf_tint": "palette:foliage_light",
     "_doc": "Kortbollar (teknik från stiliserade Blender-träd): 6–9 korsade lövkort per boll, bollarna i klasar på skelettets kvistar. Testart för atlaser från tools/texture/make_leafsheet.py.",
     "bark_blend": {
       "base": {
-        "texture": "moss_painted",
+        "texture": "moss_stylized",
         "height": 0.9,
         "strength": 0.75,
         "dark": 0.3,
@@ -1779,7 +1779,7 @@
         "scale": 1.5
       },
       "tip": {
-        "texture": "foliage_painted",
+        "texture": "moss_stylized",
         "strength": 0,
         "from": 0.5,
         "level": 2,
@@ -1879,20 +1879,20 @@
       "drapeArms": 5
     },
     "leaves": "leaf_birch_hang",
-    "bark": "bark_birch_hd3",
+    "bark": "bark_birch_stylized",
     "leaf_tint": "#4E8A34",
     "_doc": "Björk med kortbollar: draperi (fem böjda remsor från en rundad topp, som ett paraply) med långa hängande kvistar av små löv (leaf_birch_hang), björkbark med få svarta streck förskjutna omlott (bark_birch_hd3), mörkare grönt. Valt av Patrik 2026-10-25. Referens: björkarna i Allods Online.",
     "bark_blend": {
       "base": {
-        "texture": "bark_painted",
+        "texture": "bark_spruce_stylized",
         "height": 1.3,
         "strength": 0.85,
         "dark": 0.35,
-        "tint": "#8a8079",
+        "tint": "#ffffff",
         "scale": 1.0
       },
       "tip": {
-        "texture": "foliage_painted",
+        "texture": "moss_stylized",
         "strength": 0,
         "from": 0.5,
         "level": 2,
@@ -1986,7 +1986,7 @@
       "tipCover": 0
     },
     "leaves": "leaf_oak",
-    "bark": "bark_painted",
+    "bark": "bark_stylized",
     "minTwigRadius": 0.3,
     "leaf_tint": "#6FB04A",
     "_doc": "Buske med kortbollar (Asset Studio): buskens korta flerstammiga skelett, små treor av lövkort, rena bollnormaler, skuggform."

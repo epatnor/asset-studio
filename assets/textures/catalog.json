@@ -1,0 +1,304 @@
+{
+  "textures": [
+    {
+      "name": "blend_",
+      "profile": "blend",
+      "maps": [
+        "color",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/blend_.png",
+        "height": "assets/textures/blend__height.png"
+      },
+      "meters": 1,
+      "tags": [],
+      "recipe": "assets/textures/blend_.texture.json",
+      "size": 1024,
+      "saved": "2026-10-26T11:12:40+00:00"
+    },
+    {
+      "name": "glow_cracks_1",
+      "profile": "blend",
+      "maps": [
+        "color",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/glow_cracks_1.png",
+        "height": "assets/textures/glow_cracks_1_height.png"
+      },
+      "meters": 1,
+      "tags": [],
+      "recipe": "assets/textures/glow_cracks_1.texture.json",
+      "size": 1024,
+      "saved": "2026-10-26T20:34:53+00:00"
+    },
+    {
+      "name": "rock_stylized",
+      "profile": "rock",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/rock_stylized.png",
+        "normal": "assets/textures/rock_stylized_normal.png",
+        "height": "assets/textures/rock_stylized_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "stone",
+        "rock",
+        "stylized"
+      ],
+      "recipe": "assets/textures/rock_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T17:52:27+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/rock_stylized_hd.png",
+          "normal": "assets/textures/hd/rock_stylized_hd_normal.png",
+          "height": "assets/textures/hd/rock_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_stylized.png",
+        "normal": "assets/textures/bark_stylized_normal.png",
+        "height": "assets/textures/bark_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T17:56:17+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_mossy",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_mossy.png",
+        "normal": "assets/textures/bark_mossy_normal.png",
+        "height": "assets/textures/bark_mossy_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_mossy.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T17:56:32+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_mossy_hd.png",
+          "normal": "assets/textures/hd/bark_mossy_hd_normal.png",
+          "height": "assets/textures/hd/bark_mossy_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_birch_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_birch_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "birch",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_birch_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:06:10+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_birch_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "bark_pine_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_pine_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "pine",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_pine_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:06:32+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_pine_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "bark_spruce_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_spruce_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "spruce",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_spruce_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:06:54+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_spruce_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "bark_cherry_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_cherry_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "cherry",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_cherry_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:07:34+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_cherry_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "bark_weathered_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_weathered_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "dead",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_weathered_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:07:54+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_weathered_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "moss_stylized",
+      "profile": "blend",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/moss_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "moss",
+        "blend",
+        "stylized"
+      ],
+      "recipe": "assets/textures/moss_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:08:15+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/moss_stylized_hd.png"
+        }
+      }
+    },
+    {
+      "name": "bark_smooth_stylized",
+      "profile": "bark",
+      "maps": [
+        "color"
+      ],
+      "files": {
+        "color": "assets/textures/bark_smooth_stylized.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "smooth",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_smooth_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:10:16+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_smooth_stylized_hd.png"
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,24 @@
 {
   "leaves": "leaf_oak",
-  "bark": "bark_painted",
+  "bark": "bark_stylized",
+  "bark_blend": {
+    "base": {
+      "strength": 0.5,
+      "texture": "moss_stylized",
+      "height": 0.3,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    },
+    "tip": {
+      "texture": "moss_stylized",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  },
   "preset": "cardbush",
   "seed": 9,
   "height": 1.3,

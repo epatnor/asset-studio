@@ -17,11 +17,19 @@
   "bark_blend": {
     "base": {
       "strength": 0.75,
-      "texture": "surface_forestfloor",
+      "texture": "moss_stylized",
       "height": 0.9,
       "dark": 0.3,
       "tint": "#ffffff",
       "scale": 1.5
+    },
+    "tip": {
+      "texture": "moss_stylized",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
     }
   },
   "preset": "cardtree",
