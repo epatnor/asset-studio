@@ -12,6 +12,7 @@ import { createGrass, colorTexture, groundSampler } from '../shared/effects/gras
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCloth } from '../shared/effects/cloth.js';
 import { createCards } from './cards.js';
+import { createFxToolbox } from './fxtoolbox.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
 const DEG = Math.PI / 180;
@@ -525,6 +526,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     if (!paused) wind.update(dt);
+    if (!paused) toolbox?.update(dt * wind.state.timeScale);
     if (cloth && !paused && cloth.step(dt * wind.state.timeScale, clothWind)) updateCloth();
     controls.update();
     grass?.update(camera);
@@ -539,6 +541,8 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     }
   }
   await loadGlade();
+  // Häxkittelns verktygslåda (studio/fxtoolbox.js): fristående effekter att klicka ut i gräset, drivna av gläntans vind
+  const toolbox = await createFxToolbox({ api, el, root: view, view, scene, camera, renderer, ground, windAt: (x, z) => wind.velocityAt(x, z, 'plant') }).catch((e) => { console.warn(e); return null; });
   // För prov: ?shot=<namn> sparar en bild av gläntan (build/shots/studio_<namn>.png) när den har laddat, med vilken
   // renderare som användes, så att man kan se WebGPU-fönster som man inte själv kan titta in i
   const shotName = new URLSearchParams(location.search).get('shot');
@@ -552,7 +556,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },
-    wind, scene, camera, controls, renderer,
+    wind, scene, camera, controls, renderer, toolbox,
     setDebug(v) { debug = v; applyDebug(); },
     get cloth() { return cloth; }, get flagMesh() { return flagMesh; }, // för felsökning och prov
     stats: () => ({ ...stats, fps }),

@@ -12,6 +12,7 @@ import { sunAt, createSky, createShafts } from '../shared/effects/weather.js';
 import { createParticles } from '../shared/effects/vfx.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards } from './cards.js';
+import { createFxToolbox } from './fxtoolbox.js';
 
 const DEG = Math.PI / 180;
 
@@ -185,6 +186,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   const gate = frameGate();
   function tick(dt) {
     time += dt;
+    toolbox?.update(dt);
     dust.update(time, { wind: [0.3, 0, 0.1] });
     controls.update();
     pipeline.render();
@@ -202,6 +204,8 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
       block(fSun, 'Sun', `${clock(vals.hour)} · ${Math.round(sun.elevation / DEG)}° up · toward ${Math.round(vals.azimuth)}°`);
     }
   }
+  // Häxkittelns verktygslåda (studio/fxtoolbox.js): fristående effekter att klicka ut på platsen
+  const toolbox = await createFxToolbox({ api, el, root: view, view, scene, camera, renderer, ground, windAt: () => [0.3, 0, 0.1] }).catch((e) => { console.warn(e); return null; });
   // För prov: ?shot=<namn> sparar en bild (build/shots/studio_<namn>.png) när platsen har laddat, som Vind-fliken
   const shotName = new URLSearchParams(location.search).get('shot');
   if (shotName && /^[\w-]{1,40}$/.test(shotName) && /vader/.test(location.hash)) setTimeout(async () => {
@@ -213,7 +217,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },
-    scene, camera, controls, renderer, vals, apply, shafts,
+    scene, camera, controls, renderer, vals, apply, shafts, toolbox,
     stats: () => ({ fps, loaded, failed, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),
     // För prov: rita en gång till och spara bilden som build/shots/studio_<namn>.png
     async shot(name) {

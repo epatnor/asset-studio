@@ -359,6 +359,19 @@
   #wxside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #wxside .card.closed > header h2::after { transform: none; }
   #wxside .card.closed > .rows { display: none; }
+  /* Häxkittelns verktygslåda i andra avdelningar (studio/fxtoolbox.js): en liten låda nederst i mitten av vyn */
+  .fxbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot) + var(--gap)); width: min(620px, calc(100vw - 720px)); min-width: 300px;
+           border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; z-index: 2; box-sizing: border-box; --accent: #8b5cf6; --accent-soft: color-mix(in srgb, #8b5cf6 30%, transparent); }
+  .fxbox header { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .fxbox header b { color: #a07ef6; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .fxbox header .note { flex: 1; min-height: 0; }
+  .fxbox header button { height: 24px; padding: 0 10px; }
+  .fxbox.closed .fxbody, .fxbox.closed header .note { display: none; }
+  .fxbody { display: grid; gap: 5px; max-height: 30vh; overflow-y: auto; }
+  .fxrow { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .fxrow small { width: 62px; color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .fxrow .chip { height: 24px; padding: 0 9px; font-size: 11.5px; }
+  .fxrow .chip.on { background: var(--accent-soft); border-color: var(--accent); }
   /* Häxkitteln (studio/cauldron.js): samma upplägg som Väderkvarnen, med arenan i stället för gläntan */
   #cvview, #cvside, #cvfoot { display: none; }
   body.fx-mode #app, body.fx-mode #side, body.fx-mode #bottom, body.fx-mode .asset-tool { display: none; }
