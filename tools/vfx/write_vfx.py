@@ -41,6 +41,12 @@ def write(data):
             out.append('      ]')
             out.append('    }' + (',' if i < len(names) - 1 else ''))
         out.append('  },')
+    if 'layerTemplates' in data:
+        # Lager som kan läggas till i en besvärjelse (Add a layer): ett per rad
+        out.append('  "layerTemplates": {')
+        names = list(data['layerTemplates'])
+        out.append(',\n'.join(f'    {one(n)}: {one(data["layerTemplates"][n])}' for n in names))
+        out.append('  },')
     out.append('  "presets": {')
     kinds = list(data['presets'])
     for i, kind in enumerate(kinds):

@@ -8,7 +8,8 @@
 // ljusblixt (FX02), chockring på marken (FX01), brännmärke (dekal), portal (FX09), ljus, projektil med svans och
 // skärmeffekter (FX10): chockvåg och värmedallring i bilden och en kameraknyck, som värden ritar (post()).
 //
-//   const spell = createSpell(settings, { spells, defaults, anchors, ground, groundY });
+//   const spell = createSpell(settings, { spells, templates, defaults, anchors, ground, groundY });
+//   settings.extra: lager som lagts till ur templates (id:n), utöver besvärjelsens egna
 //   spell.play(time); spell.update(time, { camera, wind }); spell.post(time) -> { shocks, hazes, shake }
 import * as THREE from 'three/webgpu';
 import {
@@ -222,7 +223,7 @@ function spikeGeometry(kind, seed) {
 }
 export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texBase }) {
   const ice = (s.style ?? 'ice') === 'ice';
-  const sites = Math.max(1, Math.round(s.count ?? 14));
+  const sites = Math.max(0, Math.round(s.count ?? 14)); // 0: bara spåret, skärvorna och resterna
   const kinds = ice ? ['crystal', 'needle', 'shard', 'stubby'] : ['rock', 'slab', 'jag', 'pillar'];
   const geos = kinds.map((k, i) => spikeGeometry(k, 977 + i * 131));
   const u = { rim: uniform(new THREE.Color(s.rim ?? '#bfefff')), rimStrength: uniform(s.rimStrength ?? 1.5), fade: uniform(1), color: uniform(new THREE.Color(s.color ?? '#7fc8e8')), cracks: uniform(s.iceCracks ?? 0.6), groundY: uniform(from.y) };
@@ -682,7 +683,9 @@ export function createSpell(s, ctx) {
   const group = new THREE.Group();
   const layers = [];
   let impact = def.impact ?? 0;
-  for (const L of def.layers) {
+  // Besvärjelsens egna lager, plus de som lagts till (Add a layer: mallar i vfx.json under layerTemplates)
+  const all = [...def.layers, ...(s.extra ?? []).map((id) => ctx.templates?.[id]?.layer).filter(Boolean)];
+  for (const L of all) {
     if (L.role && s[`layer_${L.role}`] === false) continue;
     const set = resolve(L.set, s);
     const at = anchor(L.anchor ?? 'target');

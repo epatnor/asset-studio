@@ -558,6 +558,8 @@ async function vfxSave({ name, kind, settings, overwrite }) {
     else if (q.type === 'choice') clean[q.key] = q.options.some((o) => o.id === v) ? v : q.default;
     else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
   }
+  // Besvärjelser: lagren som lagts till (Add a layer), bara mallar som finns
+  if (kind === 'spell' && Array.isArray(settings?.extra)) clean.extra = [...new Set(settings.extra.filter((id) => X.layerTemplates?.[id]))];
   const file = path.join(ROOT, VFX_SAVED, `${name}.vfx.json`);
   if (existsSync(file) && !overwrite) return { exists: true };
   await mkdir(path.dirname(file), { recursive: true });

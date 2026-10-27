@@ -208,7 +208,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     if (fx) { scene.remove(fx.object); fx.dispose(); fx = null; }
     const s = cur().settings, at = anchor();
     const ctx = { at, ground, top: topOf(), target: cur().place === 'dummy' ? dummy : figure, figure, dummy, from: chest(figBox, 0.72).add(new THREE.Vector3(0.35, 0, 0)), to: chest(dumBox, 0.68),
-      spells: info.spells, defaults: spellDefaults(), anchors: anchors(), groundY: heightAt };
+      spells: info.spells, templates: info.layerTemplates, defaults: spellDefaults(), anchors: anchors(), groundY: heightAt };
     try {
       fx = createEffect(kind, s, ctx);
     } catch (e) { setNote(`The effect could not be built: ${e.message}`); console.error(e); return; }
@@ -289,10 +289,42 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
   }
   // Trails & hits: korten för svärd eller projektil syns efter läget
   const trailGroupEls = Object.fromEntries(KIND.trail.groups.map((g, i) => [g.id, kindCards.trail[i]]));
+  // Besvärjelsens lager: de egna och de tillagda (Add a layer)
+  const spellLayers = (st) => [...(info.spells[st.spell]?.layers ?? []), ...(st.extra ?? []).map((id) => info.layerTemplates?.[id]?.layer).filter(Boolean)];
+  // Add a layer: en lista med mallarna i vfx.json (layerTemplates), och de tillagda som brickor med × för att ta bort
+  const addRow = el('div', 'row span2 addrow'), addSel = el('select'), addChips = el('div', 'chips addchips');
+  addRow.title = 'Add a layer the spell does not have: a flash, a shock ring, a scorch mark, a frost or earth trail, leaves, skulls …';
+  addRow.append(el('label', null, 'Add'), addSel);
+  groupCards.spell.layers.querySelector('.rows').append(addRow, addChips);
+  addSel.onchange = () => {
+    const id = addSel.value;
+    if (!id) return;
+    const st = state.spell.settings;
+    st.extra = [...(st.extra ?? []), id];
+    markPreset(null);
+    build();
+    showCards();
+  };
+  function renderAdd() {
+    const st = state.spell.settings, extra = st.extra ?? [];
+    addSel.replaceChildren(Object.assign(el('option', null, 'Add a layer…'), { value: '' }));
+    for (const [id, t] of Object.entries(info.layerTemplates ?? {})) {
+      if (extra.includes(id)) continue;
+      addSel.append(Object.assign(el('option', null, t.label), { value: id, title: t.help ?? '' }));
+    }
+    addSel.value = '';
+    addChips.replaceChildren(...extra.map((id) => {
+      const c = el('button', 'chip on');
+      c.append(document.createTextNode(info.layerTemplates?.[id]?.label ?? id), el('span', 'x', ' ×'));
+      c.title = `Remove ${info.layerTemplates?.[id]?.label ?? id}`;
+      c.onclick = () => { st.extra = (st.extra ?? []).filter((x) => x !== id); markPreset(null); build(); showCards(); };
+      return c;
+    }));
+  }
   // Vilka spakar som gäller för det som är valt: resten döljs, och ett kort utan synliga rader döljs helt
   function relevant(k, key, st) {
     if (k === 'spell') {
-      const layers = info.spells[st.spell]?.layers ?? [];
+      const layers = spellLayers(st);
       const spikes = layers.find((L) => L.type === 'spikes');
       if (key.startsWith('layer_')) return layers.some((L) => L.role === key.slice(6));
       if (key === 'iceCracks') return (spikes?.set?.style ?? 'ice') === 'ice' && !!spikes;
@@ -325,6 +357,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
       trailGroupEls.projectile.hidden = trailGroupEls.hit.hidden = !proj;
     }
     const st = cur().settings;
+    if (kind === 'spell') renderAdd();
     for (const [key, row] of Object.entries(kindRows[kind])) row.hidden = !relevant(kind, key, st);
     for (const c of Object.values(groupCards[kind])) if (!c.hidden) c.hidden = ![...c.querySelectorAll('.rows > .row')].some((r) => !r.hidden);
     placeRow.hidden = !PLACES[kind].length;
