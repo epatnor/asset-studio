@@ -17,7 +17,7 @@ import {
   texture, PI2, varying, attribute,
 } from 'three/tsl';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
-import { createParticles, createMarker, createAura, createRibbon, softFade } from './vfx.js';
+import { createParticles, createMarker, createAura, createRibbon, softFade, projectDisc } from './vfx.js';
 
 const easeOut = (x) => 1 - (1 - x) ** 3;
 const easeBack = (x) => { const c = 1.9; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
@@ -472,7 +472,7 @@ export function createFlash(s, { at }) {
 }
 
 // --- Chockring på marken (FX01): en tunn ljus ring som vidgas, en kärna som tonar och ekrar ---
-export function createRing(s, { at }) {
+export function createRing(s, { at, ground }) {
   const u = { color: uniform(new THREE.Color(s.color ?? '#ffb060')), k: uniform(0), fade: uniform(1), intensity: uniform(s.intensity ?? 2.5), width: uniform(s.thickness ?? 0.03) };
   const mat = additiveMat(THREE.MeshBasicNodeMaterial, { polygonOffset: true, polygonOffsetFactor: -6 });
   const p = uv().mul(2).sub(1), r = length(p);
@@ -485,13 +485,12 @@ export function createRing(s, { at }) {
   const I = ring.mul(2.5).add(ring2).add(inner).add(ring.mul(spokes)).mul(fadeOut).mul(u.fade);
   mat.colorNode = u.color.mul(I).mul(u.intensity);
   mat.opacityNode = clamp(I.mul(0.7), 0, 1);
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), mat);
-  mesh.position.copy(at).y += 0.04;
-  mesh.scale.setScalar(s.radius ?? 2);
+  const mesh = new THREE.Mesh(undefined, mat);
+  projectDisc(mesh, ground, at, s.radius ?? 2);
   mesh.renderOrder = 5;
   return {
     object: mesh, uniforms: u,
-    set(v) { u.color.value.set(v.color); u.intensity.value = v.intensity ?? 2.5; mesh.scale.setScalar(v.radius ?? 2); },
+    set(v) { u.color.value.set(v.color); u.intensity.value = v.intensity ?? 2.5; projectDisc(mesh, ground, at, v.radius ?? 2); },
     update(time, lt) { u.k.value = easeOut(clamp01(lt)); },
     setFade(f) { u.fade.value = f; },
     dispose() { mesh.geometry.dispose(); mat.dispose(); },
@@ -691,12 +690,12 @@ export function createSpell(s, ctx) {
     switch (L.type) {
       case 'particles': fx = createParticles({ ...D.particles, ...set }, { at, max: 3000 }); fx.object.renderOrder = 6; break; // efter pelare och ringar, så att de inte tvättas bort
       case 'marker': fx = createMarker({ ...D.marker, ...set }, { ground: ctx.ground, at, top: at.y + 1.8 }); break;
-      case 'aura': fx = createAura({ ...D.glow, ...set }, { target: L.anchor === 'dummy' ? ctx.dummy : ctx.figure }); break;
+      case 'aura': fx = createAura({ ...D.glow, ...set }, { target: L.anchor === 'dummy' ? ctx.dummy : ctx.figure, ground: ctx.ground }); break;
       case 'flames': fx = createFlames(set, { at }); break;
       case 'lightning': fx = createLightning(set); fx.ends(anchor(L.from ?? 'hand'), anchor(L.to ?? 'target')); break;
       case 'spikes': fx = createSpikes({ ...set, ...trailOf(s), hold: L.dur ?? 2.6 }, { from: anchor(L.from ?? 'caster'), to: anchor(L.to ?? 'targetGround'), groundY: ctx.groundY, ground: ctx.ground, defaults: D, texBase: ctx.texBase }); break;
       case 'flash': fx = createFlash(set, { at }); break;
-      case 'ring': fx = createRing(set, { at }); break;
+      case 'ring': fx = createRing(set, { at, ground: ctx.ground }); break;
       case 'scorch': fx = createScorch(set, { at, ground: ctx.ground }); break;
       case 'portal': fx = createPortal(set, { at }); break;
       case 'light': fx = createLight(set, { at }); break;

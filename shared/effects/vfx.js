@@ -35,6 +35,26 @@ const MARKS = ['ring', 'target', 'area', 'exclaim'];
 const DEG = Math.PI / 180;
 const additive = (m, on) => { const b = on ? THREE.AdditiveBlending : THREE.NormalBlending; if (m.blending !== b) { m.blending = b; m.needsUpdate = true; } };
 
+// En rund fläck på marken (glöd, chockring): projiceras uppifrån på marken som en dekal, så att den följer sluttningar
+// i stället för att klippas av; utan mark en platt skiva. uv går 0–1 över fläcken som på en vanlig skiva. Byggs om
+// bara när mitten eller radien har ändrats.
+export function projectDisc(mesh, ground, center, radius) {
+  const key = `${center.x.toFixed(3)},${center.y.toFixed(3)},${center.z.toFixed(3)}|${radius.toFixed(3)}`;
+  if (mesh.userData.disc === key) return;
+  mesh.userData.disc = key;
+  mesh.geometry?.dispose();
+  if (ground) {
+    ground.updateMatrixWorld(true);
+    mesh.geometry = new DecalGeometry(ground, center, new THREE.Euler(-Math.PI / 2, 0, 0), new THREE.Vector3(radius * 2, radius * 2, 4));
+    mesh.position.set(0, 0, 0);
+    mesh.scale.setScalar(1);
+  } else {
+    mesh.geometry = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
+    mesh.position.copy(center).y += 0.03;
+    mesh.scale.setScalar(radius);
+  }
+}
+
 // Mjuka partiklar (FX04 i AAA-referensen): genomskinligheten tonar ut där ytan bakom är närmare än soft meter, så att
 // rök, damm och lågor inte klipps av hårt mot marken. 0 = av.
 export function softFade(soft) {
@@ -228,7 +248,7 @@ function spriteShape(kind, r, time, age = float(0)) {
 // --- Glöd och aura ---
 // Ett skal runt figurens alla delar (normalen ut en bit) som lyser i kanten och flimrar uppåt, en pelare av ljus,
 // glöd på marken, ett punktljus och stigande gnistor (partiklar). Figuren ändras inte; skalen tas bort i dispose.
-export function createAura(s, { target }) {
+export function createAura(s, { target, ground }) {
   const C = () => uniform(new THREE.Color());
   const u = {
     time: uniform(0), c: C(), c2: C(), intensity: uniform(1), rim: uniform(2), thick: uniform(0.03), fill: uniform(0), noise: uniform(0),
@@ -273,11 +293,11 @@ export function createAura(s, { target }) {
   group.add(pillar);
 
   // Glöd på marken: en ljus fläck som tonar ut, med en svag ring i kanten
-  const gMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4 });
+  const gMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const gd = length(uv().mul(2).sub(1));
   gMat.colorNode = u.c.mul(pow(clamp(float(1).sub(gd), 0, 1), 2).add(smoothstep(0.12, 0, abs(gd.sub(0.85))).mul(0.25))).mul(pulse).mul(u.ground);
-  const disc = new THREE.Mesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), gMat);
-  disc.position.copy(feet).y += 0.02;
+  const disc = new THREE.Mesh(undefined, gMat);
+  disc.renderOrder = 2;
   group.add(disc);
 
   const light = new THREE.PointLight('#ffffff', 0, 7, 2);
@@ -296,7 +316,7 @@ export function createAura(s, { target }) {
       u.thick.value = p.thickness; u.nScale.value = p.noiseScale; u.ground.value = p.groundGlow;
       pillar.scale.set(p.pillarRadius, p.pillarHeight, p.pillarRadius);
       pillar.visible = p.pillar > 0;
-      disc.scale.setScalar(p.groundRadius);
+      projectDisc(disc, ground, feet, Math.max(0.05, p.groundRadius));
       disc.visible = p.groundGlow > 0;
       light.color.set(p.color);
       motes.set(moteSettings(p));
