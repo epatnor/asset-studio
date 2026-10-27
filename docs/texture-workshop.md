@@ -99,7 +99,7 @@ Ett recept kan ha namngivna **ingredienser** (`inputs`): en sparad textur ur kat
 | Källa | Spakar |
 |---|---|
 | Brus | typ (värde, Perlin, simplex, Worley/cellulärt, fBm), skala, oktaver, skärpa, frö |
-| Bark | antal fåror, djup, slingrighet, plattor mellan fårorna, sprickor, frö |
+| Bark | åsar, djup, fårornas bredd, slingrighet, plattor (0–0,4 sammanhängande åsar, upp till 1 korta block), sprickor, plattornas toner, flagor/lav och deras färg, frö. Byggd efter referensens barkrecept (2026-10-27): anisotropa voronoiplattor längs stammen, lågfrekvent domänförvrängning, egna lager för fåror, sekundära sprickor (ridged brus) och glesa flagor, och en målad färg (svalt i fårorna, varmt på topparna, ton per platta). Träden får också materialets normalkarta (`<namn>_normal.png`) |
 | Sten och kullersten | Voronoi-celler, storlek och variation, fogbredd, rundning, frö |
 | Murverk och tegel | rader, förband, fogbredd, variation i färg och form, avslagna hörn |
 | Plankor och trä | plankbredd, längd, ådring, kvistar, fogar, nötning |

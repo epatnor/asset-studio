@@ -22,6 +22,9 @@
         {"key": "wiggle", "label": "Waviness", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.45, "adv": true},
         {"key": "plates", "label": "Plates", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "help": "Cross cracks that split the ridges into plates", "adv": true},
         {"key": "detail", "label": "Fine detail", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.25, "adv": true},
+        {"key": "tint", "label": "Plate tones", "type": "number", "min": 0, "max": 0.4, "step": 0.01, "default": 0.12, "help": "How much each bark plate varies in tone"},
+        {"key": "flakes", "label": "Flakes", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0, "help": "Sparse lighter flakes or lichen on the plate tops"},
+        {"key": "accent", "label": "Flake color", "type": "color", "default": "#C9C2B0"},
         {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
         {"key": "dark", "label": "Furrow color", "type": "color", "default": "#3B2618"},
         {"key": "light", "label": "Ridge color", "type": "color", "default": "#8A5B3A"}

@@ -214,6 +214,7 @@ const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).
 const texture = (file, name) => sharedTexture(doc, file, name, out);
 
 const barkMat = doc.createMaterial('Bark').setBaseColorTexture(texture(bark, 'bark')).setRoughnessFactor(0.9).setMetallicFactor(0);
+if (recipe.barkNormal) barkMat.setNormalTexture(texture(recipe.barkNormal, 'bark_normal')).setNormalScale(1);
 // barkTint (björk, palm, dött träd): barken är då gråskala och färgas här
 if (recipe.barkTint) barkMat.setBaseColorFactor([...lin(recipe.barkTint), 1]);
 // Texturblandning: klienten läser extras.blend (texturer relativt modellen, tint, styrka) och vikterna i

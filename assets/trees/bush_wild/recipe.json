@@ -1,6 +1,6 @@
 {
   "leaves": "leaf_oak",
-  "bark": "bark_mossy",
+  "bark": "bark_oak_stylized",
   "bark_blend": {
     "base": {
       "strength": 0.5,

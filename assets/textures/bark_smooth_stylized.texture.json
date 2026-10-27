@@ -2,10 +2,14 @@
   "name": "bark_smooth_stylized",
   "profile": "bark",
   "maps": [
-    "color"
+    "color",
+    "normal",
+    "height"
   ],
   "files": {
-    "color": "assets/textures/bark_smooth_stylized.png"
+    "color": "assets/textures/bark_smooth_stylized.png",
+    "normal": "assets/textures/bark_smooth_stylized_normal.png",
+    "height": "assets/textures/bark_smooth_stylized_height.png"
   },
   "meters": 2.0,
   "tags": [
@@ -15,31 +19,36 @@
   ],
   "recipe": "assets/textures/bark_smooth_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:10:16+00:00",
+  "saved": "2026-10-27T20:17:30+00:00",
   "hd": {
     "size": 2048,
     "files": {
-      "color": "assets/textures/hd/bark_smooth_stylized_hd.png"
+      "color": "assets/textures/hd/bark_smooth_stylized_hd.png",
+      "normal": "assets/textures/hd/bark_smooth_stylized_hd_normal.png",
+      "height": "assets/textures/hd/bark_smooth_stylized_hd_height.png"
     }
   },
   "source": {
-    "ridges": 4,
-    "depth": 0.2,
-    "width": 0.15,
-    "wiggle": 0.3,
-    "plates": 0,
-    "detail": 0.2,
+    "ridges": 5,
+    "depth": 0.35,
+    "width": 0.12,
+    "wiggle": 0.5,
+    "plates": 0.15,
+    "detail": 0.3,
+    "tint": 0.1,
+    "flakes": 0.2,
+    "accent": "#A7AE8C",
     "seed": 3,
-    "dark": "#352D26",
-    "light": "#76695C",
+    "dark": "#3A2F27",
+    "light": "#8A7866",
     "type": "bark"
   },
   "steps": [
     {
-      "strength": 0.75,
-      "colors": 6,
+      "strength": 0.6,
+      "colors": 7,
       "shape": 0.5,
-      "saturation": 1.05,
+      "saturation": 1.08,
       "relief": true,
       "op": "stylize"
     }

@@ -126,131 +126,6 @@
       }
     },
     {
-      "name": "bark_birch_stylized",
-      "profile": "bark",
-      "maps": [
-        "color"
-      ],
-      "files": {
-        "color": "assets/textures/bark_birch_stylized.png"
-      },
-      "meters": 2.0,
-      "tags": [
-        "bark",
-        "birch",
-        "stylized"
-      ],
-      "recipe": "assets/textures/bark_birch_stylized.texture.json",
-      "size": 1024,
-      "saved": "2026-10-27T20:06:10+00:00",
-      "hd": {
-        "size": 2048,
-        "files": {
-          "color": "assets/textures/hd/bark_birch_stylized_hd.png"
-        }
-      }
-    },
-    {
-      "name": "bark_pine_stylized",
-      "profile": "bark",
-      "maps": [
-        "color"
-      ],
-      "files": {
-        "color": "assets/textures/bark_pine_stylized.png"
-      },
-      "meters": 2.0,
-      "tags": [
-        "bark",
-        "pine",
-        "stylized"
-      ],
-      "recipe": "assets/textures/bark_pine_stylized.texture.json",
-      "size": 1024,
-      "saved": "2026-10-27T20:06:32+00:00",
-      "hd": {
-        "size": 2048,
-        "files": {
-          "color": "assets/textures/hd/bark_pine_stylized_hd.png"
-        }
-      }
-    },
-    {
-      "name": "bark_spruce_stylized",
-      "profile": "bark",
-      "maps": [
-        "color"
-      ],
-      "files": {
-        "color": "assets/textures/bark_spruce_stylized.png"
-      },
-      "meters": 2.0,
-      "tags": [
-        "bark",
-        "spruce",
-        "stylized"
-      ],
-      "recipe": "assets/textures/bark_spruce_stylized.texture.json",
-      "size": 1024,
-      "saved": "2026-10-27T20:06:54+00:00",
-      "hd": {
-        "size": 2048,
-        "files": {
-          "color": "assets/textures/hd/bark_spruce_stylized_hd.png"
-        }
-      }
-    },
-    {
-      "name": "bark_cherry_stylized",
-      "profile": "bark",
-      "maps": [
-        "color"
-      ],
-      "files": {
-        "color": "assets/textures/bark_cherry_stylized.png"
-      },
-      "meters": 2.0,
-      "tags": [
-        "bark",
-        "cherry",
-        "stylized"
-      ],
-      "recipe": "assets/textures/bark_cherry_stylized.texture.json",
-      "size": 1024,
-      "saved": "2026-10-27T20:07:34+00:00",
-      "hd": {
-        "size": 2048,
-        "files": {
-          "color": "assets/textures/hd/bark_cherry_stylized_hd.png"
-        }
-      }
-    },
-    {
-      "name": "bark_weathered_stylized",
-      "profile": "bark",
-      "maps": [
-        "color"
-      ],
-      "files": {
-        "color": "assets/textures/bark_weathered_stylized.png"
-      },
-      "meters": 2.0,
-      "tags": [
-        "bark",
-        "dead",
-        "stylized"
-      ],
-      "recipe": "assets/textures/bark_weathered_stylized.texture.json",
-      "size": 1024,
-      "saved": "2026-10-27T20:07:54+00:00",
-      "hd": {
-        "size": 2048,
-        "files": {
-          "color": "assets/textures/hd/bark_weathered_stylized_hd.png"
-        }
-      }
-    },
-    {
       "name": "moss_stylized",
       "profile": "blend",
       "maps": [
@@ -276,13 +151,79 @@
       }
     },
     {
+      "name": "bark_oak_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_oak_stylized.png",
+        "normal": "assets/textures/bark_oak_stylized_normal.png",
+        "height": "assets/textures/bark_oak_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "oak",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_oak_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:16:59+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_oak_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_oak_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_oak_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_furrowed_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_furrowed_stylized.png",
+        "normal": "assets/textures/bark_furrowed_stylized_normal.png",
+        "height": "assets/textures/bark_furrowed_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "furrowed",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_furrowed_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:17:15+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_furrowed_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_furrowed_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_furrowed_stylized_hd_height.png"
+        }
+      }
+    },
+    {
       "name": "bark_smooth_stylized",
       "profile": "bark",
       "maps": [
-        "color"
+        "color",
+        "normal",
+        "height"
       ],
       "files": {
-        "color": "assets/textures/bark_smooth_stylized.png"
+        "color": "assets/textures/bark_smooth_stylized.png",
+        "normal": "assets/textures/bark_smooth_stylized_normal.png",
+        "height": "assets/textures/bark_smooth_stylized_height.png"
       },
       "meters": 2.0,
       "tags": [
@@ -292,11 +233,168 @@
       ],
       "recipe": "assets/textures/bark_smooth_stylized.texture.json",
       "size": 1024,
-      "saved": "2026-10-27T20:10:16+00:00",
+      "saved": "2026-10-27T20:17:30+00:00",
       "hd": {
         "size": 2048,
         "files": {
-          "color": "assets/textures/hd/bark_smooth_stylized_hd.png"
+          "color": "assets/textures/hd/bark_smooth_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_smooth_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_smooth_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_birch_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_birch_stylized.png",
+        "normal": "assets/textures/bark_birch_stylized_normal.png",
+        "height": "assets/textures/bark_birch_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "birch",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_birch_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:17:46+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_birch_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_birch_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_birch_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_pine_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_pine_stylized.png",
+        "normal": "assets/textures/bark_pine_stylized_normal.png",
+        "height": "assets/textures/bark_pine_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "pine",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_pine_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:18:03+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_pine_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_pine_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_pine_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_spruce_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_spruce_stylized.png",
+        "normal": "assets/textures/bark_spruce_stylized_normal.png",
+        "height": "assets/textures/bark_spruce_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "spruce",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_spruce_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:18:20+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_spruce_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_spruce_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_spruce_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_cherry_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_cherry_stylized.png",
+        "normal": "assets/textures/bark_cherry_stylized_normal.png",
+        "height": "assets/textures/bark_cherry_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "cherry",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_cherry_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:18:36+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_cherry_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_cherry_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_cherry_stylized_hd_height.png"
+        }
+      }
+    },
+    {
+      "name": "bark_weathered_stylized",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/bark_weathered_stylized.png",
+        "normal": "assets/textures/bark_weathered_stylized_normal.png",
+        "height": "assets/textures/bark_weathered_stylized_height.png"
+      },
+      "meters": 2.0,
+      "tags": [
+        "bark",
+        "dead",
+        "stylized"
+      ],
+      "recipe": "assets/textures/bark_weathered_stylized.texture.json",
+      "size": 1024,
+      "saved": "2026-10-27T20:18:52+00:00",
+      "hd": {
+        "size": 2048,
+        "files": {
+          "color": "assets/textures/hd/bark_weathered_stylized_hd.png",
+          "normal": "assets/textures/hd/bark_weathered_stylized_hd_normal.png",
+          "height": "assets/textures/hd/bark_weathered_stylized_hd_height.png"
         }
       }
     }

@@ -154,25 +154,58 @@ def mix(p, h, dark="dark", light="light"):
 
 
 def src_bark(n, p, rng):
+    # Bark efter patriks_input/AAA_Procedural_Textures_Stylization_ThreeJS_Reference.md (Bark): stammen går längs y.
+    # 1. Plattor: anisotropa voronoiceller (ridges kolumner × rader, förskjutna som tegel), utsträckta längs stammen;
+    #    plates styr hur korta de är (under 0.4 = sammanhängande åsar som ek, 1 = fyra plattor per varv som tall).
+    # 2. Lågfrekvent domänförvrängning (wiggle), så att fårorna inte blir parallella streck.
+    # 3. Egna lager: fårorna mellan plattorna, sekundära sprickor (ridged brus längs stammen) och glesa flagor.
+    # Färgen är lågfrekvent och målad: svalare i fårorna, varmare och ljusare på plattornas toppar, olika ton per platta.
     x, y = grid(n)
-    ridges = int(p.get("ridges", 7))
-    warp = (fbm(n, 3, 3, rng, sx=1, sy=0.5) - 0.5) * p.get("wiggle", 0.45) * 0.35 / ridges * 6
-    u = x + warp
-    phase = (u * ridges) % 1.0
-    dg = np.minimum(phase, 1 - phase) * 2  # 0 mitt i fåran, 1 mitt på åsen
-    groove = 1 - smooth(0, p.get("width", 0.22) * 2, dg)
-    h = (1 - groove * p.get("depth", 0.6)) * (0.8 + 0.2 * np.sin(np.pi * np.clip(dg, 0, 1)))
-    if p.get("plates", 0) > 0:
-        # Tvärgående sprickor, förskjutna per ås, så att åsarna delas i plattor
-        j = np.floor(u * ridges).astype(np.int64) % ridges
-        offs = rng.random(ridges)[j]
-        k = int(round(2 + p["plates"] * 8))
-        pv = (y * k + offs) % 1.0
-        crack = 1 - smooth(0, 0.035, np.minimum(pv, 1 - pv))
-        h = h * (1 - crack * 0.5 * p["plates"] * (dg > 0.15))
-    detail = fbm(n, 24, 3, rng, sx=1, sy=0.35)
-    h = np.clip(h * (1 - p.get("detail", 0.25) * 0.35 + p.get("detail", 0.25) * 0.35 * detail * 2 - p.get("detail", 0.25) * 0.15), 0, 1)
-    return mix(p, h ** 1.15), h
+    cols = max(2, int(p.get("ridges", 7)))
+    plates = float(np.clip(p.get("plates", 0.5), 0, 1))
+    rows = max(1, int(round(plates * 4)))  # 0–1 rad: sammanhängande åsar; fler rader: kortare plattor
+    wig = p.get("wiggle", 0.45)
+    u = (x + (fbm(n, 2, 3, rng, sx=1, sy=0.6) - 0.5) * wig * 2.4 / cols) % 1.0
+    v = (y + (fbm(n, 2, 3, rng) - 0.5) * wig * 1.2 / rows) % 1.0
+    f1 = np.full((n, n), np.inf, np.float32)
+    f2 = np.full((n, n), np.inf, np.float32)
+    idx = np.zeros((n, n), np.int32)
+    jit = rng.random((cols, rows, 2)) - 0.5
+    k = 0
+    for c in range(cols):
+        for r in range(rows):
+            px = (c + 0.5 + jit[c, r, 0] * 0.5) / cols
+            py = (r + 0.5 + (c % 2) * 0.5 + jit[c, r, 1] * 0.6) / rows
+            dx = (u - px + 0.5) % 1.0 - 0.5
+            dy = (v - py % 1.0 + 0.5) % 1.0 - 0.5
+            # Avstånd i cellenheter: en cell är 1/cols bred och 1/rows hög; utan rader blir åsarna sammanhängande
+            d = np.sqrt((dx * cols) ** 2 + (dy * rows * (0.35 if rows == 1 else 1.0)) ** 2)
+            closer = d < f1
+            f2 = np.where(closer, f1, np.minimum(f2, d))
+            idx = np.where(closer, k, idx)
+            f1 = np.where(closer, d, f1)
+            k += 1
+    edge = f2 - f1  # 0 i fogen mellan två plattor
+    width = p.get("width", 0.22)
+    crevice = 1 - smooth(0, width * 1.1, edge)
+    dome = smooth(0, 0.45 + width, edge) ** 0.7
+    tilt = (rng.random(k) - 0.5)[idx] * 0.25 * plates
+    plate_h = 0.55 + 0.45 * dome + tilt * dome
+    detail = p.get("detail", 0.25)
+    ridged = 1 - np.abs(2 * fbm(n, 9, 3, rng, sx=1, sy=0.22) - 1)
+    fine = smooth(0.78, 0.97, ridged) * detail
+    h = plate_h * (1 - crevice * p.get("depth", 0.6)) - fine * 0.3 * dome
+    flakes = smooth(0.62, 0.7, fbm(n, 7, 2, rng)) * smooth(0.3, 0.7, dome) * p.get("flakes", 0.0)
+    h = np.clip(h + flakes * 0.06, 0, 1)
+    # Färgen: valör ur höjden, en ton per platta, svalt i fårorna, varmt på topparna, stora mjuka fläckar
+    col = mix(p, np.clip(h, 0, 1) ** 1.1)
+    tone = 1 + (rng.random(k) - 0.5)[idx][..., None] * 2 * p.get("tint", 0.12)
+    cool = 1 + crevice[..., None] * np.array([-0.06, -0.02, 0.08], np.float32) * p.get("depth", 0.6)
+    warm = 1 + (dome * (1 - crevice))[..., None] * np.array([0.06, 0.02, -0.04], np.float32)
+    mottle = 1 + (fbm(n, 3, 2, rng) - 0.5)[..., None] * 0.35
+    col = col * tone * cool * warm * mottle
+    col = col + (hexrgb(p.get("accent", "#C9C2B0")) - col) * flakes[..., None] * 0.85
+    return np.clip(col, 0, 1), h
 
 
 def src_stone(n, p, rng):

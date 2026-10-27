@@ -1,6 +1,6 @@
 {
   "leaves": "leaffine_sprig",
-  "bark": "bark_stylized",
+  "bark": "bark_furrowed_stylized",
   "bark_blend": {
     "base": {
       "strength": 0.5,

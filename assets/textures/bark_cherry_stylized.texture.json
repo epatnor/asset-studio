@@ -2,10 +2,14 @@
   "name": "bark_cherry_stylized",
   "profile": "bark",
   "maps": [
-    "color"
+    "color",
+    "normal",
+    "height"
   ],
   "files": {
-    "color": "assets/textures/bark_cherry_stylized.png"
+    "color": "assets/textures/bark_cherry_stylized.png",
+    "normal": "assets/textures/bark_cherry_stylized_normal.png",
+    "height": "assets/textures/bark_cherry_stylized_height.png"
   },
   "meters": 2.0,
   "tags": [
@@ -15,23 +19,28 @@
   ],
   "recipe": "assets/textures/bark_cherry_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:07:34+00:00",
+  "saved": "2026-10-27T20:18:36+00:00",
   "hd": {
     "size": 2048,
     "files": {
-      "color": "assets/textures/hd/bark_cherry_stylized_hd.png"
+      "color": "assets/textures/hd/bark_cherry_stylized_hd.png",
+      "normal": "assets/textures/hd/bark_cherry_stylized_hd_normal.png",
+      "height": "assets/textures/hd/bark_cherry_stylized_hd_height.png"
     }
   },
   "source": {
     "ridges": 4,
-    "depth": 0.2,
-    "width": 0.12,
-    "wiggle": 0.25,
-    "plates": 0,
-    "detail": 0.2,
+    "depth": 0.3,
+    "width": 0.1,
+    "wiggle": 0.4,
+    "plates": 0.1,
+    "detail": 0.25,
+    "tint": 0.1,
+    "flakes": 0.25,
+    "accent": "#B98A72",
     "seed": 6,
-    "dark": "#3E2420",
-    "light": "#8A5146",
+    "dark": "#3A2019",
+    "light": "#8E4E40",
     "type": "bark"
   },
   "steps": [
@@ -40,8 +49,8 @@
       "op": "rotate"
     },
     {
-      "strength": 0.75,
-      "colors": 6,
+      "strength": 0.6,
+      "colors": 7,
       "shape": 0.5,
       "saturation": 1.08,
       "relief": true,

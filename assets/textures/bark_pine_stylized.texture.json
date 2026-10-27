@@ -2,10 +2,14 @@
   "name": "bark_pine_stylized",
   "profile": "bark",
   "maps": [
-    "color"
+    "color",
+    "normal",
+    "height"
   ],
   "files": {
-    "color": "assets/textures/bark_pine_stylized.png"
+    "color": "assets/textures/bark_pine_stylized.png",
+    "normal": "assets/textures/bark_pine_stylized_normal.png",
+    "height": "assets/textures/bark_pine_stylized_height.png"
   },
   "meters": 2.0,
   "tags": [
@@ -15,29 +19,34 @@
   ],
   "recipe": "assets/textures/bark_pine_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:06:32+00:00",
+  "saved": "2026-10-27T20:18:03+00:00",
   "hd": {
     "size": 2048,
     "files": {
-      "color": "assets/textures/hd/bark_pine_stylized_hd.png"
+      "color": "assets/textures/hd/bark_pine_stylized_hd.png",
+      "normal": "assets/textures/hd/bark_pine_stylized_hd_normal.png",
+      "height": "assets/textures/hd/bark_pine_stylized_hd_height.png"
     }
   },
   "source": {
     "ridges": 5,
-    "depth": 0.7,
-    "width": 0.35,
+    "depth": 0.8,
+    "width": 0.18,
     "wiggle": 0.5,
-    "plates": 0.5,
-    "detail": 0.3,
+    "plates": 0.85,
+    "detail": 0.35,
+    "tint": 0.15,
+    "flakes": 0.15,
+    "accent": "#C98A5E",
     "seed": 2,
-    "dark": "#3A1E12",
-    "light": "#B5653A",
+    "dark": "#3A1C10",
+    "light": "#B8683C",
     "type": "bark"
   },
   "steps": [
     {
-      "strength": 0.75,
-      "colors": 6,
+      "strength": 0.6,
+      "colors": 7,
       "shape": 0.5,
       "saturation": 1.08,
       "relief": true,

@@ -14,6 +14,7 @@ Receptfält (alla utom name är valfria):
                           assets/textures/catalog.json (meters, eller scales för texturer utan recept), annars 1,08
   bark_uv                 texturens skala på just den här tillgången, relativt materialet:
                           {"tiling": 1 (fler upprepningar), "along": 1 (sträckt längs), "around": 1 (sträckt runt)}
+  bark_normal             false = ingen normalkarta på barken (annars <bark>_normal.png om materialet har en)
   bark_blend              texturblandning på barken (standard enligt arten), blandas i klientens shader:
                           {"base": {"texture", "height" (m), "strength" 0–1, "dark", "tint", "scale"},
                            "tip": {"texture", "from" 0–1 längs grenen, "level", "strength", "tint", "scale"}}
@@ -141,6 +142,9 @@ def main():
                             if isinstance(v, dict) and v.get("texture") and (TEX / f"{v['texture']}.png").exists()}
     gen |= {"name": name, "out": str(glb), "bark": str(TEX / f"{bark}.png"), "leaves": str(TEX / f"{leaves}.png"),
             "barkRepeat": recipe.get("bark_repeat") or material_meters(bark, 1.08)}
+    # Barkens normalkarta (Ateljéns material har <namn>_normal.png): samma höjdfält som färgen, ger relief på stammen
+    if (TEX / f"{bark}_normal.png").exists() and recipe.get("bark_normal", True):
+        gen["barkNormal"] = str(TEX / f"{bark}_normal.png")
     if recipe.get("bark_uv"):
         gen["barkUV"] = {k: float(v) for k, v in recipe["bark_uv"].items() if k in ("tiling", "along", "around") and float(v) > 0}
     # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.

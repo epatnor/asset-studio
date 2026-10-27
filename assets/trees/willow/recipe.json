@@ -1,6 +1,6 @@
 {
   "leaves": "leaf_birch_hang",
-  "bark": "bark_stylized",
+  "bark": "bark_furrowed_stylized",
   "bark_blend": {
     "base": {
       "texture": "bark_spruce_stylized",

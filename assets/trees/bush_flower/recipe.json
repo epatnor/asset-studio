@@ -1,6 +1,6 @@
 {
   "leaves": "leaffine_white",
-  "bark": "bark_stylized",
+  "bark": "bark_furrowed_stylized",
   "bark_blend": {
     "base": {
       "strength": 0.5,

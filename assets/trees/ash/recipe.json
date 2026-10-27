@@ -15,9 +15,9 @@
   },
   "bark_blend": {
     "base": {
-      "strength": 0.75,
+      "strength": 0.45,
       "texture": "moss_stylized",
-      "height": 0.9,
+      "height": 0.6,
       "dark": 0.3,
       "tint": "#ffffff",
       "scale": 1.5
@@ -37,7 +37,7 @@
   "leaf_tint": "#6E9F42",
   "species": {
     "trunk": {
-      "radius": 0.055
+      "radius": 0.065
     },
     "growth": "colonize",
     "colonize": {

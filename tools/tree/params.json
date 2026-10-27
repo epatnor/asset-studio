@@ -3,7 +3,7 @@
   "generator": "tree",
   "label": "Trees and bushes",
   "kinds": [
-    {"id": "tree", "label": "Tree", "species": ["cardtree", "cardbirch"], "height": 8, "start": "oak"},
+    {"id": "tree", "label": "Tree", "species": ["cardtree", "cardbirch", "fir"], "height": 8, "start": "oak"},
     {"id": "bush", "label": "Bush", "species": ["cardbush"], "height": 1.5, "start": "bush_round"},
     {"id": "rock", "label": "Stone", "generator": "prop", "species": ["rock", "rock_mossy", "boulder_lowpoly", "boulder_mossy", "rock_slab", "standing_stone", "rock_cluster", "basalt"], "height": 1.2},
     {"id": "prop", "label": "Prop", "soon": true},
@@ -12,7 +12,8 @@
   "species": [
     "cardtree",
     "cardbirch",
-    "cardbush"
+    "cardbush",
+    "fir"
   ],
   "parts": [
     {"id": "asset", "label": "Tree", "accent": "#5b6b52", "kinds": ["tree", "bush"]},

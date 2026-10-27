@@ -2,10 +2,14 @@
   "name": "bark_weathered_stylized",
   "profile": "bark",
   "maps": [
-    "color"
+    "color",
+    "normal",
+    "height"
   ],
   "files": {
-    "color": "assets/textures/bark_weathered_stylized.png"
+    "color": "assets/textures/bark_weathered_stylized.png",
+    "normal": "assets/textures/bark_weathered_stylized_normal.png",
+    "height": "assets/textures/bark_weathered_stylized_height.png"
   },
   "meters": 2.0,
   "tags": [
@@ -15,31 +19,36 @@
   ],
   "recipe": "assets/textures/bark_weathered_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:07:54+00:00",
+  "saved": "2026-10-27T20:18:52+00:00",
   "hd": {
     "size": 2048,
     "files": {
-      "color": "assets/textures/hd/bark_weathered_stylized_hd.png"
+      "color": "assets/textures/hd/bark_weathered_stylized_hd.png",
+      "normal": "assets/textures/hd/bark_weathered_stylized_hd_normal.png",
+      "height": "assets/textures/hd/bark_weathered_stylized_hd_height.png"
     }
   },
   "source": {
-    "ridges": 8,
-    "depth": 0.6,
-    "width": 0.25,
-    "wiggle": 0.6,
-    "plates": 0,
-    "detail": 0.3,
+    "ridges": 7,
+    "depth": 0.75,
+    "width": 0.22,
+    "wiggle": 0.8,
+    "plates": 0.2,
+    "detail": 0.4,
+    "tint": 0.08,
+    "flakes": 0.1,
+    "accent": "#C9C2B0",
     "seed": 7,
-    "dark": "#3D3833",
-    "light": "#A8A096",
+    "dark": "#3A3530",
+    "light": "#B0A89C",
     "type": "bark"
   },
   "steps": [
     {
-      "strength": 0.75,
-      "colors": 6,
+      "strength": 0.6,
+      "colors": 7,
       "shape": 0.5,
-      "saturation": 0.9,
+      "saturation": 1.08,
       "relief": true,
       "op": "stylize"
     }

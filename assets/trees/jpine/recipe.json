@@ -6,7 +6,7 @@
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
-    "cardsPerM2": 1.45,
+    "cardsPerM2": 1.9,
     "crownUnion": 1.35,
     "tipCards": 4,
     "cardCore": 0,
@@ -17,9 +17,9 @@
   },
   "bark_blend": {
     "base": {
-      "strength": 0.75,
+      "strength": 0.45,
       "texture": "moss_stylized",
-      "height": 0.9,
+      "height": 0.6,
       "dark": 0.3,
       "tint": "#ffffff",
       "scale": 1.5

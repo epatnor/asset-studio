@@ -30,7 +30,7 @@ function envelope(shape, v) {
   }
 }
 
-const DEFAULTS = { shape: 'round', width: 0.5, crownStart: 0.38, points: 700, influence: 0.22, kill: 0.05, step: 0.034, tropism: 0.12, gravity: 0, irregular: 0.35, gaps: 0.3, pipe: 2.0, smooth: 3 };
+const DEFAULTS = { shape: 'round', width: 0.5, crownStart: 0.38, points: 700, influence: 0.22, kill: 0.05, step: 0.034, tropism: 0.12, gravity: 0, irregular: 0.35, gaps: 0.3, pipe: 2.0, smooth: 5 };
 
 export function colonizeSkeleton(sp, seed, size = {}) {
   const C = { ...DEFAULTS, ...(sp.colonize ?? {}) };
@@ -144,12 +144,14 @@ export function colonizeSkeleton(sp, seed, size = {}) {
     // Gles ut kedjan till ungefär ett led per C.spacing (tillväxtstegen är korta; varje led blir en barkring och, i
     // kvistarnas yttre del, en kvistpunkt för lövverket). Ändarna och alla förgreningar behålls, så att barnen sitter
     // exakt på sina leder
+    // Stammen och grovgrenarna får tätare leder (mjukare böjar, naturligare stam) än kvistarna
+    const space = (C.spacing ?? 0.07) * [0.3, 0.55, 0.8, 1][Math.min(level, 3)];
     const joints = new Set(side.map((x) => x.at));
     const keep = [0];
     let run = 0;
     for (let i = 1; i < list.length; i++) {
       run += len(sub(list[i].p, list[i - 1].p));
-      if (i === list.length - 1 || joints.has(i) || run >= (C.spacing ?? 0.07)) { keep.push(i); run = 0; }
+      if (i === list.length - 1 || joints.has(i) || run >= space) { keep.push(i); run = 0; }
     }
     const at = new Map(keep.map((i, j) => [i, j]));
     const nodesOut = keep.map((i, j) => ({ p: list[i].p, r: j === 0 && firstR !== undefined ? firstR : list[i].r }));
