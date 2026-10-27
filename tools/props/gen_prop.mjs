@@ -57,7 +57,134 @@ function rockField(size, o, rr) {
   return { f, cut, extent: size * 1.1 };
 }
 
+// ---------- Low poly-sten: polygonernas kanter är stenens kanter (Patriks idé). Stenen är det konvexa höljet av ett
+// tiotal punkter på en tillplattad ellipsoid med platt botten; trianglar i samma plan slås ihop till en yta, och varje
+// yta får en smal nött kant längs sina gränser: ljusare, med normaler som lutar mot grannytorna, så att kanten läser som
+// en fas utan extra geometri. Ett hundratal trianglar per sten. ----------
+function convexHull(P) {
+  const eps = 1e-7, n = P.length;
+  const nrm = (f) => norm(cross(sub(P[f[1]], P[f[0]]), sub(P[f[2]], P[f[0]])));
+  // Starttetraeder ur fyra punkter som inte ligger i samma plan
+  let i0 = 0, i1 = 1;
+  for (let i = 1; i < n; i++) if (Math.hypot(...sub(P[i], P[i0])) > Math.hypot(...sub(P[i1], P[i0]))) i1 = i;
+  let i2 = -1, best = 0;
+  for (let i = 0; i < n; i++) { const a = Math.hypot(...cross(sub(P[i1], P[i0]), sub(P[i], P[i0]))); if (a > best) { best = a; i2 = i; } }
+  let i3 = -1; best = 0;
+  const n0 = norm(cross(sub(P[i1], P[i0]), sub(P[i2], P[i0])));
+  for (let i = 0; i < n; i++) { const d = Math.abs(dot(n0, sub(P[i], P[i0]))); if (d > best) { best = d; i3 = i; } }
+  const inner = mul(add(add(P[i0], P[i1]), add(P[i2], P[i3])), 0.25);
+  const out = (f) => (dot(nrm(f), sub(P[f[0]], inner)) < 0 ? [f[0], f[2], f[1]] : f);
+  let faces = [[i0, i1, i2], [i0, i1, i3], [i0, i2, i3], [i1, i2, i3]].map(out);
+  for (let p = 0; p < n; p++) {
+    if ([i0, i1, i2, i3].includes(p)) continue;
+    const vis = faces.filter((f) => dot(nrm(f), sub(P[p], P[f[0]])) > eps);
+    if (!vis.length) continue;
+    const edges = new Set(vis.flatMap((f) => [`${f[0]},${f[1]}`, `${f[1]},${f[2]}`, `${f[2]},${f[0]}`]));
+    const horizon = [...edges].map((e) => e.split(',').map(Number)).filter(([a, b]) => !edges.has(`${b},${a}`));
+    faces = faces.filter((f) => !vis.includes(f)).concat(horizon.map(([a, b]) => [a, b, p]));
+  }
+  return faces.map((f) => ({ f, n: nrm(f) }));
+}
+
+// En bumling kan vara flera block som går in i varandra (chunks), de mindre lutade mot det största
+function buildLowpolyRock(size, o, rr, offset = [0, 0, 0]) {
+  const n = Math.round((o.chunks ?? [1, 1])[0] + ((o.chunks ?? [1, 1])[1] - (o.chunks ?? [1, 1])[0]) * rr());
+  const out = { stone: empty(), moss: empty() };
+  for (let c = 0; c < n; c++) {
+    const a = rr() * 6.283, s = c ? size * (0.45 + rr() * 0.25) : size;
+    const off = c ? add(offset, [Math.cos(a) * size * 0.38, 0, Math.sin(a) * size * 0.38]) : offset;
+    const g = lowpolyChunk(s, o, rr, off);
+    append(out.stone, g.stone); append(out.moss, g.moss);
+  }
+  return out;
+}
+
+function lowpolyChunk(size, o, rr, offset) {
+  const pickR = ([a, b]) => Math.round(a + (b - a) * rr());
+  const sq = Array.isArray(o.squash) ? o.squash[0] + (o.squash[1] - o.squash[0]) * rr() : o.squash ?? 0.7;
+  const R = [size * 0.5 * (0.85 + rr() * 0.3), size * 0.5 * sq, size * 0.5 * (0.85 + rr() * 0.3)];
+  const cut = -R[1] * 0.25; // stenen sjunker en bit ner i marken
+  const P = [];
+  if (o.prism) {
+    // Basaltpelare: n hörn nere och uppe, toppen lite sned
+    const rot = rr() * 6.283, tilt = [(rr() - 0.5) * 0.25, (rr() - 0.5) * 0.25], h = R[1] * 2;
+    for (let i = 0; i < o.prism; i++) {
+      const a = rot + (i / o.prism) * 6.283, x = Math.cos(a) * R[0], z = Math.sin(a) * R[0];
+      P.push([x, cut, z], [x, h + x * tilt[0] + z * tilt[1], z]);
+    }
+  } else {
+    // Punkter jämnt runt ellipsoiden (gyllene spiral) med lite slump, under marken plattade till botten
+    const N = pickR(o.points ?? [10, 14]);
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (2 * (i + 0.5)) / N, rad = Math.sqrt(1 - y * y), th = i * 2.39996 + rr() * 1.2, k = 0.72 + rr() * 0.34;
+      P.push([Math.cos(th) * rad * R[0] * k, Math.max(cut, y * R[1] * k + R[1] * 0.15), Math.sin(th) * rad * R[2] * k]);
+    }
+    if (rr() < (o.flatTop ?? 0.4)) { const t = R[1] * 0.95, w = 0.45; for (let j = 0; j < 3; j++) { const a = rr() * 6.283; P.push([Math.cos(a) * R[0] * w, t, Math.sin(a) * R[2] * w]); } }
+    for (let j = 0; j < 4; j++) { const a = j * 1.571 + rr() * 0.8; P.push([Math.cos(a) * R[0] * 0.9, cut, Math.sin(a) * R[2] * 0.9]); } // platt botten
+  }
+  const tris = convexHull(P);
+  // Ytor: grannar som nästan ligger i samma plan (inom ~15° från ytans första triangel) blir en yta, så att den nötta
+  // kanten bara hamnar på riktiga brytkanter och inte som kryss över flata sidor
+  const byEdge = new Map();
+  tris.forEach((t, i) => { for (let k = 0; k < 3; k++) byEdge.set(`${t.f[k]},${t.f[(k + 1) % 3]}`, i); });
+  const groupOf = new Array(tris.length).fill(-1), groups = [];
+  const same = Math.cos((o.merge ?? 15) * Math.PI / 180);
+  tris.forEach((t0, i0) => {
+    if (groupOf[i0] >= 0) return;
+    const g = { n0: t0.n, tris: [] }, queue = [i0];
+    groupOf[i0] = groups.length;
+    while (queue.length) {
+      const i = queue.pop(), t = tris[i];
+      g.tris.push(t.f);
+      for (let k = 0; k < 3; k++) {
+        const j = byEdge.get(`${t.f[(k + 1) % 3]},${t.f[k]}`);
+        if (j !== undefined && groupOf[j] < 0 && dot(tris[j].n, g.n0) > same) { groupOf[j] = groups.length; queue.push(j); }
+      }
+    }
+    // Ytans normal: medel av trianglarnas (ytan är bara nästan plan)
+    const ids = [...groupOf.keys()].filter((i) => groupOf[i] === groups.length);
+    g.n = norm(ids.reduce((a, i) => add(a, tris[i].n), [0, 0, 0]));
+    groups.push(g);
+  });
+  // Hörnens normaler (medel av ytorna runt dem) ger den nötta kanten sin fas
+  const vn = P.map(() => [0, 0, 0]);
+  for (const g of groups) for (const f of g.tris) for (const v of new Set(f)) vn[v] = add(vn[v], g.n);
+  const stone = empty(), moss = empty();
+  const S = 0.5 / Math.max(0.6, size * 0.9), wear = size * (o.bevel ?? 0.05), edgeTint = 1, faceTint = o.faceTint ?? 0.84; // texturen glest: stora lugna fält
+  const push = (g, p, n, c) => {
+    const ax = [0, 1, 2].reduce((m, x) => (Math.abs(n[x]) > Math.abs(n[m]) ? x : m), 0);
+    const [u1, u2] = ax === 0 ? [2, 1] : ax === 1 ? [0, 2] : [0, 1];
+    const q = add(p, offset), ao = 0.7 + 0.3 * clamp01((p[1] - cut) / (R[1] * 1.2));
+    g.positions.push(...q); g.normals.push(...n); g.uvs.push(q[u1] * S, -q[u2] * S); g.colors.push(c * ao, c * ao, c * ao); g.wind.push(0);
+    return g.positions.length / 3 - 1;
+  };
+  for (const g of groups) {
+    if (g.n[1] < -0.9) continue; // botten syns aldrig
+    const edges = new Map();
+    for (const f of g.tris) for (let k = 0; k < 3; k++) { const a = f[k], b = f[(k + 1) % 3]; const key = `${b},${a}`; if (edges.has(key)) edges.delete(key); else edges.set(`${a},${b}`, [a, b]); }
+    // Gränsen som en ordnad slinga
+    const next = new Map([...edges.values()].map(([a, b]) => [a, b]));
+    const loop = [next.keys().next().value];
+    while (loop.length < next.size && next.get(loop.at(-1)) !== loop[0]) loop.push(next.get(loop.at(-1)));
+    const c = mul(loop.reduce((s, v) => add(s, P[v]), [0, 0, 0]), 1 / loop.length);
+    const isMoss = o.moss > 0 && !o.unified && g.n[1] > 1 - o.moss * 1.25;
+    const G = isMoss ? moss : stone;
+    // Inre slinga: varje hörn flyttas mot mitten så att kanten blir ungefär wear bred (varierar lite: nött, inte fräst)
+    const inner = loop.map((v) => { const d = sub(c, P[v]), l = Math.hypot(...d); return add(P[v], mul(d, Math.min(0.45, (wear * (0.7 + rr() * 0.6)) / Math.max(l, 1e-6)))); });
+    const ic = push(G, c, g.n, faceTint);
+    const ii = inner.map((p) => push(G, p, g.n, faceTint));
+    const oo = loop.map((v) => push(G, P[v], norm(add(mul(norm(vn[v]), 0.65), mul(g.n, 0.35))), edgeTint));
+    for (let k = 0; k < loop.length; k++) {
+      const k2 = (k + 1) % loop.length;
+      G.indices.push(ic, ii[k], ii[k2]);
+      G.indices.push(ii[k], oo[k], oo[k2], ii[k], oo[k2], ii[k2]);
+    }
+  }
+  return { stone, moss };
+}
+
 function buildRock(size, o, rr, offset = [0, 0, 0], cellScale = 1) {
+  if (o.shape === 'lowpoly') return buildLowpolyRock(size, o, rr, offset);
   const { f, cut, extent } = rockField(size, o, rr);
   const lo = [-extent, cut - size * 0.05, -extent], hi = [extent, extent, extent];
   const net = surfaceNets(f, lo, hi, size * (o.cell ?? 0.07) * cellScale);
@@ -97,10 +224,17 @@ function buildRock(size, o, rr, offset = [0, 0, 0], cellScale = 1) {
 
 function rockLods() {
   const n = pick(sp.count ?? [1, 1]);
+  // Basaltpelare står tätt i ett sexkantsmönster (närmast mitten först); andra stenar strös inom spread
+  const hex = sp.prism ? (() => {
+    const w = (Array.isArray(sp.size) ? sp.size[1] : sp.size) * 0.92, cells = [];
+    for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) cells.push([(i + j * 0.5) * w, j * w * 0.866]);
+    return cells.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) + (r() - 0.5) * w * 0.3);
+  })() : null;
   const placements = Array.from({ length: n }, (_, i) => {
     const s = Array.isArray(sp.size) ? between(sp.size) : sp.size * (n > 1 ? 0.6 + r() * 0.6 : 1);
     const a = r() * Math.PI * 2, d = n > 1 ? (sp.spread ?? 1) * Math.sqrt(r()) : 0;
-    return { s, off: [Math.cos(a) * d, 0, Math.sin(a) * d], seed: Math.floor(r() * 2 ** 31) };
+    const off = hex ? [hex[i][0], 0, hex[i][1]] : [Math.cos(a) * d, 0, Math.sin(a) * d];
+    return { s, off, seed: Math.floor(r() * 2 ** 31) };
   });
   return [1, 1.6, 2.6].map((cs) => {
     const parts = { stone: empty(), moss: empty() };

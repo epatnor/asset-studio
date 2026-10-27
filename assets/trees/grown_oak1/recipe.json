@@ -1,0 +1,36 @@
+{
+  "name": "grown_oak1",
+  "preset": "cardtree",
+  "seed": 11,
+  "height": 9,
+  "bark": "bark_mossy",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "round",
+      "width": 0.55,
+      "irregular": 0.45,
+      "gaps": 0.35
+    }
+  },
+  "leaves": "leaffine_sprig",
+  "leaf_mass": "leaf_mass",
+  "bark_blend": {
+    "base": {
+      "texture": "moss_painted",
+      "height": 0.9,
+      "strength": 0.75,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    },
+    "tip": {
+      "texture": "foliage_painted",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "grown_bush2",
+  "preset": "cardbush",
+  "seed": 19,
+  "height": 1.3,
+  "bark": "bark_mossy",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "irregular",
+      "width": 0.9,
+      "crownStart": 0.05,
+      "points": 240,
+      "gaps": 0.3,
+      "irregular": 0.7,
+      "influence": 0.26
+    }
+  },
+  "leaves": "leaf_oak",
+  "leaf_mass": "leaf_mass"
+}

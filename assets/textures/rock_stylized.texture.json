@@ -1,0 +1,168 @@
+{
+  "name": "rock_stylized",
+  "profile": "rock",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/rock_stylized.png",
+    "normal": "assets/textures/rock_stylized_normal.png",
+    "height": "assets/textures/rock_stylized_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "stone",
+    "rock",
+    "stylized"
+  ],
+  "recipe": "assets/textures/rock_stylized.texture.json",
+  "size": 1024,
+  "saved": "2026-10-27T17:52:27+00:00",
+  "hd": {
+    "size": 2048,
+    "files": {
+      "color": "assets/textures/hd/rock_stylized_hd.png",
+      "normal": "assets/textures/hd/rock_stylized_hd_normal.png",
+      "height": "assets/textures/hd/rock_stylized_hd_height.png"
+    }
+  },
+  "source": {
+    "kind": "worley",
+    "scale": 3,
+    "octaves": 4,
+    "sharpness": 0.3,
+    "seed": 1,
+    "dark": "#7E786E",
+    "light": "#AFA99C",
+    "type": "noise"
+  },
+  "steps": [
+    {
+      "amount": 0.05,
+      "scale": 4,
+      "seed": 7,
+      "op": "warp"
+    },
+    {
+      "edge": 0.45,
+      "cavity": 0.5,
+      "radius": 4,
+      "op": "edges"
+    },
+    {
+      "strength": 0.7,
+      "colors": 6,
+      "shape": 0.5,
+      "saturation": 1.08,
+      "relief": true,
+      "op": "stylize"
+    }
+  ],
+  "inputs": {},
+  "material": {
+    "meters": 2,
+    "normal": {
+      "on": true,
+      "strength": 1,
+      "soft": 1,
+      "mode": "normal"
+    },
+    "roughness": {
+      "base": 0.85,
+      "amount": 0.25,
+      "from": "lum",
+      "invert": false
+    },
+    "ao": {
+      "on": true,
+      "strength": 0.6,
+      "radius": 8
+    },
+    "metal": {
+      "on": false,
+      "from": "light",
+      "threshold": 0.6,
+      "rough": 0.35
+    },
+    "displace": {
+      "on": false,
+      "scale": 0.04
+    },
+    "pom": {
+      "on": false,
+      "depth": 0.04,
+      "steps": 24
+    },
+    "emission": {
+      "on": false,
+      "from": "low",
+      "threshold": 0.25,
+      "color": "#FF7A1A",
+      "intensity": 2
+    },
+    "alpha": {
+      "mode": "off",
+      "test": 0.5
+    },
+    "transmission": {
+      "amount": 0,
+      "thickness": 0.3,
+      "ior": 1.45
+    },
+    "sss": {
+      "amount": 0,
+      "color": "#E8B070"
+    },
+    "specular": {
+      "intensity": 1,
+      "color": "#FFFFFF"
+    },
+    "clearcoat": {
+      "amount": 0,
+      "rough": 0.1
+    },
+    "sheen": {
+      "amount": 0,
+      "color": "#FFFFFF",
+      "rough": 0.5
+    },
+    "aniso": {
+      "amount": 0,
+      "rotation": 0
+    },
+    "irid": {
+      "amount": 0,
+      "ior": 1.3,
+      "thickness": 400
+    },
+    "detail": {
+      "on": false,
+      "texture": "surface_forestfloor",
+      "tiling": 8,
+      "strength": 0.4,
+      "fade": 8
+    },
+    "notile": false,
+    "macro": {
+      "amount": 0,
+      "scale": 20
+    },
+    "uv": {
+      "offset_x": 0,
+      "offset_y": 0,
+      "rotation": 0
+    },
+    "tex": {
+      "filter": "trilinear",
+      "anisotropy": 8,
+      "wrap": "repeat",
+      "color_space": "srgb",
+      "data_space": "linear"
+    }
+  },
+  "blend": {
+    "layers": []
+  }
+}

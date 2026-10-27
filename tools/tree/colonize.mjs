@@ -141,13 +141,24 @@ export function colonizeSkeleton(sp, seed, size = {}) {
       cur = kids[0];
       list.push(cur);
     }
-    const nodesOut = list.map((n, i) => ({ p: n.p, r: i === 0 && firstR !== undefined ? firstR : n.r }));
+    // Gles ut kedjan till ungefär ett led per C.spacing (tillväxtstegen är korta; varje led blir en barkring och, i
+    // kvistarnas yttre del, en kvistpunkt för lövverket). Ändarna och alla förgreningar behålls, så att barnen sitter
+    // exakt på sina leder
+    const joints = new Set(side.map((x) => x.at));
+    const keep = [0];
+    let run = 0;
+    for (let i = 1; i < list.length; i++) {
+      run += len(sub(list[i].p, list[i - 1].p));
+      if (i === list.length - 1 || joints.has(i) || run >= (C.spacing ?? 0.07)) { keep.push(i); run = 0; }
+    }
+    const at = new Map(keep.map((i, j) => [i, j]));
+    const nodesOut = keep.map((i, j) => ({ p: list[i].p, r: j === 0 && firstR !== undefined ? firstR : list[i].r }));
     let length = 0;
     for (let i = 1; i < list.length; i++) length += len(sub(list[i].p, list[i - 1].p));
     const idx = branches.length;
     branches.push({ level, nodes: nodesOut, parent, t, segments: segs[Math.min(level, segs.length - 1)] ?? 4, length, phase: r() * 6.283, terminal: !side.length });
     // Barnets första ring ligger i fogen (på förälderns axel), med barnets egen, mindre radie
-    for (const s of side) chain2(list[s.at], s.node, idx, s.at / Math.max(1, list.length - 1), Math.min(level + 1, 3));
+    for (const s of side) chain2(list[s.at], s.node, idx, at.get(s.at) / Math.max(1, keep.length - 1), Math.min(level + 1, 3));
     return idx;
   };
   // En sidogren: börjar i fogen (på förälderns axel) och fortsätter i barnet

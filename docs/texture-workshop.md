@@ -273,6 +273,8 @@ Granskning mot `patriks_input/AAA_Procedural_Textures_Stylization_ThreeJS_Refere
 - **Nya färdiga material:** Sand ripples, Snow drift, Dry mud och Cracked ice under Ground, och gruppen Stylized: Painted stone, Painted bark, Painted cliff och Painted meadow. De två sista utgår från bilder och kör Remove lighting och Stylize.
 - **Storebror och lillebror:** Spara har *Big brother* (av, 2048 eller 4096, normalt 2048). Texturen ritas först i den storleken och sparas i `assets/textures/hd/<namn>_hd*.png`. Den vanliga texturen (Size) skalas sedan ned ur den, och normalen normeras om. Lillebrodern blir översamplad, med renare kanter och lugnare mipmaps än om den ritades direkt i låg upplösning, och storebrodern finns kvar för närbilder och vidare arbete. Katalograden får `hd: {size, files}`. Det fungerar bara för att samma recept nu ger samma mönster i alla upplösningar.
 
+Fler färdiga material samma dag: Lava crust (självlysande sprickor), Basalt columns, Snowy cobblestone (snö i fogarna), Riverbed pebbles, Desert dunes, Swamp mud, Autumn forest floor, Weathered wood, Mossy bark, Temple tiles och Glowing moss (självlysande). Sparade som texturer: `rock_stylized` (bergyta för stenarna), `bark_stylized` och `bark_mossy` (för träden), alla med storebror i `hd/`.
+
 ## Frågor till Patrik
 
 0. ~~Drakstatyn~~: beställd från Tripo P2 (`assets/imported/dragon_statue`), används i labbet.

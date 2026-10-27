@@ -54,7 +54,19 @@ sun.shadow.normalBias = 0.03;
 sun.position.copy(sunDir.value).multiplyScalar(60);
 Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 160 });
 scene.add(sun, sun.target);
-const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64), new THREE.MeshStandardMaterial({ color: '#6fa046', roughness: 1 }));
+// Marken: målat gräs (ground_lush, nedtonat så att träden får stå i fokus), en upprepning per 2,5 m. En andra,
+// mycket större upprepning av samma textur multipliceras in, så att rutnätet inte syns på avstånd
+const grassTex = new THREE.TextureLoader().load('/assets/textures/ground_lush.png', (t) => { t.needsUpdate = true; });
+grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+grassTex.colorSpace = THREE.SRGBColorSpace;
+grassTex.anisotropy = 8;
+grassTex.repeat.set(240, 240); // skivan är 600 m bred
+const groundMat = new THREE.MeshStandardMaterial({ color: '#b4c7a0', map: grassTex, roughness: 1 });
+groundMat.onBeforeCompile = (sh) => {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+    diffuseColor.rgb *= mix(vec3(0.82), vec3(1.12), texture2D(map, vMapUv * 0.031 + 0.37).g);`);
+};
+const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64), groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);

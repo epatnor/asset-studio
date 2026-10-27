@@ -1,0 +1,36 @@
+{
+  "name": "grown_autumn1",
+  "preset": "cardtree",
+  "seed": 53,
+  "height": 8.5,
+  "bark": "bark_stylized",
+  "leaf_tint": "#C97A2E",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "oval",
+      "width": 0.5,
+      "crownStart": 0.3
+    }
+  },
+  "leaves": "leaffine_sprig",
+  "leaf_mass": "leaf_mass",
+  "bark_blend": {
+    "base": {
+      "texture": "moss_painted",
+      "height": 0.9,
+      "strength": 0.75,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    },
+    "tip": {
+      "texture": "foliage_painted",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  }
+}
