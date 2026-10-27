@@ -1,6 +1,6 @@
 // Väderkvarnen, fliken Vatten (docs/effektlabb.md, E3): vattnet provas i fyra scener, öppet vatten, en strand där
 // vågorna sköljer in, en bäck med vattenväxter och en liten sjö med träd för speglingar. Ytan är shared/effects/water.js,
-// himlen och solen weather.js. Spakarna, vattentyperna och scenerna är data i tools/water/water.json; sparade
+// himlen, ljuset, dimman, regnet och åskan Väder-flikens atmosfär (weather.js), med väderlägena ur Väder-fliken. Spakarna, vattentyperna och scenerna är data i tools/water/water.json; sparade
 // vattentyper i assets/water/. Egen renderare (WebGPU, WebGL2 som reserv), som Väder-fliken. Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
 import { pass, texture, positionWorld, mix, smoothstep, mx_noise_float, vec3, float, attribute } from 'three/tsl';
@@ -8,7 +8,7 @@ import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { sunAt, createSky } from '../shared/effects/weather.js';
+import { createAtmosphere } from '../shared/effects/weather.js';
 import { createWater, bedAndFlow } from '../shared/effects/water.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
@@ -40,7 +40,11 @@ function grid(xs, zs, yAt) {
 }
 
 export async function createWaterTab({ api, el, view, side, drawer, footer }) {
-  const info = await api('/api/water');
+  const [info, wx] = await Promise.all([api('/api/water'), api('/api/weather')]);
+  // Väderlägena ur Väder-fliken (färdiga och sparade) blir valen i kortet Weather
+  const wxDefaults = Object.fromEntries(wx.params.map((q) => [q.key, q.default]));
+  const weathers = { ...Object.fromEntries(Object.entries(wx.presets).map(([id, p]) => [id, p])), ...Object.fromEntries(wx.saved.map((x) => [`saved:${x.name}`, { label: x.name, ...x.settings }])) };
+  info.params.find((q) => q.key === 'weather').options = Object.entries(weathers).map(([id, p]) => ({ id, label: p.label ?? id }));
   const defaults = Object.fromEntries(info.params.map((q) => [q.key, q.default]));
   const isRecipe = (q) => q.recipe !== false;
   const vals = { ...defaults };
@@ -63,17 +67,9 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
   controls.maxPolarAngle = Math.PI * 0.49;
   controls.maxDistance = 120;
 
-  // --- Solen och himlen ---
-  const sky = createSky();
-  scene.backgroundNode = sky.node;
-  const hemi = new THREE.HemisphereLight('#cfe0ff', '#4a5a30', 1);
-  const sunLight = new THREE.DirectionalLight('#ffffff', 3);
-  sunLight.castShadow = true;
-  sunLight.shadow.mapSize.set(2048, 2048);
-  sunLight.shadow.bias = -0.0004;
-  sunLight.shadow.normalBias = 0.04;
-  Object.assign(sunLight.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 140 });
-  scene.add(hemi, sunLight, sunLight.target);
+  // --- Atmosfären: samma som Väder-flikens (sol och måne, moln, dimma, regn och snö, åska) ---
+  const atm = createAtmosphere({ scene, shadowRange: 32 });
+  const sky = atm.sky;
 
   // --- Bilden: scenen (med djup, som vattnet läser) och glöden från solglittret ---
   const pipeline = new THREE.RenderPipeline(renderer);
@@ -317,22 +313,19 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     note.textContent = failed.size ? `Could not load: ${[...failed].join(', ')}` : 'Click the water to make ripples';
   }
 
-  // --- Spakarna verkställs: solen, himlen, dis och vattnet ---
-  let sun = sunAt(vals.hour, vals.azimuth);
+  // --- Spakarna verkställs: vädret (med scenens tid och solriktning) och vattnet ---
+  let sun = null;
   function apply() {
-    sun = sunAt(vals.hour, vals.azimuth);
-    const c = new THREE.Vector3(...(active?.S.camera.target ?? [0, 0, 0]));
-    sunLight.target.position.copy(c);
-    sunLight.position.copy(c).addScaledVector(sun.dir, 70);
-    sunLight.color.copy(sun.color);
-    sunLight.intensity = vals.sun * sun.strength;
-    sunLight.castShadow = sun.strength > 0.01;
-    hemi.intensity = sun.ambient;
-    hemi.color.copy(sun.zenith).lerp(new THREE.Color('#ffffff'), 0.45);
-    sky.set(sun, vals.glow);
-    scene.fog = vals.haze > 0 ? new THREE.FogExp2(sun.horizon, vals.haze) : null;
-    renderer.toneMappingExposure = vals.exposure;
-    active?.water.set(vals, sun, { light: vals.sun, ambient: sun.ambient });
+    const w = { ...wxDefaults, ...(weathers[vals.weather] ?? {}), hour: vals.hour, azimuth: vals.azimuth };
+    atm.set(w);
+    atm.moveTo(new THREE.Vector3(...(active?.S.camera.target ?? [0, 0, 0])));
+    sun = atm.sun;
+    renderer.toneMappingExposure = vals.exposure * (w.exposure ?? 1) * atm.exposure;
+    // Vattnet glittrar i det som lyser: solen, eller månen på natten
+    const U = sky.uniforms;
+    const light = { dir: atm.keyDir, color: atm.key.color, strength: 1, zenith: U.zenith.value, horizon: U.horizon.value };
+    active?.water.set(vals, light, { light: atm.key.intensity, ambient: atm.hemi.intensity });
+    if (active) active.water.uniforms.rain.value = atm.rain;
   }
 
   // --- Som i de andra vyerna: mallarna (vattentyperna) i lådan till vänster, spakarna och Spara till höger. Scenerna
@@ -359,7 +352,7 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
   const COLORS = { color: '#3fa6a0', waves: '#5aa0d8', light: '#f0d080', foam: '#e8eef0', shore: '#c8a878', flow: '#58b0c8', caustics: '#a0e0f0', sky: '#e0a030' };
   const groupCards = {}, rows = {};
   for (const g of [...info.groups.filter((x) => x.id !== 'scene' && x.id !== 'sky'), info.groups.find((x) => x.id === 'sky')]) {
-    const gb = cards.card(g.label, COLORS[g.id] ?? '#7aa8d8', { closed: g.id === 'sky', help: g.id === 'sky' ? 'The sky and sun belong to the scene; they are not saved in the water type' : undefined });
+    const gb = cards.card(g.label, COLORS[g.id] ?? '#7aa8d8', { help: g.id === 'sky' ? 'The weather belongs to the scene; it is not saved in the water type' : undefined });
     groupCards[g.id] = gb.parentElement;
     for (const q of info.params.filter((x) => x.group === g.id)) {
       const row = cards.rowFor(q)(q, get, set, () => { if (isRecipe(q)) markDrawer(null); apply(); });
@@ -459,6 +452,7 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
       if (camera.position.y < minY) camera.position.y = minY;
     }
     controls.update();
+    atm.update(dt, time, camera);
     pipeline.render();
   }
   function frame() {
@@ -471,7 +465,7 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
       block(fStats, 'Water', `${info.params[0].options.find((o) => o.id === vals.scene)?.label} · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'}`);
-      block(fSun, 'Sun', `${clock(vals.hour)} · ${Math.round(sun.elevation / DEG)}° up · toward ${Math.round(vals.azimuth)}°`);
+      block(fSun, 'Weather', `${weathers[vals.weather]?.label ?? vals.weather} · ${clock(vals.hour)} · sun ${Math.round(sun.elevation / DEG)}°`);
     }
   }
   await showScene(vals.scene);

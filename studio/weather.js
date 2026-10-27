@@ -1,14 +1,15 @@
-// Väderkvarnen, fliken Väder (docs/effektlabb.md, E4): en stuga i en glänta där vädret provas. Börjar med ljusstrålar:
-// solen över dygnet, himlen, volymetriskt solljus genom kronorna (shared/effects/weather.js), dis och stoft i luften.
+// Väderkvarnen, fliken Väder (docs/effektlabb.md, E4): en stuga i en glänta där vädret provas: solen och månen över
+// dygnet, moln, regn och snö, åska, höjddimma, stjärnor och volymetriskt ljus genom kronorna, allt ur den gemensamma
+// atmosfären i shared/effects/weather.js (samma som Vatten-fliken), plus stoft i luften.
 // Spakarna och väderlägena är data i tools/weather/weather.json; sparade väderlägen i assets/weather/. Egen renderare
 // (WebGPU, WebGL2 som reserv) med glöd, som Väderkvarnens Vind-flik. Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
-import { pass, texture, positionWorld, mix, smoothstep, mx_noise_float, vec3 } from 'three/tsl';
+import { pass, texture, positionWorld, mix, smoothstep, mx_noise_float, vec3, uniform, float } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { sunAt, createSky, createShafts } from '../shared/effects/weather.js';
+import { sunAt, createAtmosphere, createShafts } from '../shared/effects/weather.js';
 import { createParticles } from '../shared/effects/vfx.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
@@ -40,19 +41,10 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.495;
 
-  // --- Solen, himlen och ljuset ---
-  const sky = createSky();
-  scene.backgroundNode = sky.node;
-  const hemi = new THREE.HemisphereLight('#cfe0ff', '#4a5a30', 1);
-  const sunLight = new THREE.DirectionalLight('#ffffff', 3);
-  sunLight.castShadow = true;
-  sunLight.shadow.mapSize.set(2048, 2048);
-  sunLight.shadow.bias = -0.0004;
-  sunLight.shadow.normalBias = 0.04;
-  Object.assign(sunLight.shadow.camera, { left: -28, right: 28, top: 28, bottom: -28, near: 1, far: 110 });
-  const CENTER = new THREE.Vector3(0, 0, -8);
-  sunLight.target.position.copy(CENTER);
-  scene.add(hemi, sunLight, sunLight.target);
+  // --- Atmosfären: sol och måne, himmel och moln, dimma, regn och snö, åska (shared/effects/weather.js) ---
+  const atm = createAtmosphere({ scene, shadowRange: 28 });
+  atm.moveTo(new THREE.Vector3(0, 0, -8));
+  const sunLight = atm.key;
 
   // --- Marken: äng med en stig av kullersten fram till stugan ---
   const texLoader = new THREE.TextureLoader();
@@ -60,7 +52,10 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   const gMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.95 });
   const xz = positionWorld.xz;
   const path = smoothstep(1.6, 0.9, xz.x.sub(xz.y.mul(0.08)).abs().add(mx_noise_float(vec3(xz.mul(0.6), 0)).mul(0.4))).mul(smoothstep(-12, -9.5, xz.y));
-  gMat.colorNode = mix(texture(tex('ground_meadow'), xz.div(3)).rgb.mul(0.9), texture(tex('cobblestone'), xz.div(1.1)).rgb.mul(0.85), path);
+  // Våt mark när det regnar: mörkare och blankare
+  const wet = uniform(0);
+  gMat.colorNode = mix(texture(tex('ground_meadow'), xz.div(3)).rgb.mul(0.9), texture(tex('cobblestone'), xz.div(1.1)).rgb.mul(0.85), path).mul(float(1).sub(wet.mul(0.35)));
+  gMat.roughnessNode = float(0.95).sub(wet.mul(path.mul(0.45).add(0.2)));
   const ground = new THREE.Mesh(new THREE.CircleGeometry(150, 64).rotateX(-Math.PI / 2), gMat);
   ground.receiveShadow = true;
   scene.add(ground);
@@ -104,30 +99,28 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   const glowPass = bloom(shafts.node, 0.35, 0.5, 0.9);
   pipeline.outputNode = shafts.node.add(glowPass);
 
-  // --- Spakarna verkställs: solen, himlen, dis, strålar och stoft ---
+  // --- Spakarna verkställs: hela atmosfären, strålarna och stoftet ---
   let sun = sunAt(vals.hour, vals.azimuth);
   function apply() {
-    sun = sunAt(vals.hour, vals.azimuth);
-    sunLight.position.copy(CENTER).addScaledVector(sun.dir, 60);
-    sunLight.color.copy(sun.color);
-    sunLight.intensity = vals.sun * sun.strength;
-    sunLight.castShadow = sun.strength > 0.01;
-    hemi.intensity = sun.ambient;
-    hemi.color.copy(sun.zenith).lerp(new THREE.Color('#ffffff'), 0.45);
-    sky.set(sun, vals.glow);
-    scene.fog = vals.haze > 0 ? new THREE.FogExp2(sun.horizon, vals.haze) : null;
-    renderer.toneMappingExposure = vals.exposure;
-    const tint = vals.followSun ? sun.color.clone().lerp(new THREE.Color('#ffffff'), 0.15) : new THREE.Color(vals.shaftColor);
-    shafts.set({ ...vals, shafts: vals.shafts * sun.strength }, tint, sun.dir);
-    dust.set(dustSettings(vals.dust, `#${tint.getHexString()}`));
+    atm.set(vals);
+    sun = atm.sun;
+    renderer.toneMappingExposure = vals.exposure * atm.exposure;
+    // Strålarna följer nyckelljuset (solen, eller månen på natten) och dämpas av molnen
+    const keyCol = atm.key.color.clone();
+    const tint = vals.followSun ? keyCol.lerp(new THREE.Color('#ffffff'), 0.15) : new THREE.Color(vals.shaftColor);
+    const lightK = Math.min(1, atm.key.intensity / Math.max(0.1, vals.sun));
+    shafts.set({ ...vals, shafts: vals.shafts * lightK }, tint, atm.keyDir);
+    dust.set(dustSettings(Math.round(vals.dust * (vals.precip === 'none' ? 1 : 0.2)), `#${tint.getHexString()}`));
     dust.object.visible = vals.dust > 0;
+    wet.value = atm.rain > 0 ? Math.min(1, 0.4 + atm.rain) : 0;
   }
 
   // --- Korten ---
   const cards = createCards({ el, side });
   const get = (k) => vals[k], set = (k, v) => { vals[k] = v; };
   for (const g of info.groups) {
-    const body = cards.card(g.label, g.id === 'sun' ? '#e0a030' : g.id === 'shafts' ? '#f0c060' : '#7aa8d8');
+    const COL = { sun: '#e0a030', clouds: '#9fb4d0', precip: '#6aa0d8', storm: '#b9a6ff', fog: '#c0c8d0', night: '#5a6ab0', shafts: '#f0c060', air: '#7aa8d8' };
+    const body = cards.card(g.label, COL[g.id] ?? '#7aa8d8', { closed: ['storm', 'night', 'air'].includes(g.id) });
     for (const q of info.params.filter((x) => x.group === g.id)) body.append(cards.rowFor(q)(q, get, set, () => { mark(null); apply(); }));
   }
   const saveCard = cards.card('Save', '#4a90d9');
@@ -159,7 +152,8 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
     f.dataset.id = id;
     const sw = el('span', 'gswatch');
     sw.style.background = `linear-gradient(90deg, #${s.horizon.getHexString()}, #${s.color.getHexString()} 50%, #${s.zenith.getHexString()})`;
-    f.append(el('b', null, label), sw, el('span', 'wmeta', `${clock(v.hour)} · shafts ${v.shafts.toFixed(2)} · haze ${v.haze.toFixed(3)}`));
+    const what = [v.precip !== 'none' ? v.precip : null, v.lightning > 0 ? 'thunder' : null, v.fog > 0.02 ? 'fog' : null, v.clouds > 0.7 ? 'overcast' : v.clouds > 0.3 ? 'clouds' : null].filter(Boolean);
+    f.append(el('b', null, label), sw, el('span', 'wmeta', `${clock(v.hour)}${what.length ? ` · ${what.join(', ')}` : ` · shafts ${v.shafts.toFixed(2)}`}`));
     f.onclick = () => { Object.assign(vals, v); mark(id); cards.sync(); apply(); };
     return withIcon(el, f, 'weather', icon, label);
   }
@@ -181,7 +175,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   if (failed.length) note.textContent = `Could not load: ${failed.join(', ')}`;
 
   // --- Rendering ---
-  let running = false, last = performance.now(), frames = 0, fpsT = last, fps = 0, time = 0;
+  let benchN = 0, running = false, last = performance.now(), frames = 0, fpsT = last, fps = 0, time = 0;
   function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
   addEventListener('resize', () => { if (running) resize(); });
   const gate = frameGate();
@@ -190,6 +184,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
     toolbox?.update(dt);
     dust.update(time, { wind: [0.3, 0, 0.1] });
     controls.update();
+    atm.update(dt, time, camera);
     pipeline.render();
   }
   function frame() {
@@ -199,6 +194,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
     last = now;
     tick(dt);
     frames++;
+    benchN++;
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
       block(fStats, 'Glade', `${loaded} models · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'}`);
@@ -207,18 +203,40 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   }
   // Häxkittelns verktygslåda (studio/fxtoolbox.js): fristående effekter att klicka ut på platsen
   const toolbox = await createFxToolbox({ api, el, root: view, view, scene, camera, renderer, ground, windAt: () => [0.3, 0, 0.1] }).catch((e) => { console.warn(e); return null; });
-  // För prov: ?shot=<namn> sparar en bild (build/shots/studio_<namn>.png) när platsen har laddat, som Vind-fliken
-  const shotName = new URLSearchParams(location.search).get('shot');
+  // För prov: ?shot=<namn> sparar en bild av varje färdigt väderläge (build/shots/studio_<namn>_<läge>_<renderare>_<fps>.png),
+  // som Vatten-fliken; med test=1 stängs provfönstret efter den sista
+  const q = new URLSearchParams(location.search), shotName = q.get('shot');
   if (shotName && /^[\w-]{1,40}$/.test(shotName) && /vader/.test(location.hash)) setTimeout(async () => {
-    tick(0);
-    const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
-    const test = new URLSearchParams(location.search).get('test') === '1' ? '&test=1' : '';
-    await fetch(`/api/shot?name=${shotName}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}_${fps}fps${test}`, { method: 'POST', body: blob });
+    // bench=1: mät bildtakten med och utan himmel och dimma (namnet bär siffrorna) i stället för att fotografera lägena
+    if (q.get('bench') === '1') {
+      const T = await import('three/tsl'), wait = (ms) => new Promise((r) => setTimeout(r, ms)), res = [];
+      const ms = async () => { await wait(2500); const f0 = benchN; await wait(2000); return Math.round((benchN - f0) / 2); }; // bilder per sekund
+      body.querySelector(`.wprof[data-id="${q.get('preset') ?? 'noon'}"]`)?.click();
+      res.push(`full${await ms()}`);
+      const bg = scene.backgroundNode, fg = scene.fogNode;
+      scene.backgroundNode = T.vec3(0.5, 0.6, 0.8); res.push(`nosky${await ms()}`);
+      scene.backgroundNode = bg; scene.fogNode = null; res.push(`nofog${await ms()}`);
+      scene.fogNode = fg; renderer.shadowMap.enabled = false; res.push(`noshadow${await ms()}`);
+      renderer.shadowMap.enabled = true;
+      tick(0);
+      const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+      await fetch(`/api/shot?name=${shotName}_${res.join('_')}_${renderer.domElement.width}x${renderer.domElement.height}${q.get('test') === '1' ? '&test=1' : ''}`, { method: 'POST', body: blob });
+      return;
+    }
+    const ids = Object.keys(info.presets);
+    for (const [i, id] of ids.entries()) {
+      body.querySelector(`.wprof[data-id="${id}"]`)?.click();
+      await new Promise((r) => setTimeout(r, 2500));
+      tick(0);
+      const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+      const test = q.get('test') === '1' && i === ids.length - 1 ? '&test=1' : '';
+      await fetch(`/api/shot?name=${shotName}_${id}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}_${fps}fps${test}`, { method: 'POST', body: blob });
+    }
   }, 5000);
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },
-    scene, camera, controls, renderer, vals, apply, shafts, toolbox,
+    scene, camera, controls, renderer, vals, apply, shafts, toolbox, atm,
     stats: () => ({ fps, loaded, failed, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),
     // För prov: rita en gång till och spara bilden som build/shots/studio_<namn>.png
     async shot(name) {

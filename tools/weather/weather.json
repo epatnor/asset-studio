@@ -1,49 +1,705 @@
 {
-  "_doc": "Väderfliken i Väderkvarnen (docs/effektlabb.md, E4): spakarna, färdiga väderlägen och platsens modeller. Börjar med ljusstrålar (volymetriskt solljus genom skuggkartan, shared/effects/weather.js). Texten som visas är på engelska. Sparade väderlägen hamnar i assets/weather/<namn>.weather.json.",
+  "_doc": "Väderfliken i Väderkvarnen (docs/effektlabb.md, E4): spakarna, färdiga väderlägen och platsens modeller. Ett väderläge styr hela atmosfären i shared/effects/weather.js (sol och måne, himmel med moln och stjärnor, höjddimma, regn och snö, åska, ljusstrålar), och samma väderlägen används av Vatten-fliken. Texten som visas är på engelska. Sparade väderlägen hamnar i assets/weather/<namn>.weather.json.",
   "groups": [
-    {"id": "sun", "label": "Sun"},
-    {"id": "shafts", "label": "Light shafts"},
-    {"id": "air", "label": "Air"}
+    {
+      "id": "sun",
+      "label": "Sun"
+    },
+    {
+      "id": "clouds",
+      "label": "Clouds & wind"
+    },
+    {
+      "id": "precip",
+      "label": "Rain & snow"
+    },
+    {
+      "id": "storm",
+      "label": "Thunder"
+    },
+    {
+      "id": "fog",
+      "label": "Fog & haze"
+    },
+    {
+      "id": "night",
+      "label": "Night"
+    },
+    {
+      "id": "shafts",
+      "label": "Light shafts"
+    },
+    {
+      "id": "air",
+      "label": "Air"
+    }
   ],
   "params": [
-    {"key": "hour", "group": "sun", "label": "Time of day", "min": 4, "max": 21, "step": 0.05, "default": 7.5, "help": "Where the sun stands over a Nordic summer day (up at 5, down at 21): low and warm in the morning and evening, high and white in the middle of the day"},
-    {"key": "azimuth", "group": "sun", "label": "Sun direction", "min": 0, "max": 359, "step": 1, "default": 20, "help": "The compass direction of the sun (0 = behind the cottage, against the camera, which gives backlit shafts)"},
-    {"key": "sun", "group": "sun", "label": "Sunlight", "min": 0, "max": 6, "step": 0.05, "default": 3, "help": "How strong the sunlight is"},
-    {"key": "shafts", "group": "shafts", "label": "Strength", "min": 0, "max": 1, "step": 0.01, "default": 0.45, "help": "How strongly the shafts colour the air (the brightest they can get)"},
-    {"key": "density", "group": "shafts", "label": "Density", "min": 0, "max": 3, "step": 0.01, "default": 0.55, "help": "How thick the air is: thin air gives faint shafts, thick air shafts that fill the clearing"},
-    {"key": "falloff", "group": "shafts", "label": "Falloff", "min": 0, "max": 6, "step": 0.05, "default": 2, "help": "How fast the shafts fade far from the sun's source"},
-    {"key": "backlight", "group": "shafts", "label": "Backlight", "min": 0, "max": 0.9, "step": 0.01, "default": 0.6, "help": "How much brighter the shafts are when you look toward the sun. High: they blaze in backlight and almost vanish from the side, like real sunbeams. 0: the same from every direction"},
-    {"key": "followSun", "group": "shafts", "label": "Shaft colour", "type": "bool", "default": true, "sub": "Follow the time of day", "help": "Warm in the morning and evening, pale at noon. Turn off to choose the colour yourself"},
-    {"key": "shaftColor", "group": "shafts", "label": "Colour", "type": "color", "default": "#ffd9a0", "help": "The shafts' colour when they do not follow the time of day"},
-    {"key": "quality", "group": "shafts", "label": "Quality", "type": "choice", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High"}], "default": "medium", "help": "Low: quarter resolution and 30 steps. Medium: half resolution and 60 steps. High: full resolution and 90 steps"},
-    {"key": "haze", "group": "air", "label": "Haze", "min": 0, "max": 0.06, "step": 0.001, "default": 0.012, "help": "Distance haze in the sky's colour"},
-    {"key": "glow", "group": "air", "label": "Sun glow", "min": 0, "max": 3, "step": 0.05, "default": 1, "help": "The sun disc and the glare around it"},
-    {"key": "dust", "group": "air", "label": "Dust in the light", "min": 0, "max": 800, "step": 1, "default": 180, "help": "Specks of dust drifting in the air, glinting in the light"},
-    {"key": "exposure", "group": "air", "label": "Exposure", "min": 0.4, "max": 2, "step": 0.01, "default": 1.1, "help": "Overall brightness"}
+    {
+      "key": "hour",
+      "group": "sun",
+      "label": "Time of day",
+      "min": 0,
+      "max": 24,
+      "step": 0.05,
+      "default": 7.5,
+      "help": "Where the sun stands over a Nordic summer day (up at 5, highest at 13, down at 21) and the night between, when the moon takes over"
+    },
+    {
+      "key": "azimuth",
+      "group": "sun",
+      "label": "Sun direction",
+      "min": 0,
+      "max": 359,
+      "step": 1,
+      "default": 20,
+      "help": "The compass direction of the sun (0 = behind the cottage, against the camera, which gives backlit shafts)"
+    },
+    {
+      "key": "sun",
+      "group": "sun",
+      "label": "Sunlight",
+      "min": 0,
+      "max": 6,
+      "step": 0.05,
+      "default": 3,
+      "help": "How strong the sunlight is"
+    },
+    {
+      "key": "clouds",
+      "group": "clouds",
+      "label": "Cover",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.15,
+      "help": "How much of the sky the clouds cover. Overcast dims the sun and greys the sky and the light"
+    },
+    {
+      "key": "cloudSoft",
+      "group": "clouds",
+      "label": "Softness",
+      "min": 0.03,
+      "max": 0.6,
+      "step": 0.01,
+      "default": 0.25,
+      "help": "Crisp, sharply edged clouds at low values, soft hazy veils at high values"
+    },
+    {
+      "key": "cloudScale",
+      "group": "clouds",
+      "label": "Size",
+      "min": 0.3,
+      "max": 3,
+      "step": 0.05,
+      "default": 1,
+      "help": "Large banks at low values, small fleecy clouds at high values"
+    },
+    {
+      "key": "cloudDark",
+      "group": "clouds",
+      "label": "Darkness",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.3,
+      "help": "How dark and heavy the clouds are underneath: white fair-weather clouds at 0, rain and storm clouds at 1"
+    },
+    {
+      "key": "cloudSpeed",
+      "group": "clouds",
+      "label": "Drift",
+      "min": 0,
+      "max": 3,
+      "step": 0.01,
+      "default": 0.4,
+      "help": "How fast the clouds drift with the wind"
+    },
+    {
+      "key": "windDir",
+      "group": "clouds",
+      "label": "Wind direction",
+      "min": 0,
+      "max": 359,
+      "step": 1,
+      "default": 60,
+      "help": "Which way the clouds drift and the rain and snow lean"
+    },
+    {
+      "key": "wind",
+      "group": "clouds",
+      "label": "Wind",
+      "min": 0,
+      "max": 15,
+      "step": 0.1,
+      "default": 2,
+      "help": "How hard the wind blows the rain and snow sideways (metres per second)"
+    },
+    {
+      "key": "precip",
+      "group": "precip",
+      "label": "Falling",
+      "type": "choice",
+      "options": [
+        {
+          "id": "none",
+          "label": "Nothing"
+        },
+        {
+          "id": "rain",
+          "label": "Rain"
+        },
+        {
+          "id": "snow",
+          "label": "Snow"
+        }
+      ],
+      "default": "none",
+      "help": "Rain falls as streaks along the wind, snow as drifting flakes. Rain also rings the water in the Water tab"
+    },
+    {
+      "key": "amount",
+      "group": "precip",
+      "label": "Amount",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "help": "From a few drops to a downpour (up to 16 000 drops or flakes around the camera)"
+    },
+    {
+      "key": "lightning",
+      "group": "storm",
+      "label": "Lightning",
+      "min": 0,
+      "max": 30,
+      "step": 0.5,
+      "default": 0,
+      "help": "Lightning strikes per minute, far off around the place, at uneven intervals"
+    },
+    {
+      "key": "flash",
+      "group": "storm",
+      "label": "Flash",
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "default": 1,
+      "help": "How brightly each strike lights up the clouds, the sky and the ground"
+    },
+    {
+      "key": "fog",
+      "group": "fog",
+      "label": "Ground fog",
+      "min": 0,
+      "max": 0.3,
+      "step": 0.002,
+      "default": 0,
+      "help": "Fog that lies thickest down by the ground and thins with height (height fog)"
+    },
+    {
+      "key": "fogHeight",
+      "group": "fog",
+      "label": "Fog height",
+      "min": 0.5,
+      "max": 60,
+      "step": 0.5,
+      "default": 6,
+      "help": "How thick the fog layer is in metres: a thin mist over the grass at low values, a valley full of fog at high"
+    },
+    {
+      "key": "haze",
+      "group": "fog",
+      "label": "Haze",
+      "min": 0,
+      "max": 0.06,
+      "step": 0.001,
+      "default": 0.012,
+      "help": "Distance haze in the sky's colour"
+    },
+    {
+      "key": "moonPhase",
+      "group": "night",
+      "label": "Moon",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1,
+      "help": "How much of the moon is lit: new moon at 0, half at 0.5, full at 1. A fuller moon gives more light"
+    },
+    {
+      "key": "moonlight",
+      "group": "night",
+      "label": "Moonlight",
+      "min": 0,
+      "max": 3,
+      "step": 0.05,
+      "default": 1,
+      "help": "How strongly the moon lights the night (and casts shadows when it is brighter than the sun)"
+    },
+    {
+      "key": "stars",
+      "group": "night",
+      "label": "Stars",
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "default": 1,
+      "help": "How bright the stars are when it is dark and clear"
+    },
+    {
+      "key": "shafts",
+      "group": "shafts",
+      "label": "Strength",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.45,
+      "help": "How strongly the shafts colour the air (the brightest they can get)"
+    },
+    {
+      "key": "density",
+      "group": "shafts",
+      "label": "Density",
+      "min": 0,
+      "max": 3,
+      "step": 0.01,
+      "default": 0.55,
+      "help": "How thick the air is: thin air gives faint shafts, thick air shafts that fill the clearing"
+    },
+    {
+      "key": "falloff",
+      "group": "shafts",
+      "label": "Falloff",
+      "min": 0,
+      "max": 6,
+      "step": 0.05,
+      "default": 2,
+      "help": "How fast the shafts fade far from the sun's source"
+    },
+    {
+      "key": "backlight",
+      "group": "shafts",
+      "label": "Backlight",
+      "min": 0,
+      "max": 0.9,
+      "step": 0.01,
+      "default": 0.6,
+      "help": "How much brighter the shafts are when you look toward the sun. High: they blaze in backlight and almost vanish from the side, like real sunbeams. 0: the same from every direction"
+    },
+    {
+      "key": "followSun",
+      "group": "shafts",
+      "label": "Shaft colour",
+      "type": "bool",
+      "default": true,
+      "sub": "Follow the time of day",
+      "help": "Warm in the morning and evening, pale at noon. Turn off to choose the colour yourself"
+    },
+    {
+      "key": "shaftColor",
+      "group": "shafts",
+      "label": "Colour",
+      "type": "color",
+      "default": "#ffd9a0",
+      "help": "The shafts' colour when they do not follow the time of day"
+    },
+    {
+      "key": "quality",
+      "group": "shafts",
+      "label": "Quality",
+      "type": "choice",
+      "options": [
+        {
+          "id": "low",
+          "label": "Low"
+        },
+        {
+          "id": "medium",
+          "label": "Medium"
+        },
+        {
+          "id": "high",
+          "label": "High"
+        }
+      ],
+      "default": "medium",
+      "help": "Low: quarter resolution and 30 steps. Medium: half resolution and 60 steps. High: full resolution and 90 steps"
+    },
+    {
+      "key": "glow",
+      "group": "air",
+      "label": "Sun glow",
+      "min": 0,
+      "max": 3,
+      "step": 0.05,
+      "default": 1,
+      "help": "The sun disc and the glare around it"
+    },
+    {
+      "key": "dust",
+      "group": "air",
+      "label": "Dust in the light",
+      "min": 0,
+      "max": 800,
+      "step": 1,
+      "default": 180,
+      "help": "Specks of dust drifting in the air, glinting in the light"
+    },
+    {
+      "key": "exposure",
+      "group": "air",
+      "label": "Exposure",
+      "min": 0.4,
+      "max": 2,
+      "step": 0.01,
+      "default": 1.1,
+      "help": "Overall brightness"
+    }
   ],
   "presets": {
-    "morning_forest": {"label": "Morning forest", "hour": 7.5, "azimuth": 20, "sun": 3, "shafts": 0.5, "density": 0.7, "falloff": 2, "haze": 0.012, "dust": 220},
-    "dawn_mist": {"label": "Dawn mist", "hour": 5.7, "azimuth": 350, "sun": 2.2, "shafts": 0.65, "density": 1.2, "falloff": 1.5, "haze": 0.024, "dust": 300, "exposure": 1.25},
-    "cathedral": {"label": "Cathedral light", "hour": 9, "azimuth": 10, "sun": 3.6, "shafts": 0.75, "density": 1.0, "falloff": 1.4, "haze": 0.012, "dust": 400},
-    "noon": {"label": "Noon", "hour": 13, "azimuth": 0, "sun": 3.8, "shafts": 0.25, "density": 0.35, "falloff": 3, "haze": 0.005, "dust": 80},
-    "golden_hour": {"label": "Golden hour", "hour": 19.4, "azimuth": 340, "sun": 2.8, "shafts": 0.55, "density": 0.8, "falloff": 1.8, "haze": 0.014, "dust": 250},
-    "dusk": {"label": "Dusk", "hour": 20.5, "azimuth": 320, "sun": 1.8, "shafts": 0.45, "density": 0.9, "falloff": 1.5, "haze": 0.02, "dust": 120, "exposure": 1.35}
+    "morning_forest": {
+      "label": "Morning forest",
+      "hour": 7.5,
+      "azimuth": 20,
+      "sun": 3,
+      "shafts": 0.5,
+      "density": 0.7,
+      "falloff": 2,
+      "haze": 0.012,
+      "dust": 220,
+      "clouds": 0.12
+    },
+    "dawn_mist": {
+      "label": "Dawn mist",
+      "hour": 5.7,
+      "azimuth": 350,
+      "sun": 2.2,
+      "shafts": 0.65,
+      "density": 1.2,
+      "falloff": 1.5,
+      "haze": 0.024,
+      "dust": 300,
+      "exposure": 1.25,
+      "fog": 0.05,
+      "fogHeight": 4,
+      "clouds": 0.2,
+      "cloudSoft": 0.4
+    },
+    "cathedral": {
+      "label": "Cathedral light",
+      "hour": 9,
+      "azimuth": 10,
+      "sun": 3.6,
+      "shafts": 0.75,
+      "density": 1.0,
+      "falloff": 1.4,
+      "haze": 0.012,
+      "dust": 400,
+      "clouds": 0.05
+    },
+    "noon": {
+      "label": "Noon",
+      "hour": 13,
+      "azimuth": 0,
+      "sun": 3.8,
+      "shafts": 0.25,
+      "density": 0.35,
+      "falloff": 3,
+      "haze": 0.005,
+      "dust": 80,
+      "clouds": 0.18,
+      "cloudSoft": 0.15,
+      "cloudScale": 1.2
+    },
+    "golden_hour": {
+      "label": "Golden hour",
+      "hour": 19.4,
+      "azimuth": 340,
+      "sun": 2.8,
+      "shafts": 0.55,
+      "density": 0.8,
+      "falloff": 1.8,
+      "haze": 0.014,
+      "dust": 250,
+      "clouds": 0.45,
+      "cloudSoft": 0.2,
+      "cloudScale": 0.9,
+      "cloudDark": 0.2
+    },
+    "dusk": {
+      "label": "Dusk",
+      "hour": 20.5,
+      "azimuth": 320,
+      "sun": 1.8,
+      "shafts": 0.45,
+      "density": 0.9,
+      "falloff": 1.5,
+      "haze": 0.02,
+      "dust": 120,
+      "exposure": 1.35,
+      "clouds": 0.3,
+      "cloudSoft": 0.3,
+      "moonPhase": 0.6
+    },
+    "moonlit_fog": {
+      "label": "Moonlit fog",
+      "hour": 0.5,
+      "azimuth": 200,
+      "sun": 3,
+      "clouds": 0.12,
+      "cloudSoft": 0.3,
+      "moonPhase": 1,
+      "moonlight": 1.6,
+      "stars": 1.2,
+      "fog": 0.07,
+      "fogHeight": 3,
+      "haze": 0.008,
+      "shafts": 0.4,
+      "density": 1.0,
+      "falloff": 1.6,
+      "backlight": 0.6,
+      "dust": 160,
+      "exposure": 1.15
+    },
+    "starry_night": {
+      "label": "Starry night",
+      "hour": 1,
+      "azimuth": 20,
+      "sun": 3,
+      "clouds": 0.05,
+      "moonPhase": 0.25,
+      "moonlight": 0.8,
+      "stars": 1.7,
+      "haze": 0.004,
+      "shafts": 0.2,
+      "density": 0.5,
+      "dust": 60,
+      "exposure": 1.1
+    },
+    "rainy_day": {
+      "label": "Rainy day",
+      "hour": 11,
+      "azimuth": 20,
+      "sun": 3,
+      "clouds": 0.86,
+      "cloudSoft": 0.4,
+      "cloudDark": 0.55,
+      "cloudSpeed": 0.8,
+      "windDir": 70,
+      "wind": 2.5,
+      "precip": "rain",
+      "amount": 0.45,
+      "haze": 0.018,
+      "shafts": 0,
+      "dust": 0,
+      "exposure": 1.15
+    },
+    "thunderstorm": {
+      "label": "Thunderstorm",
+      "hour": 15,
+      "azimuth": 20,
+      "sun": 3,
+      "clouds": 0.96,
+      "cloudSoft": 0.35,
+      "cloudDark": 0.9,
+      "cloudScale": 0.8,
+      "cloudSpeed": 1.6,
+      "windDir": 60,
+      "wind": 7,
+      "precip": "rain",
+      "amount": 0.85,
+      "lightning": 9,
+      "flash": 1.4,
+      "haze": 0.022,
+      "fog": 0.01,
+      "fogHeight": 12,
+      "shafts": 0,
+      "dust": 0,
+      "exposure": 1.2
+    },
+    "snowfall": {
+      "label": "Snowfall",
+      "hour": 13,
+      "azimuth": 20,
+      "sun": 3,
+      "clouds": 0.82,
+      "cloudSoft": 0.45,
+      "cloudDark": 0.3,
+      "cloudSpeed": 0.3,
+      "windDir": 40,
+      "wind": 1.5,
+      "precip": "snow",
+      "amount": 0.6,
+      "haze": 0.02,
+      "fog": 0.02,
+      "fogHeight": 10,
+      "shafts": 0,
+      "dust": 0,
+      "exposure": 1.1
+    }
   },
   "scene": [
-    {"id": "cottage", "model": "assets/buildings/fantasy_cottage/fantasy_cottage.gltf", "pos": [1.5, 0, -11], "rot": 15},
-    {"id": "oak1", "model": "assets/trees/cardtree_71924/cardtree_71924.gltf", "pos": [-6.5, 0, -6.5], "rot": 0, "scale": 1.15},
-    {"id": "oak2", "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf", "pos": [7.5, 0, -5], "rot": 120, "scale": 1.1},
-    {"id": "oak3", "model": "assets/trees/cardtree_71924/cardtree_71924.gltf", "pos": [-11, 0, -13], "rot": 210, "scale": 1.3},
-    {"id": "ash1", "model": "assets/trees/ash_v2/ash_v2.gltf", "pos": [-3, 0, -17], "rot": 40, "scale": 1.2},
-    {"id": "ash2", "model": "assets/trees/ash_v2/ash_v2.gltf", "pos": [10, 0, -15], "rot": 300, "scale": 1.1},
-    {"id": "birch1", "model": "assets/trees/birch_v2/birch_v2.gltf", "pos": [-9, 0, -1], "rot": 80, "scale": 1},
-    {"id": "birch2", "model": "assets/trees/birch_v2/birch_v2.gltf", "pos": [4.2, 0, -2.2], "rot": 160, "scale": 0.9},
-    {"id": "aspen", "model": "assets/trees/aspen_v2/aspen_v2.gltf", "pos": [12, 0, -8], "rot": 30, "scale": 1.1},
-    {"id": "oak4", "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf", "pos": [-1.5, 0, -24], "rot": 90, "scale": 1.4},
-    {"id": "bush1", "model": "assets/trees/ballbush_v2/ballbush_v2.gltf", "pos": [-4, 0, -9.5], "rot": 0},
-    {"id": "bush2", "model": "assets/trees/cardbush_78676/cardbush_78676.gltf", "pos": [6, 0, -9], "rot": 50},
-    {"id": "stone", "model": "assets/props/boulder1/boulder1.gltf", "pos": [-2.5, 0, -3], "rot": 30},
-    {"id": "stump", "model": "assets/props/mossy_stump1/mossy_stump1.gltf", "pos": [2.6, 0, 1.5], "rot": 0}
+    {
+      "id": "cottage",
+      "model": "assets/buildings/fantasy_cottage/fantasy_cottage.gltf",
+      "pos": [
+        1.5,
+        0,
+        -11
+      ],
+      "rot": 15
+    },
+    {
+      "id": "oak1",
+      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+      "pos": [
+        -6.5,
+        0,
+        -6.5
+      ],
+      "rot": 0,
+      "scale": 1.15
+    },
+    {
+      "id": "oak2",
+      "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
+      "pos": [
+        7.5,
+        0,
+        -5
+      ],
+      "rot": 120,
+      "scale": 1.1
+    },
+    {
+      "id": "oak3",
+      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+      "pos": [
+        -11,
+        0,
+        -13
+      ],
+      "rot": 210,
+      "scale": 1.3
+    },
+    {
+      "id": "ash1",
+      "model": "assets/trees/ash_v2/ash_v2.gltf",
+      "pos": [
+        -3,
+        0,
+        -17
+      ],
+      "rot": 40,
+      "scale": 1.2
+    },
+    {
+      "id": "ash2",
+      "model": "assets/trees/ash_v2/ash_v2.gltf",
+      "pos": [
+        10,
+        0,
+        -15
+      ],
+      "rot": 300,
+      "scale": 1.1
+    },
+    {
+      "id": "birch1",
+      "model": "assets/trees/birch_v2/birch_v2.gltf",
+      "pos": [
+        -9,
+        0,
+        -1
+      ],
+      "rot": 80,
+      "scale": 1
+    },
+    {
+      "id": "birch2",
+      "model": "assets/trees/birch_v2/birch_v2.gltf",
+      "pos": [
+        4.2,
+        0,
+        -2.2
+      ],
+      "rot": 160,
+      "scale": 0.9
+    },
+    {
+      "id": "aspen",
+      "model": "assets/trees/aspen_v2/aspen_v2.gltf",
+      "pos": [
+        12,
+        0,
+        -8
+      ],
+      "rot": 30,
+      "scale": 1.1
+    },
+    {
+      "id": "oak4",
+      "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
+      "pos": [
+        -1.5,
+        0,
+        -24
+      ],
+      "rot": 90,
+      "scale": 1.4
+    },
+    {
+      "id": "bush1",
+      "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
+      "pos": [
+        -4,
+        0,
+        -9.5
+      ],
+      "rot": 0
+    },
+    {
+      "id": "bush2",
+      "model": "assets/trees/cardbush_78676/cardbush_78676.gltf",
+      "pos": [
+        6,
+        0,
+        -9
+      ],
+      "rot": 50
+    },
+    {
+      "id": "stone",
+      "model": "assets/props/boulder1/boulder1.gltf",
+      "pos": [
+        -2.5,
+        0,
+        -3
+      ],
+      "rot": 30
+    },
+    {
+      "id": "stump",
+      "model": "assets/props/mossy_stump1/mossy_stump1.gltf",
+      "pos": [
+        2.6,
+        0,
+        1.5
+      ],
+      "rot": 0
+    }
   ],
-  "camera": {"pos": [0.5, 2.2, 13], "target": [0, 3.2, -5]}
+  "camera": {
+    "pos": [
+      0.5,
+      2.2,
+      13
+    ],
+    "target": [
+      0,
+      3.2,
+      -5
+    ]
+  }
 }

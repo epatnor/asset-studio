@@ -1,127 +1,1341 @@
 {
-  "_doc": "Vattenfliken i Väderkvarnen (docs/effektlabb.md, E3): spakarna, färdiga vattentyper och de fyra scenerna (öppet vatten, strand, bäck, sjö). Ytan är shared/effects/water.js (Gerstnervågor, brytning genom djupet, Beer–Lambert, spegling, skum, kaustik, krusningar). Spakar med \"recipe\": false (scenen och himlen) sparas inte i vattentypen. Texten som visas är på engelska. Sparade vattentyper hamnar i assets/water/<namn>.water.json.",
+  "_doc": "Vattenfliken i Väderkvarnen (docs/effektlabb.md, E3): spakarna, färdiga vattentyper och de fyra scenerna (öppet vatten, strand, bäck, sjö). Ytan är shared/effects/water.js (Gerstnervågor, brytning genom djupet, Beer–Lambert, spegling, skum, kaustik, krusningar). Himlen, ljuset, dimman och nederbörden är Väder-flikens atmosfär (shared/effects/weather.js): kortet Weather väljer ett väderläge ur tools/weather/weather.json eller assets/weather/. Spakar med \"recipe\": false (scenen och himlen) sparas inte i vattentypen. Texten som visas är på engelska. Sparade vattentyper hamnar i assets/water/<namn>.water.json.",
   "groups": [
-    {"id": "scene", "label": "Scene"},
-    {"id": "sky", "label": "Sky & sun"},
-    {"id": "color", "label": "Colour & depth"},
-    {"id": "waves", "label": "Waves"},
-    {"id": "light", "label": "Reflections & light"},
-    {"id": "foam", "label": "Foam"},
-    {"id": "shore", "label": "Shore"},
-    {"id": "flow", "label": "Flow"},
-    {"id": "caustics", "label": "Caustics"}
+    {
+      "id": "scene",
+      "label": "Scene"
+    },
+    {
+      "id": "sky",
+      "label": "Weather"
+    },
+    {
+      "id": "color",
+      "label": "Colour & depth"
+    },
+    {
+      "id": "waves",
+      "label": "Waves"
+    },
+    {
+      "id": "light",
+      "label": "Reflections & light"
+    },
+    {
+      "id": "foam",
+      "label": "Foam"
+    },
+    {
+      "id": "shore",
+      "label": "Shore"
+    },
+    {
+      "id": "flow",
+      "label": "Flow"
+    },
+    {
+      "id": "caustics",
+      "label": "Caustics"
+    }
   ],
   "params": [
-    {"key": "scene", "group": "scene", "label": "Scene", "type": "choice", "recipe": false, "default": "lake", "options": [
-      {"id": "plane", "label": "Open water", "help": "Only water to the horizon: waves, colour and the sky"},
-      {"id": "beach", "label": "Beach", "help": "A sandy beach where the waves wash in and leave wet sand behind"},
-      {"id": "stream", "label": "Stream", "help": "A stream through a meadow with stones, reeds, cattails and water lilies"},
-      {"id": "lake", "label": "Lake", "help": "A small lake with trees on the shore, for reflections"}
-    ], "help": "Which place the water is tried in. Each place starts with a fitting water type"},
-    {"key": "hour", "group": "sky", "label": "Time of day", "recipe": false, "min": 4, "max": 21, "step": 0.05, "default": 9, "help": "Where the sun stands over a Nordic summer day (up at 5, down at 21)"},
-    {"key": "azimuth", "group": "sky", "label": "Sun direction", "recipe": false, "min": 0, "max": 359, "step": 1, "default": 20, "help": "The compass direction of the sun (0 = straight ahead of the camera, which gives a glittering path across the water)"},
-    {"key": "sun", "group": "sky", "label": "Sunlight", "recipe": false, "min": 0, "max": 6, "step": 0.05, "default": 3, "help": "How strong the sunlight is"},
-    {"key": "glow", "group": "sky", "label": "Sun glow", "recipe": false, "min": 0, "max": 3, "step": 0.05, "default": 1, "help": "The sun disc and the glare around it"},
-    {"key": "haze", "group": "sky", "label": "Haze", "recipe": false, "min": 0, "max": 0.04, "step": 0.001, "default": 0.006, "help": "Distance haze in the sky's colour"},
-    {"key": "exposure", "group": "sky", "label": "Exposure", "recipe": false, "min": 0.4, "max": 2, "step": 0.01, "default": 1.05, "help": "Overall brightness"},
-    {"key": "shallow", "group": "color", "label": "Shallow", "type": "color", "default": "#3fa6a0", "help": "The water's own colour where it is shallow"},
-    {"key": "deep", "group": "color", "label": "Deep", "type": "color", "default": "#0d3a5a", "help": "The water's own colour where it is deep"},
-    {"key": "clarity", "group": "color", "label": "Clarity", "min": 0.2, "max": 20, "step": 0.1, "default": 4, "help": "How many metres down you can see. Red light is swallowed first, then green, so deep water turns blue-green (Beer–Lambert)"},
-    {"key": "deepAt", "group": "color", "label": "Deep at", "min": 0.5, "max": 20, "step": 0.1, "default": 4, "help": "At what depth (metres) the water has the deep colour"},
-    {"key": "waveHeight", "group": "waves", "label": "Height", "min": 0, "max": 2, "step": 0.01, "default": 0.12, "help": "The height of the largest waves in metres (four Gerstner waves of different lengths and directions)"},
-    {"key": "waveLength", "group": "waves", "label": "Length", "min": 1, "max": 60, "step": 0.5, "default": 8, "help": "The length of the largest wave in metres. The others are shorter. Long waves travel faster, as in real water"},
-    {"key": "choppiness", "group": "waves", "label": "Sharpness", "min": 0, "max": 1, "step": 0.01, "default": 0.35, "help": "Rounded swell at 0, sharp crests and flat troughs at 1"},
-    {"key": "waveDir", "group": "waves", "label": "Direction", "min": 0, "max": 359, "step": 1, "default": 30, "help": "Which way the waves travel (0 = away from the camera, 180 = toward it)"},
-    {"key": "waveSpeed", "group": "waves", "label": "Speed", "min": 0, "max": 2, "step": 0.01, "default": 1, "help": "Faster or slower than real waves of the same length"},
-    {"key": "ripples", "group": "waves", "label": "Ripples", "min": 0, "max": 1.5, "step": 0.01, "default": 0.45, "help": "Small ripples from the wind, in two layers that cross each other"},
-    {"key": "rippleScale", "group": "waves", "label": "Ripple size", "min": 0.2, "max": 6, "step": 0.05, "default": 1.6, "help": "The size of the ripples in metres"},
-    {"key": "reflections", "group": "light", "label": "Reflections", "min": 0, "max": 1, "step": 0.01, "default": 1, "help": "How much of the sky and the shore the water mirrors (strongest at a glancing angle, Fresnel)"},
-    {"key": "mirror", "group": "light", "label": "Mirror", "type": "bool", "default": true, "sub": "Trees and shore too", "help": "On: the scene is drawn once more, mirrored in the water (planar reflection at half resolution). Off: the water only mirrors the sky, which is cheaper"},
-    {"key": "distortion", "group": "light", "label": "Distortion", "min": 0, "max": 1, "step": 0.01, "default": 0.3, "help": "How much the waves break up the mirror image"},
-    {"key": "refraction", "group": "light", "label": "Refraction", "min": 0, "max": 1, "step": 0.01, "default": 0.35, "help": "How much the waves bend what you see under the surface"},
-    {"key": "glitter", "group": "light", "label": "Sun glitter", "min": 0, "max": 4, "step": 0.05, "default": 1.4, "help": "The sun's sparkle on the waves"},
-    {"key": "glitterSize", "group": "light", "label": "Glitter sharpness", "min": 20, "max": 2000, "step": 10, "default": 400, "help": "Low: a broad shine. High: small sharp sparkles"},
-    {"key": "shoreFoam", "group": "foam", "label": "Shore foam", "min": 0, "max": 1, "step": 0.01, "default": 0.35, "help": "Foam where the water is shallow, at the shore and around stones"},
-    {"key": "foamWidth", "group": "foam", "label": "Shore width", "min": 0.02, "max": 2, "step": 0.01, "default": 0.25, "help": "How deep the water can be and still foam (metres)"},
-    {"key": "crestFoam", "group": "foam", "label": "Crest foam", "min": 0, "max": 1, "step": 0.01, "default": 0, "help": "White caps on sharp wave crests"},
-    {"key": "foamScale", "group": "foam", "label": "Foam size", "min": 0.2, "max": 4, "step": 0.05, "default": 1, "help": "The size of the bubbles and patches in the foam"},
-    {"key": "edge", "group": "shore", "label": "Soft edge", "min": 0.005, "max": 0.4, "step": 0.005, "default": 0.06, "help": "How softly the water fades out against the shore (metres of depth)"},
-    {"key": "wetShore", "group": "shore", "label": "Wet shore", "min": 0, "max": 1, "step": 0.01, "default": 0.6, "help": "How dark and shiny the ground is just above the water"},
-    {"key": "wetBand", "group": "shore", "label": "Wet band", "min": 0, "max": 1, "step": 0.01, "default": 0.12, "help": "How high above the water the ground is wet (metres)"},
-    {"key": "surge", "group": "shore", "label": "Wash", "min": 0, "max": 0.6, "step": 0.01, "default": 0, "help": "How high the water washes up the shore with each wave (metres). The sand stays wet a while after it pulls back"},
-    {"key": "surgePeriod", "group": "shore", "label": "Wash period", "min": 3, "max": 16, "step": 0.1, "default": 7, "help": "Seconds between the waves that wash in"},
-    {"key": "flowSpeed", "group": "flow", "label": "Current", "min": 0, "max": 3, "step": 0.01, "default": 0.8, "help": "How fast the stream flows (metres per second). Ripples and foam drift with the current, faster where the stream is narrow"},
-    {"key": "flowFoam", "group": "flow", "label": "Rapids foam", "min": 0, "max": 1, "step": 0.01, "default": 0.4, "help": "Foam in fast, shallow water and behind stones"},
-    {"key": "caustics", "group": "caustics", "label": "Strength", "min": 0, "max": 3, "step": 0.05, "default": 0.8, "help": "The sun's flickering net of light on the bottom, refracted by the waves"},
-    {"key": "causticScale", "group": "caustics", "label": "Size", "min": 0.3, "max": 5, "step": 0.05, "default": 1.5, "help": "The size of the net's cells in metres"}
+    {
+      "key": "scene",
+      "group": "scene",
+      "label": "Scene",
+      "type": "choice",
+      "recipe": false,
+      "default": "lake",
+      "options": [
+        {
+          "id": "plane",
+          "label": "Open water",
+          "help": "Only water to the horizon: waves, colour and the sky"
+        },
+        {
+          "id": "beach",
+          "label": "Beach",
+          "help": "A sandy beach where the waves wash in and leave wet sand behind"
+        },
+        {
+          "id": "stream",
+          "label": "Stream",
+          "help": "A stream through a meadow with stones, reeds, cattails and water lilies"
+        },
+        {
+          "id": "lake",
+          "label": "Lake",
+          "help": "A small lake with trees on the shore, for reflections"
+        }
+      ],
+      "help": "Which place the water is tried in. Each place starts with a fitting water type"
+    },
+    {
+      "key": "weather",
+      "group": "sky",
+      "label": "Weather",
+      "type": "choice",
+      "recipe": false,
+      "default": "noon",
+      "options": [],
+      "help": "The weather from the Weather tab (ready-made and saved): sun or moon, clouds, fog, rain, snow and thunder. The time and the sun direction below adjust it for the scene"
+    },
+    {
+      "key": "hour",
+      "group": "sky",
+      "label": "Time of day",
+      "recipe": false,
+      "min": 0,
+      "max": 24,
+      "step": 0.05,
+      "default": 9,
+      "help": "The time of day (the weather's own time is replaced): sun by day, moon and stars by night"
+    },
+    {
+      "key": "azimuth",
+      "group": "sky",
+      "label": "Sun direction",
+      "recipe": false,
+      "min": 0,
+      "max": 359,
+      "step": 1,
+      "default": 20,
+      "help": "The compass direction of the sun (0 = straight ahead of the camera, which gives a glittering path across the water)"
+    },
+    {
+      "key": "exposure",
+      "group": "sky",
+      "label": "Exposure",
+      "recipe": false,
+      "min": 0.4,
+      "max": 2,
+      "step": 0.01,
+      "default": 1.05,
+      "help": "Overall brightness (on top of the weather's own)"
+    },
+    {
+      "key": "shallow",
+      "group": "color",
+      "label": "Shallow",
+      "type": "color",
+      "default": "#3fa6a0",
+      "help": "The water's own colour where it is shallow"
+    },
+    {
+      "key": "deep",
+      "group": "color",
+      "label": "Deep",
+      "type": "color",
+      "default": "#0d3a5a",
+      "help": "The water's own colour where it is deep"
+    },
+    {
+      "key": "clarity",
+      "group": "color",
+      "label": "Clarity",
+      "min": 0.2,
+      "max": 20,
+      "step": 0.1,
+      "default": 4,
+      "help": "How many metres down you can see. Red light is swallowed first, then green, so deep water turns blue-green (Beer–Lambert)"
+    },
+    {
+      "key": "deepAt",
+      "group": "color",
+      "label": "Deep at",
+      "min": 0.5,
+      "max": 20,
+      "step": 0.1,
+      "default": 4,
+      "help": "At what depth (metres) the water has the deep colour"
+    },
+    {
+      "key": "waveHeight",
+      "group": "waves",
+      "label": "Height",
+      "min": 0,
+      "max": 2,
+      "step": 0.01,
+      "default": 0.12,
+      "help": "The height of the largest waves in metres (four Gerstner waves of different lengths and directions)"
+    },
+    {
+      "key": "waveLength",
+      "group": "waves",
+      "label": "Length",
+      "min": 1,
+      "max": 60,
+      "step": 0.5,
+      "default": 8,
+      "help": "The length of the largest wave in metres. The others are shorter. Long waves travel faster, as in real water"
+    },
+    {
+      "key": "choppiness",
+      "group": "waves",
+      "label": "Sharpness",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35,
+      "help": "Rounded swell at 0, sharp crests and flat troughs at 1"
+    },
+    {
+      "key": "waveDir",
+      "group": "waves",
+      "label": "Direction",
+      "min": 0,
+      "max": 359,
+      "step": 1,
+      "default": 30,
+      "help": "Which way the waves travel (0 = away from the camera, 180 = toward it)"
+    },
+    {
+      "key": "waveSpeed",
+      "group": "waves",
+      "label": "Speed",
+      "min": 0,
+      "max": 2,
+      "step": 0.01,
+      "default": 1,
+      "help": "Faster or slower than real waves of the same length"
+    },
+    {
+      "key": "ripples",
+      "group": "waves",
+      "label": "Ripples",
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "default": 0.45,
+      "help": "Small ripples from the wind, in two layers that cross each other"
+    },
+    {
+      "key": "rippleScale",
+      "group": "waves",
+      "label": "Ripple size",
+      "min": 0.2,
+      "max": 6,
+      "step": 0.05,
+      "default": 1.6,
+      "help": "The size of the ripples in metres"
+    },
+    {
+      "key": "reflections",
+      "group": "light",
+      "label": "Reflections",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1,
+      "help": "How much of the sky and the shore the water mirrors (strongest at a glancing angle, Fresnel)"
+    },
+    {
+      "key": "mirror",
+      "group": "light",
+      "label": "Mirror",
+      "type": "bool",
+      "default": true,
+      "sub": "Trees and shore too",
+      "help": "On: the scene is drawn once more, mirrored in the water (planar reflection at half resolution). Off: the water only mirrors the sky, which is cheaper"
+    },
+    {
+      "key": "distortion",
+      "group": "light",
+      "label": "Distortion",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.3,
+      "help": "How much the waves break up the mirror image"
+    },
+    {
+      "key": "refraction",
+      "group": "light",
+      "label": "Refraction",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35,
+      "help": "How much the waves bend what you see under the surface"
+    },
+    {
+      "key": "glitter",
+      "group": "light",
+      "label": "Sun glitter",
+      "min": 0,
+      "max": 4,
+      "step": 0.05,
+      "default": 1.4,
+      "help": "The sun's sparkle on the waves"
+    },
+    {
+      "key": "glitterSize",
+      "group": "light",
+      "label": "Glitter sharpness",
+      "min": 20,
+      "max": 2000,
+      "step": 10,
+      "default": 400,
+      "help": "Low: a broad shine. High: small sharp sparkles"
+    },
+    {
+      "key": "shoreFoam",
+      "group": "foam",
+      "label": "Shore foam",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35,
+      "help": "Foam where the water is shallow, at the shore and around stones"
+    },
+    {
+      "key": "foamWidth",
+      "group": "foam",
+      "label": "Shore width",
+      "min": 0.02,
+      "max": 2,
+      "step": 0.01,
+      "default": 0.25,
+      "help": "How deep the water can be and still foam (metres)"
+    },
+    {
+      "key": "crestFoam",
+      "group": "foam",
+      "label": "Crest foam",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0,
+      "help": "White caps on sharp wave crests"
+    },
+    {
+      "key": "foamScale",
+      "group": "foam",
+      "label": "Foam size",
+      "min": 0.2,
+      "max": 4,
+      "step": 0.05,
+      "default": 1,
+      "help": "The size of the bubbles and patches in the foam"
+    },
+    {
+      "key": "edge",
+      "group": "shore",
+      "label": "Soft edge",
+      "min": 0.005,
+      "max": 0.4,
+      "step": 0.005,
+      "default": 0.06,
+      "help": "How softly the water fades out against the shore (metres of depth)"
+    },
+    {
+      "key": "wetShore",
+      "group": "shore",
+      "label": "Wet shore",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.6,
+      "help": "How dark and shiny the ground is just above the water"
+    },
+    {
+      "key": "wetBand",
+      "group": "shore",
+      "label": "Wet band",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.12,
+      "help": "How high above the water the ground is wet (metres)"
+    },
+    {
+      "key": "surge",
+      "group": "shore",
+      "label": "Wash",
+      "min": 0,
+      "max": 0.6,
+      "step": 0.01,
+      "default": 0,
+      "help": "How high the water washes up the shore with each wave (metres). The sand stays wet a while after it pulls back"
+    },
+    {
+      "key": "surgePeriod",
+      "group": "shore",
+      "label": "Wash period",
+      "min": 3,
+      "max": 16,
+      "step": 0.1,
+      "default": 7,
+      "help": "Seconds between the waves that wash in"
+    },
+    {
+      "key": "flowSpeed",
+      "group": "flow",
+      "label": "Current",
+      "min": 0,
+      "max": 3,
+      "step": 0.01,
+      "default": 0.8,
+      "help": "How fast the stream flows (metres per second). Ripples and foam drift with the current, faster where the stream is narrow"
+    },
+    {
+      "key": "flowFoam",
+      "group": "flow",
+      "label": "Rapids foam",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.4,
+      "help": "Foam in fast, shallow water and behind stones"
+    },
+    {
+      "key": "caustics",
+      "group": "caustics",
+      "label": "Strength",
+      "min": 0,
+      "max": 3,
+      "step": 0.05,
+      "default": 0.8,
+      "help": "The sun's flickering net of light on the bottom, refracted by the waves"
+    },
+    {
+      "key": "causticScale",
+      "group": "caustics",
+      "label": "Size",
+      "min": 0.3,
+      "max": 5,
+      "step": 0.05,
+      "default": 1.5,
+      "help": "The size of the net's cells in metres"
+    }
   ],
   "presets": {
-    "calm_lake": {"label": "Calm lake", "shallow": "#3d9c96", "deep": "#0f3a58", "clarity": 4, "deepAt": 3.5, "waveHeight": 0.05, "waveLength": 6, "choppiness": 0.25, "waveDir": 30, "waveSpeed": 1, "ripples": 0.35, "rippleScale": 1.4, "reflections": 1, "mirror": true, "distortion": 0.25, "refraction": 0.3, "glitter": 1.2, "glitterSize": 500, "shoreFoam": 0.06, "foamWidth": 0.15, "crestFoam": 0, "foamScale": 1, "edge": 0.06, "wetShore": 0.6, "wetBand": 0.1, "surge": 0, "surgePeriod": 7, "flowSpeed": 0, "flowFoam": 0, "caustics": 0.7, "causticScale": 1.4},
-    "mountain_tarn": {"label": "Mountain tarn", "shallow": "#4fa3a8", "deep": "#08263e", "clarity": 9, "deepAt": 6, "waveHeight": 0.01, "waveLength": 4, "choppiness": 0.1, "waveDir": 0, "waveSpeed": 0.6, "ripples": 0.12, "rippleScale": 2.5, "reflections": 1, "mirror": true, "distortion": 0.08, "refraction": 0.2, "glitter": 0.8, "glitterSize": 1400, "shoreFoam": 0, "foamWidth": 0.1, "crestFoam": 0, "foamScale": 1, "edge": 0.03, "wetShore": 0.5, "wetBand": 0.06, "surge": 0, "surgePeriod": 7, "flowSpeed": 0, "flowFoam": 0, "caustics": 1, "causticScale": 1.8},
-    "windy_lake": {"label": "Windy lake", "shallow": "#3a8f8c", "deep": "#123552", "clarity": 2.5, "deepAt": 3, "waveHeight": 0.22, "waveLength": 5, "choppiness": 0.6, "waveDir": 150, "waveSpeed": 1.1, "ripples": 0.9, "rippleScale": 1, "reflections": 0.9, "mirror": true, "distortion": 0.7, "refraction": 0.45, "glitter": 2, "glitterSize": 250, "shoreFoam": 0.45, "foamWidth": 0.35, "crestFoam": 0.3, "foamScale": 0.8, "edge": 0.08, "wetShore": 0.7, "wetBand": 0.2, "surge": 0.06, "surgePeriod": 4, "flowSpeed": 0, "flowFoam": 0, "caustics": 0.5, "causticScale": 1.2},
-    "forest_pond": {"label": "Forest pond", "shallow": "#4b6a3c", "deep": "#14261c", "clarity": 1.2, "deepAt": 2, "waveHeight": 0.01, "waveLength": 3, "choppiness": 0.1, "waveDir": 60, "waveSpeed": 0.6, "ripples": 0.15, "rippleScale": 2, "reflections": 1, "mirror": true, "distortion": 0.12, "refraction": 0.15, "glitter": 0.7, "glitterSize": 900, "shoreFoam": 0, "foamWidth": 0.1, "crestFoam": 0, "foamScale": 1, "edge": 0.05, "wetShore": 0.8, "wetBand": 0.15, "surge": 0, "surgePeriod": 7, "flowSpeed": 0, "flowFoam": 0, "caustics": 0.2, "causticScale": 1.4},
-    "forest_creek": {"label": "Forest creek", "shallow": "#5b8a6a", "deep": "#1a3f3c", "clarity": 2, "deepAt": 1, "waveHeight": 0, "waveLength": 3, "choppiness": 0.2, "waveDir": 0, "waveSpeed": 1, "ripples": 0.55, "rippleScale": 0.9, "reflections": 0.9, "mirror": true, "distortion": 0.35, "refraction": 0.4, "glitter": 1.4, "glitterSize": 350, "shoreFoam": 0.3, "foamWidth": 0.12, "crestFoam": 0, "foamScale": 0.6, "edge": 0.04, "wetShore": 0.75, "wetBand": 0.1, "surge": 0, "surgePeriod": 7, "flowSpeed": 0.7, "flowFoam": 0.45, "caustics": 1, "causticScale": 0.8},
-    "mountain_stream": {"label": "Mountain stream", "shallow": "#7fc4bc", "deep": "#1d5a68", "clarity": 6, "deepAt": 1.2, "waveHeight": 0, "waveLength": 3, "choppiness": 0.2, "waveDir": 0, "waveSpeed": 1, "ripples": 1, "rippleScale": 0.7, "reflections": 0.8, "mirror": true, "distortion": 0.6, "refraction": 0.6, "glitter": 2, "glitterSize": 220, "shoreFoam": 0.6, "foamWidth": 0.2, "crestFoam": 0, "foamScale": 0.5, "edge": 0.03, "wetShore": 0.7, "wetBand": 0.12, "surge": 0, "surgePeriod": 7, "flowSpeed": 1.8, "flowFoam": 0.85, "caustics": 1.6, "causticScale": 0.7},
-    "tropical_lagoon": {"label": "Tropical lagoon", "shallow": "#46d6c6", "deep": "#0b5c8c", "clarity": 14, "deepAt": 7, "waveHeight": 0.08, "waveLength": 9, "choppiness": 0.3, "waveDir": 180, "waveSpeed": 1, "ripples": 0.4, "rippleScale": 1.8, "reflections": 0.8, "mirror": true, "distortion": 0.3, "refraction": 0.4, "glitter": 1.8, "glitterSize": 450, "shoreFoam": 0.55, "foamWidth": 0.2, "crestFoam": 0, "foamScale": 1, "edge": 0.04, "wetShore": 0.55, "wetBand": 0.15, "surge": 0.18, "surgePeriod": 8, "flowSpeed": 0, "flowFoam": 0, "caustics": 2, "causticScale": 1.7},
-    "beach_surf": {"label": "Beach surf", "shallow": "#43b6aa", "deep": "#0c4268", "clarity": 6, "deepAt": 5, "waveHeight": 0.35, "waveLength": 14, "choppiness": 0.55, "waveDir": 180, "waveSpeed": 1, "ripples": 0.6, "rippleScale": 1.6, "reflections": 0.9, "mirror": false, "distortion": 0.4, "refraction": 0.5, "glitter": 1.8, "glitterSize": 300, "shoreFoam": 0.8, "foamWidth": 0.45, "crestFoam": 0.35, "foamScale": 1, "edge": 0.05, "wetShore": 0.6, "wetBand": 0.05, "surge": 0.3, "surgePeriod": 7, "flowSpeed": 0, "flowFoam": 0, "caustics": 1.2, "causticScale": 1.6},
-    "rolling_ocean": {"label": "Rolling ocean", "shallow": "#2d8f9a", "deep": "#08284a", "clarity": 8, "deepAt": 8, "waveHeight": 0.7, "waveLength": 28, "choppiness": 0.5, "waveDir": 200, "waveSpeed": 1, "ripples": 0.6, "rippleScale": 2.2, "reflections": 1, "mirror": false, "distortion": 0.5, "refraction": 0.4, "glitter": 2, "glitterSize": 350, "shoreFoam": 0.4, "foamWidth": 0.3, "crestFoam": 0.15, "foamScale": 1.5, "edge": 0.06, "wetShore": 0.6, "wetBand": 0.1, "surge": 0.2, "surgePeriod": 9, "flowSpeed": 0, "flowFoam": 0, "caustics": 0.5, "causticScale": 2},
-    "storm_sea": {"label": "Storm sea", "shallow": "#3d6f6e", "deep": "#0b1f2c", "clarity": 3, "deepAt": 6, "waveHeight": 1.6, "waveLength": 34, "choppiness": 0.85, "waveDir": 160, "waveSpeed": 1.15, "ripples": 1.2, "rippleScale": 1.2, "reflections": 0.85, "mirror": false, "distortion": 0.8, "refraction": 0.3, "glitter": 0.8, "glitterSize": 150, "shoreFoam": 0.9, "foamWidth": 0.8, "crestFoam": 0.75, "foamScale": 1.4, "edge": 0.1, "wetShore": 0.85, "wetBand": 0.4, "surge": 0.5, "surgePeriod": 6, "flowSpeed": 0, "flowFoam": 0, "caustics": 0.2, "causticScale": 2},
-    "swamp": {"label": "Swamp", "shallow": "#5a5a2c", "deep": "#1d2310", "clarity": 0.5, "deepAt": 1, "waveHeight": 0, "waveLength": 3, "choppiness": 0, "waveDir": 0, "waveSpeed": 0.4, "ripples": 0.08, "rippleScale": 2.5, "reflections": 0.75, "mirror": true, "distortion": 0.08, "refraction": 0.05, "glitter": 0.4, "glitterSize": 600, "shoreFoam": 0.1, "foamWidth": 0.1, "crestFoam": 0, "foamScale": 2, "edge": 0.08, "wetShore": 0.9, "wetBand": 0.25, "surge": 0, "surgePeriod": 7, "flowSpeed": 0, "flowFoam": 0, "caustics": 0, "causticScale": 1.4}
+    "calm_lake": {
+      "label": "Calm lake",
+      "shallow": "#3d9c96",
+      "deep": "#0f3a58",
+      "clarity": 4,
+      "deepAt": 3.5,
+      "waveHeight": 0.05,
+      "waveLength": 6,
+      "choppiness": 0.25,
+      "waveDir": 30,
+      "waveSpeed": 1,
+      "ripples": 0.35,
+      "rippleScale": 1.4,
+      "reflections": 1,
+      "mirror": true,
+      "distortion": 0.25,
+      "refraction": 0.3,
+      "glitter": 1.2,
+      "glitterSize": 500,
+      "shoreFoam": 0.06,
+      "foamWidth": 0.15,
+      "crestFoam": 0,
+      "foamScale": 1,
+      "edge": 0.06,
+      "wetShore": 0.6,
+      "wetBand": 0.1,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0.7,
+      "causticScale": 1.4
+    },
+    "mountain_tarn": {
+      "label": "Mountain tarn",
+      "shallow": "#4fa3a8",
+      "deep": "#08263e",
+      "clarity": 9,
+      "deepAt": 6,
+      "waveHeight": 0.01,
+      "waveLength": 4,
+      "choppiness": 0.1,
+      "waveDir": 0,
+      "waveSpeed": 0.6,
+      "ripples": 0.12,
+      "rippleScale": 2.5,
+      "reflections": 1,
+      "mirror": true,
+      "distortion": 0.08,
+      "refraction": 0.2,
+      "glitter": 0.8,
+      "glitterSize": 1400,
+      "shoreFoam": 0,
+      "foamWidth": 0.1,
+      "crestFoam": 0,
+      "foamScale": 1,
+      "edge": 0.03,
+      "wetShore": 0.5,
+      "wetBand": 0.06,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 1,
+      "causticScale": 1.8
+    },
+    "windy_lake": {
+      "label": "Windy lake",
+      "shallow": "#3a8f8c",
+      "deep": "#123552",
+      "clarity": 2.5,
+      "deepAt": 3,
+      "waveHeight": 0.22,
+      "waveLength": 5,
+      "choppiness": 0.6,
+      "waveDir": 150,
+      "waveSpeed": 1.1,
+      "ripples": 0.9,
+      "rippleScale": 1,
+      "reflections": 0.9,
+      "mirror": true,
+      "distortion": 0.7,
+      "refraction": 0.45,
+      "glitter": 2,
+      "glitterSize": 250,
+      "shoreFoam": 0.45,
+      "foamWidth": 0.35,
+      "crestFoam": 0.3,
+      "foamScale": 0.8,
+      "edge": 0.08,
+      "wetShore": 0.7,
+      "wetBand": 0.2,
+      "surge": 0.06,
+      "surgePeriod": 4,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0.5,
+      "causticScale": 1.2
+    },
+    "forest_pond": {
+      "label": "Forest pond",
+      "shallow": "#4b6a3c",
+      "deep": "#14261c",
+      "clarity": 1.2,
+      "deepAt": 2,
+      "waveHeight": 0.01,
+      "waveLength": 3,
+      "choppiness": 0.1,
+      "waveDir": 60,
+      "waveSpeed": 0.6,
+      "ripples": 0.15,
+      "rippleScale": 2,
+      "reflections": 1,
+      "mirror": true,
+      "distortion": 0.12,
+      "refraction": 0.15,
+      "glitter": 0.7,
+      "glitterSize": 900,
+      "shoreFoam": 0,
+      "foamWidth": 0.1,
+      "crestFoam": 0,
+      "foamScale": 1,
+      "edge": 0.05,
+      "wetShore": 0.8,
+      "wetBand": 0.15,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0.2,
+      "causticScale": 1.4
+    },
+    "forest_creek": {
+      "label": "Forest creek",
+      "shallow": "#5b8a6a",
+      "deep": "#1a3f3c",
+      "clarity": 2,
+      "deepAt": 1,
+      "waveHeight": 0,
+      "waveLength": 3,
+      "choppiness": 0.2,
+      "waveDir": 0,
+      "waveSpeed": 1,
+      "ripples": 0.55,
+      "rippleScale": 0.9,
+      "reflections": 0.9,
+      "mirror": true,
+      "distortion": 0.35,
+      "refraction": 0.4,
+      "glitter": 1.4,
+      "glitterSize": 350,
+      "shoreFoam": 0.3,
+      "foamWidth": 0.12,
+      "crestFoam": 0,
+      "foamScale": 0.6,
+      "edge": 0.04,
+      "wetShore": 0.75,
+      "wetBand": 0.1,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 0.7,
+      "flowFoam": 0.45,
+      "caustics": 1,
+      "causticScale": 0.8
+    },
+    "mountain_stream": {
+      "label": "Mountain stream",
+      "shallow": "#7fc4bc",
+      "deep": "#1d5a68",
+      "clarity": 6,
+      "deepAt": 1.2,
+      "waveHeight": 0,
+      "waveLength": 3,
+      "choppiness": 0.2,
+      "waveDir": 0,
+      "waveSpeed": 1,
+      "ripples": 1,
+      "rippleScale": 0.7,
+      "reflections": 0.8,
+      "mirror": true,
+      "distortion": 0.6,
+      "refraction": 0.6,
+      "glitter": 2,
+      "glitterSize": 220,
+      "shoreFoam": 0.6,
+      "foamWidth": 0.2,
+      "crestFoam": 0,
+      "foamScale": 0.5,
+      "edge": 0.03,
+      "wetShore": 0.7,
+      "wetBand": 0.12,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 1.8,
+      "flowFoam": 0.85,
+      "caustics": 1.6,
+      "causticScale": 0.7
+    },
+    "tropical_lagoon": {
+      "label": "Tropical lagoon",
+      "shallow": "#46d6c6",
+      "deep": "#0b5c8c",
+      "clarity": 14,
+      "deepAt": 7,
+      "waveHeight": 0.08,
+      "waveLength": 9,
+      "choppiness": 0.3,
+      "waveDir": 180,
+      "waveSpeed": 1,
+      "ripples": 0.4,
+      "rippleScale": 1.8,
+      "reflections": 0.8,
+      "mirror": true,
+      "distortion": 0.3,
+      "refraction": 0.4,
+      "glitter": 1.8,
+      "glitterSize": 450,
+      "shoreFoam": 0.55,
+      "foamWidth": 0.2,
+      "crestFoam": 0,
+      "foamScale": 1,
+      "edge": 0.04,
+      "wetShore": 0.55,
+      "wetBand": 0.15,
+      "surge": 0.18,
+      "surgePeriod": 8,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 2,
+      "causticScale": 1.7
+    },
+    "beach_surf": {
+      "label": "Beach surf",
+      "shallow": "#43b6aa",
+      "deep": "#0c4268",
+      "clarity": 6,
+      "deepAt": 5,
+      "waveHeight": 0.35,
+      "waveLength": 14,
+      "choppiness": 0.55,
+      "waveDir": 180,
+      "waveSpeed": 1,
+      "ripples": 0.6,
+      "rippleScale": 1.6,
+      "reflections": 0.9,
+      "mirror": false,
+      "distortion": 0.4,
+      "refraction": 0.5,
+      "glitter": 1.8,
+      "glitterSize": 300,
+      "shoreFoam": 0.8,
+      "foamWidth": 0.45,
+      "crestFoam": 0.35,
+      "foamScale": 1,
+      "edge": 0.05,
+      "wetShore": 0.6,
+      "wetBand": 0.05,
+      "surge": 0.3,
+      "surgePeriod": 7,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 1.2,
+      "causticScale": 1.6
+    },
+    "rolling_ocean": {
+      "label": "Rolling ocean",
+      "shallow": "#2d8f9a",
+      "deep": "#08284a",
+      "clarity": 8,
+      "deepAt": 8,
+      "waveHeight": 0.7,
+      "waveLength": 28,
+      "choppiness": 0.5,
+      "waveDir": 200,
+      "waveSpeed": 1,
+      "ripples": 0.6,
+      "rippleScale": 2.2,
+      "reflections": 1,
+      "mirror": false,
+      "distortion": 0.5,
+      "refraction": 0.4,
+      "glitter": 2,
+      "glitterSize": 350,
+      "shoreFoam": 0.4,
+      "foamWidth": 0.3,
+      "crestFoam": 0.15,
+      "foamScale": 1.5,
+      "edge": 0.06,
+      "wetShore": 0.6,
+      "wetBand": 0.1,
+      "surge": 0.2,
+      "surgePeriod": 9,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0.5,
+      "causticScale": 2
+    },
+    "storm_sea": {
+      "label": "Storm sea",
+      "shallow": "#3d6f6e",
+      "deep": "#0b1f2c",
+      "clarity": 3,
+      "deepAt": 6,
+      "waveHeight": 1.6,
+      "waveLength": 34,
+      "choppiness": 0.85,
+      "waveDir": 160,
+      "waveSpeed": 1.15,
+      "ripples": 1.2,
+      "rippleScale": 1.2,
+      "reflections": 0.85,
+      "mirror": false,
+      "distortion": 0.8,
+      "refraction": 0.3,
+      "glitter": 0.8,
+      "glitterSize": 150,
+      "shoreFoam": 0.9,
+      "foamWidth": 0.8,
+      "crestFoam": 0.75,
+      "foamScale": 1.4,
+      "edge": 0.1,
+      "wetShore": 0.85,
+      "wetBand": 0.4,
+      "surge": 0.5,
+      "surgePeriod": 6,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0.2,
+      "causticScale": 2
+    },
+    "swamp": {
+      "label": "Swamp",
+      "shallow": "#5a5a2c",
+      "deep": "#1d2310",
+      "clarity": 0.5,
+      "deepAt": 1,
+      "waveHeight": 0,
+      "waveLength": 3,
+      "choppiness": 0,
+      "waveDir": 0,
+      "waveSpeed": 0.4,
+      "ripples": 0.08,
+      "rippleScale": 2.5,
+      "reflections": 0.75,
+      "mirror": true,
+      "distortion": 0.08,
+      "refraction": 0.05,
+      "glitter": 0.4,
+      "glitterSize": 600,
+      "shoreFoam": 0.1,
+      "foamWidth": 0.1,
+      "crestFoam": 0,
+      "foamScale": 2,
+      "edge": 0.08,
+      "wetShore": 0.9,
+      "wetBand": 0.25,
+      "surge": 0,
+      "surgePeriod": 7,
+      "flowSpeed": 0,
+      "flowFoam": 0,
+      "caustics": 0,
+      "causticScale": 1.4
+    }
   },
   "scenes": {
-    "plane": {"preset": "rolling_ocean", "level": 0, "camera": {"pos": [0, 4, 18], "target": [0, 1, -10]}, "sky": {"hour": 17.5, "azimuth": 10}},
-    "beach": {"preset": "beach_surf", "level": 0, "camera": {"pos": [6, 1.9, 7], "target": [-3, 0.2, -6]}, "sky": {"hour": 14, "azimuth": 290},
+    "plane": {
+      "preset": "rolling_ocean",
+      "level": 0,
+      "camera": {
+        "pos": [
+          0,
+          4,
+          18
+        ],
+        "target": [
+          0,
+          1,
+          -10
+        ]
+      },
+      "sky": {
+        "weather": "golden_hour",
+        "hour": 17.5,
+        "azimuth": 10
+      }
+    },
+    "beach": {
+      "preset": "beach_surf",
+      "level": 0,
+      "camera": {
+        "pos": [
+          6,
+          1.9,
+          7
+        ],
+        "target": [
+          -3,
+          0.2,
+          -6
+        ]
+      },
+      "sky": {
+        "weather": "noon",
+        "hour": 14,
+        "azimuth": 290
+      },
       "models": [
-        {"model": "assets/props/mossy_boulder1/mossy_boulder1.gltf", "at": [-7, 0.8], "rot": 30, "scale": 1.6},
-        {"model": "assets/props/boulder1/boulder1.gltf", "at": [-9, -1.5], "rot": 110, "scale": 1.2},
-        {"model": "assets/props/stones1/stones1.gltf", "at": [-5.5, 1.5], "rot": 0},
-        {"model": "assets/props/log1/log1.gltf", "at": [3.5, 7.5], "rot": 70},
-        {"model": "assets/plants/feather_grass1/feather_grass1.gltf", "scatter": 26, "zone": [-18, 18, 11, 20], "scale": [0.8, 1.3]},
-        {"model": "assets/plants/grass_tall1/grass_tall1.gltf", "scatter": 18, "zone": [-18, 18, 13, 22], "scale": [0.8, 1.2]},
-        {"model": "assets/trees/pine_v2/pine_v2.gltf", "at": [-12, 22], "rot": 20, "scale": 1.1},
-        {"model": "assets/trees/pine_v2/pine_v2.gltf", "at": [6, 25], "rot": 200, "scale": 1.3},
-        {"model": "assets/trees/jpine_v2/jpine_v2.gltf", "at": [16, 19], "rot": 80, "scale": 1}
-      ]},
-    "stream": {"preset": "forest_creek", "camera": {"pos": [3.2, 1.5, 21], "target": [-2, 0.3, 4], "overGround": true}, "sky": {"hour": 13, "azimuth": 230},
-      "path": [[-14, -46, 2.4], [-9, -32, 2.0], [-1, -22, 1.6], [3, -12, 1.2], [0, -4, 1.3], [-3.5, 3, 3.0], [-1, 11, 1.4], [3, 20, 1.3], [5, 34, 1.6]],
+        {
+          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "at": [
+            -7,
+            0.8
+          ],
+          "rot": 30,
+          "scale": 1.6
+        },
+        {
+          "model": "assets/props/boulder1/boulder1.gltf",
+          "at": [
+            -9,
+            -1.5
+          ],
+          "rot": 110,
+          "scale": 1.2
+        },
+        {
+          "model": "assets/props/stones1/stones1.gltf",
+          "at": [
+            -5.5,
+            1.5
+          ],
+          "rot": 0
+        },
+        {
+          "model": "assets/props/log1/log1.gltf",
+          "at": [
+            3.5,
+            7.5
+          ],
+          "rot": 70
+        },
+        {
+          "model": "assets/plants/feather_grass1/feather_grass1.gltf",
+          "scatter": 26,
+          "zone": [
+            -18,
+            18,
+            11,
+            20
+          ],
+          "scale": [
+            0.8,
+            1.3
+          ]
+        },
+        {
+          "model": "assets/plants/grass_tall1/grass_tall1.gltf",
+          "scatter": 18,
+          "zone": [
+            -18,
+            18,
+            13,
+            22
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/trees/pine_v2/pine_v2.gltf",
+          "at": [
+            -12,
+            22
+          ],
+          "rot": 20,
+          "scale": 1.1
+        },
+        {
+          "model": "assets/trees/pine_v2/pine_v2.gltf",
+          "at": [
+            6,
+            25
+          ],
+          "rot": 200,
+          "scale": 1.3
+        },
+        {
+          "model": "assets/trees/jpine_v2/jpine_v2.gltf",
+          "at": [
+            16,
+            19
+          ],
+          "rot": 80,
+          "scale": 1
+        }
+      ]
+    },
+    "stream": {
+      "preset": "forest_creek",
+      "camera": {
+        "pos": [
+          3.2,
+          1.5,
+          21
+        ],
+        "target": [
+          -2,
+          0.3,
+          4
+        ],
+        "overGround": true
+      },
+      "sky": {
+        "weather": "noon",
+        "hour": 13,
+        "azimuth": 230
+      },
+      "path": [
+        [
+          -14,
+          -46,
+          2.4
+        ],
+        [
+          -9,
+          -32,
+          2.0
+        ],
+        [
+          -1,
+          -22,
+          1.6
+        ],
+        [
+          3,
+          -12,
+          1.2
+        ],
+        [
+          0,
+          -4,
+          1.3
+        ],
+        [
+          -3.5,
+          3,
+          3.0
+        ],
+        [
+          -1,
+          11,
+          1.4
+        ],
+        [
+          3,
+          20,
+          1.3
+        ],
+        [
+          5,
+          34,
+          1.6
+        ]
+      ],
       "models": [
-        {"model": "assets/props/mossy_stone1/mossy_stone1.gltf", "along": [0.47, 0.1], "rot": 20, "scale": 0.8},
-        {"model": "assets/props/stone1/stone1.gltf", "along": [0.5, -0.45], "rot": 80, "scale": 0.7},
-        {"model": "assets/props/mossy_stone1/mossy_stone1.gltf", "along": [0.42, -0.2], "rot": 140, "scale": 0.6},
-        {"model": "assets/props/stone1/stone1.gltf", "along": [0.38, 0.4], "rot": 200, "scale": 0.55},
-        {"model": "assets/props/pebbles1/pebbles1.gltf", "along": [0.55, 0.75], "rot": 0},
-        {"model": "assets/props/mossy_boulder1/mossy_boulder1.gltf", "along": [0.31, 1.5], "rot": 60, "scale": 1.2},
-        {"model": "assets/props/mossy_log1/mossy_log1.gltf", "along": [0.72, 1.9], "rot": 15},
-        {"model": "assets/plants/water_lily1/water_lily1.gltf", "scatter": 9, "pool": true, "float": true, "scale": [0.8, 1.2]},
-        {"model": "assets/plants/pondweed1/pondweed1.gltf", "scatter": 6, "pool": true, "scale": [0.8, 1.1]},
-        {"model": "assets/plants/reed1/reed1.gltf", "scatter": 40, "bank": [0.95, 1.5], "scale": [0.8, 1.3]},
-        {"model": "assets/plants/cattail1/cattail1.gltf", "scatter": 22, "bank": [0.9, 1.4], "scale": [0.8, 1.2]},
-        {"model": "assets/plants/fern1/fern1.gltf", "scatter": 14, "bank": [1.7, 3.5], "scale": [0.8, 1.2]},
-        {"model": "assets/plants/grass_tall1/grass_tall1.gltf", "scatter": 40, "bank": [1.6, 6], "scale": [0.8, 1.2]},
-        {"model": "assets/plants/buttercup1/buttercup1.gltf", "scatter": 16, "bank": [2, 7], "scale": [0.9, 1.1]},
-        {"model": "assets/trees/birch_v2/birch_v2.gltf", "at": [-9, -10], "rot": 40, "scale": 1},
-        {"model": "assets/trees/birch_v2/birch_v2.gltf", "at": [-12, 4], "rot": 130, "scale": 1.1},
-        {"model": "assets/trees/ash_v2/ash_v2.gltf", "at": [9, -18], "rot": 300, "scale": 1.1},
-        {"model": "assets/trees/willow_v2/willow_v2.gltf", "at": [-8.5, 12], "rot": 90, "scale": 1},
-        {"model": "assets/trees/maple_v2/maple_v2.gltf", "at": [10, 2], "rot": 10, "scale": 1}
-      ]},
-    "lake": {"preset": "calm_lake", "level": 0, "camera": {"pos": [4, 2.4, 27], "target": [-1, 2.4, 0]}, "sky": {"hour": 16, "azimuth": 215},
-      "basin": {"radius": 16, "depth": 3.2, "wobble": 0.22},
+        {
+          "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+          "along": [
+            0.47,
+            0.1
+          ],
+          "rot": 20,
+          "scale": 0.8
+        },
+        {
+          "model": "assets/props/stone1/stone1.gltf",
+          "along": [
+            0.5,
+            -0.45
+          ],
+          "rot": 80,
+          "scale": 0.7
+        },
+        {
+          "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+          "along": [
+            0.42,
+            -0.2
+          ],
+          "rot": 140,
+          "scale": 0.6
+        },
+        {
+          "model": "assets/props/stone1/stone1.gltf",
+          "along": [
+            0.38,
+            0.4
+          ],
+          "rot": 200,
+          "scale": 0.55
+        },
+        {
+          "model": "assets/props/pebbles1/pebbles1.gltf",
+          "along": [
+            0.55,
+            0.75
+          ],
+          "rot": 0
+        },
+        {
+          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "along": [
+            0.31,
+            1.5
+          ],
+          "rot": 60,
+          "scale": 1.2
+        },
+        {
+          "model": "assets/props/mossy_log1/mossy_log1.gltf",
+          "along": [
+            0.72,
+            1.9
+          ],
+          "rot": 15
+        },
+        {
+          "model": "assets/plants/water_lily1/water_lily1.gltf",
+          "scatter": 9,
+          "pool": true,
+          "float": true,
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/pondweed1/pondweed1.gltf",
+          "scatter": 6,
+          "pool": true,
+          "scale": [
+            0.8,
+            1.1
+          ]
+        },
+        {
+          "model": "assets/plants/reed1/reed1.gltf",
+          "scatter": 40,
+          "bank": [
+            0.95,
+            1.5
+          ],
+          "scale": [
+            0.8,
+            1.3
+          ]
+        },
+        {
+          "model": "assets/plants/cattail1/cattail1.gltf",
+          "scatter": 22,
+          "bank": [
+            0.9,
+            1.4
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/fern1/fern1.gltf",
+          "scatter": 14,
+          "bank": [
+            1.7,
+            3.5
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/grass_tall1/grass_tall1.gltf",
+          "scatter": 40,
+          "bank": [
+            1.6,
+            6
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/buttercup1/buttercup1.gltf",
+          "scatter": 16,
+          "bank": [
+            2,
+            7
+          ],
+          "scale": [
+            0.9,
+            1.1
+          ]
+        },
+        {
+          "model": "assets/trees/birch_v2/birch_v2.gltf",
+          "at": [
+            -9,
+            -10
+          ],
+          "rot": 40,
+          "scale": 1
+        },
+        {
+          "model": "assets/trees/birch_v2/birch_v2.gltf",
+          "at": [
+            -12,
+            4
+          ],
+          "rot": 130,
+          "scale": 1.1
+        },
+        {
+          "model": "assets/trees/ash_v2/ash_v2.gltf",
+          "at": [
+            9,
+            -18
+          ],
+          "rot": 300,
+          "scale": 1.1
+        },
+        {
+          "model": "assets/trees/willow_v2/willow_v2.gltf",
+          "at": [
+            -8.5,
+            12
+          ],
+          "rot": 90,
+          "scale": 1
+        },
+        {
+          "model": "assets/trees/maple_v2/maple_v2.gltf",
+          "at": [
+            10,
+            2
+          ],
+          "rot": 10,
+          "scale": 1
+        }
+      ]
+    },
+    "lake": {
+      "preset": "calm_lake",
+      "level": 0,
+      "camera": {
+        "pos": [
+          4,
+          2.4,
+          27
+        ],
+        "target": [
+          -1,
+          2.4,
+          0
+        ]
+      },
+      "sky": {
+        "weather": "noon",
+        "hour": 16,
+        "azimuth": 215
+      },
+      "basin": {
+        "radius": 16,
+        "depth": 3.2,
+        "wobble": 0.22
+      },
       "models": [
-        {"model": "assets/trees/willow_v2/willow_v2.gltf", "shore": [100, 1.08], "rot": 200, "scale": 1.2},
-        {"model": "assets/trees/birch_v2/birch_v2.gltf", "shore": [70, 1.25], "rot": 30, "scale": 1.05},
-        {"model": "assets/trees/birch_v2/birch_v2.gltf", "shore": [80, 1.5], "rot": 160, "scale": 0.9},
-        {"model": "assets/trees/spruce_tall/spruce_tall.gltf", "shore": [120, 1.45], "rot": 0, "scale": 1.1},
-        {"model": "assets/trees/spruce_tall/spruce_tall.gltf", "shore": [135, 1.7], "rot": 60, "scale": 1.3},
-        {"model": "assets/trees/cardtree_71924/cardtree_71924.gltf", "shore": [55, 1.55], "rot": 0, "scale": 1.15},
-        {"model": "assets/trees/pine_v2/pine_v2.gltf", "shore": [150, 1.3], "rot": 120, "scale": 1},
-        {"model": "assets/trees/aspen_v2/aspen_v2.gltf", "shore": [35, 1.4], "rot": 250, "scale": 1},
-        {"model": "assets/props/mossy_boulder1/mossy_boulder1.gltf", "shore": [88, 0.98], "rot": 30, "scale": 1.4},
-        {"model": "assets/props/log1/log1.gltf", "shore": [62, 0.97], "rot": 20},
-        {"model": "assets/plants/water_lily1/water_lily1.gltf", "scatter": 14, "ring": [80, 140, 0.72, 0.9], "float": true, "scale": [0.8, 1.2]},
-        {"model": "assets/plants/reed1/reed1.gltf", "scatter": 30, "ring": [20, 70, 0.93, 1.06], "scale": [0.8, 1.3]},
-        {"model": "assets/plants/cattail1/cattail1.gltf", "scatter": 18, "ring": [140, 175, 0.94, 1.05], "scale": [0.8, 1.2]},
-        {"model": "assets/plants/grass_tall1/grass_tall1.gltf", "scatter": 50, "ring": [0, 360, 1.12, 1.8], "scale": [0.8, 1.2]}
-      ]}
+        {
+          "model": "assets/trees/willow_v2/willow_v2.gltf",
+          "shore": [
+            100,
+            1.08
+          ],
+          "rot": 200,
+          "scale": 1.2
+        },
+        {
+          "model": "assets/trees/birch_v2/birch_v2.gltf",
+          "shore": [
+            70,
+            1.25
+          ],
+          "rot": 30,
+          "scale": 1.05
+        },
+        {
+          "model": "assets/trees/birch_v2/birch_v2.gltf",
+          "shore": [
+            80,
+            1.5
+          ],
+          "rot": 160,
+          "scale": 0.9
+        },
+        {
+          "model": "assets/trees/spruce_tall/spruce_tall.gltf",
+          "shore": [
+            120,
+            1.45
+          ],
+          "rot": 0,
+          "scale": 1.1
+        },
+        {
+          "model": "assets/trees/spruce_tall/spruce_tall.gltf",
+          "shore": [
+            135,
+            1.7
+          ],
+          "rot": 60,
+          "scale": 1.3
+        },
+        {
+          "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+          "shore": [
+            55,
+            1.55
+          ],
+          "rot": 0,
+          "scale": 1.15
+        },
+        {
+          "model": "assets/trees/pine_v2/pine_v2.gltf",
+          "shore": [
+            150,
+            1.3
+          ],
+          "rot": 120,
+          "scale": 1
+        },
+        {
+          "model": "assets/trees/aspen_v2/aspen_v2.gltf",
+          "shore": [
+            35,
+            1.4
+          ],
+          "rot": 250,
+          "scale": 1
+        },
+        {
+          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "shore": [
+            88,
+            0.98
+          ],
+          "rot": 30,
+          "scale": 1.4
+        },
+        {
+          "model": "assets/props/log1/log1.gltf",
+          "shore": [
+            62,
+            0.97
+          ],
+          "rot": 20
+        },
+        {
+          "model": "assets/plants/water_lily1/water_lily1.gltf",
+          "scatter": 14,
+          "ring": [
+            80,
+            140,
+            0.72,
+            0.9
+          ],
+          "float": true,
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/reed1/reed1.gltf",
+          "scatter": 30,
+          "ring": [
+            20,
+            70,
+            0.93,
+            1.06
+          ],
+          "scale": [
+            0.8,
+            1.3
+          ]
+        },
+        {
+          "model": "assets/plants/cattail1/cattail1.gltf",
+          "scatter": 18,
+          "ring": [
+            140,
+            175,
+            0.94,
+            1.05
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        },
+        {
+          "model": "assets/plants/grass_tall1/grass_tall1.gltf",
+          "scatter": 50,
+          "ring": [
+            0,
+            360,
+            1.12,
+            1.8
+          ],
+          "scale": [
+            0.8,
+            1.2
+          ]
+        }
+      ]
+    }
   }
 }

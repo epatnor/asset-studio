@@ -14,7 +14,7 @@
 // - Strand: en vågrygg rullar in över grundet med en skumsvans efter sig, bryts och sköljer upp på stranden (snabbt upp,
 //   långsamt ned, varje våg olika stark), lämnar skum som tonar bort, och sanden förblir våt en stund efteråt. Marken tar sin våthet och kaustik ur groundColor och groundRoughness, så att samma vatten styr.
 // - Krusningar från stänk: splash(x, z) ger ringar som breder ut sig och dör bort (åtta samtidigt, analytiskt, ingen
-//   simulering).
+//   simulering). Regn (uniforms.rain, 0..1 ur atmosfären) ger små ringar överallt på ytan.
 //
 //   const water = createWater({ geometry, level, sky });   // geometry i världen, med attributen bed och flow
 //   scene.add(water.mesh); water.set(vals, sun); water.update(time);
@@ -125,7 +125,7 @@ export function createWater({ geometry, level = 0, sky }) {
     edge: uniform(0.06), wetShore: uniform(0.6), wetBand: uniform(0.12), surge: uniform(0), surgePeriod: uniform(7),
     flowSpeed: uniform(0.8), flowFoam: uniform(0.4), caustics: uniform(0.8), causticScale: uniform(1.5),
     sunDir: uniform(new THREE.Vector3(0, 1, 0)), sunColor: uniform(new THREE.Color('#ffffff')), sunI: uniform(1), ambient: uniform(new THREE.Color('#8090a0')),
-    level: uniform(level),
+    level: uniform(level), rain: uniform(0),
     splash: uniformArray(Array.from({ length: RIPPLES }, () => new THREE.Vector4(0, 0, -99, 0)), 'vec4'), // x, z, start, styrka
   };
   let nextSplash = 0;
@@ -207,7 +207,19 @@ export function createWater({ geometry, level = 0, sky }) {
       const d = r.sub(age.mul(0.9)), env = exp(d.mul(d).mul(-1.6)).mul(exp(age.mul(-0.5))).mul(s.w).mul(smoothstep(0, 0.05, age)).div(r.mul(0.4).add(1));
       ring = ring.add(rel.div(r).mul(cos(d.mul(14)).mul(env)));
     }
-    const N = normalize(vNormal.add(vec3(detail.x.add(ring.x.mul(0.7)).negate(), 0, detail.y.add(ring.y.mul(0.7)).negate())));
+    // Regnets ringar: två förskjutna rutnät med en droppe per ruta och sin egen takt; ringen växer och dör ut innan den
+    // når rutans kant. Fler och tätare droppar när det regnar mer
+    const drops = (cellSize, salt) => {
+      const g = Pw.xz.div(cellSize).add(salt), cell = floor(g), h1 = fract(sin(cell.x.mul(127.1).add(cell.y.mul(311.7)).add(salt * 17)).mul(43758.5453));
+      const h2 = fract(h1.mul(91.7)), h3 = fract(h1.mul(53.3));
+      const period = float(0.5).add(h3.mul(0.9)).div(u.rain.mul(0.8).add(0.2));
+      const age = fract(t.div(period).add(h1)).mul(period);
+      const rel = fract(g).sub(vec2(h2, h3).mul(0.4).add(0.3)).mul(cellSize), r = length(rel).add(1e-4);
+      const d = r.sub(age.mul(0.32)), env = exp(d.mul(d).mul(-900)).mul(exp(age.mul(-4))).mul(select(h2.lessThan(u.rain.mul(0.9).add(0.1)), 1, 0));
+      return rel.div(r).mul(cos(d.mul(90)).mul(env));
+    };
+    const rainSlope = select(u.rain.greaterThan(0.001), drops(0.6, 0).add(drops(0.45, 0.5)), vec2(0)).mul(u.rain.mul(0.6).add(0.25));
+    const N = normalize(vNormal.add(vec3(detail.x.add(ring.x.mul(0.7)).add(rainSlope.x).negate(), 0, detail.y.add(ring.y.mul(0.7)).add(rainSlope.y).negate())));
     const ndv = saturate(dot(N, V));
 
     // Djupet under ytan, ur djupbufferten: markens punkt i världen
@@ -226,7 +238,7 @@ export function createWater({ geometry, level = 0, sky }) {
 
     // Speglingen: himlen (samma som weather.js) eller hela scenen
     const R = reflect(V.negate(), N), Ru = vec3(R.x, abs(R.y), R.z);
-    let refl = sky ? sky.colorAt(Ru, 0) : vec3(0.6, 0.75, 0.9);
+    let refl = sky ? sky.colorAt(Ru, 0, false) : vec3(0.6, 0.75, 0.9); // molnen med färre oktaver i speglingen
     if (mirror) {
       mirror.uvNode = mirror.uvNode.add(N.xz.mul(u.distortion).mul(0.05));
       refl = mirror.rgb;
