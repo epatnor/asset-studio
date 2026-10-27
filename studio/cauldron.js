@@ -214,9 +214,35 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     } catch (e) { setNote(`The effect could not be built: ${e.message}`); console.error(e); return; }
     if (kind === 'marker') fx.place(at, topOf());
     fx.loop = loop;
-    scene.add(fx.object);
     nextPlay = time;
-    if (kind === 'spell') { fx.play(time); lastCast = time; nextPlay = time + fx.duration + s.pause; }
+    warmUp(fx);
+  }
+  // Shaderna kompileras innan effekten visas: alla lager görs synliga och ritas en gång (skuggpasset och scenpasset),
+  // så att kastet inte stannar upp mitt i när ett lager syns första gången. Det kostar en stund när man väljer
+  // effekten i stället. Sedan döljs lagren igen.
+  let warming = 0, pendingWarm = null;
+  async function warmUp(f) {
+    const id = ++warming;
+    setNote('Brewing… (compiling the effect\'s shaders)');
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // låt anteckningen synas först
+    if (id === warming && f === fx) pendingWarm = f; // görs i början av nästa bild (tick), där skuggpasset ritas på riktigt
+  }
+  let pendingPlay = null;
+  function doWarm(f) {
+    pendingWarm = null;
+    scene.add(f.object);
+    setNote('');
+    // Besvärjelser: förbereds uttonade och ritas av bildkedjan den här bilden (samma sammanhang som när de syns; ett
+    // eget anrop till renderer.render ger ett annat sammanhang och då kompileras allt en gång till vid kastet).
+    if (f.prepare) { f.prepare(time, camera); nextPlay = Infinity; pendingPlay = f; return; }
+    // Övriga effekter: alla delar synliga och ritade en gång direkt, sedan dolda igen
+    const hidden = [];
+    f.object.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(scenePass.renderTarget);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(prev);
+    for (const o of hidden) o.visible = false;
   }
   function changed() { fx?.set(cur().settings); if (fx) fx.loop = loop; }
 
@@ -246,7 +272,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     const els = [];
     const get = (key) => state[k.id].settings[key], set = (key, v) => { state[k.id].settings[key] = v; };
     // En besvärjelse byggs om när den byts, när ett lager slås av eller på och när storleken ändras
-    const onChange = (q) => { markPreset(null); if (k.id === 'spell' && (q?.key === 'spell' || q?.type === 'bool' || q?.key === 'size')) build(); else changed(); };
+    const onChange = (q) => { markPreset(null); if (k.id === 'spell' && (q?.key === 'spell' || q?.type === 'bool' || q?.rebuild)) build(); else changed(); };
     for (const g of k.groups) {
       const body = cards.card(g.label, '#8b5cf6', { closed: false });
       for (const q of k.params.filter((x) => x.group === g.id)) body.append(cards.rowFor(q)(q, get, set, onChange));
@@ -410,13 +436,19 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     }
   }
   function tick(dt) {
+    if (pendingPlay) { // kastet börjar bilden efter förberedelsen
+      const p = pendingPlay;
+      pendingPlay = null;
+      if (p === fx) { p.play(time); lastCast = time; nextPlay = time + p.duration + cur().settings.pause; }
+    }
+    if (pendingWarm) doWarm(pendingWarm);
     if (!paused) time += dt * timeScale;
     windVec[0] = Math.cos(windDir * DEG) * windSpeed; windVec[2] = Math.sin(windDir * DEG) * windSpeed;
     // Smällar upprepas i loop: en ny när den förra har dött ut
     const s = cur().settings;
     if (fx && loop && kind === 'particles' && s.mode === 'burst' && time >= nextPlay) { fx.play(time); nextPlay = time + s.lifetime + (s.burstSpread ?? 0) + 0.4; }
     // Besvärjelser kastas om efter sin längd och pausen (de som pågår hela tiden, som lägerelden, en gång)
-    if (fx && kind === 'spell' && !fx.ambient) {
+    if (fx && kind === 'spell' && !fx.ambient && fx.object.parent) {
       if (nextPlay <= lastCast) nextPlay = lastCast + fx.duration + s.pause;
       if (loop && time >= nextPlay) { fx.play(time); lastCast = time; nextPlay = time + fx.duration + s.pause; }
     }

@@ -29,7 +29,7 @@ import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { createSpell } from './spells.js';
 
 export const KINDS = ['glow', 'marker', 'particles', 'trail', 'spell'];
-const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring', 'flame', 'shard'];
+const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring', 'flame', 'shard', 'skull', 'snowflake', 'rune'];
 const EMITS = ['point', 'sphere', 'disc', 'ring'];
 const MARKS = ['ring', 'target', 'area', 'exclaim'];
 const DEG = Math.PI / 180;
@@ -126,7 +126,7 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
   mat.scaleNode = vec2(size.mul(streak), size).mul(select(alive, float(1), float(0)));
   // Lågor står upprätt (med en liten lutning), sträckta gnistor följer farten, resten snurrar
   const upright = rnd(9).sub(0.5).mul(0.3).add(sin(u.time.mul(3).add(rnd(10).mul(9))).mul(0.06));
-  mat.rotationNode = select(u.sprite.equal(6), upright, select(u.stretch.greaterThan(0), atan(vv.y, vv.x), rnd(9).mul(PI2).add(u.spin.mul(rnd(10).mul(2).sub(1)).mul(age))));
+  mat.rotationNode = select(u.sprite.equal(6).or(u.sprite.equal(8)).or(u.sprite.equal(10)), upright, select(u.stretch.greaterThan(0), atan(vv.y, vv.x), rnd(9).mul(PI2).add(u.spin.mul(rnd(10).mul(2).sub(1)).mul(age))));
   const vt = varying(lt), vr = varying(rnd(11));
   const col = select(vt.lessThan(0.5), mix(u.c0, u.c1, vt.mul(2)), mix(u.c1, u.c2, vt.mul(2).sub(1)));
   const sh = spriteShape(u.sprite, vr, u.time, vt);
@@ -197,7 +197,29 @@ function spriteShape(kind, r, time, age = float(0)) {
   // Skärva: en kantig romb med olika proportioner per partikel och två ljusa och mörka facetter
   const shardD = abs(p.x).mul(r.mul(0.6).add(0.75)).add(abs(p.y).mul(float(1.25).sub(r.mul(0.5)))).add(p.x.mul(p.y).mul(r.sub(0.5)).mul(0.6));
   const shard = smoothstep(0.82, 0.74, shardD);
-  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, select(kind.equal(6), flame, select(kind.equal(7), shard, soft)))))));
+  // Dödskalle: skalle och käke, ögonhålor, näsa och tänder (avståndsfält), upprätt
+  const disk = (c, rad) => length(p.sub(c)).sub(rad);
+  const box = (c, h) => { const d = abs(p.sub(c)).sub(h); return length(max(d, 0)).add(min(max(d.x, d.y), 0)); };
+  const head = min(disk(vec2(0, 0.18), 0.56), box(vec2(0, -0.33), vec2(0.3, 0.2)).sub(0.06));
+  const holes = min(min(disk(vec2(-0.22, 0.12), 0.15), disk(vec2(0.22, 0.12), 0.15)), box(vec2(0, -0.12), vec2(0.05, 0.08)));
+  const gaps = max(box(vec2(0, -0.44), vec2(0.24, 0.06)), abs(fract(p.x.mul(4.5).add(0.5)).sub(0.5)).sub(0.08).div(4.5));
+  const skull = smoothstep(0.03, -0.02, max(max(head, holes.negate()), gaps.negate()));
+  // Snöflinga: sex armar med två par grenar (vikt in i en sektor på 30°)
+  const ra = length(p), sa = abs(fract(atan(p.y, p.x).div(Math.PI / 3)).sub(0.5)).mul(Math.PI / 3);
+  const q = vec2(cos(sa), sin(sa)).mul(ra);
+  const segD = (a, b) => { const pa = q.sub(a), ba = b.sub(a); return length(pa.sub(ba.mul(clamp(dot(pa, ba).div(dot(ba, ba)), 0, 1)))); };
+  const flakeD = min(min(segD(vec2(0, 0), vec2(0.88, 0)), segD(vec2(0.42, 0), vec2(0.62, 0.17))), segD(vec2(0.62, 0), vec2(0.78, 0.11)));
+  const snowflake = smoothstep(0.075, 0.03, flakeD).add(smoothstep(0.16, 0.1, ra).mul(0.8));
+  // Runa: tre streck i ett 3 × 3-rutnät ur partikelns slumptal, som markörernas runring
+  const rq = p.mul(0.5).add(0.5);
+  const rseg = (k) => {
+    const g = (j) => floor(hash(floor(r.mul(997)).add(k * 5 + j).toUint()).mul(3)).mul(0.35).add(0.15);
+    const a0 = vec2(g(0), g(1)), b0 = vec2(g(2), g(3)), pa = rq.sub(a0), ba = b0.sub(a0);
+    return length(pa.sub(ba.mul(clamp(dot(pa, ba).div(max(dot(ba, ba), 1e-4)), 0, 1))));
+  };
+  const rune = smoothstep(0.075, 0.035, min(min(rseg(0), rseg(1)), rseg(2)));
+  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, select(kind.equal(6), flame,
+    select(kind.equal(7), shard, select(kind.equal(8), skull, select(kind.equal(9), snowflake, select(kind.equal(10), rune, soft))))))))));
   const shade = select(kind.equal(4), float(1).sub(smoothstep(0.06, 0, abs(p.x)).mul(0.35)).mul(float(0.8).add(p.y.mul(0.2))),
     select(kind.equal(6), float(0.7).add(clamp(fCore, 0, 1).mul(2.2)), select(kind.equal(7), select(p.x.add(p.y.mul(0.4)).greaterThan(0), float(1.15), float(0.7)), float(1))));
   return { alpha: clamp(alpha, 0, 1), shade };
@@ -302,8 +324,8 @@ function moteSettings(p) {
   return {
     mode: 'loop', count: Math.max(1, p.motes), lifetime: 2.2, lifeVar: 0.4, emit: 'disc', radius: Math.max(0.15, p.groundRadius * 0.6),
     speed: p.moteSpeed, speedVar: 0.5, spread: 12, radial: 0.08, gravity: 0, drag: 0.15, swirl: p.moteSwirl, turbulence: 0.25, wind: 0.2,
-    sprite: 'soft', additive: true, sizeStart: p.moteSize, sizeEnd: p.moteSize * 0.3, sizeVar: 0.4, stretch: 0, spin: 0,
-    colorStart: p.color2, colorMid: p.color, colorEnd: p.color, alpha: 1, fadeIn: 0.2, fadeOut: 0.5, glow: Math.max(0.5, p.intensity * 1.2), flicker: 0.3,
+    sprite: p.moteSprite ?? 'soft', additive: true, sizeStart: p.moteSize, sizeEnd: p.moteSize * (p.moteGrowth ?? ((p.moteSprite ?? 'soft') === 'soft' ? 0.3 : 0.7)), sizeVar: 0.4, stretch: 0,
+    spin: (p.moteSprite ?? 'soft') === 'soft' ? 0 : 1.5, colorStart: p.color2, colorMid: p.color, colorEnd: p.color, alpha: p.moteAlpha ?? 1, fadeIn: 0.2, fadeOut: 0.5, glow: Math.max(0.5, p.intensity * 1.2), flicker: 0.3,
   };
 }
 

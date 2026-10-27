@@ -226,10 +226,15 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
   const sites = Math.max(1, Math.round(s.count ?? 14));
   const kinds = ice ? ['crystal', 'needle', 'shard', 'stubby'] : ['rock', 'slab', 'jag', 'pillar'];
   const geos = kinds.map((k, i) => spikeGeometry(k, 977 + i * 131));
-  const u = { rim: uniform(new THREE.Color(s.rim ?? '#bfefff')), rimStrength: uniform(s.rimStrength ?? 1.5), fade: uniform(1), color: uniform(new THREE.Color(s.color ?? '#7fc8e8')) };
+  const u = { rim: uniform(new THREE.Color(s.rim ?? '#bfefff')), rimStrength: uniform(s.rimStrength ?? 1.5), fade: uniform(1), color: uniform(new THREE.Color(s.color ?? '#7fc8e8')), cracks: uniform(s.iceCracks ?? 0.6), groundY: uniform(from.y) };
   const nv = abs(dot(normalize(normalView), normalize(positionView).negate()));
   const fres = pow(float(1).sub(nv), 3);
   const yl = positionLocal.y; // 0 vid foten, 1 i toppen
+  // Foten: de nedersta decimetrarna över marken (i världen, så att höga och låga spjut får lika hög fot), med en
+  // ojämn övre kant; texturen läggs på från sidan (x + z, y)
+  const footH = s.foot ?? 0.42;
+  const foot = smoothstep(footH, footH * 0.3, positionWorld.y.sub(u.groundY).add(mx_noise_float(positionWorld.mul(4.5)).mul(0.1)));
+  const footTex = texture(loadTex(ice ? 'surface_snow' : 'surface_dirt', true, texBase), vec2(positionWorld.x.add(positionWorld.z), positionWorld.y).div(0.9)).rgb;
   let mat;
   if (ice) {
     // Is: delvis genomskinlig, tätare i kanterna (fresnel), lodräta strimmor och luftbubblor, frost vid foten
@@ -237,16 +242,26 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
     const streak = mx_noise_float(vec3(positionLocal.x.mul(7), yl.mul(1.2), positionLocal.z.mul(7))).mul(0.5).add(0.5);
     const frost = smoothstep(0.28, 0.02, yl).mul(mx_noise_float(positionLocal.mul(14)).mul(0.4).add(0.8));
     const deep = u.color.mul(0.55), light = u.color.add(vec3(0.25, 0.3, 0.3));
-    mat.colorNode = mix(mix(deep, light, streak), vec3(0.92, 0.97, 1), clamp(frost, 0, 1));
-    mat.opacityNode = clamp(mix(float(0.42), float(0.95), fres).add(frost.mul(0.5)).add(streak.mul(0.12)), 0, 1);
-    mat.emissiveNode = u.rim.mul(fres.mul(u.rimStrength).add(smoothstep(0.55, 1, streak).mul(0.12))).mul(u.fade);
+    // Fina sprickor i isen: cellkanter (worley F2 − F1) i två storlekar, i spjutets eget rum så att de sitter still
+    // medan det växer; en förskjutning per spjut så att inga två spricker likadant
+    const cp = vec2(positionLocal.x.add(positionLocal.z.mul(0.7)).mul(6), positionLocal.y.mul(3.2)).add(hash(instanceIndex).mul(37));
+    const w1 = mx_worley_noise_vec2(cp), w2 = mx_worley_noise_vec2(cp.mul(2.7).add(11));
+    const iceCracks = clamp(smoothstep(0.06, 0.0, w1.y.sub(w1.x)).add(smoothstep(0.04, 0.0, w2.y.sub(w2.x)).mul(0.55)), 0, 1).mul(u.cracks);
+    mat.colorNode = mix(mix(mix(deep, light, streak), vec3(0.92, 0.97, 1), clamp(frost, 0, 1)), vec3(0.95, 0.99, 1), iceCracks.mul(0.85));
+    mat.opacityNode = clamp(mix(float(0.42), float(0.95), fres).add(frost.mul(0.5)).add(streak.mul(0.12)).add(iceCracks.mul(0.45)), 0, 1);
+    mat.emissiveNode = u.rim.mul(fres.mul(u.rimStrength).add(smoothstep(0.55, 1, streak).mul(0.12)).add(iceCracks.mul(0.4))).mul(u.fade).mul(float(1).sub(foot.mul(0.85)));
+    // Foten: ett lager vit snö ovanpå isen närmast marken, tätt och nästan ogenomskinligt
+    mat.colorNode = mix(mat.colorNode, footTex.mul(1.08), foot);
+    mat.opacityNode = max(mat.opacityNode, foot.mul(0.97));
   } else {
     // Sten: Ateljéns klipptextur med normalkarta, mörkare och fuktigare vid foten, svag kant i besvärjelsens färg
     const map = loadTex(s.texture ?? 'surface_cliff', true, texBase), nmap = loadTex(`${s.texture ?? 'surface_cliff'}_normal`, false, texBase);
     map.repeat.set(1, 2); nmap.repeat.set(1, 2);
     mat = new THREE.MeshStandardNodeMaterial({ map, normalMap: nmap, roughness: 0.92, metalness: 0, flatShading: true });
     mat.colorNode = texture(map).rgb.mul(u.color.mul(1.6)).mul(mix(float(0.55), float(1.05), smoothstep(0, 0.35, yl)));
-    mat.emissiveNode = u.rim.mul(fres).mul(u.rimStrength).mul(u.fade);
+    mat.emissiveNode = u.rim.mul(fres).mul(u.rimStrength).mul(u.fade).mul(float(1).sub(foot));
+    // Foten: ett lager jord i markens färg ovanpå stenen, som om spjutet rivit med sig marken upp
+    mat.colorNode = mix(mat.colorNode, footTex.mul(u.color.mul(1.4)).mul(0.8), foot);
   }
   const dir = new THREE.Vector3().subVectors(to, from).setY(0);
   const len = dir.length();
@@ -256,6 +271,9 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
   const rnd = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
   const spikes = [];
   const D0 = 0.6, span = Math.max(0.5, len - D0);
+  // Spårets halva bredd (m) längs vägen 0–1: från trailStart vid kastaren till trailEnd vid målet
+  const wS = s.trailStart ?? 0.25, wE = s.trailEnd ?? 1;
+  const halfW = (k) => wS + (wE - wS) * k;
   for (let i = 0; i < sites; i++) {
     const k = (i + 0.5) / sites;
     let base, d, out;
@@ -264,7 +282,7 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
       base = to.clone().add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
       d = r; out = base.clone().sub(to).setY(0).normalize();
     } else {
-      const side = rnd() < 0.5 ? -1 : 1, lat = (0.15 + rnd() * 0.85) * (s.spread ?? 0.7) * 0.5 * side;
+      const side = rnd() < 0.5 ? -1 : 1, lat = (0.15 + rnd() * 0.85) * halfW(k) * 0.75 * side;
       d = D0 + k * span + (rnd() - 0.5) * (span / sites) * 0.6;
       base = from.clone().addScaledVector(dir, d).addScaledVector(perp, lat);
       out = perp.clone().multiplyScalar(side);
@@ -291,10 +309,15 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
   const meshes = geos.map((g, gi) => {
     const list = spikes.filter((sp) => sp.kind === gi);
     const m = new THREE.InstancedMesh(g, mat, Math.max(1, list.length));
+    m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // uppdateras varje bild; som statisk byggs shadern om vid första ändringen
     m.count = list.length;
     m.castShadow = true; m.receiveShadow = !ice;
     m.frustumCulled = false;
     m.renderOrder = ice ? 4 : 0;
+    // Nedsjunkna från början (och bufferten ändrad en gång före förvärmningen, så att inget byggs om vid kastet)
+    const Z = new THREE.Matrix4().makeScale(1e-4, 1e-4, 1e-4);
+    list.forEach((sp, i) => m.setMatrixAt(i, Z.clone().setPosition(sp.p)));
+    m.instanceMatrix.needsUpdate = true;
     group.add(m);
     return { mesh: m, list };
   });
@@ -302,29 +325,42 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
   // Spåret: en dekal på marken längs linjen som spricker upp där vågen har gått fram
   let trail = null, tu = null;
   if (s.mode !== 'ring' && ground && s.trail !== false) {
-    tu = { front: uniform(-1), fade: uniform(1), from: uniform(from.clone()), dir: uniform(dir.clone()), perp: uniform(perp.clone()), width: uniform((s.spread ?? 0.7) * 0.5 + (s.width ?? 0.22) * 2.2),
-      len: uniform(len), rim: u.rim, color: u.color, glow: uniform(ice ? (s.rimStrength ?? 1.5) : 0.15) };
+    tu = { front: uniform(-1), fade: uniform(1), from: uniform(from.clone()), dir: uniform(dir.clone()), perp: uniform(perp.clone()),
+      len: uniform(len), rim: u.rim, color: u.color, glow: uniform(ice ? (s.rimStrength ?? 1.5) : 0.15),
+      wStart: uniform(wS), wEnd: uniform(wE), soft: uniform(0.45), breakup: uniform(0.55), breakupScale: uniform(1.2), fadeIn: uniform(0.8), fadeOut: uniform(0.8), opacity: uniform(0.9),
+      rest: uniform(0), restFade: uniform(1) }; // rest: 0 medan spjuten står, 1 när bara resterna ligger kvar; restFade tonar ut dem
     const rel = positionWorld.sub(tu.from);
-    const along = dot(rel.xz, tu.dir.xz), across = dot(rel.xz, tu.perp.xz).div(tu.width);
-    const wob = mx_noise_float(vec3(positionWorld.xz.mul(1.3), 2)).mul(0.35);
-    const edgeM = float(1).sub(smoothstep(0.45, 1.0, abs(across).add(wob)));
-    const ends = smoothstep(0.1, 0.6, along).mul(smoothstep(tu.len.add(0.6), tu.len.sub(0.2), along));
+    const along = dot(rel.xz, tu.dir.xz);
+    // Avsmalning: halva bredden går från wStart vid kastaren till wEnd vid målet
+    const halfWn = mix(tu.wStart, tu.wEnd, clamp(along.div(tu.len), 0, 1));
+    const across = dot(rel.xz, tu.perp.xz).div(max(halfWn, 0.02));
+    // Masken: mjuk kant, uppbruten av brus i två skalor (fransiga kanter och hål när breakup är högt)
+    const bp = positionWorld.xz.mul(tu.breakupScale);
+    const n = mx_noise_float(vec3(bp, 2)).add(mx_noise_float(vec3(bp.mul(2.3), 5)).mul(0.5));
+    const edgeD = abs(across).add(n.mul(tu.breakup).mul(0.55));
+    const edgeM = float(1).sub(smoothstep(float(1).sub(max(tu.soft, 0.02)), 1, edgeD));
+    // Hålen växer när resterna tonar bort, så att snön eller jorden smälter undan i fläckar i stället för att blekna jämnt
+    const holes = smoothstep(-0.75, -0.35, n.add(float(1).sub(tu.breakup).mul(1.2)).sub(float(1).sub(tu.restFade).mul(1.6)));
+    const ends = smoothstep(0, max(tu.fadeIn, 0.01), along).mul(float(1).sub(smoothstep(tu.len.sub(0.1), tu.len.add(max(tu.fadeOut, 0.01)), along)));
     const shown = smoothstep(tu.front, tu.front.sub(0.35), along);
-    const wv = mx_worley_noise_vec2(positionWorld.xz.mul(ice ? 2.2 : 1.6));
-    const crack = smoothstep(0.09, 0.0, wv.y.sub(wv.x));
-    const crack2 = smoothstep(0.05, 0.0, mx_worley_noise_vec2(positionWorld.xz.mul(5.5)).y.sub(mx_worley_noise_vec2(positionWorld.xz.mul(5.5)).x)).mul(0.6);
-    const cracks = clamp(crack.add(crack2), 0, 1).mul(smoothstep(1.0, 0.3, abs(across)));
+    const wv = mx_worley_noise_vec2(positionWorld.xz.mul(ice ? 2.2 : 1.6)), wv2 = mx_worley_noise_vec2(positionWorld.xz.mul(5.5));
+    const cracks = clamp(smoothstep(0.09, 0.0, wv.y.sub(wv.x)).add(smoothstep(0.05, 0.0, wv2.y.sub(wv2.x)).mul(0.6)), 0, 1).mul(smoothstep(1.0, 0.3, edgeD));
     const tex = texture(loadTex(ice ? 'surface_snow' : 'surface_dirt', true, texBase), positionWorld.xz.div(1.6)).rgb;
     const tmat = new THREE.MeshStandardNodeMaterial({ transparent: true, depthWrite: false, roughness: ice ? 0.25 : 0.95, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
     // Is: frusen skorpa i besvärjelsens färg med lysande sprickor. Jord: uppriven mörk jord med svarta sprickor och
     // ljusare upptryckta kanter.
     tmat.colorNode = ice ? mix(tex.mul(mix(vec3(1, 1, 1), tu.color, 0.45)), tu.color.mul(0.5), cracks)
       : mix(tex.mul(tu.color.mul(1.1)).mul(mix(float(1.15), float(0.7), smoothstep(0.2, 0.7, abs(across)))), vec3(0.05, 0.035, 0.025), cracks);
-    tmat.emissiveNode = tu.rim.mul(cracks).mul(tu.glow).mul(shown).mul(tu.fade);
-    tmat.opacityNode = clamp(edgeM.mul(ends).mul(shown).mul(ice ? 0.92 : 0.95).add(cracks.mul(edgeM).mul(shown).mul(0.3)), 0, 1).mul(tu.fade);
+    tmat.emissiveNode = tu.rim.mul(cracks).mul(tu.glow).mul(shown).mul(tu.fade).mul(float(1).sub(tu.rest));
+    // Resterna: ett tunt snötäcke på isspåret, lös ljusare jord på stenspåret
+    const residue = ice ? mix(tex, vec3(0.96, 0.98, 1), 0.6) : mix(tex.mul(tu.color.mul(1.1)), vec3(0.62, 0.53, 0.4), 0.3);
+    tmat.colorNode = mix(tmat.colorNode, residue, tu.rest);
+    const mask = edgeM.mul(holes).mul(ends).mul(shown);
+    tmat.opacityNode = clamp(mask.mul(tu.opacity).add(cracks.mul(mask).mul(0.3).mul(float(1).sub(tu.rest))), 0, 1).mul(mix(float(1), float(0.6), tu.rest)).mul(tu.restFade).mul(tu.fade);
     const mid = from.clone().addScaledVector(dir, len / 2);
     const ang = Math.atan2(dir.x, dir.z);
-    const tgeo = new DecalGeometry(ground, mid, new THREE.Euler(-Math.PI / 2, 0, ang, 'XYZ'), new THREE.Vector3(Math.max(len, 1) + 1.5, Math.max(len, 1) + 1.5, 6));
+    const reach = len + 2 * Math.max(wS, wE) + 2 * (s.trailFadeOut ?? 0.8) + 1;
+    const tgeo = new DecalGeometry(ground, mid, new THREE.Euler(-Math.PI / 2, 0, ang, 'XYZ'), new THREE.Vector3(reach, reach, 6));
     trail = new THREE.Mesh(tgeo, tmat);
     trail.renderOrder = 2;
     trail.receiveShadow = true;
@@ -340,32 +376,50 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
   const dust = createParticles(P({ count: s.dust ?? 70, lifetime: 1.8, lifeVar: 0.4, emit: 'sphere', radius: 0.35, speed: 1.1, speedVar: 0.5, spread: 55, radial: 0.8, gravity: ice ? 0.1 : -0.15, drag: 2,
     flow: 0.25, flowScale: 0.8, wind: 0.5, sprite: 'smoke', additive: false, sizeStart: 0.35, sizeEnd: 1.3, sizeVar: 0.4, spin: 0.6,
     colorStart: ice ? '#f0faff' : '#8a7458', colorMid: ice ? '#d8eef8' : '#7a6650', colorEnd: ice ? '#c8e2f0' : '#6e5c48', alpha: ice ? 0.45 : 0.6, fadeIn: 0.08, fadeOut: 0.65, glow: 1, soft: 0.5 }), { max: 400 });
-  group.add(debris.object, dust.object);
-  debris.object.visible = dust.object.visible = s.mode !== 'ring'; // i en ring finns inget spår att spricka upp
+  const avgW = (wS + wE) / 2;
+  const after = createParticles(P(ice
+    ? { count: s.mist ?? 45, lifetime: 3, lifeVar: 0.4, emit: 'disc', radius: avgW * 0.8, speed: 0.25, speedVar: 0.6, spread: 85, radial: 0.6, gravity: 0.15, drag: 2, flow: 0.12, flowScale: 0.4, wind: 0.3,
+      sprite: 'smoke', additive: false, sizeStart: 0.6, sizeEnd: 2, sizeVar: 0.4, spin: 0.3, colorStart: '#f6fcff', colorMid: '#eaf6fc', colorEnd: '#e0f0f8', alpha: 0.22, fadeIn: 0.25, fadeOut: 0.6, glow: 1, soft: 0.7 }
+    : { count: s.mist ?? 55, lifetime: 2.6, lifeVar: 0.4, emit: 'disc', radius: avgW * 0.8, speed: 0.35, speedVar: 0.6, spread: 70, radial: 0.5, gravity: -0.03, drag: 1.6, flow: 0.2, flowScale: 0.5, wind: 0.5,
+      sprite: 'smoke', additive: false, sizeStart: 0.5, sizeEnd: 2.2, sizeVar: 0.4, spin: 0.4, colorStart: '#a08a68', colorMid: '#968062', colorEnd: '#8a7658', alpha: 0.28, fadeIn: 0.2, fadeOut: 0.6, glow: 1, soft: 0.6 }), { max: 300 });
+  group.add(debris.object, dust.object, after.object);
+  debris.object.visible = dust.object.visible = after.object.visible = s.mode !== 'ring'; // i en ring finns inget spår att spricka upp
   const pathFrom = from.clone().addScaledVector(dir, D0), pathTo = from.clone().addScaledVector(dir, len);
   pathFrom.y = (groundY?.(pathFrom.x, pathFrom.z) ?? pathFrom.y) + 0.05; pathTo.y = (groundY?.(pathTo.x, pathTo.z) ?? pathTo.y) + 0.05;
 
   const M = new THREE.Matrix4(), S = new THREE.Vector3();
   let t0 = 0;
   const wave = () => Math.max(0.5, s.wave ?? 8);
+  // hold: hur länge spjuten står (lagrets längd i tidslinjen); linger: hur länge resterna ligger kvar efteråt
+  const hold = () => s.hold ?? 2.6, linger = () => s.linger ?? 3;
   const fx = {
     object: group, uniforms: u,
-    set(v) { s = { ...s, ...v }; u.color.value.set(v.color ?? '#7fc8e8'); u.rim.value.set(v.rim ?? '#bfefff'); u.rimStrength.value = v.rimStrength ?? 1.5; },
+    set(v) {
+      s = { ...s, ...v };
+      u.color.value.set(v.color ?? '#7fc8e8'); u.rim.value.set(v.rim ?? '#bfefff'); u.rimStrength.value = v.rimStrength ?? 1.5; u.cracks.value = s.iceCracks ?? 0.6;
+      if (tu) {
+        // Bredden ändras live i spåret; spjutens platser följer när besvärjelsen byggs om
+        tu.wStart.value = s.trailStart ?? 0.25; tu.wEnd.value = s.trailEnd ?? 1; tu.soft.value = s.trailSoft ?? 0.45; tu.breakup.value = s.trailBreakup ?? 0.55;
+        tu.breakupScale.value = s.trailBreakupScale ?? 1.2; tu.fadeIn.value = s.trailFadeIn ?? 0.8; tu.fadeOut.value = s.trailFadeOut ?? 0.8; tu.opacity.value = s.trailOpacity ?? 0.9;
+      }
+    },
     start(time) {
       t0 = time;
       if (s.mode !== 'ring') {
         const flight = span / wave();
         debris.path(pathFrom, pathTo, 0, time + D0 / wave(), flight);
         dust.path(pathFrom, pathTo, 0, time + D0 / wave(), flight);
+        // Resterna sveper längs spåret när spjuten sjunker undan
+        after.path(pathFrom, pathTo, 0, time + hold() - 0.2, Math.max(0.8, linger() * 0.4));
       }
     },
     // t: sekunder sedan lagret började, dur: hela lagrets längd (de sista sink sekunderna sjunker de undan)
     update(time, lt, { t = 0, dur = 2, wind } = {}) {
-      const sink = s.sink ?? 0.35;
+      const sink = s.sink ?? 0.35, H = Math.min(hold(), dur);
       for (const { mesh, list } of meshes) {
         list.forEach((sp, i) => {
           let g = easeBack(clamp01((t - sp.d / wave()) / 0.16));
-          if (t > dur - sink) g *= 1 - easeOut(clamp01((t - (dur - sink)) / sink));
+          if (t > H - sink) g *= 1 - easeOut(clamp01((t - (H - sink)) / sink));
           g = Math.max(0, g);
           const wg = 0.35 + 0.65 * Math.min(1, g);
           M.compose(sp.p, sp.q, S.set(sp.w * wg, sp.h * g + 1e-4, sp.w * wg));
@@ -373,12 +427,18 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
         });
         mesh.instanceMatrix.needsUpdate = true;
       }
-      if (tu) { tu.front.value = t * wave(); tu.fade.value = u.fade.value; }
-      debris.update(time, { wind }); dust.update(time, { wind });
+      if (tu) {
+        tu.front.value = t * wave(); tu.fade.value = u.fade.value;
+        tu.rest.value = clamp01((t - H + 0.2) / 0.6);
+        const x = clamp01((t - H) / Math.max(0.1, linger()));
+        tu.restFade.value = 1 - x * x * (3 - 2 * x);
+      }
+      debris.update(time, { wind }); dust.update(time, { wind }); after.update(time, { wind });
     },
     setFade(f) { u.fade.value = f; if (tu) tu.fade.value = f; },
-    dispose() { for (const g of geos) g.dispose(); mat.dispose(); if (trail) { trail.geometry.dispose(); trail.material.dispose(); } debris.dispose(); dust.dispose(); },
+    dispose() { for (const g of geos) g.dispose(); mat.dispose(); if (trail) { trail.geometry.dispose(); trail.material.dispose(); } debris.dispose(); dust.dispose(); after.dispose(); },
   };
+  fx.set(s);
   return fx;
 }
 
@@ -593,6 +653,27 @@ function resolve(set, sp) {
   return out;
 }
 
+// Ett lager visas eller döljs, men ljus döljs aldrig: de släcks (styrka 0). Ändras antalet synliga ljus i scenen måste
+// three.js kompilera om alla belysta material (mark, figurer, spjut), och det ger ett ryck på nästan en sekund just när
+// ett lager med ljus börjar eller slutar.
+function show(obj, on) {
+  if (obj.isLight) { obj.visible = true; if (!on) obj.intensity = 0; return; }
+  let lit = false;
+  obj.traverse((o) => { if (o.isLight) lit = true; });
+  if (!lit) { obj.visible = on; return; }
+  obj.visible = true;
+  for (const c of obj.children) show(c, on);
+}
+
+// Markspårets spakar ur besvärjelsen (kortet Ground trail), till lager som har ett spår; bredderna följer storleken
+const TRAIL_KEYS = ['trailSoft', 'trailBreakup', 'trailBreakupScale', 'trailFadeIn', 'trailFadeOut', 'trailOpacity', 'iceCracks', 'linger'];
+function trailOf(s) {
+  const o = Object.fromEntries(TRAIL_KEYS.filter((k) => s[k] !== undefined).map((k) => [k, s[k]]));
+  if (s.trailStart !== undefined) o.trailStart = s.trailStart * (s.size ?? 1);
+  if (s.trailEnd !== undefined) o.trailEnd = s.trailEnd * (s.size ?? 1);
+  return o;
+}
+
 export function createSpell(s, ctx) {
   const def = ctx.spells?.[s.spell];
   if (!def) throw new Error(`unknown spell: ${s.spell}`);
@@ -608,12 +689,12 @@ export function createSpell(s, ctx) {
     const at = anchor(L.anchor ?? 'target');
     let fx;
     switch (L.type) {
-      case 'particles': fx = createParticles({ ...D.particles, ...set }, { at, max: 3000 }); break;
+      case 'particles': fx = createParticles({ ...D.particles, ...set }, { at, max: 3000 }); fx.object.renderOrder = 6; break; // efter pelare och ringar, så att de inte tvättas bort
       case 'marker': fx = createMarker({ ...D.marker, ...set }, { ground: ctx.ground, at, top: at.y + 1.8 }); break;
       case 'aura': fx = createAura({ ...D.glow, ...set }, { target: L.anchor === 'dummy' ? ctx.dummy : ctx.figure }); break;
       case 'flames': fx = createFlames(set, { at }); break;
       case 'lightning': fx = createLightning(set); fx.ends(anchor(L.from ?? 'hand'), anchor(L.to ?? 'target')); break;
-      case 'spikes': fx = createSpikes(set, { from: anchor(L.from ?? 'caster'), to: anchor(L.to ?? 'targetGround'), groundY: ctx.groundY, ground: ctx.ground, defaults: D, texBase: ctx.texBase }); break;
+      case 'spikes': fx = createSpikes({ ...set, ...trailOf(s), hold: L.dur ?? 2.6 }, { from: anchor(L.from ?? 'caster'), to: anchor(L.to ?? 'targetGround'), groundY: ctx.groundY, ground: ctx.ground, defaults: D, texBase: ctx.texBase }); break;
       case 'flash': fx = createFlash(set, { at }); break;
       case 'ring': fx = createRing(set, { at }); break;
       case 'scorch': fx = createScorch(set, { at, ground: ctx.ground }); break;
@@ -623,14 +704,14 @@ export function createSpell(s, ctx) {
       case 'shock': case 'haze': case 'shake': fx = { object: null, set() {}, update() {}, setFade() {}, dispose() {} }; break;
       default: continue;
     }
-    if (fx.object) { fx.object.visible = false; group.add(fx.object); }
+    if (fx.object) { show(fx.object, false); group.add(fx.object); }
     layers.push({ L, fx, set, at });
   }
   // Tiderna: efter träffen räknas från projektilens ankomst (eller spellens impact)
   let total = 0;
   for (const l of layers) {
     l.start = (l.L.after === 'impact' ? impact : 0) + (l.L.at ?? 0);
-    l.dur = l.L.type === 'bolt' ? l.fx.flight + (l.L.dur ?? 0.4) : l.L.dur ?? 0;
+    l.dur = l.L.type === 'bolt' ? l.fx.flight + (l.L.dur ?? 0.4) : l.L.type === 'spikes' ? (l.L.dur ?? 2.6) + (s.linger ?? 3) : l.L.dur ?? 0;
     l.end = l.dur > 0 ? l.start + l.dur : Infinity;
     // Partiklar lever vidare efter att utsändningen slutat
     const tail = l.L.type === 'particles' ? (l.set.lifetime ?? D.particles?.lifetime ?? 1) : 0;
@@ -646,9 +727,19 @@ export function createSpell(s, ctx) {
     object: group, loop: true, ambient: !!def.ambient, duration: total, impact,
     set(v) {
       s = v;
-      for (const l of layers) { l.set = resolve(l.L.set, s); const full = l.L.type === 'particles' ? { ...D.particles, ...l.set } : l.L.type === 'marker' ? { ...D.marker, ...l.set } : l.L.type === 'aura' ? { ...D.glow, ...l.set } : l.set; l.fx.set?.(full); }
+      for (const l of layers) { l.set = resolve(l.L.set, s); const full = l.L.type === 'particles' ? { ...D.particles, ...l.set } : l.L.type === 'marker' ? { ...D.marker, ...l.set } : l.L.type === 'aura' ? { ...D.glow, ...l.set } : l.L.type === 'spikes' ? { ...l.set, ...trailOf(s) } : l.set; l.fx.set?.(full); }
     },
     play(time) { t0 = time; playing = true; for (const l of layers) l.started = false; },
+    // Förberedelse före kastet: alla lager finns med men är helt uttonade, så att bildkedjan kompilerar deras shaders i
+    // samma sammanhang som när de syns på riktigt (scenpasset), utan att något syns. Kastet börjar bilden efter.
+    prepare(time, camera) {
+      for (const l of layers) {
+        if (l.fx.object) show(l.fx.object, true);
+        if (l.L.type === 'particles') l.fx.update(time, {});
+        else l.fx.update(time, 0, { camera, t: 0, dur: l.dur });
+        l.fx.setFade?.(0);
+      }
+    },
     update(time, c = {}) {
       if (!playing) return;
       const T = time - t0;
@@ -663,7 +754,7 @@ export function createSpell(s, ctx) {
         }
         const e = env(l, T);
         const particlesLive = l.L.type === 'particles' && live;
-        if (l.fx.object) l.fx.object.visible = particlesLive || e > 0;
+        if (l.fx.object) show(l.fx.object, particlesLive || e > 0);
         if (!(particlesLive || e > 0)) continue;
         const lt = l.dur > 0 ? (T - l.start) / l.dur : 0;
         l.fx.setFade?.(l.L.type === 'particles' ? 1 : e);
