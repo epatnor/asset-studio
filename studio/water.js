@@ -309,8 +309,8 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
       const [tx, ty, tz] = S.camera.target;
       controls.target.set(tx, S.camera.overGround ? B.level + ty : ty, tz); // overGround: kameran över marken, målet över vattnet
       controls.update();
-      cards.sync();
-      markDrawer();
+      sync();
+      markType(S.preset);
     }
     relevant();
     apply();
@@ -335,36 +335,66 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     active?.water.set(vals, sun, { light: vals.sun, ambient: sun.ambient });
   }
 
-  // --- Korten: scenen först, sedan himlen och vattnet ---
-  const cards = createCards({ el, side });
-  const COLORS = { scene: '#4a90d9', sky: '#e0a030', color: '#3fa6a0', waves: '#5aa0d8', light: '#f0d080', foam: '#e8eef0', shore: '#c8a878', flow: '#58b0c8', caustics: '#a0e0f0' };
+  // --- Till vänster platsen (scenerna och himlen), till höger vattnet (vattentypen och dess spakar) ---
   const get = (k) => vals[k], set = (k, v) => { vals[k] = v; };
-  const groupCards = {}, rows = {};
-  for (const g of info.groups) {
-    const body = cards.card(g.label, COLORS[g.id] ?? '#7aa8d8', { closed: g.id === 'sky' });
-    groupCards[g.id] = body.parentElement;
-    for (const q of info.params.filter((x) => x.group === g.id)) {
-      const row = cards.rowFor(q)(q, get, set, () => {
-        if (q.key === 'scene') { showScene(vals.scene); return; }
-        if (isRecipe(q)) markDrawer(null);
-        apply();
-      });
-      rows[q.key] = row;
-      body.append(row);
-    }
+  const PLACE = new Set(['scene', 'sky']);
+  const head = el('div', 'libhead'), body = el('div', 'libbody');
+  head.append(el('h2', null, 'Scenes'), el('div', 'note', 'Where the water is tried. Each scene starts with a fitting water type and sun.'));
+  drawer.append(head, body);
+  const sceneQ = info.params.find((q) => q.key === 'scene');
+  const sceneGrid = el('div', 'wprofs');
+  for (const o of sceneQ.options) {
+    const b = el('button', 'wprof');
+    b.dataset.id = o.id;
+    b.append(el('b', null, o.label), el('span', 'wmeta', o.help), el('span', 'wmeta', `Starts with ${info.presets[info.scenes[o.id].preset]?.label ?? '—'}`));
+    b.onclick = () => { if (vals.scene !== o.id) { vals.scene = o.id; showScene(o.id); } };
+    sceneGrid.append(b);
   }
-  // Det som inte finns i scenen döljs: ström bara i bäcken, strand och kaustik inte på öppet vatten
-  function relevant() {
-    const id = vals.scene;
-    groupCards.flow.hidden = id !== 'stream';
-    groupCards.shore.hidden = id === 'plane';
-    groupCards.caustics.hidden = id === 'plane';
-    rows.surge.hidden = rows.surgePeriod.hidden = id === 'stream';
-  }
-  const saveCard = cards.card('Save', '#4a90d9');
+  const sceneSec = el('section', 'libgroup');
+  sceneSec.append(sceneGrid);
+  body.append(sceneSec);
+  const markScene = () => { for (const b of sceneGrid.children) b.classList.toggle('on', b.dataset.id === vals.scene); };
+  // Himlen och solen hör till platsen: ett kort i lådan under scenerna
+  const placeCards = createCards({ el, side: body });
+  const skyBody = placeCards.card('Sky & sun', '#e0a030');
+  for (const q of info.params.filter((x) => x.group === 'sky')) skyBody.append(placeCards.rowFor(q)(q, get, set, () => apply()));
+
+  // Vattentypen överst till höger: färdiga och sparade, med sparknappen; ändrade spakar gör den till "Custom"
+  const cards = createCards({ el, side });
+  const typeBody = cards.card('Water type', '#4a90d9');
+  const typeSel = el('select'), typeSw = el('span', 'gswatch'), typeMeta = el('div', 'note');
+  const typeRow = el('div', 'row span2');
+  typeRow.append(el('label', null, 'Type'), typeSel);
   const saveMsg = el('div', 'note');
   const saveBtn = el('button', 'primary', 'Save water type…');
   saveBtn.title = 'Saves the water sliders (not the scene or the sky) as a water type in assets/water/, for the studio, the showcase and Tinkertown';
+  typeBody.append(typeRow, typeSw, typeMeta, saveBtn, saveMsg);
+  const typeVals = (settings) => Object.fromEntries(info.params.filter(isRecipe).map((q) => [q.key, settings[q.key] ?? q.default]));
+  const describe = (v) => `Waves ${v.waveHeight.toFixed(2)} m · clear to ${v.clarity} m${v.mirror ? ' · mirror' : ''}${v.flowFoam && v.flowSpeed ? ` · current ${v.flowSpeed} m/s` : ''}`;
+  function renderTypes() {
+    typeSel.replaceChildren();
+    const custom = Object.assign(el('option', null, 'Custom (changed)'), { value: '' });
+    custom.disabled = true;
+    typeSel.append(custom);
+    const group = (label, items) => { if (!items.length) return; const g = el('optgroup'); g.label = label; for (const [id, name] of items) g.append(Object.assign(el('option', null, name), { value: id })); typeSel.append(g); };
+    group('Ready-made', Object.entries(info.presets).map(([id, p]) => [id, p.label]));
+    group('Saved', info.saved.map((x) => [`saved:${x.name}`, x.name]));
+    markType();
+  }
+  function markType(id = current) {
+    current = id;
+    typeSel.value = id ?? '';
+    typeSw.style.background = `linear-gradient(90deg, ${vals.shallow}, ${vals.deep})`;
+    typeMeta.textContent = describe(vals);
+  }
+  typeSel.onchange = () => {
+    const id = typeSel.value, src = id.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === id)?.settings : info.presets[id];
+    if (!src) return;
+    Object.assign(vals, typeVals(src));
+    cards.sync();
+    apply();
+    markType(id);
+  };
   saveBtn.onclick = async () => {
     const name = prompt('Name of the water type (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_water');
     if (!name) return;
@@ -374,32 +404,31 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     if (!r.entry) return;
     info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
     current = `saved:${r.entry.name}`;
-    renderDrawer();
+    renderTypes();
   };
-  saveCard.append(saveBtn, saveMsg);
-
-  // --- Lådan: färdiga och sparade vattentyper (bara vattnets spakar; scenen och himlen står kvar) ---
-  const head = el('div', 'libhead'), body = el('div', 'libbody');
-  head.append(el('h2', null, 'Water types'), el('div', 'note', 'Click a water type to try it in the scene. Save your own in the Save card.'));
-  drawer.append(head, body);
-  function tile(id, label, settings) {
-    const v = Object.fromEntries(info.params.filter(isRecipe).map((q) => [q.key, settings[q.key] ?? q.default]));
-    const f = el('button', `wprof${current === id ? ' on' : ''}`);
-    f.dataset.id = id;
-    const sw = el('span', 'gswatch');
-    sw.style.background = `linear-gradient(90deg, ${v.shallow}, ${v.deep})`;
-    f.append(el('b', null, label), sw, el('span', 'wmeta', `waves ${v.waveHeight.toFixed(2)} m · clear ${v.clarity} m${v.flowSpeed && v.flowFoam ? ` · current ${v.flowSpeed}` : ''}`));
-    f.onclick = () => { Object.assign(vals, v); markDrawer(id); cards.sync(); apply(); };
-    return f;
+  // Vattnets spakar
+  const COLORS = { color: '#3fa6a0', waves: '#5aa0d8', light: '#f0d080', foam: '#e8eef0', shore: '#c8a878', flow: '#58b0c8', caustics: '#a0e0f0' };
+  const groupCards = {}, rows = {};
+  for (const g of info.groups.filter((x) => !PLACE.has(x.id))) {
+    const gb = cards.card(g.label, COLORS[g.id] ?? '#7aa8d8');
+    groupCards[g.id] = gb.parentElement;
+    for (const q of info.params.filter((x) => x.group === g.id)) {
+      const row = cards.rowFor(q)(q, get, set, () => { markType(null); apply(); });
+      rows[q.key] = row;
+      gb.append(row);
+    }
   }
-  function renderDrawer() {
-    body.replaceChildren();
-    const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const gr = el('div', 'wprofs'); gr.append(...tiles); g.append(el('h3', null, title), gr); body.append(g); };
-    sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings)));
+  // Det som inte finns i scenen döljs: ström bara i bäcken, strand och kaustik inte på öppet vatten
+  function relevant() {
+    const id = vals.scene;
+    groupCards.flow.hidden = id !== 'stream';
+    groupCards.shore.hidden = id === 'plane';
+    groupCards.caustics.hidden = id === 'plane';
+    rows.surge.hidden = rows.surgePeriod.hidden = id === 'stream';
+    markScene();
   }
-  function markDrawer(id = current) { current = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.dataset.id === id); }
-  renderDrawer();
+  const sync = () => { cards.sync(); placeCards.sync(); };
+  renderTypes();
 
   // --- Footern ---
   const fStats = el('div', 'block'), fSun = el('div', 'block'), note = el('div', 'msg');
@@ -466,7 +495,6 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     for (const [i, id] of ids.entries()) {
       vals.scene = id;
       await showScene(id);
-      cards.sync();
       await new Promise((r) => setTimeout(r, 4000));
       tick(0);
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));

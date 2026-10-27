@@ -370,6 +370,16 @@
   #waside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #waside .card.closed > header h2::after { transform: none; }
   #waside .card.closed > .rows { display: none; }
+  /* Vattnet: platsen (scener, himmel) i lådan till vänster, vattentypen och dess spakar till höger */
+  #wadrawer .libbody { overflow-y: auto; }
+  #wadrawer .card { border-top: 1px solid var(--line); border-bottom: 0; }
+  #wadrawer .card > header { background: transparent; cursor: pointer; }
+  #wadrawer .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #wadrawer .card.closed > header h2::after { transform: none; }
+  #wadrawer .card.closed > .rows { display: none; }
+  #wadrawer .row { grid-template-columns: 92px 1fr 38px; }
+  #wadrawer .wprof .wmeta { white-space: normal; }
+  #waside .gswatch { display: block; margin-top: 2px; }
   /* Häxkittelns verktygslåda i andra avdelningar (studio/fxtoolbox.js): en liten låda nederst i mitten av vyn */
   .fxbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot) + var(--gap)); width: min(620px, calc(100vw - 720px)); min-width: 300px;
            border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; z-index: 2; box-sizing: border-box; --accent: #8b5cf6; --accent-soft: color-mix(in srgb, #8b5cf6 30%, transparent); }
