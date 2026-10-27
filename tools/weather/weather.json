@@ -671,7 +671,7 @@
     },
     {
       "id": "stone",
-      "model": "assets/props/boulder1/boulder1.gltf",
+      "model": "assets/props/boulder_lp1/boulder_lp1.gltf",
       "pos": [
         -2.5,
         0,

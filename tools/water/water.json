@@ -818,7 +818,7 @@
       },
       "models": [
         {
-          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "model": "assets/props/boulder_lp_mossy1/boulder_lp_mossy1.gltf",
           "at": [
             -7,
             0.8
@@ -827,7 +827,7 @@
           "scale": 1.6
         },
         {
-          "model": "assets/props/boulder1/boulder1.gltf",
+          "model": "assets/props/boulder_lp1/boulder_lp1.gltf",
           "at": [
             -9,
             -1.5
@@ -836,7 +836,7 @@
           "scale": 1.2
         },
         {
-          "model": "assets/props/stones1/stones1.gltf",
+          "model": "assets/props/rocks_lp1/rocks_lp1.gltf",
           "at": [
             -5.5,
             1.5
@@ -977,7 +977,7 @@
       ],
       "models": [
         {
-          "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+          "model": "assets/props/rock_lp_mossy1/rock_lp_mossy1.gltf",
           "along": [
             0.47,
             0.1
@@ -986,7 +986,7 @@
           "scale": 0.8
         },
         {
-          "model": "assets/props/stone1/stone1.gltf",
+          "model": "assets/props/rock_lp1/rock_lp1.gltf",
           "along": [
             0.5,
             -0.45
@@ -995,7 +995,7 @@
           "scale": 0.7
         },
         {
-          "model": "assets/props/mossy_stone1/mossy_stone1.gltf",
+          "model": "assets/props/rock_lp_mossy1/rock_lp_mossy1.gltf",
           "along": [
             0.42,
             -0.2
@@ -1004,7 +1004,7 @@
           "scale": 0.6
         },
         {
-          "model": "assets/props/stone1/stone1.gltf",
+          "model": "assets/props/rock_lp2/rock_lp2.gltf",
           "along": [
             0.38,
             0.4
@@ -1021,7 +1021,7 @@
           "rot": 0
         },
         {
-          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "model": "assets/props/boulder_lp_mossy1/boulder_lp_mossy1.gltf",
           "along": [
             0.31,
             1.5
@@ -1262,7 +1262,7 @@
           "scale": 1
         },
         {
-          "model": "assets/props/mossy_boulder1/mossy_boulder1.gltf",
+          "model": "assets/props/boulder_lp_mossy1/boulder_lp_mossy1.gltf",
           "shore": [
             88,
             0.98
