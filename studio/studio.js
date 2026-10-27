@@ -505,12 +505,14 @@ for (const part of P.parts) {
   }
   $('side').append(card);
 }
+// Villkor för en spak eller grupp (params.json): {path, equals} eller {path, not}
+const holds = (w) => { const v = valueOf(paramAt(w.path)); return 'not' in w ? v !== w.not : v === w.equals; };
 function refreshUi() {
   for (const s of syncs) s();
-  for (const [det, w] of whens) det.style.display = valueOf(paramAt(w.path)) === w.equals ? '' : 'none';
+  for (const [det, w] of whens) det.style.display = holds(w) ? '' : 'none';
   if (assetTitle) assetTitle.textContent = kind.label;
   for (const [row, p] of kindRows) {
-    const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || valueOf(paramAt(p.when.path)) === p.when.equals);
+    const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || holds(p.when));
     row.style.display = show ? '' : 'none';
   }
   for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);

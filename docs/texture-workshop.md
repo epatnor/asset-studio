@@ -262,6 +262,17 @@ Materialet äger sin verkliga skala (meter per upprepning, `meters` i katalogen)
 
 Byggt för barken: trädets recept har `bark_uv` (`tiling`, `along`, `around`, relativt materialet; runt avrundas till hela varv så att ingen söm syns), som spakarna Bark tiling, Stretch along och Stretch around under Bark and growth. Materialets skala läses ur katalogen: `meters` för texturer från verkstaden, `scales` för övriga (`make_tree.py`, `material_meters`). Use as material default (`/api/texture/scale`) gör tilingen till materialets skala (katalograden och receptet, eller `scales`) och sätter trädets tiling till 1 igen; sträckningarna stannar på trädet.
 
+## Efter AAA-referensen för procedurella texturer (byggd 2026-10-27)
+
+Granskning mot `patriks_input/AAA_Procedural_Textures_Stylization_ThreeJS_Reference.md`. Motorn hade redan det referensen bygger på: källorna ger färg och höjd ur samma struktur, och normal, ruffighet och AO räknas ur den höjden. Bruset är periodiskt och sömlöst, och recepten går att göra om. Det som lades till:
+
+- **Samma mönster i alla upplösningar:** brus, bark och mark (`lowpass`) drog vitt brus i full upplösning, så förhandsvisningen (512) och den sparade texturen (1024 eller 2048) fick olika mönster. Korrelationen mellan 512 och 2048 var 0,23 för bark och −0,08 för brus. Nu dras slumpen i ett band som bara beror på frekvensen, så korrelationen är 0,996–1,0 för alla källor, och förhandsvisningen tar lika lång tid som förut. Gamla recept med de källorna får ett nytt mönster med samma karaktär; redan sparade PNG-filer påverkas inte.
+- **Stylize** (gruppen Style): referensens samordnade stilreglage, från foto mot målat spelmaterial. En styrka styr kantbevarande utjämning (Kuwahara), mikrodetaljer som tonas bort, de stora formerna ur höjden (fogar, sprickor, åsar) som lyfts och mörkas, färre färger (k-means i OKLab med mjuk tilldelning, så att inga trappsteg uppstår), mättnad och en förenklad höjd. Allt går runt kanterna. Ett stilprov vid 0, 0,5 och 1 sänkte högfrekvensen från 0,83 till 0,28 på ett ängsfoto och från 0,32 till 0,04 på ett barkfoto.
+- **Remove lighting** (gruppen Style): tar bort inbakat ljus ur foton och AI-bilder genom att dela bort den storskaliga ljusheten och lyfta lokala skuggor. Körs före Stylize.
+- **Nya källor:** *Sand, snow and ripples* (vindrippel med lång lovartsida och brant läsida; vågvektorn är heltal, så att ripplen går runt kanterna i alla riktningar; slingrar sig och planar ut i fläckar) och *Cracked ground and ice* (Voronoi-plattor med sprickor av varierande bredd, kanter som böjer upp som i torkad lera, finare sprickor i en del av plattorna).
+- **Nya färdiga material:** Sand ripples, Snow drift, Dry mud och Cracked ice under Ground, och gruppen Stylized: Painted stone, Painted bark, Painted cliff och Painted meadow. De två sista utgår från bilder och kör Remove lighting och Stylize.
+- **Storebror och lillebror:** Spara har *Big brother* (av, 2048 eller 4096, normalt 2048). Texturen ritas först i den storleken och sparas i `assets/textures/hd/<namn>_hd*.png`. Den vanliga texturen (Size) skalas sedan ned ur den, och normalen normeras om. Lillebrodern blir översamplad, med renare kanter och lugnare mipmaps än om den ritades direkt i låg upplösning, och storebrodern finns kvar för närbilder och vidare arbete. Katalograden får `hd: {size, files}`. Det fungerar bara för att samma recept nu ger samma mönster i alla upplösningar.
+
 ## Frågor till Patrik
 
 0. ~~Drakstatyn~~: beställd från Tripo P2 (`assets/imported/dragon_statue`), används i labbet.

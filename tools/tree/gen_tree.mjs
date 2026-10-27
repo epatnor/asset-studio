@@ -6,6 +6,7 @@ import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
 import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton } from './skeleton.mjs';
+import { colonizeSkeleton } from './colonize.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
 import { buildConiferFoliage } from './conifer.mjs';
@@ -47,7 +48,8 @@ const kind = fronds ? 'conifer' : spName === 'bush' ? 'bush' : 'deciduous';
 const seedEff = seed + (/^\d+$/.test(sizeKey) ? Number(sizeKey) * 1000 : 0);
 
 // 1. Skelett, skalat till höjden (lövkronan sticker upp ovanför grenspetsarna, så lämna marginal)
-const sk = buildSkeleton(sp, seedEff, size);
+// growth: 'colonize' odlar skelettet (space colonization) i stället för att bygga det i nivåer
+const sk = sp.growth === 'colonize' ? colonizeSkeleton(sp, seedEff, size) : buildSkeleton(sp, seedEff, size);
 scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 // Stamhöjd (bole, meter): den kala stammen till den lägsta grenen, med kronan oförändrad. height styr då trädets
 // storlek (kronan), och top är den verkliga höjden, som vind och stammens topp räknas mot.

@@ -679,6 +679,10 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   const sizeSel = el('select');
   for (const s of [512, 1024, 2048, 4096]) { const o = el('option', null, `${s} px`); o.value = s; sizeSel.append(o); }
   sizeSel.value = 1024;
+  // Storebror: texturen ritas först i hög upplösning (sparas i assets/textures/hd/) och skalas ned till Size
+  const hdSel = el('select');
+  for (const [v, l] of [[0, 'Off'], [2048, '2048 px'], [4096, '4096 px']]) { const o = el('option', null, l); o.value = v; hdSel.append(o); }
+  hdSel.value = 2048;
   const saveBtn = el('button', 'primary', 'Save texture');
   const saveMsg = el('div', 'note');
   const rowOf = (l, input, title) => { const r = el('div', 'row span2'); if (title) r.title = title; r.append(el('label', null, l), input); return r; };
@@ -710,7 +714,9 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   };
   saveCard.body.append(
     rowOf('Profile', profSel, 'Who uses the texture: sets the name, the maps and which model the 3D view shows'),
-    rowOf('Name', nameIn), rowOf('Tags', tagsIn), rowOf('Size', sizeSel), saveAdv, saveBtn, saveMsg,
+    rowOf('Name', nameIn), rowOf('Tags', tagsIn), rowOf('Size', sizeSel),
+    rowOf('Big brother', hdSel, 'Draw the texture large first and keep it (assets/textures/hd/) for close-ups and further work; the texture at Size is scaled down from it, which gives cleaner edges and calmer mipmaps. Off draws it at Size directly'),
+    saveAdv, saveBtn, saveMsg,
   );
   let catalog = [];
   async function listSaved() {
@@ -732,11 +738,11 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
     const name = nameIn.value.trim().toLowerCase();
     const recipe = { source: doc.source, steps: doc.steps, inputs: doc.inputs, material: fullMaterial(), blend: doc.blend };
     const payload = { recipe, name, profile: profSel.value, tags: tagsIn.value.split(','), size: Number(sizeSel.value),
-      maps: ['color', ...Object.keys(mapBoxes).filter((k) => mapBoxes[k].checked)], pack: ormBox.checked ? 'orm' : null, webp: webpBox.checked };
+      maps: ['color', ...Object.keys(mapBoxes).filter((k) => mapBoxes[k].checked)], pack: ormBox.checked ? 'orm' : null, webp: webpBox.checked, hd: Number(hdSel.value) };
     saveMsg.textContent = 'Sparar…';
     let res = await api('/api/texture/save', payload);
     if (res.exists && confirm(`${name} already exists. Overwrite? (The previous one is kept in versions/)`)) res = await api('/api/texture/save', { ...payload, overwrite: true });
-    saveMsg.textContent = res.error ? `Not saved: ${res.error}` : `Saved: ${res.out} with ${res.entry.maps.join(', ')} (${res.size} px, ${res.checks?.seamless ? 'seamless' : 'seam visible'})`;
+    saveMsg.textContent = res.error ? `Not saved: ${res.error}` : `Saved: ${res.out} with ${res.entry.maps.join(', ')} (${res.size} px${res.entry.hd ? `, big brother ${res.entry.hd.size} px` : ''}, ${res.checks?.seamless ? 'seamless' : 'seam visible'})`;
     if (!res.error) { listSaved(); allTextures = await api('/api/textures?kind=all'); }
   };
 

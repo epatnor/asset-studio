@@ -13,6 +13,8 @@ Recept:
   material kartornas spakar (normal, roughness, ao, metal, emission; se workshop.json, material). Spakar
            märkta client gäller bara 3D-vyn och påverkar inte bilderna.
   size     sida i px (förhandsvisning 512, sparad textur 1024 eller 2048)
+  save.hd  storebror: ritas i den här storleken (t.ex. 2048) och sparas i assets/textures/hd/; texturen (lillebror,
+           size) skalas då ned ur den i stället för att ritas för sig
   out      prefix relativt projektroten för förhandsvisningen: <out>_color.png, <out>_height.png, ...
   save     {"name", "profile", "tags", "maps", "pack", "webp", "overwrite"} -> assets/textures/<name>.png,
            <name>_<karta>.png, <name>.texture.json och en rad i assets/textures/catalog.json. En textur som
@@ -87,13 +89,21 @@ def grid(n):
 
 
 # --- Sömlöst brus: vitt brus filtrerat i frekvensrummet upprepar sig av sig självt ---
+# Slumpen dras i ett band som bara beror på frekvensen (k × k, k minst 8σ), inte på upplösningen, och läggs in i
+# n × n-spektrumet. Samma frö ger då samma mönster i 256, 512 (förhandsvisningen), 1024 och 2048, och slumpen som
+# dras efteråt (celler, plattor) förskjuts inte av upplösningen.
 def lowpass(n, freq, rng, sx=1.0, sy=1.0):
-    f = np.fft.fftfreq(n) * n
+    sig = max(freq, 0.5)
+    k = int(min(1024, max(32, 2 ** np.ceil(np.log2(8 * sig * max(sx, sy, 1.0))))))
+    band = np.fft.fft2(rng.standard_normal((k, k)).astype(np.float32))
+    f = np.round(np.fft.fftfreq(n) * n).astype(np.int64)
+    keep = np.where(np.abs(f) < min(k, n) // 2)[0]
+    spec = np.zeros((n, n), np.complex64)
+    spec[np.ix_(keep, keep)] = band[np.ix_(f[keep] % k, f[keep] % k)]
     fx, fy = np.meshgrid(f, f)
-    r2 = (fx / sx) ** 2 + (fy / sy) ** 2
-    spec = np.fft.fft2(rng.standard_normal((n, n))) * np.exp(-r2 / (2 * max(freq, 0.5) ** 2))
+    spec *= np.exp(-((fx / sx) ** 2 + (fy / sy) ** 2) / (2 * sig ** 2)).astype(np.float32)
     a = np.real(np.fft.ifft2(spec))
-    return (a - a.mean()) / (a.std() + 1e-9)
+    return ((a - a.mean()) / (a.std() + 1e-9)).astype(np.float32)
 
 
 def fbm(n, scale, octaves, rng, sx=1.0, sy=1.0):
@@ -411,6 +421,63 @@ def src_krea(n, p, rng, ctx):
     return img, h
 
 
+# Sand och snö: vindrippel med lång mjuk lovartsida och kort brant läsida. Vågvektorn är heltal i båda led, så att
+# ripplen går runt kanterna; låg-frekvent förvrängning gör dem slingriga och brytning låter dem dö ut i fläckar
+def src_ripples(n, p, rng):
+    x, y = grid(n)
+    k = max(2, int(p.get("ripples", 14)))
+    ang = np.radians(p.get("direction", 20))
+    kx, ky = int(round(np.cos(ang) * k)), int(round(np.sin(ang) * k))
+    if kx == 0 and ky == 0:
+        kx = k
+    wob = p.get("wobble", 0.4)
+    warp = (fbm(n, 2.5, 3, rng) - 0.5) / 0.22 * wob * 0.55
+    up = 1 - np.clip(p.get("sharpness", 0.6), 0, 0.95) * 0.8  # andel av våglängden som stiger
+
+    def ripple(kx, ky, warp):
+        ph = (kx * x + ky * y + warp) % 1.0
+        return smooth(0, 1, np.where(ph < up, ph / up, (1 - ph) / (1 - up)))
+    prof = ripple(kx, ky, warp)
+    # En svagare andra ripple i lite annan riktning, som i riktig sand där två vindar mötts
+    a2 = ang + np.radians(28)
+    prof2 = ripple(int(round(np.cos(a2) * k * 1.6)) or 1, int(round(np.sin(a2) * k * 1.6)), warp * 1.3)
+    br = p.get("breakup", 0.35)
+    calm = smooth(0.3, 0.7, fbm(n, 3, 3, rng))  # där ripplen planar ut
+    h = (prof * 0.8 + prof2 * 0.2) * (1 - br * 0.85 * calm) + 0.5 * br * 0.85 * calm * 0.6
+    h = np.clip(h * 0.88 + (fbm(n, 90, 2, rng) - 0.5) * p.get("grains", 0.3) * 0.5, 0, 1)
+    col = mix(p, h) + (smooth(0.8, 1, prof) * (1 - calm * br) * 0.035)[..., None]
+    return col, h
+
+
+# Spruckna plattor (torkad lera, sprucken jord, is): Voronoi-celler vars kanter blir sprickor med varierande bredd,
+# kanterna böjer upp (curl) som i torkad lera, och finare sprickor delar en del av plattorna
+def src_cracks(n, p, rng):
+    def cells(count, jitter):
+        g = max(2, int(round(np.sqrt(count))))
+        jit = (rng.random((g, g, 2)) - 0.5) * jitter
+        gy, gx = np.mgrid[0:g, 0:g]
+        return ((np.stack([gx, gy], -1) + 0.5 + jit) / g).reshape(-1, 2) % 1, 1 / g
+    pts, size = cells(int(p.get("cells", 30)), 0.9)
+    f1, f2, idx = voronoi(n, pts)
+    edge = f2 - f1  # 0 mitt i sprickan
+    wob = (fbm(n, 8, 3, rng) - 0.5) / 0.22 * size * 0.07 * p.get("wobble", 0.5)
+    w = p.get("width", 0.05) * size * (0.5 + 1.0 * fbm(n, 4, 2, rng))
+    crack = 1 - smooth(0, w + 1e-4, edge + wob)
+    fine = p.get("fine", 0.4)
+    crack2 = np.zeros_like(crack)
+    if fine > 0:
+        pts2, size2 = cells(min(160, int(p.get("cells", 30)) * 4), 0.9)
+        g1, g2, _ = voronoi(n, pts2)
+        crack2 = (1 - smooth(0, p.get("width", 0.05) * size2 * 0.6 + 1e-4, g2 - g1 + wob * 0.5)) * smooth(0.45, 0.6, fbm(n, 5, 3, rng)) * fine
+    curl = p.get("curl", 0.5)
+    plate = 0.72 + curl * 0.28 * (1 - smooth(0, size * 0.3, edge))
+    tint = (1 + (rng.random(len(pts)) - 0.5) * 2 * p.get("tint", 0.12))[idx]
+    h = np.clip(plate * (1 - crack) * (1 - crack2 * 0.45) + (fbm(n, 30, 2, rng) - 0.5) * 0.06, 0, 1)
+    body = mix(p, smooth(0.2, 0.8, fbm(n, 5, 3, rng))) * tint[..., None]
+    col = body + (hexrgb(p.get("crack", "#3A2C20")) - body) * np.clip(crack + crack2 * 0.8, 0, 1)[..., None]
+    return np.clip(col, 0, 1), h
+
+
 def seam_even(img, width):
     # Fördelar skillnaden över skarven på en smal kant på båda sidor (utjämnad längs kanten, så att inga streck blir
     # kvar). Formerna flyttas inte, till skillnad från tile_blend.
@@ -431,7 +498,7 @@ def seam_even(img, width):
     return np.clip(out, 0, 1)
 
 
-SOURCES = {"noise": src_noise, "bark": src_bark, "stone": src_stone, "bricks": src_bricks, "planks": src_planks,
+SOURCES = {"noise": src_noise, "bark": src_bark, "stone": src_stone, "bricks": src_bricks, "planks": src_planks, "ripples": src_ripples, "cracks": src_cracks,
            "shingles": src_shingles, "splat": src_splat, "gradient": src_gradient, "image": src_image}
 
 
@@ -688,6 +755,47 @@ def layer(t, s, n, ctx, rng):
     return {"rgb": rgb, "a": t["a"], "h": h.astype(np.float32)}
 
 
+# --- OKLab (perceptuellt jämn färgrymd) för stiliseringens palett ---
+_M1 = np.array([[0.4122214708, 0.5363325363, 0.0514459929], [0.2119034982, 0.6806995451, 0.1073969566], [0.0883024619, 0.2817188376, 0.6299787005]], np.float32)
+_M2 = np.array([[0.2104542553, 0.7936177850, -0.0040720468], [1.9779984951, -2.4285922050, 0.4505937099], [0.0259040371, 0.7827717662, -0.8086757660]], np.float32)
+
+
+def srgb_to_oklab(rgb):
+    c = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+    return np.cbrt(c @ _M1.T) @ _M2.T
+
+
+def oklab_to_srgb(lab):
+    c = np.clip(((lab @ np.linalg.inv(_M2).T) ** 3) @ np.linalg.inv(_M1).T, 0, 1)
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055).astype(np.float32)
+
+
+def palette_kmeans(lab, k, iters=12):
+    # Ett glest, jämnt urval (oberoende av slump och nästan av upplösningen), startat i ljushetens kvantiler
+    flat = lab.reshape(-1, 3)
+    sample = flat[:: max(1, len(flat) // 40000)]
+    order = np.argsort(sample[:, 0])
+    cent = sample[order[((np.arange(k) + 0.5) / k * len(order)).astype(int)]].copy()
+    for _ in range(iters):
+        near = ((sample[:, None, :] - cent[None]) ** 2).sum(-1).argmin(1)
+        for j in range(k):
+            m = near == j
+            if m.any():
+                cent[j] = sample[m].mean(0)
+    return cent
+
+
+def soft_quantize(lab, cent, tau):
+    # Mjuk tilldelning: nära en palettfärg dras pixeln dit, mellan två blir övergången mjuk (inga trappsteg)
+    flat, out = lab.reshape(-1, 3), np.empty((lab.size // 3, 3), np.float32)
+    for i in range(0, len(flat), 1 << 18):
+        f = flat[i:i + (1 << 18)]
+        d = ((f[:, None, :] - cent[None]) ** 2).sum(-1)
+        w = np.exp(-(d - d.min(1, keepdims=True)) / (2 * tau * tau))
+        out[i:i + len(f)] = (w / w.sum(1, keepdims=True)) @ cent
+    return out.reshape(lab.shape)
+
+
 def step(t, s, n, ctx):
     op = s.get("op")
     rng = np.random.default_rng(int(s.get("seed", 1)) * 7919 + 11)
@@ -785,6 +893,38 @@ def step(t, s, n, ctx):
         rgb = rgb + (rgb - wrap_blur(rgb, s.get("radius", 1.5) * n / 1024)) * s.get("amount", 0.5)
     elif op == "paint":
         rgb = kuwahara(rgb, s.get("radius", 4) * n / 1024)
+    elif op == "stylize":
+        # Från foto mot målat spelmaterial, som en samordnad omvandling (patriks_input/AAA_Procedural_Textures_Stylization):
+        # kantbevarande utjämning, mikrodetaljer bort, de stora formerna ur höjden förstärkta, färre färger i OKLab,
+        # konstnärlig mättnad och en förenklad höjd, allt styrt av samma styrka. Allt går runt kanterna (sömlöst).
+        st, sc = float(s.get("strength", 0.6)), n / 1024
+        if st > 0:
+            sm = kuwahara(rgb, (1 + 7 * st) * sc)
+            rgb = rgb + (sm - rgb) * min(1.0, 0.4 + st)
+            # Mikrodetaljer: allt mindre än ungefär 1/40 av texturen tonas bort, nästan helt vid full styrka
+            low = wrap_blur(rgb, (2 + 12 * st) * sc)
+            rgb = low + (rgb - low) * (1 - 0.92 * st) ** 1.5
+        hs = wrap_blur(h, (1 + 3 * st) * sc)
+        c = hs - wrap_blur(hs, 10 * sc)
+        c = c / (3 * float(c.std()) + 1e-6)
+        sh = s.get("shape", 0.5) * (0.3 + 0.7 * st)
+        rgb = rgb * (1 + sh * 0.35 * np.clip(c, 0, 1))[..., None] * (1 - sh * 0.4 * np.clip(-c, 0, 1))[..., None]
+        lab = srgb_to_oklab(np.clip(rgb, 0, 1))
+        q = soft_quantize(lab, palette_kmeans(lab, max(2, int(s.get("colors", 8)))), 0.008 + 0.05 * (1 - st))
+        lab = lab + (q - lab) * (0.25 + 0.75 * st)
+        lab[..., 1:] *= s.get("saturation", 1.08) ** st
+        rgb = oklab_to_srgb(lab)
+        if s.get("relief", True):
+            h = h + (wrap_blur(h, (2 + 6 * st) * sc) - h) * 0.75 * st
+    elif op == "delight":
+        # Ta bort inbakat ljus ur foton och AI-bilder: dela bort den storskaliga ljusheten (belysningen), lyft sedan de
+        # lokala skuggorna mot omgivningen, så att färgen blir ett material och inte en belyst bild
+        l = lum(rgb) + 1e-3
+        illum = wrap_blur(l, s.get("scale", 0.12) * n)
+        rgb = np.clip(rgb * ((float(l.mean()) / np.maximum(illum, 0.02)) ** s.get("amount", 0.8))[..., None], 0, 1)
+        if s.get("shadows", 0.4) > 0:
+            loc = wrap_blur(rgb, n / 48)
+            rgb = rgb + np.clip(loc - rgb, 0, None) * s.get("shadows", 0.4) * 0.6
     elif op == "posterize":
         lv = max(2, int(s.get("levels", 6))) - 1
         q = np.clip(rgb, 0, 1) * lv
@@ -894,6 +1034,24 @@ def derive_maps(t, mat, n):
     return maps
 
 
+# --- Storebror och lillebror: lillebrodern skalas ned ur storebroderns kartor (översampling: renare kanter och
+# lugnare mipmaps än om den ritades direkt i låg upplösning). Normalen normeras om efter nedskalningen ---
+def downsample(img, n):
+    if img.shape[0] == n:
+        return img
+    chans = img[..., None] if img.ndim == 2 else img
+    out = np.stack([np.asarray(Image.fromarray(chans[..., c].astype(np.float32), "F").resize((n, n), Image.LANCZOS), np.float32) for c in range(chans.shape[2])], -1)
+    return np.clip(out[..., 0] if img.ndim == 2 else out, 0, 1)
+
+
+def downsample_maps(maps, n):
+    out = {k: downsample(v, n) for k, v in maps.items()}
+    if "normal" in out:
+        v = out["normal"] * 2 - 1
+        out["normal"] = v / (np.linalg.norm(v, axis=-1, keepdims=True) + 1e-6) * 0.5 + 0.5
+    return out
+
+
 # --- Kontroller, som generatorernas checks ---
 def checks(img, alpha=None):
     rgb = img[..., :3]
@@ -966,11 +1124,18 @@ def main():
         prefix = (ROOT / recipe.get("out", "build/studio/tex/preview")).resolve()
         if ROOT not in prefix.parents:
             sys.exit(json.dumps({"error": "out must be under the project root"}))
+    hd = int(save.get("hd") or 0) if save else 0
+    hd = hd if hd > n else 0
     try:
-        t = build_cached(recipe, n)
+        t = build_cached(recipe, hd or n)
     except (RuntimeError, OSError, KeyError) as e:
         sys.exit(json.dumps({"error": str(e).strip("'\"")}))
-    maps = derive_maps(t, recipe.get("material"), n)
+    maps = derive_maps(t, recipe.get("material"), hd or n)
+    big = None
+    if hd:
+        # Storebrodern (hd) är det som ritades; lillebrodern (n) skalas ned ur den
+        big, maps = maps, downsample_maps(maps, n)
+        t = {"rgb": maps["color"][..., :3], "a": maps["color"][..., 3] if maps["color"].shape[-1] == 4 else None}
     result = {"size": n, "ms": 0, "checks": checks(t["rgb"], t["a"]), "alpha": t["a"] is not None}
     if not save:
         result["maps"] = {}
@@ -989,7 +1154,7 @@ def main():
             k = 1
             while (vdir / f"{name}_v{k}.png").exists():
                 k += 1
-            for f in [out, meta] + [TEX / f"{name}_{m}.png" for m in MAP_NAMES[1:]] + [TEX / f"{name}_orm.png", TEX / f"{name}.webp"]:
+            for f in [out, meta] + [TEX / f"{name}_{m}.png" for m in MAP_NAMES[1:]] + [TEX / f"{name}_orm.png", TEX / f"{name}.webp"] + [TEX / "hd" / f"{name}_hd{'' if m == 'color' else '_' + m}.png" for m in MAP_NAMES]:
                 if f.exists():
                     shutil.move(str(f), str(vdir / f.name.replace(name, f"{name}_v{k}", 1)))
             result["previous"] = f"assets/textures/versions/{name}_v{k}.png"
@@ -998,6 +1163,12 @@ def main():
             p = out if k == "color" else TEX / f"{name}_{k}.png"
             save_png(maps[k], p, bits16=(k == "height"))
             files[k] = str(p.relative_to(ROOT))
+        hd_files = {}
+        if big is not None:
+            for k in want:
+                p = TEX / "hd" / f"{name}_hd{'' if k == 'color' else '_' + k}.png"
+                save_png(big[k], p, bits16=(k == "height"))
+                hd_files[k] = str(p.relative_to(ROOT))
         if save.get("pack") == "orm":
             ones = np.ones((n, n), np.float32)
             orm = np.stack([maps.get("ao", ones), maps["rough"], maps.get("metal", ones * 0)], -1)
@@ -1012,6 +1183,8 @@ def main():
                  "meters": (recipe.get("material") or {}).get("meters", save.get("meters", 2.0)),
                  "tags": [x.strip().lower() for x in save.get("tags", []) if x.strip()], "recipe": f"assets/textures/{name}.texture.json",
                  "size": n, "saved": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        if hd_files:
+            entry["hd"] = {"size": hd, "files": hd_files}
         # Receptet sparas med alla spakar utskrivna (även standardvärden), så att texturen går att göra om
         # exakt även om standardvärdena i workshop.json ändras senare
         src = with_defaults("sources", recipe["source"].get("type", "noise"), recipe["source"])

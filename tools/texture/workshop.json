@@ -124,7 +124,38 @@
       ]
     },
     "image": {"label": "Existing texture", "params": [{"key": "name", "label": "Texture", "type": "texture", "default": "bark_painted"}]},
-    "input": {"label": "Ingredient", "params": [{"key": "input", "label": "Ingredient", "type": "input", "default": ""}]}
+    "input": {"label": "Ingredient", "params": [{"key": "input", "label": "Ingredient", "type": "input", "default": ""}]},
+    "ripples": {
+      "label": "Sand, snow and ripples",
+      "help": "Wind ripples with a long gentle slope and a short steep lee side, winding and fading out in patches. Tileable in any direction",
+      "params": [
+        {"key": "ripples", "label": "Ripples", "type": "int", "min": 3, "max": 40, "default": 14, "help": "How many ripples across the texture"},
+        {"key": "direction", "label": "Direction", "type": "number", "min": 0, "max": 180, "step": 1, "default": 20, "help": "Which way the ripples run (snapped so the texture stays seamless)"},
+        {"key": "sharpness", "label": "Steep side", "type": "number", "min": 0, "max": 0.95, "step": 0.05, "default": 0.6, "help": "Round waves at 0, sharp crests with a steep lee side at high values"},
+        {"key": "wobble", "label": "Winding", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4},
+        {"key": "breakup", "label": "Breakup", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.35, "help": "Patches where the ripples flatten out"},
+        {"key": "grains", "label": "Grains", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.3, "adv": true, "help": "Fine grain on top (keep it low for a stylized look)"},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "dark", "label": "Trough color", "type": "color", "default": "#B08F62"},
+        {"key": "light", "label": "Crest color", "type": "color", "default": "#E2C99A"}
+      ]
+    },
+    "cracks": {
+      "label": "Cracked ground and ice",
+      "help": "Plates split by cracks of varying width, curling up at the edges like dried mud, with finer cracks in some plates",
+      "params": [
+        {"key": "cells", "label": "Plates", "type": "int", "min": 6, "max": 120, "default": 30},
+        {"key": "width", "label": "Crack width", "type": "number", "min": 0, "max": 0.25, "step": 0.005, "default": 0.05},
+        {"key": "fine", "label": "Fine cracks", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4},
+        {"key": "curl", "label": "Curled edges", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "help": "How much the plate edges lift, like drying mud"},
+        {"key": "wobble", "label": "Ragged cracks", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "adv": true},
+        {"key": "tint", "label": "Color variation", "type": "number", "min": 0, "max": 0.4, "step": 0.01, "default": 0.12, "adv": true},
+        {"key": "seed", "label": "Seed", "type": "seed", "default": 1},
+        {"key": "light", "label": "Plate color", "type": "color", "default": "#A98A64"},
+        {"key": "dark", "label": "Plate shade", "type": "color", "default": "#7A6044"},
+        {"key": "crack", "label": "Crack color", "type": "color", "default": "#3A2C20"}
+      ]
+    }
   },
   "steps": {
     "layer": {
@@ -287,10 +318,31 @@
       ]
     },
     "bleed": {"label": "Fill transparent (bleed)", "help": "Gives transparent pixels the color of the nearest visible one, so mipmaps don't get a light fringe", "params": []},
-    "alphablur": {"label": "Softer alpha edge", "params": [{"key": "radius", "label": "Radius (px at 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5}]}
+    "alphablur": {"label": "Softer alpha edge", "params": [{"key": "radius", "label": "Radius (px at 1024)", "type": "number", "min": 0.5, "max": 8, "step": 0.5, "default": 1.5}]},
+    "stylize": {
+      "label": "Stylize",
+      "help": "From photo to painted game material in one move: edge-keeping smoothing, fewer small details, the large forms kept and sharpened, fewer colors (in a perceptual color space), art-directed saturation and a simpler height, all from one strength",
+      "params": [
+        {"key": "strength", "label": "Strength", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.6, "help": "0 keeps the material close to the source, 1 is fully painted"},
+        {"key": "colors", "label": "Colors", "type": "int", "min": 3, "max": 16, "default": 8, "help": "How many tones the material is reduced toward (5–12 suits most materials)"},
+        {"key": "shape", "label": "Large forms", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.5, "help": "How much the big forms (joints, cracks, ridges) are lifted and darkened from the height"},
+        {"key": "saturation", "label": "Saturation", "type": "number", "min": 0.6, "max": 1.6, "step": 0.02, "default": 1.08, "adv": true},
+        {"key": "relief", "label": "Simplify height too", "type": "bool", "default": true, "adv": true, "help": "Normal and AO follow the simpler, broader forms"}
+      ]
+    },
+    "delight": {
+      "label": "Remove lighting",
+      "help": "For photos and AI images: takes out baked-in light and shadow so the color is a material, not a lit picture. Run it before Stylize",
+      "params": [
+        {"key": "amount", "label": "Amount", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.8},
+        {"key": "scale", "label": "Light size", "type": "number", "min": 0.03, "max": 0.5, "step": 0.01, "default": 0.12, "help": "How large the light patches are, as a share of the texture"},
+        {"key": "shadows", "label": "Lift shadows", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4}
+      ]
+    }
   },
   "step_groups": [
     {"label": "Build on", "ops": ["layer", "scatter"]},
+    {"label": "Style", "ops": ["delight", "stylize"]},
     {"label": "Color", "ops": ["levels", "hsv", "colorramp", "palette", "edges", "gray", "range"]},
     {"label": "Shape and height", "ops": ["height", "warp", "soften", "frequency", "paint", "posterize", "sharpen", "blur"]},
     {"label": "Repeat", "ops": ["tile", "repeat", "offset", "rotate", "mirror"]},
@@ -453,7 +505,7 @@
     "grass": {"label": "Grass", "prefix": "grass_", "model": "terrain", "maps": ["color"]},
     "decal": {"label": "Decal", "prefix": "decal_", "model": "block", "maps": ["color"]}
   },
-  "preset_groups": ["Stone", "Wood and bark", "Walls and roofs", "Ground", "Blend layers", "Shapes", "AI (Krea)"],
+  "preset_groups": ["Stone", "Wood and bark", "Walls and roofs", "Ground", "Blend layers", "Stylized", "Shapes", "AI (Krea)"],
   "presets": {
     "cobble": {"group": "Stone", "label": "Cobblestone", "profile": "rock", "recipe": {"source": {"type": "stone"}, "steps": [{"op": "range"}]}},
     "cobble_moss": {"group": "Stone", "label": "Mossy cobblestone", "profile": "rock", "recipe": {"inputs": {"moss": {"recipe": {"source": {"type": "noise", "scale": 14, "dark": "#3E5A2B", "light": "#8FB65A"}, "steps": []}}}, "source": {"type": "stone"}, "steps": [{"op": "layer", "input": "moss", "mask": "low", "amount": 0.45}, {"op": "edges"}, {"op": "range"}]}},
@@ -483,7 +535,15 @@
     "rings": {"group": "Shapes", "label": "Rings", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "radial", "bands": 4}, "steps": []}},
     "bands": {"group": "Shapes", "label": "Bands", "profile": "decal", "recipe": {"source": {"type": "gradient", "kind": "linear", "bands": 6}, "steps": []}},
     "krea_free": {"group": "AI (Krea)", "label": "Krea: free description", "profile": "rock", "ai": true, "recipe": {"source": {"type": "krea", "prompt": "mossy grey cobblestones"}, "steps": []}},
-    "krea_stone": {"group": "AI (Krea)", "label": "Krea: painted cobblestone", "profile": "rock", "ai": true, "recipe": {"inputs": {"form": {"recipe": {"source": {"type": "stone", "cells": 24}, "steps": []}}}, "source": {"type": "krea", "prompt": "hand-painted grey cobblestones with green moss in the joints", "base": "form", "denoise": 0.6}, "steps": []}}
+    "krea_stone": {"group": "AI (Krea)", "label": "Krea: painted cobblestone", "profile": "rock", "ai": true, "recipe": {"inputs": {"form": {"recipe": {"source": {"type": "stone", "cells": 24}, "steps": []}}}, "source": {"type": "krea", "prompt": "hand-painted grey cobblestones with green moss in the joints", "base": "form", "denoise": 0.6}, "steps": []}},
+    "sand_ripples": {"group": "Ground", "label": "Sand ripples", "profile": "terrain", "recipe": {"source": {"type": "ripples"}, "steps": []}},
+    "snow_drift": {"group": "Ground", "label": "Snow drift", "profile": "terrain", "recipe": {"source": {"type": "ripples", "ripples": 8, "sharpness": 0.35, "wobble": 0.6, "breakup": 0.55, "grains": 0.08, "dark": "#AFC3DA", "light": "#F4F7FB"}, "steps": []}},
+    "dry_mud": {"group": "Ground", "label": "Dry mud", "profile": "terrain", "recipe": {"source": {"type": "cracks"}, "steps": []}},
+    "cracked_ice": {"group": "Ground", "label": "Cracked ice", "profile": "terrain", "recipe": {"source": {"type": "cracks", "cells": 14, "width": 0.012, "fine": 0.7, "curl": 0, "light": "#BFE3F2", "dark": "#8CC0DA", "crack": "#E9F7FF"}, "steps": []}},
+    "stone_stylized": {"group": "Stylized", "label": "Painted stone", "profile": "rock", "recipe": {"source": {"type": "stone"}, "steps": [{"op": "stylize", "strength": 0.8, "colors": 6}]}},
+    "bark_stylized": {"group": "Stylized", "label": "Painted bark", "profile": "bark", "recipe": {"source": {"type": "bark", "plates": 0.5}, "steps": [{"op": "stylize", "strength": 0.75, "colors": 6}]}},
+    "cliff_stylized": {"group": "Stylized", "label": "Painted cliff (from image)", "profile": "rock", "recipe": {"source": {"type": "image", "name": "surface_cliff"}, "steps": [{"op": "delight"}, {"op": "stylize", "strength": 0.7, "colors": 7}, {"op": "height", "from": "lum"}]}},
+    "meadow_stylized": {"group": "Stylized", "label": "Painted meadow (from image)", "profile": "terrain", "recipe": {"source": {"type": "image", "name": "ground_meadow"}, "steps": [{"op": "delight"}, {"op": "stylize", "strength": 0.65, "colors": 8}, {"op": "height", "from": "lum"}]}}
   },
   "ai": {
     "_doc": "AI-målningen i verkstaden: förslag på beskrivning per källa. house_style och tile läggs till av servern ur tools/style.json",

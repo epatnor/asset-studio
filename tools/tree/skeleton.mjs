@@ -118,7 +118,7 @@ export function scaleSkeleton(sk, h, extraTop = 0) {
 export function twigsOf(branches, maxLevel) {
   const twigs = [];
   for (const b of branches) {
-    if (b.level < Math.max(1, maxLevel)) continue;
+    if (b.level < Math.max(1, maxLevel) && !b.terminal) continue; // odlade skelett: alla kedjor utan barn bär löv
     const n = b.nodes.length - 1;
     for (let i = Math.ceil(n * 0.4); i <= n; i++) twigs.push(b.nodes[i].p);
   }

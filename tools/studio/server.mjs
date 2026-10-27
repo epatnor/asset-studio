@@ -195,9 +195,10 @@ function textureJob(id) {
   if (!j) return { error: 'no such job (the server may have restarted)' };
   return j.done ? j.result : { pending: true, job: id, since: j.t0, krea: j.krea };
 }
-async function textureSave({ recipe, name, profile, tags = [], meters = 2, size = 1024, maps, pack, webp, overwrite = false }) {
+async function textureSave({ recipe, name, profile, tags = [], meters = 2, size = 1024, maps, pack, webp, hd = 0, overwrite = false }) {
   const r = { ...recipeOf(recipe, [512, 1024, 2048, 4096].includes(size) ? size : 1024), blend: recipe?.blend ?? { layers: [] } };
-  return texSerial(() => runTool('tools/texture/workshop.py', { ...r, save: { name, profile, tags, meters, maps, pack, webp, overwrite } }));
+  // hd: storebroderns storlek (2048 eller 4096), ritad först; texturen skalas ned ur den
+  return texSerial(() => runTool('tools/texture/workshop.py', { ...r, save: { name, profile, tags, meters, maps, pack, webp, hd: [2048, 4096].includes(hd) ? hd : 0, overwrite } }));
 }
 async function cleanDir(dir, keep) {
   if (!existsSync(dir)) return;
