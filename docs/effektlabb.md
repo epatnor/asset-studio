@@ -101,7 +101,7 @@ Texturerna (flipbooks, gnistor, rökmoln, runor) görs i Ateljén, gärna med Kr
 
 Provat: alla besvärjelser byggs utan fel, cirka 56–60 fps i webbläsarpanelen under meteoren. För prov finns `__studio.cauldron.seek(t)` (spela från början och frys efter t sekunder) och `shot(namn, 0)`.
 
-Kvar: texturer från Ateljén i stället för de ritade spritarna (flipbooks), effekterna i Skattkammaren, markörer som inte lägger sig på gräset, uppspelningen i Tinkertown, och ur referensens katalog bl.a. sköld med träffvågor, upplösning (dissolve) och teleport, och ljusstrålar (som hör till Väderfliken).
+Kvar: texturer från Ateljén i stället för de ritade spritarna (flipbooks), effekterna i Skattkammaren, markörer som inte lägger sig på gräset (se Korsbefrukning i [avdelningar.md](avdelningar.md): Häxkittelns verktygslåda i Väderkvarnen), uppspelningen i Tinkertown, och ur referensens katalog bl.a. sköld med träffvågor, upplösning (dissolve) och teleport, och ljusstrålar (som hör till Väderfliken).
 
 ## Faser
 

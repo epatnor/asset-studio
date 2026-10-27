@@ -35,6 +35,15 @@ Byggt (A3): Smedjans låda (`studio/drawer.js`) visar bibliotekets familjer och 
 
 Det en annan avdelning äger öppnas där: trädets bark i Ateljén, trädets vindprofil i Väderkvarnen, allt sparat i Skattkammaren. Färgen byts, så man ser vart man går.
 
+## Korsbefrukning mellan avdelningarna
+
+Önskat av Patrik 2026-10-27. Utöver länkarna ovan ska en avdelnings saker gå att prova i en annans scen, för att se hur de fungerar tillsammans (bara för prov; inget sparas i den andra avdelningen).
+
+- **Häxkittelns verktygslåda i Väderkvarnen:** en liten låda med snabbknappar, en per besvärjelse (färdiga och sparade), i Vind-fliken och Väder-fliken. Man väljer en effekt och klickar i gräset eller på marken, och den spelas upp där med samma `shared/effects/spells.js` och samma recept som i Häxkitteln (kastaren är kameran eller en punkt bredvid, målet är klicket). Lådan går att fälla ihop och stör inte Väderkvarnens egen låda.
+- **Effekterna och gräset:** träffar ger en kort tryckvåg i det gemensamma vindfältet (`wind.js`), så att stråna lägger sig i en ring som vidgas och reser sig igen; ljusen från träffen lyser upp ängen. Markeffekterna (djupdekaler) maskas mot gräset, så att brännmärken och spår hamnar på marken och inte på strånas toppar, eller får ett eget utseende där (brända strån).
+- **Prestanda:** mät bildtiderna med gläntans cirka 300 000 strån plus besvärjelsernas partiklar och lager, på båda grafikkorten.
+- **Fler korsningar senare:** Ateljéns material på arenans mark i Häxkitteln, Väderkvarnens väderlägen (ljus och dis) i Häxkittelns arena, och Smedjans modeller som mål för effekterna.
+
 ## Faser
 
 | Fas | Innehåll | Klart när |
@@ -44,3 +53,4 @@ Det en annan avdelning äger öppnas där: trädets bark i Ateljén, trädets vi
 | A3. Lådorna | Låda per flik med rätt typ, Visa i Skattkammaren, Ctrl+Mellanslag | Det man arbetar med finns alltid ett klick bort (byggd 2026-10-26) |
 | A2b. Engelska | All text i appen på engelska: studio/, spakarna i params.json och workshop.json, biblioteket, felmeddelanden som visas | Appen är på engelska rakt igenom |
 | A4. Väderkvarnen och Häxkitteln | Flikarna enligt effektlabb.md | Alla fyra verkstäder är i bruk |
+| A5. Korsbefrukning | Häxkittelns verktygslåda i Väderkvarnen (snabbknappar, klicka i gräset), tryckvåg i vindfältet, markeffekter maskade mot gräset; senare Ateljéns material och väderlägen i arenan | Effekterna provas i gläntan bland gräs, träd och vind |
