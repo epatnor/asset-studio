@@ -267,21 +267,56 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
 
   // --- Korten: spakarna för fliken, uppspelning och vy, spara ---
   const cards = createCards({ el, side });
-  const kindCards = {};
+  const kindCards = {}, kindRows = {}, groupCards = {};
   for (const k of info.kinds) {
     const els = [];
+    kindRows[k.id] = {};
+    groupCards[k.id] = {};
     const get = (key) => state[k.id].settings[key], set = (key, v) => { state[k.id].settings[key] = v; };
     // En besvärjelse byggs om när den byts, när ett lager slås av eller på och när storleken ändras
-    const onChange = (q) => { markPreset(null); if (k.id === 'spell' && (q?.key === 'spell' || q?.type === 'bool' || q?.rebuild)) build(); else changed(); };
+    const onChange = (q) => { markPreset(null); if (k.id === 'spell' && (q?.key === 'spell' || q?.type === 'bool' || q?.rebuild)) build(); else changed(); showCards(); };
     for (const g of k.groups) {
       const body = cards.card(g.label, '#8b5cf6', { closed: false });
-      for (const q of k.params.filter((x) => x.group === g.id)) body.append(cards.rowFor(q)(q, get, set, onChange));
+      for (const q of k.params.filter((x) => x.group === g.id)) {
+        const row = cards.rowFor(q)(q, get, set, onChange);
+        kindRows[k.id][q.key] = row;
+        body.append(row);
+      }
       els.push(body.parentElement);
+      groupCards[k.id][g.id] = body.parentElement;
     }
     kindCards[k.id] = els;
   }
   // Trails & hits: korten för svärd eller projektil syns efter läget
   const trailGroupEls = Object.fromEntries(KIND.trail.groups.map((g, i) => [g.id, kindCards.trail[i]]));
+  // Vilka spakar som gäller för det som är valt: resten döljs, och ett kort utan synliga rader döljs helt
+  function relevant(k, key, st) {
+    if (k === 'spell') {
+      const layers = info.spells[st.spell]?.layers ?? [];
+      const spikes = layers.find((L) => L.type === 'spikes');
+      if (key.startsWith('layer_')) return layers.some((L) => L.role === key.slice(6));
+      if (key === 'iceCracks') return (spikes?.set?.style ?? 'ice') === 'ice' && !!spikes;
+      if (key.startsWith('trail') || key === 'linger') return !!spikes;
+      if (key === 'distortion') return layers.some((L) => L.type === 'shock' || L.type === 'haze');
+      if (key === 'shake') return layers.some((L) => L.type === 'shake');
+      if (key === 'pause') return !info.spells[st.spell]?.ambient;
+    }
+    if (k === 'particles') {
+      if (key === 'burstSpread') return st.mode === 'burst';
+      if (key === 'radius') return st.emit !== 'point';
+    }
+    if (k === 'marker') {
+      if (key === 'charge') return st.shape === 'area';
+      if (key === 'signSize' || key === 'bob') return st.shape === 'exclaim';
+      if (key === 'dashFill') return st.dashes > 0;
+    }
+    if (k === 'glow') {
+      if (key.startsWith('mote') && key !== 'motes') return st.motes > 0;
+      if (key === 'pillarRadius' || key === 'pillarHeight') return st.pillar > 0;
+      if (key === 'groundRadius') return st.groundGlow > 0;
+    }
+    return true;
+  }
   function showCards() {
     for (const [id, els] of Object.entries(kindCards)) for (const c of els) c.hidden = id !== kind;
     if (kind === 'trail') {
@@ -289,6 +324,9 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
       trailGroupEls.sword.hidden = proj;
       trailGroupEls.projectile.hidden = trailGroupEls.hit.hidden = !proj;
     }
+    const st = cur().settings;
+    for (const [key, row] of Object.entries(kindRows[kind])) row.hidden = !relevant(kind, key, st);
+    for (const c of Object.values(groupCards[kind])) if (!c.hidden) c.hidden = ![...c.querySelectorAll('.rows > .row')].some((r) => !r.hidden);
     placeRow.hidden = !PLACES[kind].length;
     for (const [id, b] of placeBtns) b.hidden = !PLACES[kind].some(([p]) => p === id);
     cards.sync();

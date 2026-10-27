@@ -14,10 +14,9 @@ import * as THREE from 'three/webgpu';
 import {
   uniform, float, vec2, vec3, uv, instanceIndex, hash, sin, cos, exp, mix, smoothstep, select, length, atan, pow, max,
   clamp, abs, normalize, dot, uint, mx_noise_float, mx_worley_noise_vec2, positionView, normalView, positionLocal, positionWorld,
-  texture, PI2, varying, attribute,
+  texture, PI2, varying, attribute, vec4, cameraViewMatrix,
 } from 'three/tsl';
-import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
-import { createParticles, createMarker, createAura, createRibbon, softFade, projectDisc } from './vfx.js';
+import { createParticles, createMarker, createAura, createRibbon, softFade, depthDecal, decalMesh, placeDecal } from './vfx.js';
 
 const easeOut = (x) => 1 - (1 - x) ** 3;
 const easeBack = (x) => { const c = 1.9; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
@@ -322,20 +321,21 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
     return { mesh: m, list };
   });
 
-  // Spåret: en dekal på marken längs linjen som spricker upp där vågen har gått fram
+  // Spåret: en djupdekal på marken längs linjen som spricker upp där vågen har gått fram
   let trail = null, tu = null;
-  if (s.mode !== 'ring' && ground && s.trail !== false) {
+  if (s.mode !== 'ring' && s.trail !== false) {
+    const TD = depthDecal({ slope: 0.5 }), DW = TD.world;
     tu = { front: uniform(-1), fade: uniform(1), from: uniform(from.clone()), dir: uniform(dir.clone()), perp: uniform(perp.clone()),
       len: uniform(len), rim: u.rim, color: u.color, glow: uniform(ice ? (s.rimStrength ?? 1.5) : 0.15),
       wStart: uniform(wS), wEnd: uniform(wE), soft: uniform(0.45), breakup: uniform(0.55), breakupScale: uniform(1.2), fadeIn: uniform(0.8), fadeOut: uniform(0.8), opacity: uniform(0.9),
       rest: uniform(0), restFade: uniform(1) }; // rest: 0 medan spjuten står, 1 när bara resterna ligger kvar; restFade tonar ut dem
-    const rel = positionWorld.sub(tu.from);
+    const rel = DW.sub(tu.from);
     const along = dot(rel.xz, tu.dir.xz);
     // Avsmalning: halva bredden går från wStart vid kastaren till wEnd vid målet
     const halfWn = mix(tu.wStart, tu.wEnd, clamp(along.div(tu.len), 0, 1));
     const across = dot(rel.xz, tu.perp.xz).div(max(halfWn, 0.02));
     // Masken: mjuk kant, uppbruten av brus i två skalor (fransiga kanter och hål när breakup är högt)
-    const bp = positionWorld.xz.mul(tu.breakupScale);
+    const bp = DW.xz.mul(tu.breakupScale);
     const n = mx_noise_float(vec3(bp, 2)).add(mx_noise_float(vec3(bp.mul(2.3), 5)).mul(0.5));
     const edgeD = abs(across).add(n.mul(tu.breakup).mul(0.55));
     const edgeM = float(1).sub(smoothstep(float(1).sub(max(tu.soft, 0.02)), 1, edgeD));
@@ -343,10 +343,12 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
     const holes = smoothstep(-0.75, -0.35, n.add(float(1).sub(tu.breakup).mul(1.2)).sub(float(1).sub(tu.restFade).mul(1.6)));
     const ends = smoothstep(0, max(tu.fadeIn, 0.01), along).mul(float(1).sub(smoothstep(tu.len.sub(0.1), tu.len.add(max(tu.fadeOut, 0.01)), along)));
     const shown = smoothstep(tu.front, tu.front.sub(0.35), along);
-    const wv = mx_worley_noise_vec2(positionWorld.xz.mul(ice ? 2.2 : 1.6)), wv2 = mx_worley_noise_vec2(positionWorld.xz.mul(5.5));
+    const wv = mx_worley_noise_vec2(DW.xz.mul(ice ? 2.2 : 1.6)), wv2 = mx_worley_noise_vec2(DW.xz.mul(5.5));
     const cracks = clamp(smoothstep(0.09, 0.0, wv.y.sub(wv.x)).add(smoothstep(0.05, 0.0, wv2.y.sub(wv2.x)).mul(0.6)), 0, 1).mul(smoothstep(1.0, 0.3, edgeD));
-    const tex = texture(loadTex(ice ? 'surface_snow' : 'surface_dirt', true, texBase), positionWorld.xz.div(1.6)).rgb;
-    const tmat = new THREE.MeshStandardNodeMaterial({ transparent: true, depthWrite: false, roughness: ice ? 0.25 : 0.95, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    const tex = texture(loadTex(ice ? 'surface_snow' : 'surface_dirt', true, texBase), DW.xz.div(1.6)).rgb;
+    const tmat = new THREE.MeshStandardNodeMaterial({ roughness: ice ? 0.25 : 0.95 });
+    // Ljuset ska falla på marken, inte på lådans sidor: markens normal (ur djupet) i kamerans rum
+    tmat.normalNode = normalize(cameraViewMatrix.mul(vec4(TD.normal, 0)).xyz);
     // Is: frusen skorpa i besvärjelsens färg med lysande sprickor. Jord: uppriven mörk jord med svarta sprickor och
     // ljusare upptryckta kanter.
     tmat.colorNode = ice ? mix(tex.mul(mix(vec3(1, 1, 1), tu.color, 0.45)), tu.color.mul(0.5), cracks)
@@ -356,14 +358,12 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
     const residue = ice ? mix(tex, vec3(0.96, 0.98, 1), 0.6) : mix(tex.mul(tu.color.mul(1.1)), vec3(0.62, 0.53, 0.4), 0.3);
     tmat.colorNode = mix(tmat.colorNode, residue, tu.rest);
     const mask = edgeM.mul(holes).mul(ends).mul(shown);
-    tmat.opacityNode = clamp(mask.mul(tu.opacity).add(cracks.mul(mask).mul(0.3).mul(float(1).sub(tu.rest))), 0, 1).mul(mix(float(1), float(0.6), tu.rest)).mul(tu.restFade).mul(tu.fade);
+    tmat.opacityNode = clamp(mask.mul(TD.mask).mul(tu.opacity).add(cracks.mul(mask).mul(0.3).mul(float(1).sub(tu.rest))), 0, 1).mul(mix(float(1), float(0.6), tu.rest)).mul(tu.restFade).mul(tu.fade);
     const mid = from.clone().addScaledVector(dir, len / 2);
     const ang = Math.atan2(dir.x, dir.z);
     const reach = len + 2 * Math.max(wS, wE) + 2 * (s.trailFadeOut ?? 0.8) + 1;
-    const tgeo = new DecalGeometry(ground, mid, new THREE.Euler(-Math.PI / 2, 0, ang, 'XYZ'), new THREE.Vector3(reach, reach, 6));
-    trail = new THREE.Mesh(tgeo, tmat);
-    trail.renderOrder = 2;
-    trail.receiveShadow = true;
+    trail = decalMesh(tmat, 2);
+    placeDecal(trail, mid, reach / 2, { height: 2.4 });
     group.add(trail);
   }
 
@@ -436,7 +436,7 @@ export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texB
       debris.update(time, { wind }); dust.update(time, { wind }); after.update(time, { wind });
     },
     setFade(f) { u.fade.value = f; if (tu) tu.fade.value = f; },
-    dispose() { for (const g of geos) g.dispose(); mat.dispose(); if (trail) { trail.geometry.dispose(); trail.material.dispose(); } debris.dispose(); dust.dispose(); after.dispose(); },
+    dispose() { for (const g of geos) g.dispose(); mat.dispose(); if (trail) trail.material.dispose(); debris.dispose(); dust.dispose(); after.dispose(); },
   };
   fx.set(s);
   return fx;
@@ -471,52 +471,52 @@ export function createFlash(s, { at }) {
   };
 }
 
-// --- Chockring på marken (FX01): en tunn ljus ring som vidgas, en kärna som tonar och ekrar ---
+// --- Chockring på marken (FX01, djupdekal): en tunn ljus ring som vidgas, en kärna som tonar och ekrar ---
 export function createRing(s, { at, ground }) {
   const u = { color: uniform(new THREE.Color(s.color ?? '#ffb060')), k: uniform(0), fade: uniform(1), intensity: uniform(s.intensity ?? 2.5), width: uniform(s.thickness ?? 0.03) };
-  const mat = additiveMat(THREE.MeshBasicNodeMaterial, { polygonOffset: true, polygonOffsetFactor: -6 });
-  const p = uv().mul(2).sub(1), r = length(p);
+  const mat = new THREE.MeshBasicNodeMaterial({ blending: THREE.AdditiveBlending });
+  const D = depthDecal();
+  const p = D.uv.mul(2).sub(1), r = length(p);
   const rad = mix(float(0.04), float(0.95), u.k);
   const ring = exp(r.sub(rad).div(u.width).pow(2).negate());
   const ring2 = exp(r.sub(rad.mul(0.72)).div(u.width.mul(0.6)).pow(2).negate()).mul(0.45);
   const inner = exp(r.mul(-5)).mul(float(1).sub(u.k));
   const spokes = pow(abs(sin(atan(p.y, p.x).mul(12).add(u.k.mul(6)))), 18).mul(0.25);
   const fadeOut = float(1).sub(smoothstep(0.6, 1, u.k)).mul(float(1).sub(smoothstep(0.92, 1, r)));
-  const I = ring.mul(2.5).add(ring2).add(inner).add(ring.mul(spokes)).mul(fadeOut).mul(u.fade);
+  const I = ring.mul(2.5).add(ring2).add(inner).add(ring.mul(spokes)).mul(fadeOut).mul(u.fade).mul(D.mask);
   mat.colorNode = u.color.mul(I).mul(u.intensity);
   mat.opacityNode = clamp(I.mul(0.7), 0, 1);
-  const mesh = new THREE.Mesh(undefined, mat);
-  projectDisc(mesh, ground, at, s.radius ?? 2);
-  mesh.renderOrder = 5;
+  const mesh = decalMesh(mat, 5);
+  placeDecal(mesh, at, s.radius ?? 2);
   return {
     object: mesh, uniforms: u,
-    set(v) { u.color.value.set(v.color); u.intensity.value = v.intensity ?? 2.5; projectDisc(mesh, ground, at, v.radius ?? 2); },
+    set(v) { u.color.value.set(v.color); u.intensity.value = v.intensity ?? 2.5; placeDecal(mesh, at, v.radius ?? 2); },
     update(time, lt) { u.k.value = easeOut(clamp01(lt)); },
     setFade(f) { u.fade.value = f; },
-    dispose() { mesh.geometry.dispose(); mat.dispose(); },
+    dispose() { mat.dispose(); },
   };
 }
 
-// --- Brännmärke: en dekal på marken med brusig kant och glöd som slocknar ---
+// --- Brännmärke: en djupdekal på marken med brusig kant och glöd som slocknar ---
 export function createScorch(s, { at, ground }) {
   const u = { ember: uniform(new THREE.Color(s.ember ?? '#ff6a1a')), dark: uniform(new THREE.Color(s.color ?? '#120a06')), k: uniform(0), fade: uniform(1), seed: uniform(Math.random() * 50) };
-  const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 });
-  const p = uv().mul(2).sub(1), r = length(p);
+  const mat = new THREE.MeshBasicNodeMaterial();
+  const D = depthDecal();
+  const p = D.uv.mul(2).sub(1), r = length(p);
   const n = mx_noise_float(vec3(p.mul(2.5), u.seed)).mul(0.5).add(mx_noise_float(vec3(p.mul(6), u.seed.add(3))).mul(0.25));
   const mask = float(1).sub(smoothstep(0.45, 0.95, r.add(n.mul(0.35))));
   const cracks = pow(clamp(float(1).sub(abs(mx_noise_float(vec3(p.mul(5), u.seed.add(9))))), 0, 1), 10);
   const heat = clamp(float(1).sub(u.k.mul(1.4)), 0, 1);
   mat.colorNode = mix(u.dark, u.ember.mul(4), cracks.mul(heat).mul(smoothstep(0.85, 0.2, r)));
-  mat.opacityNode = clamp(mask.mul(0.88).add(cracks.mul(heat)), 0, 1).mul(u.fade);
-  const size = (s.radius ?? 1) * 2;
-  const mesh = new THREE.Mesh(new DecalGeometry(ground, at, new THREE.Euler(-Math.PI / 2, 0, Math.random() * 6.28), new THREE.Vector3(size, size, 4)), mat);
-  mesh.renderOrder = 3;
+  mat.opacityNode = clamp(mask.mul(0.88).add(cracks.mul(heat)), 0, 1).mul(u.fade).mul(D.mask);
+  const mesh = decalMesh(mat, 3);
+  placeDecal(mesh, at, s.radius ?? 1, { rotY: Math.random() * 6.28 });
   return {
     object: mesh, uniforms: u,
     set() {},
     update(time, lt) { u.k.value = lt; },
     setFade(f) { u.fade.value = f; },
-    dispose() { mesh.geometry.dispose(); mat.dispose(); },
+    dispose() { mat.dispose(); },
   };
 }
 

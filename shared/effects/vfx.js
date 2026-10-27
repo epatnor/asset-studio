@@ -23,9 +23,9 @@ import {
   uniform, attribute, float, vec2, vec3, vec4, uint, instanceIndex, hash, sin, cos, exp, floor, fract, mix, smoothstep, select,
   length, atan, pow, max, min, clamp, abs, sqrt, normalize, dot, uv, positionLocal, normalLocal, normalView, positionView,
   positionWorld, modelWorldMatrix, cameraViewMatrix, mx_noise_float, mx_noise_vec3, varying, PI2, viewportLinearDepth, linearDepth,
-  cameraNear, cameraFar,
+  cameraNear, cameraFar, viewportDepthTexture, getViewPosition, screenUV, cameraProjectionMatrixInverse, cameraWorldMatrix,
+  modelWorldMatrixInverse, dFdx, dFdy, cross, step, sign,
 } from 'three/tsl';
-import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { createSpell } from './spells.js';
 
 export const KINDS = ['glow', 'marker', 'particles', 'trail', 'spell'];
@@ -35,24 +35,38 @@ const MARKS = ['ring', 'target', 'area', 'exclaim'];
 const DEG = Math.PI / 180;
 const additive = (m, on) => { const b = on ? THREE.AdditiveBlending : THREE.NormalBlending; if (m.blending !== b) { m.blending = b; m.needsUpdate = true; } };
 
-// En rund fläck på marken (glöd, chockring): projiceras uppifrån på marken som en dekal, så att den följer sluttningar
-// i stället för att klippas av; utan mark en platt skiva. uv går 0–1 över fläcken som på en vanlig skiva. Byggs om
-// bara när mitten eller radien har ändrats.
-export function projectDisc(mesh, ground, center, radius) {
-  const key = `${center.x.toFixed(3)},${center.y.toFixed(3)},${center.z.toFixed(3)}|${radius.toFixed(3)}`;
-  if (mesh.userData.disc === key) return;
-  mesh.userData.disc = key;
-  mesh.geometry?.dispose();
-  if (ground) {
-    ground.updateMatrixWorld(true);
-    mesh.geometry = new DecalGeometry(ground, center, new THREE.Euler(-Math.PI / 2, 0, 0), new THREE.Vector3(radius * 2, radius * 2, 4));
-    mesh.position.set(0, 0, 0);
-    mesh.scale.setScalar(1);
-  } else {
-    mesh.geometry = new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
-    mesh.position.copy(center).y += 0.03;
-    mesh.scale.setScalar(radius);
-  }
+// --- Djupdekaler: allt som ligger på marken (glöd, ringar, markörer, spår, brännmärken) ---
+// En låda med 8 hörn i stället för en kopia av markens trianglar: shadern läser djupbufferten (det ogenomskinliga som
+// redan är ritat), räknar ut var ytan bakom bildpunkten ligger i världen och ritar bara där den ligger inne i lådan och
+// vetter uppåt. Följer sluttningar, trappor och allt annat, behöver aldrig byggas om och kostar lika lite hur tät
+// terrängen än är; kostnaden är bildpunkterna lådan täcker. Ben, spjut och väggar maskas bort med normalen (räknad ur
+// djupet med dFdx/dFdy), och himlen och det som står ovanför lådan faller bort av sig självt.
+const DECAL_BOX = new THREE.BoxGeometry(1, 1, 1);
+// slope: hur brant ytan får vara (normalens y-del, 1 = plan mark); uv går 0–1 över lådans x och z
+export function depthDecal({ slope = 0.55 } = {}) {
+  const view = getViewPosition(screenUV, viewportDepthTexture(screenUV).r, cameraProjectionMatrixInverse);
+  const world = cameraWorldMatrix.mul(vec4(view, 1)).xyz;
+  const local = modelWorldMatrixInverse.mul(vec4(world, 1)).xyz;
+  const inside = step(abs(local.x), 0.5).mul(step(abs(local.y), 0.5)).mul(step(abs(local.z), 0.5));
+  const nRaw = normalize(cross(dFdx(world), dFdy(world)));
+  const normal = nRaw.mul(sign(nRaw.y)); // uppåt, oavsett i vilken ordning bildpunkterna deriveras
+  const up = smoothstep(slope - 0.12, slope + 0.12, normal.y);
+  return { uv: vec2(local.x.add(0.5), float(0.5).sub(local.z)), world, normal, local, mask: inside.mul(up) };
+}
+// Materialet ritas från insidan (fungerar när kameran står i lådan) utan djuptest: det som står framför syns ändå,
+// eftersom djupet då pekar på den saken och den ligger utanför lådan eller vetter åt sidan.
+export function decalMesh(material, renderOrder = 2) {
+  Object.assign(material, { side: THREE.BackSide, depthTest: false, depthWrite: false, transparent: true });
+  const m = new THREE.Mesh(DECAL_BOX, material);
+  m.renderOrder = renderOrder;
+  return m;
+}
+// Lådan över en fläck: mitt, radie, höjd (hur mycket marken får gå upp och ned inom den) och vridning
+export function placeDecal(mesh, center, radius, { height, rotY = 0 } = {}) {
+  const h = height ?? Math.min(2.5, Math.max(0.9, radius * 0.6));
+  mesh.position.copy(center);
+  mesh.rotation.set(0, rotY, 0);
+  mesh.scale.set(radius * 2, h, radius * 2);
 }
 
 // Mjuka partiklar (FX04 i AAA-referensen): genomskinligheten tonar ut där ytan bakom är närmare än soft meter, så att
@@ -293,11 +307,11 @@ export function createAura(s, { target, ground }) {
   group.add(pillar);
 
   // Glöd på marken: en ljus fläck som tonar ut, med en svag ring i kanten
-  const gMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  const gd = length(uv().mul(2).sub(1));
-  gMat.colorNode = u.c.mul(pow(clamp(float(1).sub(gd), 0, 1), 2).add(smoothstep(0.12, 0, abs(gd.sub(0.85))).mul(0.25))).mul(pulse).mul(u.ground);
-  const disc = new THREE.Mesh(undefined, gMat);
-  disc.renderOrder = 2;
+  const gMat = new THREE.MeshBasicNodeMaterial({ blending: THREE.AdditiveBlending });
+  const gD = depthDecal();
+  const gd = length(gD.uv.mul(2).sub(1));
+  gMat.colorNode = u.c.mul(pow(clamp(float(1).sub(gd), 0, 1), 2).add(smoothstep(0.12, 0, abs(gd.sub(0.85))).mul(0.25))).mul(pulse).mul(u.ground).mul(gD.mask);
+  const disc = decalMesh(gMat);
   group.add(disc);
 
   const light = new THREE.PointLight('#ffffff', 0, 7, 2);
@@ -316,7 +330,7 @@ export function createAura(s, { target, ground }) {
       u.thick.value = p.thickness; u.nScale.value = p.noiseScale; u.ground.value = p.groundGlow;
       pillar.scale.set(p.pillarRadius, p.pillarHeight, p.pillarRadius);
       pillar.visible = p.pillar > 0;
-      projectDisc(disc, ground, feet, Math.max(0.05, p.groundRadius));
+      placeDecal(disc, feet, Math.max(0.05, p.groundRadius));
       disc.visible = p.groundGlow > 0;
       light.color.set(p.color);
       motes.set(moteSettings(p));
@@ -333,7 +347,7 @@ export function createAura(s, { target, ground }) {
     setFade(f) { u.fade.value = f; motes.setFade(f); },
     dispose() {
       for (const [o, sh] of shells) o.remove(sh);
-      shellMat.dispose(); pMat.dispose(); gMat.dispose(); pillar.geometry.dispose(); disc.geometry.dispose(); motes.dispose();
+      shellMat.dispose(); pMat.dispose(); gMat.dispose(); pillar.geometry.dispose(); motes.dispose();
     },
   };
   fx.set(s);
@@ -350,8 +364,8 @@ function moteSettings(p) {
 }
 
 // --- Markörer ---
-// Ritas ur uv på en dekal som projiceras på marken (DecalGeometry), så att den följer sluttningar. Dekalen byggs om när
-// markören flyttas eller radien ändras. Utropstecknet är en sprite som guppar ovanför figuren.
+// Ritas på marken som en djupdekal (depthDecal), så att den följer sluttningar; att flytta den eller ändra radien flyttar
+// bara lådan. Utropstecknet är en sprite som guppar ovanför figuren.
 export function createMarker(s, { ground, at, top }) {
   const PAD = 1.4; // dekalen är lite större än radien, för glorian
   const C = () => uniform(new THREE.Color());
@@ -360,7 +374,8 @@ export function createMarker(s, { ground, at, top }) {
     fill: uniform(0), glow: uniform(1), spin: uniform(0), pulse: uniform(0), pulseSpeed: uniform(1), ripples: uniform(0), rippleSpeed: uniform(0.5),
     charge: uniform(0), size: uniform(0.5), runes: uniform(0), reveal: uniform(0), born: uniform(-1e4), fade: uniform(1), salt: uniform(0),
   };
-  const p = uv().mul(2).sub(1).mul(PAD);
+  const mD = depthDecal();
+  const p = mD.uv.mul(2).sub(1).mul(PAD);
   const sw = sin(u.time.mul(u.pulseSpeed).mul(PI2));
   const r = length(p).div(float(1).add(u.pulse.mul(0.06).mul(sw)));
   const a = atan(p.y, p.x).add(u.time.mul(u.spin));
@@ -406,22 +421,15 @@ export function createMarker(s, { ground, at, top }) {
   const halo = exp(max(r.sub(1), 0).mul(-9)).mul(smoothstep(0.98, 1.0, r)).mul(0.3);
   const bright = float(1).add(u.pulse.mul(0.5).mul(sw));
   const dim = select(u.shape.equal(3), float(0.45), float(1)); // utropstecknets ring på marken är svag
-  const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  mat.colorNode = u.c.mul(clamp(lines, 0, 2)).add(u.c2.mul(fill.mul(rp))).add(u.c.mul(halo.mul(rp))).mul(u.glow).mul(bright).mul(dim);
-  mat.opacityNode = clamp(lines.add(fill.mul(rp)).add(halo.mul(rp)), 0, 1).mul(dim).mul(u.fade);
+  const mat = new THREE.MeshBasicNodeMaterial();
+  mat.colorNode = u.c.mul(clamp(lines, 0, 2)).add(u.c2.mul(fill.mul(rp))).add(u.c.mul(halo.mul(rp))).mul(u.glow).mul(bright).mul(dim).mul(mD.mask);
+  mat.opacityNode = clamp(lines.add(fill.mul(rp)).add(halo.mul(rp)), 0, 1).mul(dim).mul(u.fade).mul(mD.mask);
 
   const group = new THREE.Group();
-  let decal = null, where = (at ?? new THREE.Vector3()).clone(), built = '';
-  function rebuild() {
-    const key = `${where.toArray().map((x) => x.toFixed(3))}|${s.radius}`;
-    if (key === built || !ground) return;
-    built = key;
-    if (decal) { group.remove(decal); decal.geometry.dispose(); }
-    const size = s.radius * 2 * PAD;
-    decal = new THREE.Mesh(new DecalGeometry(ground, where, new THREE.Euler(-Math.PI / 2, 0, 0), new THREE.Vector3(size, size, 6)), mat);
-    decal.renderOrder = 4;
-    group.add(decal);
-  }
+  const where = (at ?? new THREE.Vector3()).clone();
+  const decal = decalMesh(mat, 4);
+  group.add(decal);
+  const rebuild = () => placeDecal(decal, where, s.radius * PAD);
 
   // Utropstecknet: ett avrundat streck och en prick, med en mörkare kant
   const sMat = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false });
@@ -463,7 +471,7 @@ export function createMarker(s, { ground, at, top }) {
       u.time.value = time;
       sign.position.set(where.x, topY() + s.signSize * 0.5 + s.bob * Math.sin(time * 3), where.z);
     },
-    dispose() { if (decal) decal.geometry.dispose(); mat.dispose(); sMat.dispose(); },
+    dispose() { mat.dispose(); sMat.dispose(); },
   };
   fx.set(s);
   return fx;
