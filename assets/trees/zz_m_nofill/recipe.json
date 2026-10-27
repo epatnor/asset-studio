@@ -1,0 +1,56 @@
+{
+  "leaves": "leaffine_painted",
+  "bark": "bark_smooth_stylized",
+  "canopy": {
+    "ballScale": 1.5,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.9,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35,
+    "clusters": 7,
+    "ballSpread": 0.7,
+    "fillGaps": false
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.45,
+      "texture": "moss_stylized",
+      "height": 0.6,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    },
+    "tip": {
+      "texture": "moss_stylized",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  },
+  "preset": "cardtree",
+  "seed": 24,
+  "height": 8.5,
+  "leaf_tint": "#5E9E3C",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "oval",
+      "width": 0.52,
+      "crownStart": 0.3,
+      "gaps": 0.2
+    },
+    "trunk": {
+      "radius": 0.08
+    }
+  },
+  "bole": 3,
+  "name": "zz_m_nofill",
+  "leaf_mass": "leaf_mass"
+}

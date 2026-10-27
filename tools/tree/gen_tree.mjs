@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
-import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips } from './skeleton.mjs';
+import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips, pruneHiddenEnds } from './skeleton.mjs';
 import { colonizeSkeleton } from './colonize.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
@@ -56,12 +56,11 @@ scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 const lift = sp.stemless ? 0 : setBoleHeight(sk, recipe.bole ?? 0);
 const top = height + lift;
 const checks = validateSkeleton(sk);
-// Kortbollar: grenar utan barn smalnar av till en spets, så att ingen gren slutar trubbigt inne i en boll
-if (sp.foliage.type === 'cardball') taperTips(sk, sp.foliage.tipTaper ?? 0.3);
 
 // 2. Bark med riktig LOD: LOD1 utan yngsta grennivån, LOD2 bara stam och första nivån
 const barkRepeat = recipe.barkRepeat ?? 1.08; // meter per texturupprepning
-const barkLods = [
+// Byggs efter lövverket (steg 3): kortbollarnas beskärning ändrar skelettet
+const makeBark = () => [
   { maxLevel: 9, segScale: 1 },
   { maxLevel: Math.max(1, sk.maxLevel - 1), segScale: 0.7 },
   { maxLevel: 1, segScale: 0.5 },
@@ -131,6 +130,17 @@ if (fronds) {
   // Bollar måste sitta på en kvist; spetsbollar på den grenspets de täcker
   const near = (pts, c) => pts.some((p) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= 0.36 * c.radii[0]);
   checks.floating_clusters = sp.stemless ? 0 : foliage.clusters.filter((c) => !near(c.tip ? tips.map((t) => t.p) : sk.twigs, c)).length;
+  // Beskärning: grenändar som ligger utanför alla bollar klipps tillbaka tills de slutar inne i en boll, och grenar
+  // utan någon boll tas bort (prune: false stänger av). Grenar som leder in i en boll står kvar.
+  const cut = { ...(recipe.canopy ?? {}) };
+  if (!sp.stemless && (cut.prune ?? sp.foliage.prune) !== false) {
+    const cover = cut.pruneCover ?? sp.foliage.pruneCover ?? 0.7; // bollens kant är luftig: bara det inre döljer
+    const hidden = (p) => foliage.clusters.some((c) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= c.radii[0] * cover);
+    Object.assign(checks, pruneHiddenEnds(sk, hidden));
+  }
+  // Grenar utan barn smalnar av till en spets, så att ingen gren slutar trubbigt inne i en boll
+  taperTips(sk, sp.foliage.tipTaper ?? 0.3);
+  Object.assign(checks, validateSkeleton(sk));
   checks.uncovered_twigs = foliage.uncovered;
 } else if (sp.foliage.type === 'crown') {
   // v4: sammanslagen molnlik kronmassa + täta små lövkort
@@ -168,6 +178,7 @@ else if (sp.stemless) {
   for (const lod of foliage.lods) for (const g of [lod, lod.volume, lod.shadow].filter(Boolean)) for (let i = 1; i < g.positions.length; i += 3) g.positions[i] += dy;
   checks.resting_on_ground = true;
 }
+const barkLods = makeBark();
 checks.ok = checks.disconnected === 0 && checks.thicker_than_parent === 0 && checks.nodes_below_ground === 0 && !checks.floating_clusters && !checks.uncovered_twigs && !checks.floating_cards;
 
 // 3b. Vindriggen (tools/wind/rig.mjs): en del per gren i skelettet, med stammen som rot. Barken vet redan sin gren;

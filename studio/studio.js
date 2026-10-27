@@ -277,10 +277,16 @@ function shadowRoles(o) {
     o.castShadow = ground !== 'off';
   }
 }
+// Brytarna i rubrikerna Crown och Trunk: visa eller dölj kronan (löv, lövmassa, stjälkar och skuggformen) eller
+// stammen och grenarna i vyn, för att se hur de hänger ihop. Bara visningen; trädet byggs inte om.
+const shownParts = { crown: true, trunk: true };
+const partOf = (name) => (/_trunk_LOD\d$/.test(name) ? 'trunk' : /_(leaves|volume|stems|shadow)_LOD\d$/.test(name) ? 'crown' : null);
 function applyView(root) {
   root.traverse((o) => {
     const lod = o.name.match(/_LOD(\d)$/);
     if (lod) o.visible = Number(lod[1]) === Number(state.view.lod ?? 0);
+    const part = partOf(o.name);
+    if (part && !shownParts[part]) o.visible = false;
     if (!o.isMesh) return;
     shadowRoles(o);
     // Trådram på skuggformen bara när den visas: skuggpasset ritar annars skuggan i trådram
@@ -531,6 +537,14 @@ for (const part of P.parts) {
   const head = el('header'), h2 = el('h2', null, part.label);
   if (part.id === 'asset') assetTitle = h2; // byter namn efter fliken (Träd, Buske ...)
   head.append(h2);
+  if (part.id in shownParts) {
+    const sw = el('input', 'switch');
+    sw.type = 'checkbox';
+    sw.checked = true;
+    sw.title = `Show the ${part.label.toLowerCase()} in the view (only the view; nothing is rebuilt)`;
+    sw.onchange = () => { shownParts[part.id] = sw.checked; applyViewAll(); };
+    head.append(sw);
+  }
   card.append(head);
   const heroes = params.filter((q) => q.hero);
   if (heroes.length) { const h = el('div', 'hero'); for (const q of heroes) h.append(texturePicker(q)); card.append(h); }

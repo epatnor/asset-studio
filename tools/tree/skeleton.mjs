@@ -167,6 +167,43 @@ export function taperTips(sk, amount = 0.3) {
   });
 }
 
+// Beskär det som syns utanför lövverket: en grens ände efter dess sista barn klipps tillbaka så länge leden inte är
+// dold (hidden), och en gren utan barn som inte har någon dold led alls tas bort. Upprepas, eftersom en förälder
+// kan bli utan barn när dess barn tas bort. Barnens t räknas om när föräldern blir kortare, så att de sitter kvar
+// på samma punkt. Returnerar antalet borttagna grenar och leder.
+export function pruneHiddenEnds(sk, hidden) {
+  let removedBranches = 0, removedNodes = 0;
+  const gone = new Set();
+  for (let changed = true; changed;) {
+    changed = false;
+    const kids = sk.branches.map(() => []);
+    sk.branches.forEach((b, i) => { if (b.parent >= 0 && !gone.has(i)) kids[b.parent].push(i); });
+    sk.branches.forEach((b, i) => {
+      if (gone.has(i)) return;
+      const n = b.nodes.length - 1;
+      const lastKid = kids[i].reduce((m, k) => Math.max(m, sk.branches[k].t * n), 0);
+      let m = n;
+      while (m > Math.ceil(lastKid) && !hidden(b.nodes[m].p)) m--;
+      if (m === n) return;
+      if (m < 1 && !kids[i].length && b.level >= 1) { gone.add(i); removedBranches++; changed = true; return; }
+      if (m < 1) m = 1;
+      if (m === n) return;
+      removedNodes += n - m;
+      b.nodes = b.nodes.slice(0, m + 1);
+      for (const k of kids[i]) sk.branches[k].t = Math.min(1, sk.branches[k].t * n / m);
+      changed = true;
+    });
+  }
+  if (gone.size) {
+    const map = new Map();
+    const keep = sk.branches.filter((_, i) => !gone.has(i));
+    sk.branches.forEach((b, i) => { if (!gone.has(i)) map.set(i, map.size); });
+    for (const b of keep) if (b.parent >= 0) b.parent = map.get(b.parent);
+    sk.branches = keep;
+  }
+  return { pruned_branches: removedBranches, pruned_nodes: removedNodes };
+}
+
 // Korrekthetskontroller, så att ingen behöver titta på en bild för att veta att trädet hänger ihop
 export function validateSkeleton(sk) {
   let disconnected = 0, thicker = 0, below = 0;
