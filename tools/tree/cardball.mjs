@@ -21,6 +21,75 @@ function cardNormals(k, r) {
   });
 }
 
+// Bollarna följer skelettet (som leder i ett IK-skelett): kronan börjar som en grupp (hela trädet), och den mest
+// utspridda gruppen delas tills det finns k grupper. En grupp är en gren med en del av sina barngrenar (och deras
+// underträd); den delas i två genom att barngrenarna fördelas på två rumsliga halvor (2-means på underträdens
+// tyngdpunkter). Har gruppen bara ett barn och inga egna kvistar går den vidare ned till barnet. Varje boll sätts
+// sedan på den grenpunkt i den egna gruppen som ligger närmast gruppens kvistar, så att den alltid sitter på en gren
+// och följer med sin gren i vinden.
+export function skeletonGroups(sk, k, flattenY = 1) {
+  const B = sk.branches, maxLevel = sk.maxLevel ?? Math.max(...B.map((b) => b.level));
+  const kids = B.map(() => []);
+  B.forEach((b, i) => { if (b.parent >= 0) kids[b.parent].push(i); });
+  // Samma kvistpunkter som twigsOf: yttre delen av de yngsta grenarna och av alla grenar utan barn
+  const own = B.map((b) => (b.level < Math.max(1, maxLevel) && !b.terminal ? [] : b.nodes.slice(Math.ceil((b.nodes.length - 1) * 0.4)).map((n) => n.p)));
+  const memo = new Map();
+  const subPts = (i) => memo.get(i) ?? memo.set(i, [...own[i], ...kids[i].flatMap(subPts)]).get(i);
+  const subBranches = (i) => [i, ...kids[i].flatMap(subBranches)];
+  const unit = (b, ks, withOwn) => ({ b, ks, withOwn, pts: [...(withOwn ? own[b] : []), ...ks.flatMap(subPts)] });
+  const mean = (pts) => mul(pts.reduce(add, [0, 0, 0]), 1 / Math.max(1, pts.length));
+  const spread = (u) => { const c = mean(u.pts); return Math.sqrt(u.pts.reduce((a, p) => a + dist(p, c) ** 2, 0) / Math.max(1, u.pts.length)) * Math.sqrt(u.pts.length); };
+  // Går ned genom grenar som bara bär ett barn
+  const settle = (u) => {
+    while (!u.withOwn || !own[u.b].length) {
+      if (u.ks.length !== 1) break;
+      const c = u.ks[0];
+      u = unit(c, kids[c], true);
+    }
+    return u;
+  };
+  let units = [settle(unit(0, kids[0], true))].filter((u) => u.pts.length);
+  while (units.length < k) {
+    const cand = units.filter((u) => u.pts.length >= 12 && (u.ks.length >= 2 || (u.ks.length === 1 && u.withOwn && own[u.b].length)));
+    if (!cand.length) break;
+    const u = cand.reduce((a, c) => (spread(c) > spread(a) ? c : a));
+    let parts;
+    if (u.ks.length === 1) parts = [unit(u.b, [], true), unit(u.ks[0], kids[u.ks[0]], true)];
+    else {
+      // 2-means på barnens tyngdpunkter, start i de två som ligger längst isär
+      const cs = u.ks.map((c) => mean(subPts(c)));
+      let ia = 0, ib = 1, far = -1;
+      cs.forEach((a, i) => cs.forEach((b, j) => { const d = dist(a, b); if (d > far) { far = d; ia = i; ib = j; } }));
+      let ca = cs[ia], cb = cs[ib], side = [];
+      for (let it = 0; it < 8; it++) {
+        side = cs.map((c) => (dist(c, ca) <= dist(c, cb) ? 0 : 1));
+        const A = cs.filter((_, i) => side[i] === 0), Bs = cs.filter((_, i) => side[i] === 1);
+        if (!A.length || !Bs.length) break;
+        ca = mean(A); cb = mean(Bs);
+      }
+      const ka = u.ks.filter((_, i) => side[i] === 0), kb = u.ks.filter((_, i) => side[i] === 1);
+      if (!ka.length || !kb.length) { ka.splice(0, ka.length, ...u.ks.slice(0, 1)); kb.splice(0, kb.length, ...u.ks.slice(1)); }
+      // Grenens egna kvistar följer den halva vars tyngdpunkt ligger närmast dem
+      const ownA = u.withOwn && own[u.b].length && dist(mean(own[u.b]), ca) <= dist(mean(own[u.b]), cb);
+      parts = [unit(u.b, ka, !!ownA), unit(u.b, kb, u.withOwn && !ownA)];
+    }
+    units = units.filter((x) => x !== u).concat(parts.map(settle).filter((x) => x.pts.length));
+  }
+  return units.map((u) => {
+    const c = mean(u.pts);
+    // Närmaste grenpunkt i gruppen (grenen själv och barnens underträd)
+    const branches = [u.b, ...u.ks.flatMap(subBranches)];
+    let best = c, bd = Infinity;
+    for (const i of branches) for (const n of B[i].nodes) { const d = dist(n.p, c); if (d < bd) { bd = d; best = n.p; } }
+    const center = lerp(best, c, 0.35);
+    const sd = [0, 1, 2].map((ax) => Math.sqrt(u.pts.reduce((a, p) => a + (p[ax] - center[ax]) ** 2, 0) / u.pts.length));
+    const base = Math.max(...sd) * 0.6;
+    const radii = sd.map((x) => Math.max(x * 1.9, base));
+    radii[1] *= flattenY;
+    return { center, radii, count: u.pts.length, pts: u.pts };
+  });
+}
+
 /**
  * @param {number[][]} twigs  kvistpunkter från skelettet
  * @param {object} o  { seed, height, clusters, ballsPerCluster, cardsPerBall, ballScale, cardScale, minBall,
@@ -29,10 +98,12 @@ function cardNormals(k, r) {
 export function buildCardBalls(twigs, o) {
   const r = rng(o.seed ?? 1);
   const height = o.height ?? 9;
-  const clusters = clusterLeaves(twigs, o.clusters ?? 5, r, o.flattenY ?? 1);
-  // Kvistarna fördelas på närmaste klase; stora klasar delas i flera bollar
-  const own = clusters.map(() => []);
-  for (const p of twigs) {
+  // Bollarna följer skelettet (skeletonGroups); placement "twigs" ger den gamla k-means över kvistpunkterna
+  const bySkeleton = o.skeleton && o.placement !== 'twigs';
+  const clusters = bySkeleton ? skeletonGroups(o.skeleton, o.clusters ?? 5, o.flattenY ?? 1) : clusterLeaves(twigs, o.clusters ?? 5, r, o.flattenY ?? 1);
+  // Kvistarna fördelas på närmaste klase (skelettets grupper har redan sina); stora klasar delas i flera bollar
+  const own = clusters.map((c) => (bySkeleton ? c.pts : []));
+  if (!bySkeleton) for (const p of twigs) {
     let bi = 0, bd = Infinity;
     clusters.forEach((c, i) => { const d = dist(p, c.center); if (d < bd) { bd = d; bi = i; } });
     own[bi].push(p);

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
-import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton } from './skeleton.mjs';
+import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips } from './skeleton.mjs';
 import { colonizeSkeleton } from './colonize.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
@@ -56,6 +56,8 @@ scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 const lift = sp.stemless ? 0 : setBoleHeight(sk, recipe.bole ?? 0);
 const top = height + lift;
 const checks = validateSkeleton(sk);
+// Kortbollar: grenar utan barn smalnar av till en spets, så att ingen gren slutar trubbigt inne i en boll
+if (sp.foliage.type === 'cardball') taperTips(sk, sp.foliage.tipTaper ?? 0.3);
 
 // 2. Bark med riktig LOD: LOD1 utan yngsta grennivån, LOD2 bara stam och första nivån
 const barkRepeat = recipe.barkRepeat ?? 1.08; // meter per texturupprepning
@@ -114,7 +116,8 @@ if (fronds) {
     return { p, d: d.map((x) => x / l) };
   });
   // Stamlösa: kortbollarna ställer sig själva på marken (mjukt golv per boll, se cardball.mjs)
-  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips, ground: !!sp.stemless });
+  // Bollarna följer skelettet: kronan delas upp efter grenarna och varje boll sitter på en gren i sin grupp
+  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips, ground: !!sp.stemless, skeleton: sk });
   checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;
   checks.cards = foliage.cards;

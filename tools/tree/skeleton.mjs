@@ -155,6 +155,18 @@ export function setBoleHeight(sk, bole) {
   return dy;
 }
 
+// Grenar utan barn smalnar av mot spetsen (sista leden till amount × radien), så att de inte slutar trubbigt.
+// Bara grenar som inget sitter på, så att inget barn blir tjockare än sin förälder.
+export function taperTips(sk, amount = 0.3) {
+  const parents = new Set(sk.branches.map((b) => b.parent));
+  sk.branches.forEach((b, i) => {
+    if (b.level < 1 || parents.has(i) || b.nodes.length < 2) return;
+    const n = b.nodes.length - 1;
+    b.nodes[n].r *= amount;
+    if (n >= 2) b.nodes[n - 1].r *= (1 + amount) / 2;
+  });
+}
+
 // Korrekthetskontroller, så att ingen behöver titta på en bild för att veta att trädet hänger ihop
 export function validateSkeleton(sk) {
   let disconnected = 0, thicker = 0, below = 0;
