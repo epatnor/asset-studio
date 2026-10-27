@@ -1,9 +1,0 @@
-{
-  "name": "shrub_v2",
-  "preset": "shrub_medium",
-  "seed": 14,
-  "height": 2.4,
-  "bark": "bark_painted",
-  "leaves": "bush_atlas",
-  "leaf_mass": "bush_mass"
-}

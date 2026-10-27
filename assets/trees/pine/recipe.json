@@ -1,0 +1,48 @@
+{
+  "leaves": "leaffine_pointed",
+  "bark": "bark_stylized",
+  "canopy": {
+    "ballScale": 1.5,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35,
+    "clusters": 7
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 21,
+  "height": 12,
+  "leaf_tint": "#3E6A3A",
+  "species": {
+    "trunk": {
+      "radius": 0.05,
+      "bend": 0.18
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "irregular",
+      "width": 0.42,
+      "crownStart": 0.62,
+      "gaps": 0.5,
+      "irregular": 0.8
+    }
+  },
+  "bole": 7,
+  "name": "pine",
+  "leaf_mass": "leaf_mass"
+}

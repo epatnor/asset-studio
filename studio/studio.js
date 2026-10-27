@@ -151,6 +151,15 @@ const gens = await api('/api/generators');
 const G = gens.tree, GX = Object.entries(gens).filter(([id]) => id !== 'tree').map(([, g]) => g.params);
 const P = { ...G.params, parts: [...G.params.parts, ...GX.flatMap((x) => x.parts)], groups: [...G.params.groups, ...GX.flatMap((x) => x.groups)], params: [...G.params.params, ...GX.flatMap((x) => x.params)] };
 const genOf = (k) => k?.generator ?? 'tree';
+// Smedjans mallar (lådan till vänster): en färdig tillgång per familj (tools/tree/templates.json); stenarnas mallar är
+// presetsen i props-generatorn, med namnen från dess Kind-spak
+const TEMPLATES = await fetch('/tools/tree/templates.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({}));
+const PROP_KINDS = Object.fromEntries(Object.entries(gens.prop?.params.params.find((q) => q.path === 'recipe.preset')?.options ?? {}).map(([l, v]) => [v, l]));
+function templatesOf(k) {
+  if (genOf(k) === 'prop') return (k.species ?? []).map((id) => ({ id, label: PROP_KINDS[id] ?? id }));
+  return (TEMPLATES[k.id] ?? []).map((t) => ({ id: t.id, label: t.label, help: t.help, preset: t.recipe.preset,
+    model: `assets/trees/${t.id}/${t.id}.gltf`, recipe: `assets/trees/${t.id}/recipe.json` }));
+}
 const state = { recipe: {}, spec: {}, view: {} };
 let kind = P.kinds[0];
 const getPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -183,13 +192,20 @@ function resetSpecies(preset, height) {
   state.recipe = { preset, height: height ?? state.recipe.height ?? kind.height ?? 8, seed: state.recipe.seed ?? 47,
     bark_blend: structuredClone(state.spec.bark_blend ?? {}) };
 }
+// Som generatorns merge (gen_tree.mjs): objekt slås ihop, listor av objekt index för index, allt annat ersätts
+function deepMerge(dst, src) {
+  for (const [k, v] of Object.entries(src)) {
+    if (Array.isArray(v) && v.length && typeof v[0] === 'object') v.forEach((x, i) => deepMerge((dst[k] ??= [])[i] ??= {}, x));
+    else if (v && typeof v === 'object' && !Array.isArray(v)) deepMerge((dst[k] ??= {}), v);
+    else dst[k] = v;
+  }
+  return dst;
+}
 // Läs in ett sparat recept (som make_tree.py skriver i recipe.json): artens värden med receptets överst
 function loadRecipe(r) {
   resetSpecies(r.preset.split('_')[0], r.height);
-  const sp = state.spec, ov = r.species ?? {};
-  Object.assign(sp.trunk, ov.trunk ?? {});
-  (ov.levels ?? []).forEach((l, i) => { sp.levels[i] = { ...(sp.levels[i] ?? {}), ...l }; });
-  if (ov.stemless !== undefined) sp.stemless = ov.stemless;
+  const sp = state.spec;
+  deepMerge(sp, r.species ?? {});
   Object.assign(sp.foliage, r.canopy ?? {});
   Object.assign(state.recipe, { seed: r.seed ?? state.recipe.seed, bark_blend: structuredClone(r.bark_blend ?? state.recipe.bark_blend) });
   for (const k of ['leaves', 'bark', 'leaf_tint', 'bole']) if (r[k] !== undefined) state.recipe[k] = r[k];
@@ -199,9 +215,10 @@ function loadRecipe(r) {
 async function startKind(k) {
   if (k.start) {
     const r = await fetch(`/assets/trees/${k.start}/recipe.json`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
-    if (r) return loadRecipe(r);
+    if (r) { loadRecipe(r); drawer?.mark(`assets/trees/${k.start}/${k.start}.gltf`); return; }
   }
   resetSpecies(k.species[0], k.height);
+  drawer?.mark(null);
 }
 // Texturblandningen: artens värden, ändrade spakar ovanpå, och spakarnas standard där arten saknar värde
 function blendNow() {
@@ -213,7 +230,10 @@ function blendNow() {
 const recipeNow = () => (genOf(kind) === 'prop' ? { preset: state.recipe.preset, seed: state.recipe.seed, params: { ...state.spec } } : {
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
-  species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless }, canopy: state.spec.foliage, bark_blend: blendNow(),
+  // growth och colonize: det odlade skelettet; foliage.type: lövverkets slag (none = kalt träd), som generatorn läser ur arten
+  species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless, growth: state.spec.growth ?? 'levels',
+    ...(state.spec.colonize ? { colonize: state.spec.colonize } : {}), foliage: { type: state.spec.foliage.type } },
+  canopy: state.spec.foliage, bark_blend: blendNow(),
   ...barkUvNow(),
 });
 // Barkens skala på just det här trädet (bark_uv), relativt materialets; bara det som avviker från 1 sparas
@@ -528,6 +548,19 @@ for (const part of P.parts) {
   }
   $('side').append(card);
 }
+// Sparakortet: sist i panelen, under alla inställningar (samma mönster som de andra avdelningarna)
+{
+  const card = el('section', 'card glass savecard');
+  card.style.setProperty('--part', '#4a90d9');
+  const head = el('header');
+  head.append(el('h2', null, 'Save'));
+  const note = el('div', 'note', 'Saves what you see as a new family in the library, with its recipe, so it can be opened again here and scattered in the worlds.');
+  $('save').classList.remove('asset-tool');
+  const rows = el('div', 'rows');
+  rows.append(note);
+  card.append(head, rows, $('save'));
+  $('side').append(card);
+}
 // Villkor för en spak eller grupp (params.json): {path, equals} eller {path, not}
 const holds = (w) => { const v = valueOf(paramAt(w.path)); return 'not' in w ? v !== w.not : v === w.equals; };
 function refreshUi() {
@@ -616,7 +649,7 @@ let cauldron = null, fxMode = false, fxKind = 'glow', weather = null, weatherMod
 const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
 const thumbPatch = createMaterialPatcher(THREE, { wind: thumbWind, sunDir });
 function prepareThumb(o, url) { applyShadowRole(o); thumbPatch(o.material, url); }
-const drawer = createForgeDrawer({ api, el, root: $('fdrawer'), canOpen: (i) => canOpen(i), open: (i) => openInStudio(i), reveal: showInVault, prepare: prepareThumb });
+const drawer = createForgeDrawer({ api, el, root: $('fdrawer'), templates: templatesOf, openTemplate, canOpen: (i) => canOpen(i), open: (i) => openInStudio(i), reveal: showInVault, prepare: prepareThumb });
 
 // --- Avdelningarna (docs/avdelningar.md): väljaren i headern, namnet och underrubriken, flikarna och accentfärgen ---
 // Flikarna i andra raden hör till en avdelning (data-dept; utan är det The Forge). Läget bestämmer avdelningen.
@@ -700,6 +733,15 @@ function leaveLibraryMode() {
 // En familj (eller en fast modells recept) kan öppnas när studion har spakar för dess art
 const speciesOf = (item) => String(item.preset ?? '').split('_')[0];
 function canOpen(item) { return !!item.recipe && item.type !== 'imported' && !!G.species[speciesOf(item)] && P.kinds.some((k) => k.species?.includes(speciesOf(item))); }
+// En mall ur lådan: ett träd eller en buske öppnas som sitt recept; en sten börjar om från sitt preset
+async function openTemplate(t) {
+  if (t.recipe) return openInStudio({ ...t, name: t.label });
+  resetSpecies(t.id, kind.height);
+  framed = false;
+  refreshUi();
+  commit();
+  setState(`Started from ${t.label}`);
+}
 async function openInStudio(item) {
   const r = await fetch(`/${item.recipe}`, { cache: 'no-store' }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
   if (!r) { alert(`Could not read the recipe for ${item.name}`); return; }

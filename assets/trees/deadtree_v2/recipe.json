@@ -1,9 +1,0 @@
-{
-  "name": "deadtree_v2",
-  "preset": "deadtree_medium",
-  "seed": 13,
-  "height": 8,
-  "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
-}

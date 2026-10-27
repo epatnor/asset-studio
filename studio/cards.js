@@ -87,15 +87,15 @@ export function createCards({ el, side }) {
 
 // Mallarnas ikoner i lådorna (assets/icons/<område>/<id>.png, ritade av tools/icons/make_icons.py). withIcon lägger
 // ikonen till vänster i en mallruta; en sparad produkt får ikonen från mallen den byggdes från (from), annars sin
-// första bokstav.
-export function withIcon(el, tile, area, id, label) {
+// första bokstav. src ersätter mallikonen med en annan bild (Smedjans sparade modeller visar sin miniatyr).
+export function withIcon(el, tile, area, id, label, src) {
   const box = el('span', 'ticon');
   const letter = () => { box.replaceChildren(el('i', null, String(label ?? '?').trim().charAt(0).toUpperCase())); box.classList.add('letter'); };
-  if (id) {
+  if (src || id) {
     const img = el('img');
     img.alt = '';
     img.loading = 'lazy';
-    img.src = `/assets/icons/${area}/${id}.png`;
+    img.src = src ?? `/assets/icons/${area}/${id}.png`;
     img.onerror = letter;
     box.append(img);
   } else letter();

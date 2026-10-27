@@ -1,9 +1,0 @@
-{
-  "name": "jpine_v2",
-  "preset": "jpine_medium",
-  "seed": 9,
-  "height": 7,
-  "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
-}

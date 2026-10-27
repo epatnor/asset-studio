@@ -1,9 +1,0 @@
-{
-  "name": "cypress_v2",
-  "preset": "cypress_medium",
-  "seed": 2,
-  "height": 10,
-  "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
-}

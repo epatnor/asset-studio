@@ -1,9 +1,0 @@
-{
-  "name": "petalbush_v2",
-  "preset": "petalbush_medium",
-  "seed": 2,
-  "height": 0.8,
-  "bark": "bark_painted",
-  "leaves": "leaf_surface",
-  "leaf_mass": "leaf_mass"
-}

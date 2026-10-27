@@ -125,7 +125,7 @@
   "glade": [
     {
       "id": "oak",
-      "library": "cardtree_71924",
+      "library": "oak",
       "pos": [
         -7,
         0,
@@ -136,7 +136,7 @@
     },
     {
       "id": "birch",
-      "library": "cardbirch_3",
+      "library": "birch",
       "pos": [
         6.5,
         0,
@@ -147,7 +147,7 @@
     },
     {
       "id": "bush",
-      "library": "cardbush_78676",
+      "library": "bush_round",
       "pos": [
         -3.2,
         0,
@@ -158,7 +158,7 @@
     },
     {
       "id": "ballbush",
-      "library": "ballbush_v2",
+      "library": "bush_box",
       "pos": [
         3.6,
         0,

@@ -1,9 +1,0 @@
-{
-  "name": "bush2_v2",
-  "preset": "bush_2",
-  "seed": 12,
-  "height": 1.0,
-  "bark": "bark_painted",
-  "leaves": "bush_atlas",
-  "leaf_mass": "bush_mass"
-}

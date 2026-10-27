@@ -117,11 +117,11 @@ W.onFrame(() => {
 // ---------- Modeller ----------
 const A = (kind, name) => `../assets/${kind}/${name}/${name}.gltf`;
 const SETS = {
-  lush: ['oak_v2', 'maple_v2', 'ash_v2', 'cherry_v2', 'birch_v2'].map((n) => A('trees', n)),
-  autumn: ['oak_autumn', 'maple_autumn', 'birch_autumn', 'aspen_autumn'].map((n) => A('trees', n)),
-  conifer: ['spruce_tall', 'spruce_mid', 'pine_v2', 'fir_small'].map((n) => A('trees', n)),
-  dark: ['deadtree_v2', 'deadtree_v2', 'spruce_young'].map((n) => A('trees', n)),
-  bushes: ['bush1_v2', 'bush2_v2', 'moundbush_v2', 'ballbush_small', 'shrub_v2'].map((n) => A('trees', n)),
+  lush: ['oak', 'maple', 'ash', 'cherry', 'birch', 'aspen'].map((n) => A('trees', n)),
+  autumn: ['maple_autumn', 'birch_autumn', 'maple_autumn', 'oak'].map((n) => A('trees', n)),
+  conifer: ['spruce', 'spruce', 'pine', 'poplar'].map((n) => A('trees', n)),
+  dark: ['deadtree', 'deadtree', 'spruce'].map((n) => A('trees', n)),
+  bushes: ['bush_round', 'bush_wild', 'bush_mound', 'bush_box', 'bush_dark'].map((n) => A('trees', n)),
   rocks: ['boulder1', 'mossy_boulder1', 'stones1', 'mossy_stone1', 'stone1'].map((n) => A('props', n)),
   floor: ['stump1', 'mossy_stump1', 'log1', 'mossy_log1', 'fly_agaric1', 'porcini1', 'chanterelle1'].map((n) => A('props', n)),
   flat: ['leafpile1', 'creeper1'].map((n) => A('props', n)),

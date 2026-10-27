@@ -1,9 +1,0 @@
-{
-  "name": "leafbush_v2",
-  "preset": "leafbush_medium",
-  "seed": 1,
-  "height": 0.9,
-  "bark": "bark_painted",
-  "leaves": "leaf_surface",
-  "leaf_mass": "leaf_mass"
-}

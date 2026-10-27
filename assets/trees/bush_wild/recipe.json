@@ -1,0 +1,22 @@
+{
+  "leaves": "leaf_oak",
+  "bark": "bark_mossy",
+  "preset": "cardbush",
+  "seed": 12,
+  "height": 1.4,
+  "leaf_tint": "#5E9A40",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "irregular",
+      "width": 0.9,
+      "crownStart": 0.05,
+      "points": 240,
+      "gaps": 0.3,
+      "irregular": 0.7,
+      "influence": 0.26
+    }
+  },
+  "name": "bush_wild",
+  "leaf_mass": "leaf_mass"
+}

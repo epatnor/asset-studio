@@ -1,0 +1,110 @@
+{
+  "leaves": "leaffine_pointed",
+  "bark": "bark_stylized",
+  "canopy": {
+    "ballScale": 1.2,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.7,
+    "crownUnion": 1.0,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.4,
+    "clusters": 12,
+    "flattenY": 0.4
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 3,
+  "height": 11,
+  "leaf_tint": "#2E5A36",
+  "species": {
+    "growth": "levels",
+    "trunk": {
+      "length": 1.0,
+      "radius": 0.045,
+      "bend": 0.03,
+      "gnarl": 0.03
+    },
+    "levels": [
+      {
+        "whorls": 10,
+        "count": [
+          4,
+          5
+        ],
+        "countTop": [
+          3,
+          3
+        ],
+        "start": 0.1,
+        "end": 0.96,
+        "angle": [
+          95,
+          8
+        ],
+        "angleTop": 65,
+        "length": 0.36,
+        "lenFalloff": 0.92,
+        "radius": 0.5,
+        "gnarl": 0.08,
+        "photo": 0.02,
+        "gravity": 0.1,
+        "sections": 4,
+        "segments": 5,
+        "droopCurve": true
+      },
+      {
+        "count": [
+          2,
+          3
+        ],
+        "start": 0.35,
+        "angle": [
+          40,
+          10
+        ],
+        "length": 0.4,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.15,
+        "photo": 0.1,
+        "gravity": 0.05,
+        "sections": 3,
+        "segments": 4
+      },
+      {
+        "count": [
+          1,
+          1
+        ],
+        "start": 0.5,
+        "angle": [
+          40,
+          10
+        ],
+        "length": 0.2,
+        "lenFalloff": 0.3,
+        "radius": 0.5,
+        "gnarl": 0.2,
+        "photo": 0.1,
+        "gravity": 0.02,
+        "sections": 2,
+        "segments": 3
+      }
+    ]
+  },
+  "name": "spruce",
+  "leaf_mass": "leaf_mass"
+}

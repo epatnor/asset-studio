@@ -1,0 +1,22 @@
+{
+  "leaves": "leaffine_sprig",
+  "bark": "bark_painted",
+  "preset": "cardbush",
+  "seed": 2,
+  "height": 0.9,
+  "leaf_tint": "#4F8A3A",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "round",
+      "width": 0.9,
+      "crownStart": 0.1,
+      "points": 300,
+      "gaps": 0,
+      "irregular": 0,
+      "influence": 0.24
+    }
+  },
+  "name": "bush_box",
+  "leaf_mass": "leaf_mass"
+}

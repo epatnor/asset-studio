@@ -72,6 +72,7 @@ Kommandoradsvarianter:
 | `python3 -I tools/character/make_character.py '<recept>'` | Karaktär → `assets/characters/<name>/<name>.gltf` (+ .bin), under arbete |
 | `python3 -I tools/building/make_building.py '<recept>'` | Byggnad → `assets/buildings/<name>/<name>.gltf` (+ .bin), texturer genereras vid behov |
 | `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
+| `python3 -I tools/tree/make_templates.py ['{"only": ["oak"]}']` | Smedjans mallar: ett träd eller en buske per familj ur `tools/tree/templates.json` → `assets/trees/<id>/` |
 | `python3 -I tools/texture/make_leafsheet.py '<recept>'` | Procedurellt lövark (2x2, runda lövklasar för kortbollar): white, painted eller color |
 | `python3 -I tools/texture/workshop.py '<recept>'` | Material från recept (källa, steg, ingredienser) → kartor (färg, normal, höjd, ruffighet …) som förhandsvisning eller `assets/textures/<namn>*.png` + recept + katalograd |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |

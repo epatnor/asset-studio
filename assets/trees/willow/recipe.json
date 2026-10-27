@@ -1,0 +1,42 @@
+{
+  "leaves": "leaf_birch_hang",
+  "bark": "bark_stylized",
+  "preset": "cardbirch",
+  "seed": 5,
+  "height": 8,
+  "leaf_tint": "#7FA64A",
+  "species": {
+    "trunk": {
+      "radius": 0.06
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "weeping",
+      "width": 0.55,
+      "crownStart": 0.35,
+      "gravity": 0.45,
+      "points": 140,
+      "influence": 0.34
+    }
+  },
+  "name": "willow",
+  "leaf_mass": "leaf_mass",
+  "bark_blend": {
+    "base": {
+      "texture": "bark_painted",
+      "height": 1.3,
+      "strength": 0.85,
+      "dark": 0.35,
+      "tint": "#8a8079",
+      "scale": 1.0
+    },
+    "tip": {
+      "texture": "foliage_painted",
+      "strength": 0,
+      "from": 0.5,
+      "level": 2,
+      "tint": "#ffffff",
+      "scale": 2
+    }
+  }
+}

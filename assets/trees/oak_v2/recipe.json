@@ -1,9 +1,0 @@
-{
-  "name": "oak_v2",
-  "preset": "oak_medium",
-  "seed": 42,
-  "height": 9,
-  "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
-}

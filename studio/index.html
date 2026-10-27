@@ -335,6 +335,13 @@
   .wprof .ticon { width: 44px; height: 44px; border-radius: 9px; overflow: hidden; display: grid; place-items: center; background: var(--raised); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
   .wprof .ticon img { width: 100%; height: 100%; display: block; }
   .wprof .ticon.letter i { font-style: normal; font-weight: 700; font-size: 18px; color: var(--muted); }
+  .wprof { position: relative; }
+  .wprof .mini.vault { position: absolute; top: 6px; right: 6px; display: none; height: 20px; padding: 0 7px; align-items: center; font-size: 11px; font-weight: 600; border-radius: 5px; background: var(--raised); border: 1px solid var(--line); color: var(--ink-2); }
+  .wprof:hover .mini.vault { display: inline-flex; }
+  .wprof .mini.vault:hover { border-color: var(--line-strong); color: var(--ink); }
+  #fdrawer .wprof .ticon img { object-fit: cover; }
+  .savecard { padding-bottom: 12px; }
+  .savecard > #save { display: flex; justify-content: center; width: calc(100% - 24px); height: 32px; margin: 2px 12px 0; }
   .wprof .tbody { display: grid; gap: 4px; min-width: 0; justify-items: start; width: 100%; }
   .wbar2 { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--s) * 100%), var(--line) 0); }
   .wmeta { font-size: 11px; color: var(--muted); }

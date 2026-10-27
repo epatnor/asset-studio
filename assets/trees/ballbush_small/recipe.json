@@ -1,9 +1,0 @@
-{
-  "name": "ballbush_small",
-  "preset": "ballbush_small",
-  "seed": 4,
-  "height": 0.7,
-  "bark": "bark_painted",
-  "leaves": "bush_atlas",
-  "leaf_mass": "bush_mass"
-}

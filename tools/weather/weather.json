@@ -552,7 +552,7 @@
     },
     {
       "id": "oak1",
-      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+      "model": "assets/trees/oak/oak.gltf",
       "pos": [
         -6.5,
         0,
@@ -563,7 +563,7 @@
     },
     {
       "id": "oak2",
-      "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
+      "model": "assets/trees/oak/oak.gltf",
       "pos": [
         7.5,
         0,
@@ -574,7 +574,7 @@
     },
     {
       "id": "oak3",
-      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
+      "model": "assets/trees/oak/oak.gltf",
       "pos": [
         -11,
         0,
@@ -585,7 +585,7 @@
     },
     {
       "id": "ash1",
-      "model": "assets/trees/ash_v2/ash_v2.gltf",
+      "model": "assets/trees/ash/ash.gltf",
       "pos": [
         -3,
         0,
@@ -596,7 +596,7 @@
     },
     {
       "id": "ash2",
-      "model": "assets/trees/ash_v2/ash_v2.gltf",
+      "model": "assets/trees/ash/ash.gltf",
       "pos": [
         10,
         0,
@@ -607,7 +607,7 @@
     },
     {
       "id": "birch1",
-      "model": "assets/trees/birch_v2/birch_v2.gltf",
+      "model": "assets/trees/birch/birch.gltf",
       "pos": [
         -9,
         0,
@@ -618,7 +618,7 @@
     },
     {
       "id": "birch2",
-      "model": "assets/trees/birch_v2/birch_v2.gltf",
+      "model": "assets/trees/birch/birch.gltf",
       "pos": [
         4.2,
         0,
@@ -629,7 +629,7 @@
     },
     {
       "id": "aspen",
-      "model": "assets/trees/aspen_v2/aspen_v2.gltf",
+      "model": "assets/trees/aspen/aspen.gltf",
       "pos": [
         12,
         0,
@@ -640,7 +640,7 @@
     },
     {
       "id": "oak4",
-      "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
+      "model": "assets/trees/oak/oak.gltf",
       "pos": [
         -1.5,
         0,
@@ -651,7 +651,7 @@
     },
     {
       "id": "bush1",
-      "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
+      "model": "assets/trees/bush_box/bush_box.gltf",
       "pos": [
         -4,
         0,
@@ -661,7 +661,7 @@
     },
     {
       "id": "bush2",
-      "model": "assets/trees/cardbush_78676/cardbush_78676.gltf",
+      "model": "assets/trees/bush_round/bush_round.gltf",
       "pos": [
         6,
         0,

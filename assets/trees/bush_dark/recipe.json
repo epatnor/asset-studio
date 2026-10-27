@@ -1,0 +1,21 @@
+{
+  "leaves": "leaffine_pointed",
+  "bark": "bark_painted",
+  "preset": "cardbush",
+  "seed": 21,
+  "height": 1.7,
+  "leaf_tint": "#3E6E3A",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "oval",
+      "width": 0.7,
+      "crownStart": 0.06,
+      "points": 280,
+      "gaps": 0.2,
+      "influence": 0.26
+    }
+  },
+  "name": "bush_dark",
+  "leaf_mass": "leaf_mass"
+}

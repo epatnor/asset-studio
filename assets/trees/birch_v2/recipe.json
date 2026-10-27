@@ -1,9 +1,0 @@
-{
-  "name": "birch_v2",
-  "preset": "birch_medium",
-  "seed": 6,
-  "height": 11,
-  "bark": "bark_painted",
-  "leaves": "leaflet_atlas",
-  "leaf_mass": "foliage_painted"
-}

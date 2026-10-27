@@ -1,0 +1,44 @@
+{
+  "leaves": "leaffine_sprig",
+  "bark": "bark_stylized",
+  "canopy": {
+    "ballScale": 1.5,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.2,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35,
+    "clusters": 8
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 9,
+  "height": 7.5,
+  "leaf_tint": "#7A9A3E",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "umbrella",
+      "width": 0.75,
+      "crownStart": 0.55,
+      "gaps": 0.25,
+      "tropism": 0.18
+    }
+  },
+  "bole": 2.8,
+  "name": "acacia",
+  "leaf_mass": "leaf_mass"
+}

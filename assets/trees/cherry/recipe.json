@@ -1,0 +1,48 @@
+{
+  "leaves": "leaffine_white",
+  "bark": "bark_painted_hd3",
+  "canopy": {
+    "ballScale": 1.6,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35,
+    "clusters": 8
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 15,
+  "height": 6.5,
+  "leaf_tint": "#F0A8C0",
+  "species": {
+    "trunk": {
+      "radius": 0.075,
+      "bend": 0.25
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "round",
+      "width": 0.68,
+      "crownStart": 0.36,
+      "gaps": 0.3,
+      "irregular": 0.5
+    }
+  },
+  "bole": 2.5,
+  "name": "cherry",
+  "leaf_mass": "leaf_mass"
+}

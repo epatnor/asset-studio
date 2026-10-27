@@ -356,6 +356,146 @@
         },
         null
       ]
+    },
+    "forge_trees": {
+      "cols": 4,
+      "rows": 4,
+      "aspect": "1:1",
+      "tint": "green",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "forge/oak",
+          "prompt": "a broad oak tree with a big lumpy rounded green crown and a thick trunk"
+        },
+        {
+          "id": "forge/maple",
+          "prompt": "a maple tree with a dense oval fresh-green crown"
+        },
+        {
+          "id": "forge/ash",
+          "prompt": "a tall airy ash tree with an open light-green crown"
+        },
+        {
+          "id": "forge/birch",
+          "prompt": "a birch tree with a white trunk with black marks and hanging green leaves"
+        },
+        {
+          "id": "forge/aspen",
+          "prompt": "a slim aspen tree with a pale trunk and a narrow light-green crown"
+        },
+        {
+          "id": "forge/cherry",
+          "prompt": "a cherry tree covered in pink blossom"
+        },
+        {
+          "id": "forge/willow",
+          "prompt": "a weeping willow with long drooping green curtains"
+        },
+        {
+          "id": "forge/acacia",
+          "prompt": "a savanna acacia tree with a flat umbrella crown on a bare trunk"
+        },
+        {
+          "id": "forge/poplar",
+          "prompt": "a tall narrow columnar poplar tree"
+        },
+        {
+          "id": "forge/spruce",
+          "prompt": "a dark green spruce fir tree cone with drooping branch tiers"
+        },
+        {
+          "id": "forge/pine",
+          "prompt": "a tall pine with a long bare reddish trunk and a high dark crown"
+        },
+        {
+          "id": "forge/jpine",
+          "prompt": "a windswept bonsai-like pine with a crooked trunk and flat cloud-shaped pads"
+        },
+        {
+          "id": "forge/maple_autumn",
+          "prompt": "an autumn maple tree with an orange-red crown"
+        },
+        {
+          "id": "forge/birch_autumn",
+          "prompt": "an autumn birch with a white trunk and golden yellow leaves"
+        },
+        {
+          "id": "forge/deadtree",
+          "prompt": "a dead bare gnarled tree without leaves"
+        },
+        null
+      ]
+    },
+    "forge_more": {
+      "cols": 4,
+      "rows": 4,
+      "aspect": "1:1",
+      "tint": "green",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "forge/bush_round",
+          "prompt": "a plain round green bush"
+        },
+        {
+          "id": "forge/bush_wild",
+          "prompt": "an uneven lumpy wild green shrub"
+        },
+        {
+          "id": "forge/bush_flower",
+          "prompt": "a bush covered in pink and white blossom"
+        },
+        {
+          "id": "forge/bush_mound",
+          "prompt": "a low wide flat green ground-cover shrub"
+        },
+        {
+          "id": "forge/bush_dark",
+          "prompt": "a dense deep dark green shrub"
+        },
+        {
+          "id": "forge/bush_autumn",
+          "prompt": "a red autumn shrub"
+        },
+        {
+          "id": "forge/bush_box",
+          "prompt": "a small tight clipped round boxwood ball"
+        },
+        {
+          "id": "forge/rock",
+          "prompt": "a low-poly faceted grey stone with lighter worn edges"
+        },
+        {
+          "id": "forge/rock_mossy",
+          "prompt": "a low-poly faceted grey stone with green moss on top"
+        },
+        {
+          "id": "forge/boulder_lowpoly",
+          "prompt": "a big low-poly faceted grey boulder"
+        },
+        {
+          "id": "forge/boulder_mossy",
+          "prompt": "a big low-poly boulder with a green moss cap"
+        },
+        {
+          "id": "forge/rock_slab",
+          "prompt": "a flat low-poly stone slab lying on the ground"
+        },
+        {
+          "id": "forge/standing_stone",
+          "prompt": "a tall upright low-poly standing stone menhir"
+        },
+        {
+          "id": "forge/rock_cluster",
+          "prompt": "a cluster of three small low-poly grey stones"
+        },
+        {
+          "id": "forge/basalt",
+          "prompt": "hexagonal basalt stone columns of different heights"
+        },
+        null
+      ]
     }
   }
 }

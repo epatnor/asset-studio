@@ -1,0 +1,52 @@
+{
+  "leaves": "leaffine_pointed",
+  "bark": "bark_stylized",
+  "canopy": {
+    "ballScale": 1.3,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.6,
+    "clusters": 7,
+    "flattenY": 0.5
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 13,
+  "height": 6,
+  "leaf_tint": "#3B6B3E",
+  "species": {
+    "trunk": {
+      "radius": 0.08,
+      "bend": 0.4,
+      "bendFreq": 1.1,
+      "gnarl": 0.18
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "umbrella",
+      "width": 0.7,
+      "crownStart": 0.45,
+      "gaps": 0.7,
+      "irregular": 0.8,
+      "points": 500
+    }
+  },
+  "bole": 1.2,
+  "name": "jpine",
+  "leaf_mass": "leaf_mass"
+}

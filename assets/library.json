@@ -1,228 +1,6 @@
 {
   "items": [
     {
-      "name": "cardtree_71924",
-      "type": "tree",
-      "tags": [
-        "tree"
-      ],
-      "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
-      "recipe": "assets/trees/cardtree_71924/recipe.json",
-      "thumbnail": "assets/trees/cardtree_71924/cardtree_71924_thumb.png",
-      "checks_ok": true,
-      "saved": "2026-10-24T23:52:22.831Z",
-      "scatter": {
-        "scale": [
-          0.85,
-          1.2
-        ],
-        "align": 0.1,
-        "max_slope": 35,
-        "rotate": "y",
-        "spacing": 1,
-        "weight": 2,
-        "radius": 6.04,
-        "biomes": [
-          "forest"
-        ]
-      },
-      "kind": "family",
-      "category": "tree",
-      "bounds": {
-        "width": 11.77,
-        "depth": 12.08,
-        "height": 11.44,
-        "radius": 6.04
-      },
-      "variants": {
-        "items": [
-          {
-            "seed": 71924,
-            "model": "assets/trees/cardtree_71924/cardtree_71924.gltf",
-            "main": true,
-            "thumbnail": "assets/trees/cardtree_71924/cardtree_71924_thumb.png"
-          },
-          {
-            "seed": 37585,
-            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf",
-            "checks_ok": true,
-            "height_m": 9,
-            "thumbnail": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585_thumb.png"
-          },
-          {
-            "seed": 45504,
-            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s45504/cardtree_71924_s45504.gltf",
-            "checks_ok": true,
-            "height_m": 9,
-            "thumbnail": "assets/trees/cardtree_71924/variants/cardtree_71924_s45504/cardtree_71924_s45504_thumb.png"
-          },
-          {
-            "seed": 53423,
-            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s53423/cardtree_71924_s53423.gltf",
-            "checks_ok": true,
-            "height_m": 9,
-            "thumbnail": "assets/trees/cardtree_71924/variants/cardtree_71924_s53423/cardtree_71924_s53423_thumb.png"
-          },
-          {
-            "seed": 61342,
-            "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s61342/cardtree_71924_s61342.gltf",
-            "checks_ok": true,
-            "height_m": 9,
-            "thumbnail": "assets/trees/cardtree_71924/variants/cardtree_71924_s61342/cardtree_71924_s61342_thumb.png"
-          }
-        ],
-        "built": "2026-10-26T17:27:46.045Z"
-      }
-    },
-    {
-      "name": "bj_1",
-      "type": "tree",
-      "kind": "family",
-      "category": "tree",
-      "tags": [
-        "forest"
-      ],
-      "model": "assets/trees/bj_1/bj_1.gltf",
-      "recipe": "assets/trees/bj_1/recipe.json",
-      "thumbnail": "assets/trees/bj_1/bj_1_thumb.png",
-      "checks_ok": null,
-      "saved": "2026-10-26T14:15:28.160Z",
-      "bounds": {
-        "width": 5.4,
-        "depth": 4.62,
-        "height": 10.5,
-        "radius": 2.7
-      },
-      "scatter": {
-        "scale": [
-          0.85,
-          1.2
-        ],
-        "align": 0.1,
-        "max_slope": 35,
-        "rotate": "y",
-        "spacing": 1,
-        "weight": 1,
-        "radius": 2.7,
-        "biomes": [
-          "forest"
-        ]
-      },
-      "variants": {
-        "items": [
-          {
-            "seed": 3,
-            "model": "assets/trees/bj_1/bj_1.gltf",
-            "main": true,
-            "thumbnail": "assets/trees/bj_1/bj_1_thumb.png"
-          },
-          {
-            "seed": 8012,
-            "model": "assets/trees/bj_1/variants/bj_1_s8012/bj_1_s8012.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/bj_1/variants/bj_1_s8012/bj_1_s8012_thumb.png"
-          },
-          {
-            "seed": 15931,
-            "model": "assets/trees/bj_1/variants/bj_1_s15931/bj_1_s15931.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/bj_1/variants/bj_1_s15931/bj_1_s15931_thumb.png"
-          },
-          {
-            "seed": 23850,
-            "model": "assets/trees/bj_1/variants/bj_1_s23850/bj_1_s23850.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/bj_1/variants/bj_1_s23850/bj_1_s23850_thumb.png"
-          },
-          {
-            "seed": 31769,
-            "model": "assets/trees/bj_1/variants/bj_1_s31769/bj_1_s31769.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/bj_1/variants/bj_1_s31769/bj_1_s31769_thumb.png"
-          }
-        ],
-        "built": "2026-10-26T14:15:43.136Z"
-      }
-    },
-    {
-      "name": "ballbush_v2",
-      "type": "tree",
-      "kind": "family",
-      "category": "bush",
-      "tags": [
-        "forest"
-      ],
-      "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
-      "recipe": "assets/trees/ballbush_v2/recipe.json",
-      "thumbnail": "assets/trees/ballbush_v2/ballbush_v2_thumb.png",
-      "checks_ok": null,
-      "saved": "2026-10-26T14:15:43.290Z",
-      "bounds": {
-        "width": 2.4,
-        "depth": 2.45,
-        "height": 1.47,
-        "radius": 1.23
-      },
-      "scatter": {
-        "scale": [
-          0.8,
-          1.25
-        ],
-        "align": 0.3,
-        "max_slope": 40,
-        "rotate": "y",
-        "spacing": 0.8,
-        "weight": 1,
-        "radius": 1.23,
-        "biomes": [
-          "forest"
-        ]
-      },
-      "variants": {
-        "items": [
-          {
-            "seed": 3,
-            "model": "assets/trees/ballbush_v2/ballbush_v2.gltf",
-            "main": true,
-            "thumbnail": "assets/trees/ballbush_v2/ballbush_v2_thumb.png"
-          },
-          {
-            "seed": 8012,
-            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s8012/ballbush_v2_s8012.gltf",
-            "checks_ok": true,
-            "height_m": 1.2,
-            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s8012/ballbush_v2_s8012_thumb.png"
-          },
-          {
-            "seed": 15931,
-            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s15931/ballbush_v2_s15931.gltf",
-            "checks_ok": true,
-            "height_m": 1.2,
-            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s15931/ballbush_v2_s15931_thumb.png"
-          },
-          {
-            "seed": 23850,
-            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s23850/ballbush_v2_s23850.gltf",
-            "checks_ok": true,
-            "height_m": 1.2,
-            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s23850/ballbush_v2_s23850_thumb.png"
-          },
-          {
-            "seed": 31769,
-            "model": "assets/trees/ballbush_v2/variants/ballbush_v2_s31769/ballbush_v2_s31769.gltf",
-            "checks_ok": true,
-            "height_m": 1.2,
-            "thumbnail": "assets/trees/ballbush_v2/variants/ballbush_v2_s31769/ballbush_v2_s31769_thumb.png"
-          }
-        ],
-        "built": "2026-10-26T14:16:07.601Z"
-      }
-    },
-    {
       "name": "boulder1",
       "type": "prop",
       "kind": "family",
@@ -651,25 +429,24 @@
       }
     },
     {
-      "name": "cardbirch_3",
+      "name": "oak",
       "type": "tree",
       "kind": "family",
       "category": "tree",
       "tags": [
         "tree",
-        "birch",
-        "summer"
+        "oak"
       ],
-      "model": "assets/trees/cardbirch_3/cardbirch_3.gltf",
-      "recipe": "assets/trees/cardbirch_3/recipe.json",
-      "thumbnail": "assets/trees/cardbirch_3/cardbirch_3_thumb.png",
-      "checks_ok": true,
-      "saved": "2026-10-26T17:37:07.821Z",
+      "model": "assets/trees/oak/oak.gltf",
+      "recipe": "assets/trees/oak/recipe.json",
+      "thumbnail": "assets/trees/oak/oak_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:35.965Z",
       "bounds": {
-        "width": 5.47,
-        "depth": 5.09,
-        "height": 9.72,
-        "radius": 2.73
+        "width": 13.59,
+        "depth": 14.49,
+        "height": 11.3,
+        "radius": 7.25
       },
       "scatter": {
         "scale": [
@@ -681,96 +458,508 @@
         "rotate": "y",
         "spacing": 1,
         "weight": 1,
-        "radius": 2.73,
+        "radius": 7.25,
         "biomes": []
-      },
-      "variants": {
-        "items": [
-          {
-            "seed": 3,
-            "model": "assets/trees/cardbirch_3/cardbirch_3.gltf",
-            "main": true,
-            "thumbnail": "assets/trees/cardbirch_3/cardbirch_3_thumb.png"
-          },
-          {
-            "seed": 8012,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s8012/cardbirch_3_s8012.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s8012/cardbirch_3_s8012_thumb.png"
-          },
-          {
-            "seed": 15931,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s15931/cardbirch_3_s15931.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s15931/cardbirch_3_s15931_thumb.png"
-          },
-          {
-            "seed": 23850,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s23850/cardbirch_3_s23850.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s23850/cardbirch_3_s23850_thumb.png"
-          },
-          {
-            "seed": 31769,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s31769/cardbirch_3_s31769.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s31769/cardbirch_3_s31769_thumb.png"
-          },
-          {
-            "seed": 39688,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s39688/cardbirch_3_s39688.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s39688/cardbirch_3_s39688_thumb.png"
-          },
-          {
-            "seed": 47607,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s47607/cardbirch_3_s47607.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s47607/cardbirch_3_s47607_thumb.png"
-          },
-          {
-            "seed": 55526,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s55526/cardbirch_3_s55526.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s55526/cardbirch_3_s55526_thumb.png"
-          },
-          {
-            "seed": 63445,
-            "model": "assets/trees/cardbirch_3/variants/cardbirch_3_s63445/cardbirch_3_s63445.gltf",
-            "checks_ok": true,
-            "height_m": 10,
-            "thumbnail": "assets/trees/cardbirch_3/variants/cardbirch_3_s63445/cardbirch_3_s63445_thumb.png"
-          }
-        ],
-        "built": "2026-10-26T17:37:29.660Z"
       }
     },
     {
-      "name": "cardbush_78676",
+      "name": "maple",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "maple"
+      ],
+      "model": "assets/trees/maple/maple.gltf",
+      "recipe": "assets/trees/maple/recipe.json",
+      "thumbnail": "assets/trees/maple/maple_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:36.212Z",
+      "bounds": {
+        "width": 9.93,
+        "depth": 9.62,
+        "height": 9.87,
+        "radius": 4.96
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 4.96,
+        "biomes": []
+      }
+    },
+    {
+      "name": "ash",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "ash"
+      ],
+      "model": "assets/trees/ash/ash.gltf",
+      "recipe": "assets/trees/ash/recipe.json",
+      "thumbnail": "assets/trees/ash/ash_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:36.517Z",
+      "bounds": {
+        "width": 13.58,
+        "depth": 13.79,
+        "height": 13.45,
+        "radius": 6.89
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 6.89,
+        "biomes": []
+      }
+    },
+    {
+      "name": "birch",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "birch"
+      ],
+      "model": "assets/trees/birch/birch.gltf",
+      "recipe": "assets/trees/birch/recipe.json",
+      "thumbnail": "assets/trees/birch/birch_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:36.758Z",
+      "bounds": {
+        "width": 5.51,
+        "depth": 5.3,
+        "height": 9.72,
+        "radius": 2.75
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 2.75,
+        "biomes": []
+      }
+    },
+    {
+      "name": "aspen",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "aspen"
+      ],
+      "model": "assets/trees/aspen/aspen.gltf",
+      "recipe": "assets/trees/aspen/recipe.json",
+      "thumbnail": "assets/trees/aspen/aspen_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:36.986Z",
+      "bounds": {
+        "width": 10.26,
+        "depth": 10.86,
+        "height": 11.09,
+        "radius": 5.43
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 5.43,
+        "biomes": []
+      }
+    },
+    {
+      "name": "cherry",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "cherry"
+      ],
+      "model": "assets/trees/cherry/cherry.gltf",
+      "recipe": "assets/trees/cherry/recipe.json",
+      "thumbnail": "assets/trees/cherry/cherry_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.193Z",
+      "bounds": {
+        "width": 10.42,
+        "depth": 10.71,
+        "height": 8.14,
+        "radius": 5.35
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 5.35,
+        "biomes": []
+      }
+    },
+    {
+      "name": "willow",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "willow"
+      ],
+      "model": "assets/trees/willow/willow.gltf",
+      "recipe": "assets/trees/willow/recipe.json",
+      "thumbnail": "assets/trees/willow/willow_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.392Z",
+      "bounds": {
+        "width": 12.47,
+        "depth": 11.96,
+        "height": 9.02,
+        "radius": 6.24
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 6.24,
+        "biomes": []
+      }
+    },
+    {
+      "name": "acacia",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "acacia"
+      ],
+      "model": "assets/trees/acacia/acacia.gltf",
+      "recipe": "assets/trees/acacia/recipe.json",
+      "thumbnail": "assets/trees/acacia/acacia_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.518Z",
+      "bounds": {
+        "width": 11.83,
+        "depth": 12.63,
+        "height": 8.28,
+        "radius": 6.32
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 6.32,
+        "biomes": []
+      }
+    },
+    {
+      "name": "poplar",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "poplar"
+      ],
+      "model": "assets/trees/poplar/poplar.gltf",
+      "recipe": "assets/trees/poplar/recipe.json",
+      "thumbnail": "assets/trees/poplar/poplar_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.648Z",
+      "bounds": {
+        "width": 8.08,
+        "depth": 7.55,
+        "height": 12.24,
+        "radius": 4.04
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 4.04,
+        "biomes": []
+      }
+    },
+    {
+      "name": "spruce",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "spruce"
+      ],
+      "model": "assets/trees/spruce/spruce.gltf",
+      "recipe": "assets/trees/spruce/recipe.json",
+      "thumbnail": "assets/trees/spruce/spruce_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.774Z",
+      "bounds": {
+        "width": 8.62,
+        "depth": 8.11,
+        "height": 10.73,
+        "radius": 4.31
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 4.31,
+        "biomes": []
+      }
+    },
+    {
+      "name": "pine",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "pine"
+      ],
+      "model": "assets/trees/pine/pine.gltf",
+      "recipe": "assets/trees/pine/recipe.json",
+      "thumbnail": "assets/trees/pine/pine_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:37.911Z",
+      "bounds": {
+        "width": 11.65,
+        "depth": 11.72,
+        "height": 12.77,
+        "radius": 5.86
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 5.86,
+        "biomes": []
+      }
+    },
+    {
+      "name": "jpine",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "windswept",
+        "pine"
+      ],
+      "model": "assets/trees/jpine/jpine.gltf",
+      "recipe": "assets/trees/jpine/recipe.json",
+      "thumbnail": "assets/trees/jpine/jpine_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.036Z",
+      "bounds": {
+        "width": 9.06,
+        "depth": 8.5,
+        "height": 5.43,
+        "radius": 4.53
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 4.53,
+        "biomes": []
+      }
+    },
+    {
+      "name": "maple_autumn",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "autumn",
+        "maple"
+      ],
+      "model": "assets/trees/maple_autumn/maple_autumn.gltf",
+      "recipe": "assets/trees/maple_autumn/recipe.json",
+      "thumbnail": "assets/trees/maple_autumn/maple_autumn_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.163Z",
+      "bounds": {
+        "width": 9.21,
+        "depth": 9.66,
+        "height": 9.85,
+        "radius": 4.83
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 4.83,
+        "biomes": []
+      }
+    },
+    {
+      "name": "birch_autumn",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "autumn",
+        "birch"
+      ],
+      "model": "assets/trees/birch_autumn/birch_autumn.gltf",
+      "recipe": "assets/trees/birch_autumn/recipe.json",
+      "thumbnail": "assets/trees/birch_autumn/birch_autumn_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.326Z",
+      "bounds": {
+        "width": 6.26,
+        "depth": 6.06,
+        "height": 9.2,
+        "radius": 3.13
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 3.13,
+        "biomes": []
+      }
+    },
+    {
+      "name": "deadtree",
+      "type": "tree",
+      "kind": "family",
+      "category": "tree",
+      "tags": [
+        "tree",
+        "dead"
+      ],
+      "model": "assets/trees/deadtree/deadtree.gltf",
+      "recipe": "assets/trees/deadtree/recipe.json",
+      "thumbnail": "assets/trees/deadtree/deadtree_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.510Z",
+      "bounds": {
+        "width": 5.86,
+        "depth": 7.17,
+        "height": 6.28,
+        "radius": 3.58
+      },
+      "scatter": {
+        "scale": [
+          0.85,
+          1.2
+        ],
+        "align": 0.1,
+        "max_slope": 35,
+        "rotate": "y",
+        "spacing": 1,
+        "weight": 1,
+        "radius": 3.58,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_round",
       "type": "tree",
       "kind": "family",
       "category": "bush",
       "tags": [
         "bush",
-        "summer"
+        "round"
       ],
-      "model": "assets/trees/cardbush_78676/cardbush_78676.gltf",
-      "recipe": "assets/trees/cardbush_78676/recipe.json",
-      "thumbnail": "assets/trees/cardbush_78676/cardbush_78676_thumb.jpg",
-      "checks_ok": true,
-      "saved": "2026-10-26T17:42:01.222Z",
+      "model": "assets/trees/bush_round/bush_round.gltf",
+      "recipe": "assets/trees/bush_round/recipe.json",
+      "thumbnail": "assets/trees/bush_round/bush_round_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.562Z",
       "bounds": {
-        "width": 2.28,
-        "depth": 2.04,
-        "height": 1.78,
-        "radius": 1.14
+        "width": 3.06,
+        "depth": 3.07,
+        "height": 1.77,
+        "radius": 1.53
       },
       "scatter": {
         "scale": [
@@ -782,7 +971,214 @@
         "rotate": "y",
         "spacing": 0.8,
         "weight": 1,
-        "radius": 1.14,
+        "radius": 1.53,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_wild",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "wild"
+      ],
+      "model": "assets/trees/bush_wild/bush_wild.gltf",
+      "recipe": "assets/trees/bush_wild/recipe.json",
+      "thumbnail": "assets/trees/bush_wild/bush_wild_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.689Z",
+      "bounds": {
+        "width": 3.11,
+        "depth": 3.35,
+        "height": 1.69,
+        "radius": 1.68
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.68,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_flower",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "flowering"
+      ],
+      "model": "assets/trees/bush_flower/bush_flower.gltf",
+      "recipe": "assets/trees/bush_flower/recipe.json",
+      "thumbnail": "assets/trees/bush_flower/bush_flower_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.814Z",
+      "bounds": {
+        "width": 2.71,
+        "depth": 2.82,
+        "height": 1.64,
+        "radius": 1.41
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.41,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_mound",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "low",
+        "mound"
+      ],
+      "model": "assets/trees/bush_mound/bush_mound.gltf",
+      "recipe": "assets/trees/bush_mound/recipe.json",
+      "thumbnail": "assets/trees/bush_mound/bush_mound_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:38.945Z",
+      "bounds": {
+        "width": 2.64,
+        "depth": 2.73,
+        "height": 1.2,
+        "radius": 1.36
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.36,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_dark",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "dark",
+        "shrub"
+      ],
+      "model": "assets/trees/bush_dark/bush_dark.gltf",
+      "recipe": "assets/trees/bush_dark/recipe.json",
+      "thumbnail": "assets/trees/bush_dark/bush_dark_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:39.064Z",
+      "bounds": {
+        "width": 2.55,
+        "depth": 2.62,
+        "height": 1.96,
+        "radius": 1.31
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.31,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_autumn",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "autumn"
+      ],
+      "model": "assets/trees/bush_autumn/bush_autumn.gltf",
+      "recipe": "assets/trees/bush_autumn/recipe.json",
+      "thumbnail": "assets/trees/bush_autumn/bush_autumn_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:39.193Z",
+      "bounds": {
+        "width": 2.74,
+        "depth": 2.94,
+        "height": 1.6,
+        "radius": 1.47
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.47,
+        "biomes": []
+      }
+    },
+    {
+      "name": "bush_box",
+      "type": "tree",
+      "kind": "family",
+      "category": "bush",
+      "tags": [
+        "bush",
+        "box",
+        "ball"
+      ],
+      "model": "assets/trees/bush_box/bush_box.gltf",
+      "recipe": "assets/trees/bush_box/recipe.json",
+      "thumbnail": "assets/trees/bush_box/bush_box_thumb.png",
+      "checks_ok": null,
+      "saved": "2026-10-27T19:57:39.314Z",
+      "bounds": {
+        "width": 2.32,
+        "depth": 2.35,
+        "height": 1.29,
+        "radius": 1.17
+      },
+      "scatter": {
+        "scale": [
+          0.8,
+          1.25
+        ],
+        "align": 0.3,
+        "max_slope": 40,
+        "rotate": "y",
+        "spacing": 0.8,
+        "weight": 1,
+        "radius": 1.17,
         "biomes": []
       }
     }

@@ -1,0 +1,47 @@
+{
+  "leaves": "leaffine_sprig",
+  "bark": "bark_mossy",
+  "canopy": {
+    "ballScale": 1.5,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35,
+    "clusters": 9
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 11,
+  "height": 9,
+  "leaf_tint": "palette:foliage_light",
+  "species": {
+    "trunk": {
+      "radius": 0.085
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "round",
+      "width": 0.7,
+      "crownStart": 0.45,
+      "irregular": 0.45,
+      "gaps": 0.35
+    }
+  },
+  "bole": 4.5,
+  "name": "oak",
+  "leaf_mass": "leaf_mass"
+}

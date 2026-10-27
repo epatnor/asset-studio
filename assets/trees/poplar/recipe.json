@@ -1,0 +1,46 @@
+{
+  "leaves": "leaffine_sprig",
+  "bark": "bark_stylized",
+  "canopy": {
+    "ballScale": 2.1,
+    "bottomCoolStrength": 0.7,
+    "gradientFalloff": 2,
+    "cardGroup": 3,
+    "cardsPerM2": 1.45,
+    "crownUnion": 1.35,
+    "tipCards": 4,
+    "cardCore": 0,
+    "groupJitter": 0,
+    "maxGrow": 1.35
+  },
+  "bark_blend": {
+    "base": {
+      "strength": 0.75,
+      "texture": "surface_forestfloor",
+      "height": 0.9,
+      "dark": 0.3,
+      "tint": "#ffffff",
+      "scale": 1.5
+    }
+  },
+  "preset": "cardtree",
+  "seed": 4,
+  "height": 12,
+  "leaf_tint": "#5C9440",
+  "species": {
+    "trunk": {
+      "radius": 0.04,
+      "flare": 0.35,
+      "roots": 3
+    },
+    "growth": "colonize",
+    "colonize": {
+      "shape": "columnar",
+      "width": 0.36,
+      "crownStart": 0.18,
+      "tropism": 0.3
+    }
+  },
+  "name": "poplar",
+  "leaf_mass": "leaf_mass"
+}

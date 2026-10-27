@@ -1,0 +1,21 @@
+{
+  "leaves": "leaffine_white",
+  "bark": "bark_painted",
+  "preset": "cardbush",
+  "seed": 17,
+  "height": 1.3,
+  "leaf_tint": "#F2B8CC",
+  "species": {
+    "growth": "colonize",
+    "colonize": {
+      "shape": "round",
+      "width": 0.85,
+      "crownStart": 0.08,
+      "points": 230,
+      "gaps": 0.2,
+      "influence": 0.26
+    }
+  },
+  "name": "bush_flower",
+  "leaf_mass": "leaf_mass"
+}
