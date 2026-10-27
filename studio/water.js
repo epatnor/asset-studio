@@ -10,6 +10,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createAtmosphere } from '../shared/effects/weather.js';
 import { createWater, bedAndFlow } from '../shared/effects/water.js';
+import { antiTiled } from '../shared/effects/antitile.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
@@ -82,7 +83,8 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
   const texCache = new Map();
   const tex = (name) => {
     if (!texCache.has(name)) { const t = texLoader.load(`/assets/textures/${name}.png`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; texCache.set(name, t); }
-    return texture(texCache.get(name), positionWorld.xz.div(name === 'ground_meadow' ? 3 : 2.2)).rgb;
+    // Mot synlig upprepning: vriden andra sampling och storskalig ton (shared/effects/antitile.js)
+    return antiTiled(texCache.get(name), positionWorld.xz.div(name === 'ground_meadow' ? 3 : 2.2));
   };
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const models = new Map(), failed = new Set();

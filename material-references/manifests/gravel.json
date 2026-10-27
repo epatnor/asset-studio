@@ -1,0 +1,44 @@
+{
+  "id": "gravel",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/gravel",
+  "name": "Gravel",
+  "authors": [
+    "Dimitrios Savva"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/gravel/color.jpg",
+      "sha256": "9f668e7926d2e8347eddc9090360da26848b55a12ba306e332cd08ac98c534cf",
+      "bytes": 925640
+    },
+    "height": {
+      "file": "material-references/cache/gravel/height.png",
+      "sha256": "8e6e1490b81373b5e8af8d9e450ec7c6acbef9bb2e9b0ff16769820841637c3e",
+      "bytes": 1865704
+    }
+  },
+  "physicalWidthMeters": 2.0,
+  "physicalHeightMeters": 2.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rock",
+    "stones",
+    "driveway gravel",
+    "gravel",
+    "gravelly",
+    "gravelly ground",
+    "stony",
+    "scattered leaves",
+    "plant debris",
+    "dirt",
+    "fallen leaves"
+  ],
+  "categories": [
+    "floor",
+    "outdoor"
+  ]
+}

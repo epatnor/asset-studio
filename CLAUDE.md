@@ -77,4 +77,7 @@ Kommandoradsvarianter:
 | `python3 -I tools/texture/workshop.py '<recept>'` | Material från recept (källa, steg, ingredienser) → kartor (färg, normal, höjd, ruffighet …) som förhandsvisning eller `assets/textures/<namn>*.png` + recept + katalograd |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
 | `python3 -I tools/icons/make_icons.py '{"sheet": "water"}'` | Ikoner för mallarna i lådorna: ett ark ur `tools/icons/icons.json` ritas av gpt-image-2 (OpenRouter, ca 0,05 USD) och skärs till `assets/icons/<område>/<id>.png` |
+| `python3 -I tools/texture/fetch_references.py` | Referensbiblioteket: några CC0-texturer från Poly Haven med manifest (källa, licens, fysisk storlek) i `material-references/` |
+| `python3 -I tools/texture/reference_analysis.py '{"all": true}'` | Mäter referens och vårt material lika (palett, skala i meter, riktning, relief); `sheet` ritar jämförelseark |
+| `python3 -I tools/texture/fit_reference.py '<recept>'` | Barkrecept styrt mot en referens (färger ur paletten, skala × exaggerate), sparas som vanligt material |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

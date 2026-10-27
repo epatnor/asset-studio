@@ -1,0 +1,42 @@
+{
+  "id": "pine_bark",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/pine_bark",
+  "name": "Pine Bark",
+  "authors": [
+    "Dimitrios Savva"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/pine_bark/color.jpg",
+      "sha256": "89ddfbff0388d30caff902ba600cdf75eb1e651ca71ece6594b5a9b27abb47ab",
+      "bytes": 837641
+    },
+    "height": {
+      "file": "material-references/cache/pine_bark/height.png",
+      "sha256": "7b8b947aa14d02078f1bed46f7bed43a137345193e55c5403ac834870a0a5879",
+      "bytes": 1698427
+    }
+  },
+  "physicalWidthMeters": 2.0,
+  "physicalHeightMeters": 2.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rough",
+    "weathered",
+    "bark",
+    "tree",
+    "tree bark",
+    "pine",
+    "organic"
+  ],
+  "categories": [
+    "natural",
+    "bark",
+    "collection: pine_forest",
+    "wood"
+  ]
+}

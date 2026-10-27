@@ -1,0 +1,50 @@
+{
+  "id": "jolcham_oak_bark_01",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/jolcham_oak_bark_01",
+  "name": "Jolcham Oak Bark 01",
+  "authors": [
+    "Charlotte Baglioni"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/jolcham_oak_bark_01/color.jpg",
+      "sha256": "08c26b3ea38718dfc3902d0889ac06e2ce0ae9cddb31d8988723eee1780a71c8",
+      "bytes": 1936622
+    },
+    "height": {
+      "file": "material-references/cache/jolcham_oak_bark_01/height.png",
+      "sha256": "4bcd2c3a36b68a020beb25f4034c4eabf41033433212ca19de0f3bd92a1dada3",
+      "bytes": 3467899
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 2.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rough",
+    "weathered",
+    "uneven",
+    "moss",
+    "mossy",
+    "mosscovered",
+    "bark",
+    "tree",
+    "tree bark",
+    "organic",
+    "fissured",
+    "bark texture",
+    "tree trunk",
+    "trunk",
+    "tree texture",
+    "non square"
+  ],
+  "categories": [
+    "outdoor",
+    "natural",
+    "bark"
+  ]
+}

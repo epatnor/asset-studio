@@ -4,14 +4,20 @@
   "maps": [
     "color",
     "normal",
-    "height"
+    "height",
+    "rough",
+    "ao",
+    "orm"
   ],
   "files": {
     "color": "assets/textures/bark_spruce_stylized.png",
     "normal": "assets/textures/bark_spruce_stylized_normal.png",
-    "height": "assets/textures/bark_spruce_stylized_height.png"
+    "height": "assets/textures/bark_spruce_stylized_height.png",
+    "rough": "assets/textures/bark_spruce_stylized_rough.png",
+    "ao": "assets/textures/bark_spruce_stylized_ao.png",
+    "orm": "assets/textures/bark_spruce_stylized_orm.png"
   },
-  "meters": 2.0,
+  "meters": 1.0,
   "tags": [
     "bark",
     "spruce",
@@ -19,43 +25,52 @@
   ],
   "recipe": "assets/textures/bark_spruce_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:18:20+00:00",
+  "saved": "2026-10-27T22:58:56+00:00",
   "hd": {
     "size": 2048,
     "files": {
       "color": "assets/textures/hd/bark_spruce_stylized_hd.png",
       "normal": "assets/textures/hd/bark_spruce_stylized_hd_normal.png",
-      "height": "assets/textures/hd/bark_spruce_stylized_hd_height.png"
+      "height": "assets/textures/hd/bark_spruce_stylized_hd_height.png",
+      "rough": "assets/textures/hd/bark_spruce_stylized_hd_rough.png",
+      "ao": "assets/textures/hd/bark_spruce_stylized_hd_ao.png"
     }
   },
   "source": {
-    "ridges": 8,
-    "depth": 0.6,
-    "width": 0.16,
-    "wiggle": 0.5,
-    "plates": 0.55,
-    "detail": 0.35,
+    "ridges": 12,
+    "depth": 0.55,
+    "width": 0.34,
+    "wiggle": 0.45,
+    "plates": 0.5,
+    "rows": 0,
+    "aspect": 2.5,
+    "cracks": 0.4,
+    "detail": 0.9,
     "tint": 0.12,
-    "flakes": 0.15,
-    "accent": "#8F8A78",
-    "seed": 5,
-    "dark": "#2A1E16",
-    "light": "#7A5E48",
+    "flakes": 0.2,
+    "accent": "#A69F87",
+    "lenticels": 0,
+    "crevice": "#2F2C17",
+    "lichen": 0.4,
+    "lichenColor": "#8FA032",
+    "seed": 1,
+    "dark": "#575124",
+    "light": "#958B6D",
     "type": "bark"
   },
   "steps": [
     {
-      "strength": 0.6,
-      "colors": 7,
+      "strength": 0.5,
+      "colors": 8,
       "shape": 0.5,
-      "saturation": 1.08,
+      "saturation": 1.0,
       "relief": true,
       "op": "stylize"
     }
   ],
   "inputs": {},
   "material": {
-    "meters": 2,
+    "meters": 1.0,
     "normal": {
       "on": true,
       "strength": 1,

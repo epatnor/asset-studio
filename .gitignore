@@ -8,3 +8,6 @@ third_party/*/*
 
 # Hemliga nycklar (Tripo m.fl.)
 .env
+
+# Referensbilder (CC0, hämtas med tools/texture/fetch_references.py; manifesten versioneras)
+material-references/cache/

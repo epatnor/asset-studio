@@ -1,0 +1,40 @@
+{
+  "id": "cobblestone_floor_01",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/cobblestone_floor_01",
+  "name": "Cobblestone Floor 01",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/cobblestone_floor_01/color.jpg",
+      "sha256": "7630d6a59501cab4d2295b2be47bad892b8dae49895b4bee6bc26fd45c423e05",
+      "bytes": 459525
+    },
+    "height": {
+      "file": "material-references/cache/cobblestone_floor_01/height.png",
+      "sha256": "7cc1bcb9890517c10ccd5729838af6d4634635b39536c233936702ddc5c201c9",
+      "bytes": 1933545
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 1.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "cobblestone",
+    "mud",
+    "path",
+    "pavement"
+  ],
+  "categories": [
+    "outdoor",
+    "floor",
+    "man made",
+    "dirty",
+    "cobblestone"
+  ]
+}

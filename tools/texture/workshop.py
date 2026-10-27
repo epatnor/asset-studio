@@ -154,57 +154,105 @@ def mix(p, h, dark="dark", light="light"):
 
 
 def src_bark(n, p, rng):
-    # Bark efter patriks_input/AAA_Procedural_Textures_Stylization_ThreeJS_Reference.md (Bark): stammen går längs y.
-    # 1. Plattor: anisotropa voronoiceller (ridges kolumner × rader, förskjutna som tegel), utsträckta längs stammen;
-    #    plates styr hur korta de är (under 0.4 = sammanhängande åsar som ek, 1 = fyra plattor per varv som tall).
-    # 2. Lågfrekvent domänförvrängning (wiggle), så att fårorna inte blir parallella streck.
-    # 3. Egna lager: fårorna mellan plattorna, sekundära sprickor (ridged brus längs stammen) och glesa flagor.
-    # Färgen är lågfrekvent och målad: svalare i fårorna, varmare och ljusare på plattornas toppar, olika ton per platta.
+    # Bark efter referenserna (patriks_input/AAA_Reference_Guided_Procedural_Textures_Tiling_ThreeJS_Reference.md, Bark;
+    # mätt mot Poly Havens bark med tools/texture/reference_analysis.py). Stammen går längs y.
+    # 1. Plattor: långsträckta voronoiceller i tegelförband, ridges kolumner tvärs och aspect gånger längre än breda
+    #    (rows ger antalet direkt; plates är den äldre spaken). Lågfrekvent förvrängning (wiggle) gör fårorna slingrande.
+    # 2. Fårorna: längsgående fåror mellan kolumnerna, tunnare tvärsprickor mellan plattorna i samma kolumn (cracks).
+    # 3. Fibrer: fina längsgående streck i höjd och färg (detail), som i riktig bark.
+    # 4. Färg: valör ur höjden, en ton per platta, egen färg i fårorna (crevice, t.ex. tallens orange innerbark), stora
+    #    mjuka lav- eller mossfläckar (lichen, lichenColor), glesa ljusa flagor (flakes, accent) och lenticeller.
     x, y = grid(n)
     cols = max(2, int(p.get("ridges", 7)))
-    plates = float(np.clip(p.get("plates", 0.5), 0, 1))
-    rows = max(1, int(round(plates * 4)))  # 0–1 rad: sammanhängande åsar; fler rader: kortare plattor
+    if p.get("rows"):
+        rows = max(1, int(p["rows"]))
+    elif p.get("aspect"):
+        rows = max(1, int(round(cols / max(p["aspect"], 0.5))))
+    else:
+        rows = max(1, int(round(float(np.clip(p.get("plates", 0.5), 0, 1)) * 4)))
     wig = p.get("wiggle", 0.45)
     u = (x + (fbm(n, 2, 3, rng, sx=1, sy=0.6) - 0.5) * wig * 2.4 / cols) % 1.0
     v = (y + (fbm(n, 2, 3, rng) - 0.5) * wig * 1.2 / rows) % 1.0
+    jit = rng.random((cols, rows, 2)) - 0.5
+    # Närmaste plattor: varje pixel söker bara bland grannarna i rutnätet (15 kandidater), så att hundratals plattor
+    # går lika fort som ett fåtal. Kolumnerna är förskjutna en halv rad som tegel. Avståndet mäts i cellenheter, så
+    # plattorna blir lika långsträckta som cellerna
+    ci = np.floor(u * cols).astype(np.int64)
     f1 = np.full((n, n), np.inf, np.float32)
     f2 = np.full((n, n), np.inf, np.float32)
-    idx = np.zeros((n, n), np.int32)
-    jit = rng.random((cols, rows, 2)) - 0.5
-    k = 0
-    for c in range(cols):
-        for r in range(rows):
-            px = (c + 0.5 + jit[c, r, 0] * 0.5) / cols
-            py = (r + 0.5 + (c % 2) * 0.5 + jit[c, r, 1] * 0.6) / rows
+    idx = np.zeros((n, n), np.int64)
+    idx2 = np.zeros((n, n), np.int64)
+    sy = 0.35 if rows == 1 else 1.0  # utan rader blir åsarna sammanhängande
+    for di in (-1, 0, 1):
+        cc = (ci + di) % cols
+        off = 0.5 * (cc % 2)
+        r0 = np.floor(v * rows - off).astype(np.int64)
+        for dj in (-2, -1, 0, 1, 2):
+            rr = (r0 + dj) % rows
+            px = (cc + 0.5 + jit[cc, rr, 0] * 0.5) / cols
+            py = ((rr + 0.5 + off + jit[cc, rr, 1] * 0.6) / rows) % 1.0
             dx = (u - px + 0.5) % 1.0 - 0.5
-            dy = (v - py % 1.0 + 0.5) % 1.0 - 0.5
-            # Avstånd i cellenheter: en cell är 1/cols bred och 1/rows hög; utan rader blir åsarna sammanhängande
-            d = np.sqrt((dx * cols) ** 2 + (dy * rows * (0.35 if rows == 1 else 1.0)) ** 2)
+            dy = (v - py + 0.5) % 1.0 - 0.5
+            d = np.sqrt((dx * cols) ** 2 + (dy * rows * sy) ** 2).astype(np.float32)
+            kk = cc * rows + rr
+            # Med få rader eller kolumner kan samma platta komma igen bland kandidaterna (rutnätet går runt); den
+            # får inte räknas som näst närmaste, annars blir fogen noll överallt
             closer = d < f1
-            f2 = np.where(closer, f1, np.minimum(f2, d))
-            idx = np.where(closer, k, idx)
+            second = ~closer & (d < f2) & (kk != idx)
+            idx2 = np.where(closer, idx, np.where(second, kk, idx2))
+            f2 = np.where(closer, f1, np.where(second, d, f2))
+            idx = np.where(closer, kk, idx)
             f1 = np.where(closer, d, f1)
-            k += 1
+    k = cols * rows
     edge = f2 - f1  # 0 i fogen mellan två plattor
     width = p.get("width", 0.22)
-    crevice = 1 - smooth(0, width * 1.1, edge)
+    # Tvärspricka: den näst närmaste plattan ligger i samma kolumn. Den är tunnare än en längsgående fåra
+    across = (idx // rows == idx2 // rows).astype(np.float32)
+    w = width * (1 - across * (1 - p.get("cracks", 0.45)))
+    crevice = 1 - smooth(0, w * 1.1 + 1e-4, edge)
     dome = smooth(0, 0.45 + width, edge) ** 0.7
-    tilt = (rng.random(k) - 0.5)[idx] * 0.25 * plates
+    tilt = (rng.random(k) - 0.5)[idx] * 0.25
     plate_h = 0.55 + 0.45 * dome + tilt * dome
     detail = p.get("detail", 0.25)
+    # Fibrer: fina längsgående streck (ridged brus utsträckt längs stammen) och glesare djupare sprickor
+    fibre = 1 - np.abs(2 * fbm(n, 38, 2, rng, sx=1, sy=0.1) - 1)  # ~2,5 cm på en meter: finare än fårorna
     ridged = 1 - np.abs(2 * fbm(n, 9, 3, rng, sx=1, sy=0.22) - 1)
     fine = smooth(0.78, 0.97, ridged) * detail
-    h = plate_h * (1 - crevice * p.get("depth", 0.6)) - fine * 0.3 * dome
+    h = plate_h * (1 - crevice * p.get("depth", 0.6)) - fine * 0.3 * dome - (fibre - 0.5) * detail * 0.12 * dome
     flakes = smooth(0.62, 0.7, fbm(n, 7, 2, rng)) * smooth(0.3, 0.7, dome) * p.get("flakes", 0.0)
     h = np.clip(h + flakes * 0.06, 0, 1)
-    # Färgen: valör ur höjden, en ton per platta, svalt i fårorna, varmt på topparna, stora mjuka fläckar
+    # Lav och mossa: stora mjuka fläckar, mest på plattorna
+    lichen = smooth(0.5, 0.6, fbm(n, 5, 3, rng)) * (0.35 + 0.65 * dome) * p.get("lichen", 0.0)
+    # Lenticeller (körsbär, björk): korta vågräta mörka streck, spridda i ett skakat rutnät
+    lent = np.zeros((n, n), np.float32)
+    if p.get("lenticels", 0) > 0:
+        lc, lr = 9, 26
+        lj = rng.random((lc, lr, 3))
+        gx, gy = np.floor(x * lc).astype(np.int64), np.floor(y * lr).astype(np.int64)
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                cx, cy = (gx + di) % lc, (gy + dj) % lr
+                px, py = (cx + lj[cx, cy, 0]) / lc, (cy + lj[cx, cy, 1]) / lr
+                dx, dy = (x - px + 0.5) % 1.0 - 0.5, (y - py + 0.5) % 1.0 - 0.5
+                L = (0.25 + 0.5 * lj[cx, cy, 2]) / lc  # streckets halva längd
+                e = np.sqrt((dx / L) ** 2 + (dy / (0.12 / lr)) ** 2)
+                keep = (lj[cx, cy, 2] < p["lenticels"]).astype(np.float32)
+                lent = np.maximum(lent, (1 - smooth(0.6, 1.0, e)) * keep)
+        h = np.clip(h - lent * 0.15, 0, 1)
+    # Färgen: valör ur höjden, en ton per platta, egen färg i fårorna, varmt på topparna, stora mjuka fläckar
     col = mix(p, np.clip(h, 0, 1) ** 1.1)
     tone = 1 + (rng.random(k) - 0.5)[idx][..., None] * 2 * p.get("tint", 0.12)
-    cool = 1 + crevice[..., None] * np.array([-0.06, -0.02, 0.08], np.float32) * p.get("depth", 0.6)
     warm = 1 + (dome * (1 - crevice))[..., None] * np.array([0.06, 0.02, -0.04], np.float32)
     mottle = 1 + (fbm(n, 3, 2, rng) - 0.5)[..., None] * 0.35
-    col = col * tone * cool * warm * mottle
+    streak = 1 + (fibre - 0.5)[..., None] * detail * 0.25
+    col = col * tone * warm * mottle * streak
+    if p.get("crevice"):
+        col = col + (hexrgb(p["crevice"]) - col) * (crevice * (1 - across * 0.5))[..., None] * 0.85
+    else:
+        col = col * (1 + crevice[..., None] * np.array([-0.06, -0.02, 0.08], np.float32) * p.get("depth", 0.6))
+    col = col + (hexrgb(p.get("lichenColor", "#9DA67A")) - col) * lichen[..., None] * 0.8
     col = col + (hexrgb(p.get("accent", "#C9C2B0")) - col) * flakes[..., None] * 0.85
+    col = col + (hexrgb(p.get("dark", "#333333")) * 0.8 - col) * lent[..., None] * 0.9
     return np.clip(col, 0, 1), h
 
 

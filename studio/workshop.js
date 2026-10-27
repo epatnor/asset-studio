@@ -60,7 +60,8 @@ export async function createWorkshop({ api, el, side, view, footer, lib, tools, 
   };
   const sw = (checked, onchange, title) => { const b = el('input', 'switch'); b.type = 'checkbox'; b.checked = checked; b.onchange = () => onchange(b.checked); if (title) b.title = title; return b; };
   const mapSel = sel(Object.entries(MAP_LABELS), 'color', (v) => { vs.map = v; showMap(); }, 'Which map is shown');
-  const tilesSel = sel([[1, '1 × 1'], [3, '3 × 3'], [5, '5 × 5']], 3, (v) => { vs.tiles = Number(v); fit(); });
+  // 8 × 8 och 16 × 16 visar upprepning över en stor yta, inte bara skarvarna
+  const tilesSel = sel([[1, '1 × 1'], [3, '3 × 3'], [5, '5 × 5'], [8, '8 × 8'], [16, '16 × 16']], 3, (v) => { vs.tiles = Number(v); fit(); });
   const zoomOut = el('span', 'zoom');
   // Ikonknappar som i headern (index.html): ram, ångra, gör om
   const SVG = (d) => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;

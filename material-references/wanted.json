@@ -1,0 +1,10 @@
+{
+  "_doc": "Referenserna för våra material (tools/texture/fetch_references.py). for: vilket av våra material referensen mäts mot.",
+  "ids": ["jolcham_oak_bark_01", "pine_bark", "sakura_bark", "trident_maple_bark", "bark_willow", "tree_bark_03", "rock_04", "mossy_rock", "forest_floor", "grass_path_2", "gravel", "brown_planks_03", "cobblestone_floor_01"],
+  "for": {
+    "jolcham_oak_bark_01": "bark_oak_stylized", "pine_bark": "bark_pine_stylized", "sakura_bark": "bark_cherry_stylized",
+    "trident_maple_bark": "bark_smooth_stylized", "bark_willow": "bark_furrowed_stylized", "tree_bark_03": "bark_spruce_stylized",
+    "rock_04": "rock_stylized", "mossy_rock": "moss_stylized", "forest_floor": "forestfloor", "grass_path_2": "meadow",
+    "gravel": "gravel", "brown_planks_03": "planks", "cobblestone_floor_01": "cobble"
+  }
+}

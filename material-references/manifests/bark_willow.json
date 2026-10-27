@@ -1,0 +1,48 @@
+{
+  "id": "bark_willow",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/bark_willow",
+  "name": "Bark Willow",
+  "authors": [
+    "Dario Barresi",
+    "Dimitrios Savva"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/bark_willow/color.jpg",
+      "sha256": "c7de3072c2320934a3d9f5bc6c9cb58819952c0b3bd04f4e71b24cf89dbb6ad6",
+      "bytes": 779438
+    },
+    "height": {
+      "file": "material-references/cache/bark_willow/height.png",
+      "sha256": "3c41d18ee48a33151efc39aa1d8681d27c978e9cd3a43621f574179ea22dac7a",
+      "bytes": 1700780
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 1.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "willow",
+    "bark",
+    "tree",
+    "forest",
+    "nature",
+    "brown",
+    "uneven",
+    "sallow",
+    "osier",
+    "old",
+    "wood",
+    "woodland"
+  ],
+  "categories": [
+    "outdoor",
+    "natural",
+    "bark",
+    "wood"
+  ]
+}

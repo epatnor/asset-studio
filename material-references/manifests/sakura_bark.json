@@ -1,0 +1,48 @@
+{
+  "id": "sakura_bark",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/sakura_bark",
+  "name": "Sakura Bark",
+  "authors": [
+    "Charlotte Baglioni"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/sakura_bark/color.jpg",
+      "sha256": "07005839dad2b6f729fbcd1b7cf7260819e92b7b4e95bb241452b559dddb6e09",
+      "bytes": 959561
+    },
+    "height": {
+      "file": "material-references/cache/sakura_bark/height.png",
+      "sha256": "ccc110c871785d45269c91ca9165a49d8122d32288a076dfc96cafcc3e4e7441",
+      "bytes": 1739210
+    }
+  },
+  "physicalWidthMeters": 1.6,
+  "physicalHeightMeters": 1.6,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rough",
+    "bark",
+    "tree",
+    "tree bark",
+    "nature",
+    "japanese",
+    "trunk",
+    "wood",
+    "natural",
+    "bark texture",
+    "tree trunk",
+    "forestry",
+    "organic"
+  ],
+  "categories": [
+    "outdoor",
+    "bark",
+    "natural",
+    "wood"
+  ]
+}

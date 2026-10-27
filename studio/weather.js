@@ -4,6 +4,7 @@
 // Spakarna och väderlägena är data i tools/weather/weather.json; sparade väderlägen i assets/weather/. Egen renderare
 // (WebGPU, WebGL2 som reserv) med glöd, som Väderkvarnens Vind-flik. Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
+import { antiTiled } from '../shared/effects/antitile.js';
 import { pass, texture, positionWorld, mix, smoothstep, mx_noise_float, vec3, uniform, float } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -54,7 +55,8 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   const path = smoothstep(1.6, 0.9, xz.x.sub(xz.y.mul(0.08)).abs().add(mx_noise_float(vec3(xz.mul(0.6), 0)).mul(0.4))).mul(smoothstep(-12, -9.5, xz.y));
   // Våt mark när det regnar: mörkare och blankare
   const wet = uniform(0);
-  gMat.colorNode = mix(texture(tex('ground_meadow'), xz.div(3)).rgb.mul(0.9), texture(tex('cobblestone'), xz.div(1.1)).rgb.mul(0.85), path).mul(float(1).sub(wet.mul(0.35)));
+  // Mot synlig upprepning på marken (shared/effects/antitile.js); stigen är lagd sten med riktning, den vrids inte
+  gMat.colorNode = mix(antiTiled(tex('ground_meadow'), xz.div(3)).mul(0.9), antiTiled(tex('cobblestone'), xz.div(1.1), { rotate: false }).mul(0.85), path).mul(float(1).sub(wet.mul(0.35)));
   gMat.roughnessNode = float(0.95).sub(wet.mul(path.mul(0.45).add(0.2)));
   const ground = new THREE.Mesh(new THREE.CircleGeometry(150, 64).rotateX(-Math.PI / 2), gMat);
   ground.receiveShadow = true;

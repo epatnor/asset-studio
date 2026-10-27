@@ -1,0 +1,42 @@
+{
+  "id": "grass_path_2",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/grass_path_2",
+  "name": "Grass Path 2",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/grass_path_2/color.jpg",
+      "sha256": "7f30b163739435c11f500f3818c7bb4922bab5f2734cc9ba6dd36817f0c9a8ab",
+      "bytes": 716010
+    },
+    "height": {
+      "file": "material-references/cache/grass_path_2/height.png",
+      "sha256": "458ea1f2c8cffbc72cde24ae49d8ee63109fa15a6da427c3bb059f5f229047d5",
+      "bytes": 1945062
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 1.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "grass",
+    "pathway",
+    "path",
+    "ground",
+    "stones",
+    "sidewalk",
+    "rural",
+    "farm"
+  ],
+  "categories": [
+    "terrain",
+    "natural",
+    "outdoor"
+  ]
+}

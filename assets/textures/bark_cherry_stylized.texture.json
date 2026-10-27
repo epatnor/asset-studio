@@ -4,14 +4,20 @@
   "maps": [
     "color",
     "normal",
-    "height"
+    "height",
+    "rough",
+    "ao",
+    "orm"
   ],
   "files": {
     "color": "assets/textures/bark_cherry_stylized.png",
     "normal": "assets/textures/bark_cherry_stylized_normal.png",
-    "height": "assets/textures/bark_cherry_stylized_height.png"
+    "height": "assets/textures/bark_cherry_stylized_height.png",
+    "rough": "assets/textures/bark_cherry_stylized_rough.png",
+    "ao": "assets/textures/bark_cherry_stylized_ao.png",
+    "orm": "assets/textures/bark_cherry_stylized_orm.png"
   },
-  "meters": 2.0,
+  "meters": 1.0,
   "tags": [
     "bark",
     "cherry",
@@ -19,47 +25,52 @@
   ],
   "recipe": "assets/textures/bark_cherry_stylized.texture.json",
   "size": 1024,
-  "saved": "2026-10-27T20:18:36+00:00",
+  "saved": "2026-10-27T22:58:34+00:00",
   "hd": {
     "size": 2048,
     "files": {
       "color": "assets/textures/hd/bark_cherry_stylized_hd.png",
       "normal": "assets/textures/hd/bark_cherry_stylized_hd_normal.png",
-      "height": "assets/textures/hd/bark_cherry_stylized_hd_height.png"
+      "height": "assets/textures/hd/bark_cherry_stylized_hd_height.png",
+      "rough": "assets/textures/hd/bark_cherry_stylized_hd_rough.png",
+      "ao": "assets/textures/hd/bark_cherry_stylized_hd_ao.png"
     }
   },
   "source": {
-    "ridges": 4,
-    "depth": 0.3,
-    "width": 0.1,
+    "ridges": 6,
+    "depth": 0.35,
+    "width": 0.34,
     "wiggle": 0.4,
-    "plates": 0.1,
-    "detail": 0.25,
-    "tint": 0.1,
-    "flakes": 0.25,
-    "accent": "#B98A72",
-    "seed": 6,
-    "dark": "#3A2019",
-    "light": "#8E4E40",
+    "plates": 0.5,
+    "rows": 0,
+    "aspect": 2,
+    "cracks": 0.3,
+    "detail": 0.9,
+    "tint": 0.12,
+    "flakes": 0.1,
+    "accent": "#9F8670",
+    "lenticels": 0.8,
+    "crevice": "#372E27",
+    "lichen": 0,
+    "lichenColor": "#9DA67A",
+    "seed": 1,
+    "dark": "#665546",
+    "light": "#8C735E",
     "type": "bark"
   },
   "steps": [
     {
-      "angle": 90,
-      "op": "rotate"
-    },
-    {
-      "strength": 0.6,
-      "colors": 7,
+      "strength": 0.5,
+      "colors": 8,
       "shape": 0.5,
-      "saturation": 1.08,
+      "saturation": 1.0,
       "relief": true,
       "op": "stylize"
     }
   ],
   "inputs": {},
   "material": {
-    "meters": 2,
+    "meters": 1.0,
     "normal": {
       "on": true,
       "strength": 1,

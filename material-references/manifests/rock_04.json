@@ -1,0 +1,45 @@
+{
+  "id": "rock_04",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/rock_04",
+  "name": "Rock 04",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/rock_04/color.jpg",
+      "sha256": "0c7e1d0a014d141dc5ba13b55657922ae8de045f509a3a8eefeb5de445a839ed",
+      "bytes": 815398
+    },
+    "height": {
+      "file": "material-references/cache/rock_04/height.png",
+      "sha256": "86a55161a9cde5119140b5dad500f6d98378ad1a70a9f59d840b5ce9a4cf11e0",
+      "bytes": 1856910
+    }
+  },
+  "physicalWidthMeters": 1.5,
+  "physicalHeightMeters": 1.5,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rough",
+    "uneven",
+    "stone",
+    "bumpy",
+    "rock",
+    "rock formation",
+    "weathered",
+    "dirty",
+    "coarse",
+    "mossy"
+  ],
+  "categories": [
+    "rock",
+    "outdoor",
+    "terrain",
+    "natural"
+  ]
+}

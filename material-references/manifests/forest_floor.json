@@ -1,0 +1,47 @@
+{
+  "id": "forest_floor",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/forest_floor",
+  "name": "Forest Floor",
+  "authors": [
+    "eye-candy.xyz"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/forest_floor/color.jpg",
+      "sha256": "f12e5adea1741f9eb7a528bfc621f8267885b9530b74c3a8afdb823899bdbf0b",
+      "bytes": 1329853
+    },
+    "height": {
+      "file": "material-references/cache/forest_floor/height.png",
+      "sha256": "12f57f4a76a7ddd89107e2ed0b3b4a8a3132066c9fcb5c70e4ab44fa29b6cc49",
+      "bytes": 2500130
+    }
+  },
+  "physicalWidthMeters": 2.14,
+  "physicalHeightMeters": 2.14,
+  "scaleConfidence": "provider",
+  "tags": [
+    "sand",
+    "leaves",
+    "autumn",
+    "forest",
+    "dirt",
+    "nature",
+    "dry",
+    "mud",
+    "debris",
+    "pathway",
+    "twigs",
+    "yellow",
+    "ground"
+  ],
+  "categories": [
+    "outdoor",
+    "natural",
+    "terrain"
+  ]
+}

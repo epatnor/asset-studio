@@ -1,0 +1,39 @@
+{
+  "id": "tree_bark_03",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/tree_bark_03",
+  "name": "Tree Bark 03",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/tree_bark_03/color.jpg",
+      "sha256": "2b48c669a1787d708b1c10b3c726fddf9007099d5eb8873e316d388a8079a12b",
+      "bytes": 1046404
+    },
+    "height": {
+      "file": "material-references/cache/tree_bark_03/height.png",
+      "sha256": "49d04f61a0ecd9eecde8e0964f5fa4c3a5e967b58ef3b0be86dafa83428c6ccd",
+      "bytes": 1658258
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 1.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "bark",
+    "moss",
+    "rough",
+    "old"
+  ],
+  "categories": [
+    "wood",
+    "natural",
+    "outdoor",
+    "bark"
+  ]
+}

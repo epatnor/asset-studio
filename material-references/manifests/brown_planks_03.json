@@ -1,0 +1,44 @@
+{
+  "id": "brown_planks_03",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/brown_planks_03",
+  "name": "Brown Planks 03",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/brown_planks_03/color.jpg",
+      "sha256": "8dfae22286fa9bb0ed62ce7326e8bc14c284e567d38fd64b5a453838080ecf19",
+      "bytes": 570668
+    },
+    "height": {
+      "file": "material-references/cache/brown_planks_03/height.png",
+      "sha256": "ddd9b61fc475450eaf4783314e7c7cd1a4aff4c1b5299314dc72c7dd93b770fe",
+      "bytes": 1851115
+    }
+  },
+  "physicalWidthMeters": 1.0,
+  "physicalHeightMeters": 1.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "planks",
+    "untreated",
+    "boat",
+    "costal",
+    "dry",
+    "old",
+    "withered"
+  ],
+  "categories": [
+    "wood",
+    "man made",
+    "indoor",
+    "outdoor",
+    "clean",
+    "wall"
+  ]
+}

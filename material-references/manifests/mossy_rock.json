@@ -1,0 +1,46 @@
+{
+  "id": "mossy_rock",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/mossy_rock",
+  "name": "Mossy Rock",
+  "authors": [
+    "Rob Tuytel"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/mossy_rock/color.jpg",
+      "sha256": "4dbf37f1b0465c9c8914213163923be159716f5b97fb6946437b6c5e143ef540",
+      "bytes": 1124438
+    },
+    "height": {
+      "file": "material-references/cache/mossy_rock/height.png",
+      "sha256": "fa0d663a55bd984bfc91426b2466a6cdac2b60756abe74b31129b35abd65462e",
+      "bytes": 1848751
+    }
+  },
+  "physicalWidthMeters": 3.0,
+  "physicalHeightMeters": 3.0,
+  "scaleConfidence": "provider",
+  "tags": [
+    "rough",
+    "moss",
+    "rock face",
+    "cracked",
+    "lichen",
+    "striations",
+    "striated",
+    "mosscovered",
+    "mossy",
+    "uneven",
+    "rock"
+  ],
+  "categories": [
+    "rock",
+    "natural",
+    "outdoor",
+    "terrain"
+  ]
+}

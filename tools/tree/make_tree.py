@@ -147,6 +147,9 @@ def main():
     # Barkens normalkarta (Ateljéns material har <namn>_normal.png): samma höjdfält som färgen, ger relief på stammen
     if (TEX / f"{bark}_normal.png").exists() and recipe.get("bark_normal", True):
         gen["barkNormal"] = str(TEX / f"{bark}_normal.png")
+    # Ruffighet och AO ur samma material (ORM: R = AO, G = ruffighet, B = metall), om Ateljén har packat en
+    if (TEX / f"{bark}_orm.png").exists() and recipe.get("bark_normal", True):
+        gen["barkOrm"] = str(TEX / f"{bark}_orm.png")
     if recipe.get("bark_uv"):
         gen["barkUV"] = {k: float(v) for k, v in recipe["bark_uv"].items() if k in ("tiling", "along", "around") and float(v) > 0}
     # leaf_tint: färgen blir en materialparameter (som Material Instances) i stället för en ny textur.

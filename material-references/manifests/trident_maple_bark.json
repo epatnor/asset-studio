@@ -1,0 +1,45 @@
+{
+  "id": "trident_maple_bark",
+  "source": "polyhaven",
+  "sourceUrl": "https://polyhaven.com/a/trident_maple_bark",
+  "name": "Trident Maple Bark",
+  "authors": [
+    "Charlotte Baglioni"
+  ],
+  "license": "CC0-1.0",
+  "downloadedAt": "2026-10-27",
+  "resolution": "1k",
+  "maps": {
+    "color": {
+      "file": "material-references/cache/trident_maple_bark/color.jpg",
+      "sha256": "d696c36e6a949c27bd069f36f76ff35be8317775818de09c056da6c97f72fcd7",
+      "bytes": 761434
+    },
+    "height": {
+      "file": "material-references/cache/trident_maple_bark/height.png",
+      "sha256": "3cf18067a4778dd1a8ef7b8b3131b6af2814d661c68b4d56555ef0e06933c6cd",
+      "bytes": 1687901
+    }
+  },
+  "physicalWidthMeters": 1.8,
+  "physicalHeightMeters": 1.8,
+  "scaleConfidence": "provider",
+  "tags": [
+    "tree",
+    "tree bark",
+    "bark",
+    "tree bark texture",
+    "tree trunk",
+    "nature",
+    "botanical",
+    "outdoor",
+    "trident maple",
+    "forest",
+    "organic",
+    "landscape"
+  ],
+  "categories": [
+    "natural",
+    "bark"
+  ]
+}
