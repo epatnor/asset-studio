@@ -7,6 +7,7 @@
 import { add, sub, mul, dot, cross, norm, lerp, clamp01, rng, randomUnit, basis, UP } from './vec.mjs';
 import { clusterLeaves, icosphere } from './canopy.mjs';
 import { gradient } from './crown.mjs';
+import { twigPoints } from './skeleton.mjs';
 
 const empty = () => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] });
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -32,7 +33,7 @@ export function skeletonGroups(sk, k, flattenY = 1) {
   const kids = B.map(() => []);
   B.forEach((b, i) => { if (b.parent >= 0) kids[b.parent].push(i); });
   // Samma kvistpunkter som twigsOf: yttre delen av de yngsta grenarna och av alla grenar utan barn
-  const own = B.map((b) => (b.level < Math.max(1, maxLevel) && !b.terminal ? [] : b.nodes.slice(Math.ceil((b.nodes.length - 1) * 0.4)).map((n) => n.p)));
+  const own = B.map((b) => twigPoints(b, maxLevel));
   const memo = new Map();
   const subPts = (i) => memo.get(i) ?? memo.set(i, [...own[i], ...kids[i].flatMap(subPts)]).get(i);
   const subBranches = (i) => [i, ...kids[i].flatMap(subBranches)];
@@ -50,7 +51,7 @@ export function skeletonGroups(sk, k, flattenY = 1) {
   };
   let units = [settle(unit(0, kids[0], true))].filter((u) => u.pts.length);
   while (units.length < k) {
-    const cand = units.filter((u) => u.pts.length >= 12 && (u.ks.length >= 2 || (u.ks.length === 1 && u.withOwn && own[u.b].length)));
+    const cand = units.filter((u) => u.pts.length >= 4 && (u.ks.length >= 2 || (u.ks.length === 1 && u.withOwn && own[u.b].length)));
     if (!cand.length) break;
     const u = cand.reduce((a, c) => (spread(c) > spread(a) ? c : a));
     let parts;

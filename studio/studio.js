@@ -231,9 +231,10 @@ const recipeNow = () => (genOf(kind) === 'prop' ? { preset: state.recipe.preset,
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   ...(state.recipe.age < 1 ? { age: state.recipe.age } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
-  // growth och colonize: det odlade skelettet; foliage.type: lövverkets slag (none = kalt träd), som generatorn läser ur arten
+  // growth, colonize och branching: det odlade skelettet och gaffelträdet; foliage.type: lövverkets slag (none = kalt träd), som generatorn läser ur arten
   species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless, growth: state.spec.growth ?? 'levels',
-    ...(state.spec.colonize ? { colonize: state.spec.colonize } : {}), foliage: { type: state.spec.foliage.type } },
+    ...(state.spec.colonize ? { colonize: state.spec.colonize } : {}), ...(state.spec.branching ? { branching: state.spec.branching } : {}),
+    foliage: { type: state.spec.foliage.type } },
   canopy: state.spec.foliage, bark_blend: blendNow(),
   ...barkUvNow(),
 });

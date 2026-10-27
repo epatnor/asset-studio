@@ -7,6 +7,7 @@ import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
 import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips, pruneHiddenEnds, growSkeleton } from './skeleton.mjs';
 import { colonizeSkeleton } from './colonize.mjs';
+import { forkSkeleton } from './forking.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
 import { buildConiferFoliage } from './conifer.mjs';
@@ -49,14 +50,16 @@ const seedEff = seed + (/^\d+$/.test(sizeKey) ? Number(sizeKey) * 1000 : 0);
 
 // 1. Skelett, skalat till höjden (lövkronan sticker upp ovanför grenspetsarna, så lämna marginal)
 // growth: 'colonize' odlar skelettet (space colonization) i stället för att bygga det i nivåer
-const sk = sp.growth === 'colonize' ? colonizeSkeleton(sp, seedEff, size) : buildSkeleton(sp, seedEff, size);
-scaleSkeleton(sk, height, fronds ? 0 : 0.12);
+// growth: 'fork' bygger ett gaffelträd i meter (forking.mjs: Honda-gafflar, da Vincis regel, egna kronmått)
+const forked = sp.growth === 'fork';
+const sk = forked ? forkSkeleton(sp, seedEff, height) : sp.growth === 'colonize' ? colonizeSkeleton(sp, seedEff, size) : buildSkeleton(sp, seedEff, size);
+if (!forked) scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 // Stamhöjd (bole, meter): den kala stammen till den lägsta grenen, med kronan oförändrad. height styr då trädets
 // storlek (kronan), och top är den verkliga höjden, som vind och stammens topp räknas mot.
 // Ålder (age 0–1, Smedjans spak Growth): trädet växer ut längs grenarna från roten (growSkeleton), och den kala
 // stammen är lika mycket kortare. Kvistarna räknas före och efter, så att lövkronan kan följa den minsta grenklassen
 const age = Math.max(0, Math.min(1, recipe.age ?? 1));
-const lift = sp.stemless ? 0 : setBoleHeight(sk, (recipe.bole ?? 0) * age);
+const lift = sp.stemless || forked ? 0 : setBoleHeight(sk, (recipe.bole ?? 0) * age); // gaffelträdet har stammen i höjden
 const twigsFull = sk.twigs.length;
 const grown = growSkeleton(sk, age);
 const top = age < 1 && grown.top ? grown.top : height + lift;
@@ -127,7 +130,8 @@ if (fronds) {
   if (age < 1) { cb.clusters = Math.max(1, Math.round((cb.clusters ?? 5) * share)); }
   foliage = sk.twigs.length < 6 && age < 1
     ? { lods: [0, 1, 2].map(() => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] })), clusters: [], uncovered: 0, tipBalls: 0, cards: 0 }
-    : buildCardBalls(sk.twigs, { ...cb, seed: seedEff, height: age < 1 ? height * Math.max(0.3, age) : height, tips, ground: !!sp.stemless, skeleton: sk });
+    // Gaffelträd: bollarnas minsta storlek räknas mot kronans höjd, inte trädets, så att en högre stam inte ger större bollar
+    : buildCardBalls(sk.twigs, { ...cb, seed: seedEff, height: (forked ? sk.crownHeight : height) * (age < 1 ? Math.max(0.3, age) : 1), tips, ground: !!sp.stemless, skeleton: sk });
   checks.age = age;
   checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;

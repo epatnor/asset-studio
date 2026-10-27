@@ -116,13 +116,15 @@ export function scaleSkeleton(sk, h, extraTop = 0) {
 
 // Kvistpunkter för lövverket: yttre delen av de yngsta grenarna (och spetsarna)
 export function twigsOf(branches, maxLevel) {
-  const twigs = [];
-  for (const b of branches) {
-    if (b.level < Math.max(1, maxLevel) && !b.terminal) continue; // odlade skelett: alla kedjor utan barn bär löv
-    const n = b.nodes.length - 1;
-    for (let i = Math.ceil(n * 0.4); i <= n; i++) twigs.push(b.nodes[i].p);
-  }
-  return twigs;
+  return branches.flatMap((b) => twigPoints(b, maxLevel));
+}
+// En grens kvistpunkter: gaffelträdens kedjor bär löv från leafFrom (sista gaffelsträckan), odlade skelett på alla
+// kedjor utan barn, och annars den yngsta grennivån; yttre 60 % av grenen
+export function twigPoints(b, maxLevel) {
+  const n = b.nodes.length - 1;
+  if (b.leafFrom !== undefined) return b.nodes.slice(Math.min(b.leafFrom, n)).map((x) => x.p);
+  if (b.level < Math.max(1, maxLevel) && !b.terminal) return [];
+  return b.nodes.slice(Math.ceil(n * 0.4)).map((x) => x.p);
 }
 
 // Stamhöjd: sträck (eller korta) den kala stammen under den lägsta grenen till höjden bole (meter) och flytta kronan

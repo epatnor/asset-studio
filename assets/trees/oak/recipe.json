@@ -2,17 +2,17 @@
   "leaves": "leaffine_sprig",
   "bark": "bark_oak_stylized",
   "canopy": {
-    "ballScale": 1.6,
+    "ballScale": 2.3,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
-    "cardsPerM2": 1.1,
+    "cardsPerM2": 1.3,
     "crownUnion": 1.35,
     "tipCards": 4,
     "cardCore": 0,
     "groupJitter": 0,
     "maxGrow": 1.35,
-    "clusters": 7,
+    "clusters": 14,
     "cardScale": 0.55
   },
   "bark_blend": {
@@ -35,24 +35,25 @@
   },
   "preset": "cardtree",
   "seed": 11,
-  "height": 9,
-  "bole": 6.5,
+  "height": 11,
   "leaf_tint": "palette:foliage_light",
   "species": {
     "trunk": {
-      "radius": 0.13,
       "flare": 0.9
     },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "umbrella",
-      "width": 0.75,
-      "crownStart": 0.5,
-      "irregular": 0.6,
-      "gaps": 0.45,
-      "points": 450,
-      "tropism": 0.04,
-      "gravity": 0.03
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 12,
+      "crownHeight": 7,
+      "trunkRadius": 0.54,
+      "limbs": 4,
+      "limbAngle": 58,
+      "angleMain": 22,
+      "angleLateral": 55,
+      "ratioMain": 0.75,
+      "tropism": 0,
+      "gravity": 0.05,
+      "orders": 4
     }
   },
   "name": "oak",
