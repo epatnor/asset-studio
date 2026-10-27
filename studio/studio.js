@@ -208,7 +208,7 @@ function loadRecipe(r) {
   deepMerge(sp, r.species ?? {});
   Object.assign(sp.foliage, r.canopy ?? {});
   Object.assign(state.recipe, { seed: r.seed ?? state.recipe.seed, bark_blend: structuredClone(r.bark_blend ?? state.recipe.bark_blend) });
-  for (const k of ['leaves', 'bark', 'leaf_tint', 'bole']) if (r[k] !== undefined) state.recipe[k] = r[k];
+  for (const k of ['leaves', 'bark', 'leaf_tint', 'bole', 'age']) if (r[k] !== undefined) state.recipe[k] = r[k];
   if (r.bark_uv) state.recipe.bark_uv = { ...r.bark_uv };
 }
 // Fliken startar med sitt startrecept (params.json: kinds[].start, ett namn i biblioteket), annars med sin första art
@@ -229,6 +229,7 @@ function blendNow() {
 // Stenarna (props-generatorn): presetet, fröet och presetets värden med spakarna ovanpå
 const recipeNow = () => (genOf(kind) === 'prop' ? { preset: state.recipe.preset, seed: state.recipe.seed, params: { ...state.spec } } : {
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
+  ...(state.recipe.age < 1 ? { age: state.recipe.age } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
   // growth och colonize: det odlade skelettet; foliage.type: lövverkets slag (none = kalt träd), som generatorn läser ur arten
   species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless, growth: state.spec.growth ?? 'levels',
@@ -342,6 +343,15 @@ let latest = 0, framed = false, pinFrame = false, lastSnapshot = null;
 const history = [], future = [];
 const snapshot = () => JSON.stringify({ kind: kind.id, recipe: state.recipe, spec: state.spec });
 function commit() { history.push(lastSnapshot); future.length = 0; lastSnapshot = snapshot(); regenerate(); }
+// Levande spakar (params.json: live, t.ex. Growth): bygger om medan man drar. Servern bygger ett träd i taget, så
+// medan ett bygge pågår sparas bara det senaste värdet och byggs direkt efteråt
+let liveBusy = false, liveNext = false;
+async function liveRegenerate() {
+  if (liveBusy) { liveNext = true; return; }
+  liveBusy = true;
+  do { liveNext = false; await regenerate(); } while (liveNext);
+  liveBusy = false;
+}
 async function regenerate() {
   const id = ++latest;
   busy(true, 'Building…');
@@ -517,7 +527,7 @@ function makeRow(p) {
     const r = el('input'), out = el('output');
     r.type = 'range'; r.min = p.min; r.max = p.max; r.step = p.type === 'int' || p.type === 'intrange' ? 1 : p.step;
     const show = () => { out.textContent = Number(r.value).toFixed(decimals(p)); };
-    r.oninput = () => { show(); if (isView(p)) { setValue(p, Number(r.value)); applyViewAll(); } };
+    r.oninput = () => { show(); if (isView(p)) { setValue(p, Number(r.value)); applyViewAll(); } else if (p.live) { setValue(p, Number(r.value)); liveRegenerate(); } };
     r.onchange = () => commitParam(p, Number(r.value));
     syncs.push(() => { r.value = valueOf(p); show(); });
     row.append(label, r, out);

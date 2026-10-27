@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Document } from '@gltf-transform/core';
 import { sharedTexture, writeGltf } from './gltf_write.mjs';
-import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips, pruneHiddenEnds } from './skeleton.mjs';
+import { buildSkeleton, scaleSkeleton, setBoleHeight, validateSkeleton, taperTips, pruneHiddenEnds, growSkeleton } from './skeleton.mjs';
 import { colonizeSkeleton } from './colonize.mjs';
 import { barkMesh } from './bark_mesh.mjs';
 import { buildCanopy } from './canopy.mjs';
@@ -53,8 +53,13 @@ const sk = sp.growth === 'colonize' ? colonizeSkeleton(sp, seedEff, size) : buil
 scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 // Stamhöjd (bole, meter): den kala stammen till den lägsta grenen, med kronan oförändrad. height styr då trädets
 // storlek (kronan), och top är den verkliga höjden, som vind och stammens topp räknas mot.
-const lift = sp.stemless ? 0 : setBoleHeight(sk, recipe.bole ?? 0);
-const top = height + lift;
+// Ålder (age 0–1, Smedjans spak Growth): trädet växer ut längs grenarna från roten (growSkeleton), och den kala
+// stammen är lika mycket kortare. Kvistarna räknas före och efter, så att lövkronan kan följa den minsta grenklassen
+const age = Math.max(0, Math.min(1, recipe.age ?? 1));
+const lift = sp.stemless ? 0 : setBoleHeight(sk, (recipe.bole ?? 0) * age);
+const twigsFull = sk.twigs.length;
+const grown = growSkeleton(sk, age);
+const top = age < 1 && grown.top ? grown.top : height + lift;
 const checks = validateSkeleton(sk);
 
 // 2. Bark med riktig LOD: LOD1 utan yngsta grennivån, LOD2 bara stam och första nivån
@@ -74,7 +79,7 @@ const makeBark = () => [
   tipTint: (recipe.canopy?.barkTip ?? sp.foliage.barkTip) && recipe.leafTint ? (() => { const c = lin(recipe.leafTint), m = Math.max(...c); return c.map((x) => x / m); })() : null,
   tipFrom: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.from ?? 0.4, tipLevel: (recipe.canopy?.barkTip ?? sp.foliage.barkTip)?.level ?? 2,
   // barkBlend: vikter för påväxt vid foten och grön textur i grentopparna (blandas i klienten)
-  baseHeight: blendOn('base') ? recipe.barkBlend.base.height ?? 0.8 : 0,
+  baseHeight: blendOn('base') ? (recipe.barkBlend.base.height ?? 0.8) * Math.max(0.15, age) : 0, // mossan följer åldern
   tipBlendLevel: blendOn('tip') ? recipe.barkBlend.tip.level ?? 2 : null, tipBlendFrom: recipe.barkBlend?.tip?.from ?? 0.5,
   topCut: sp.foliage.topCut ?? (fronds ? 0.9 : 0),
   sinkDepth: Math.max(0.3, height * (sp.trunk.sinkDepth ?? 0.12)), // stammen går ner under marken
@@ -116,7 +121,14 @@ if (fronds) {
   });
   // Stamlösa: kortbollarna ställer sig själva på marken (mjukt golv per boll, se cardball.mjs)
   // Bollarna följer skelettet: kronan delas upp efter grenarna och varje boll sitter på en gren i sin grupp
-  foliage = buildCardBalls(sk.twigs, { ...sp.foliage, ...(recipe.canopy ?? {}), seed: seedEff, height, tips, ground: !!sp.stemless, skeleton: sk });
+  // Ungt träd: bollarna kommer med den minsta grenklassen (kvistarna), lika många som andelen kvistar som vuxit fram
+  const cb = { ...sp.foliage, ...(recipe.canopy ?? {}) };
+  const share = twigsFull ? sk.twigs.length / twigsFull : 1;
+  if (age < 1) { cb.clusters = Math.max(1, Math.round((cb.clusters ?? 5) * share)); }
+  foliage = sk.twigs.length < 6 && age < 1
+    ? { lods: [0, 1, 2].map(() => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] })), clusters: [], uncovered: 0, tipBalls: 0, cards: 0 }
+    : buildCardBalls(sk.twigs, { ...cb, seed: seedEff, height: age < 1 ? height * Math.max(0.3, age) : height, tips, ground: !!sp.stemless, skeleton: sk });
+  checks.age = age;
   checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;
   checks.cards = foliage.cards;
@@ -135,7 +147,12 @@ if (fronds) {
   const cut = { ...(recipe.canopy ?? {}) };
   if (!sp.stemless && (cut.prune ?? sp.foliage.prune) !== false) {
     const cover = cut.pruneCover ?? sp.foliage.pruneCover ?? 0.7; // bollens kant är luftig: bara det inre döljer
-    const hidden = (p) => foliage.clusters.some((c) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) <= c.radii[0] * cover);
+    // Bara det som sticker ut strax utanför en boll klipps; grenar långt från alla bollar (ett ungt träds kala
+    // grenar innan lövet kommit) räknas som dolda och står kvar
+    const hidden = (p) => {
+      const d = foliage.clusters.map((c) => Math.hypot(p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]) / c.radii[0]);
+      return d.some((x) => x <= cover) || d.every((x) => x > 1.6);
+    };
     Object.assign(checks, pruneHiddenEnds(sk, hidden));
   }
   // Grenar utan barn smalnar av till en spets, så att ingen gren slutar trubbigt inne i en boll

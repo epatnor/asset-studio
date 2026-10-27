@@ -204,6 +204,91 @@ export function pruneHiddenEnds(sk, hidden) {
   return { pruned_branches: removedBranches, pruned_nodes: removedNodes };
 }
 
+// Ålder (age 0–1): trädet växer utåt från roten längs grenarna. En punkt finns när åldern har nått dit, mätt som
+// sträckan från roten genom skelettet (A = age × den längsta sträckan); en halvvuxen gren klipps där tillväxten
+// står, och grenar som inte har börjat växa tas bort. Tjockleken följer hur mycket av trädet som har vuxit bortom
+// punkten (som pipe-modellen: en gren är så tjock som det den bär): r × (vuxet bortom / fullvuxet bortom)^1,2 (unga
+// träd är smala: tjockleken växer ungefär som höjden^1,5), och varje spets smalnar av. Vid age 1 är allt oförändrat. Grenarnas nivåer och
+// terminal behålls från det fullvuxna trädet, så att kvistarna (och därmed lövbollarna) kommer först när den minsta
+// grenklassen börjar växa. Returnerar { removed, top }.
+export function growSkeleton(sk, age) {
+  const B = sk.branches;
+  if (!(age < 1)) return { removed: 0 };
+  const kids = B.map(() => []);
+  B.forEach((b, i) => { if (b.parent >= 0) kids[b.parent].push(i); });
+  // Sträckan från roten till varje led (föräldrar kommer alltid före sina barn i listan)
+  // Den kala stammen under den lägsta grenen räknas bara till en tredjedel, så att ett ungt träd grenar sig tidigt
+  // i stället för att först bli en lång påle
+  const firstT = Math.min(1, ...kids[0].map((k) => B[k].t));
+  const firstIdx = firstT * (B[0].nodes.length - 1);
+  const geo = B.map(() => []);
+  B.forEach((b, i) => {
+    let g = 0;
+    if (b.parent >= 0) {
+      const P = B[b.parent], x = b.t * (P.nodes.length - 1), k = Math.min(P.nodes.length - 2, Math.floor(x));
+      g = geo[b.parent][k] + (geo[b.parent][k + 1] - geo[b.parent][k]) * (x - k);
+    }
+    geo[i] = b.nodes.map((n, j) => (j ? (g += len(sub(n.p, b.nodes[j - 1].p)) * (i === 0 && j <= firstIdx ? 0.33 : 1)) : g));
+  });
+  const G = Math.max(...geo.flat()), A = age * G;
+  // Hur långt det fullvuxna trädet når bortom varje led: grenens egna leder längre ut och barnens underträd
+  const subMax = new Array(B.length).fill(0);
+  for (let i = B.length - 1; i >= 0; i--) subMax[i] = Math.max(geo[i][geo[i].length - 1], ...kids[i].map((k) => subMax[k]));
+  const reach = B.map((b, i) => {
+    const n = b.nodes.length - 1, out = new Array(n + 1);
+    let m = geo[i][n];
+    for (let j = n; j >= 0; j--) {
+      for (const k of kids[i]) if (B[k].t * n >= j - 1e-9 && B[k].t * n < j + 1 - 1e-9) m = Math.max(m, subMax[k]);
+      out[j] = m;
+    }
+    return out;
+  });
+  const gone = new Set();
+  B.forEach((b, i) => {
+    if (b.parent >= 0 && gone.has(b.parent)) { gone.add(i); return; }
+    const g = geo[i], n = b.nodes.length - 1;
+    if (g[0] >= A - G * 0.01) { gone.add(i); return; } // inte börjat växa, eller bara en stump som vinden river
+    // Tjockleken innan noderna klipps (reach gäller de gamla indexen)
+    b.nodes.forEach((nd, j) => {
+      const full = reach[i][j] - g[j];
+      if (full > 1e-6) nd.r *= Math.max(0.03, Math.min(1, (Math.min(A, reach[i][j]) - g[j]) / full)) ** 1.2;
+    });
+    if (g[n] <= A) return;
+    let k = 0;
+    while (g[k + 1] <= A) k++;
+    let f = (A - g[k]) / (g[k + 1] - g[k]);
+    // Klippet alldeles intill en led: grenen slutar vid leden (ingen nästan noll lång sektion)
+    if (f < 0.15 && k >= 1) f = 0;
+    const end = { p: lerp(b.nodes[k].p, b.nodes[k + 1].p, f), r: b.nodes[k].r + (b.nodes[k + 1].r - b.nodes[k].r) * f };
+    b.nodes = f > 0 ? [...b.nodes.slice(0, k + 1), end] : b.nodes.slice(0, k + 1);
+    const m = b.nodes.length - 1;
+    // Barnen sitter kvar på samma punkt: index i den sista, kortare sektionen räknas om
+    for (const c of kids[i]) {
+      if (gone.has(c)) continue;
+      const x = B[c].t * n;
+      B[c].t = (x <= k || f === 0 ? Math.min(x, k) : k + (x - k) / f) / m;
+      if (B[c].t > 1) B[c].t = 1;
+    }
+  });
+  // Barn till grenar som klipptes bort helt, och barn som börjar bortom förälderns nya ände
+  B.forEach((b, i) => { if (b.parent >= 0 && gone.has(b.parent)) gone.add(i); });
+  if (gone.size) {
+    const map = new Map();
+    B.forEach((b, i) => { if (!gone.has(i)) map.set(i, map.size); });
+    sk.branches = B.filter((_, i) => !gone.has(i));
+    for (const b of sk.branches) if (b.parent >= 0) b.parent = map.get(b.parent);
+  }
+  // Inget barn tjockare än sin förälder där det sitter (förälderns och barnets tillväxt skalas var för sig)
+  for (const b of sk.branches) {
+    if (b.parent < 0) continue;
+    const at = sampleBranch(sk.branches[b.parent], b.t).r * 0.9;
+    if (b.nodes[0].r > at) { const k = at / b.nodes[0].r; for (const nd of b.nodes) nd.r *= k; }
+  }
+  for (const b of sk.branches) { let L = 0; for (let j = 1; j < b.nodes.length; j++) L += len(sub(b.nodes[j].p, b.nodes[j - 1].p)); b.length = L; }
+  sk.twigs = twigsOf(sk.branches, sk.maxLevel);
+  return { removed: gone.size, top: Math.max(...sk.branches.flatMap((b) => b.nodes.map((n) => n.p[1]))) };
+}
+
 // Korrekthetskontroller, så att ingen behöver titta på en bild för att veta att trädet hänger ihop
 export function validateSkeleton(sk) {
   let disconnected = 0, thicker = 0, below = 0;
