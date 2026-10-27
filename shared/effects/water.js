@@ -182,6 +182,7 @@ export function createWater({ geometry, level = 0, sky }) {
   const g = gerstner();
   const surgeNow = surgeAt(u.time, P0.x).mul(shoreW);
   const vNormal = varying(normalize(g.n.add(bore.n))), vPinch = varying(g.pinch), vFlow = varying(flowA), vBore = varying(bore.foam);
+  const vSlope = varying(bedSlope); // bottnens lutning: skummet sträcks längs strandlinjen
 
   // ---------- Pixlarna ----------
   const shade = (mirror) => Fn(() => {
@@ -254,9 +255,16 @@ export function createWater({ geometry, level = 0, sky }) {
     const fuvB = Pw.xz.div(u.foamScale.mul(8)).add(vec2(t.mul(0.011), t.mul(-0.007)));
     const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.04);
     const fuvA = Pw.xz.div(u.foamScale.mul(6)).sub(f.mul(t.mul(0.33))).add(warp);
-    const blot = texture(T.misc, fuvB).g;
-    // De stora fläckarna formar skummets kant, bubblorna ger rundade hål och tungor i den
-    const noise = mix(blot, texture(T.misc, fuvA).r, 0.3);
+    // De stora fläckarna formar skummets kant, bubblorna ger rundade hål och tungor i den. k skalar koordinaterna
+    // per axel: k.x < 1 drar ut skummet längs x
+    const foamNoise = (k) => mix(texture(T.misc, fuvB.mul(k)).g, texture(T.misc, fuvA.mul(k)).r, 0.3);
+    // Utdraget längs strandlinjen: bruset samplas utdraget längs x och längs z och blandas efter bottnens lutning
+    // (lutar botten i z går stranden längs x). Ingen vridning per pixel, så inga virvlar där stranden kröker sig.
+    // På plant vatten (ingen lutning) är skummet runt som förut.
+    const sx = vSlope.x.mul(vSlope.x), sz = vSlope.y.mul(vSlope.y);
+    const S = float(1).div(3); // tre gånger längre längs stranden än tvärs
+    const along = mix(foamNoise(vec2(S, 1)), foamNoise(vec2(1, S)), sx.div(sx.add(sz).add(1e-6)));
+    const noise = mix(foamNoise(vec2(1, 1)), along, smoothstep(0.002, 0.03, sx.add(sz)));
     const shore = float(1).sub(smoothstep(0, u.foamWidth, dv)).mul(u.shoreFoam);
     const crest = smoothstep(0.5, 0.9, vPinch.div(max(u.steep, 0.01))).mul(u.crestFoam).mul(1.4);
     // Forsskummet har sin topp en bit ut från kanten (där strömmen bryts över stenarna), inte ända in mot land
