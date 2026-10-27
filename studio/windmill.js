@@ -3,7 +3,7 @@
 // (shared/effects/wind.js). Spakarna och profilerna är data i tools/wind/wind.json; sparade profiler i assets/wind/.
 // Egen renderare (WebGPU, WebGL2 som reserv), som texturverkstadens labb har sin egen. Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
-import { attribute, vertexColor, float, fract, mix, color } from 'three/tsl';
+import { attribute, vertexColor, float, fract, mix, color, pass } from 'three/tsl';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -52,6 +52,10 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   ground.receiveShadow = true;
   scene.add(ground);
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 400);
+  // Bilden ritas genom ett scenpass (4× MSAA, så att gräset behåller sin kantutjämning) i stället för direkt på duken:
+  // då går djupbufferten att läsa, som djupdekalerna (verktygslådans ring, markörer, brännmärken) behöver
+  const pipeline = new THREE.RenderPipeline(renderer);
+  pipeline.outputNode = pass(scene, camera, { samples: 4 });
   camera.position.set(1, 8.5, 26);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 2.2, -2);
@@ -531,7 +535,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     controls.update();
     grass?.update(camera);
     updateArrow();
-    renderer.render(scene, camera);
+    pipeline.render();
     frames++;
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
@@ -547,7 +551,7 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   // renderare som användes, så att man kan se WebGPU-fönster som man inte själv kan titta in i
   const shotName = new URLSearchParams(location.search).get('shot');
   if (shotName && /^[\w-]{1,40}$/.test(shotName)) setTimeout(async () => {
-    renderer.render(scene, camera);
+    pipeline.render();
     const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
     // Ett provfönster (test=1, egen profil) stängs av servern när bilden är sparad
     const test = new URLSearchParams(location.search).get('test') === '1' ? '&test=1' : '';

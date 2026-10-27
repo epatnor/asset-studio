@@ -4,7 +4,8 @@
 // samma kod (shared/effects/vfx.js, spells.js) och samma recept (tools/vfx/vfx.json) som i Häxkitteln. Bara för prov:
 // inget sparas. Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
-import { createEffect } from '../shared/effects/vfx.js';
+import { uniform, length, smoothstep, abs, fract, atan, sin, PI2 } from 'three/tsl';
+import { createEffect, depthDecal, decalMesh, placeDecal } from '../shared/effects/vfx.js';
 
 // Fästpunkter som en besvärjelse får använda för att gå att spela fristående (allt utgår från klicket)
 const FREE_ANCHORS = new Set(['target', 'targetGround', 'sky', 'spot', 'spotUp', 'spotPortal']);
@@ -47,7 +48,13 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
     row.append(el('small', null, g.title));
     for (const it of g.items) {
       const b = el('button', 'chip', it.label);
-      b.onclick = () => { picked = picked === it ? null : it; for (const [i2, b2] of btns) b2.classList.toggle('on', i2 === picked); hint.textContent = picked ? `Click in the grass to place ${it.label}` : 'Pick an effect, then click in the grass'; };
+      b.onclick = () => {
+        picked = picked === it ? null : it;
+        for (const [i2, b2] of btns) b2.classList.toggle('on', i2 === picked);
+        hint.textContent = picked ? `Click in the grass to place ${it.label}` : 'Pick an effect, then click in the grass';
+        renderer.domElement.style.cursor = picked ? 'crosshair' : '';
+        if (picked) cu.color.value.set(colorOf(picked)); else cursor.visible = false;
+      };
       btns.push([it, b]);
       row.append(b);
     }
@@ -117,6 +124,56 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
     inst.live = true;
     inst.ready = false; // startar nästa bild (en ny instans har då hunnit kompileras)
   }
+  // --- Pekarens AOE: en ring på marken i effektens färg och storlek där effekten kommer att hamna ---
+  const cu = { color: uniform(new THREE.Color('#a07ef6')), time: uniform(0) };
+  const cD = depthDecal({ slope: -1 }); // ingen lutningsmask: ringen är en visare och får ligga på strån och stenar
+  const cp = cD.uv.mul(2).sub(1), cr = length(cp);
+  const ca = atan(cp.y, cp.x).add(cu.time.mul(0.8));
+  const pulse = sin(cu.time.mul(4)).mul(0.04).add(1);
+  const rim = smoothstep(0.07, 0.0, abs(cr.sub(0.92).div(pulse)));
+  const dashes = smoothstep(0.55, 0.45, fract(ca.div(PI2).mul(28))).mul(smoothstep(0.035, 0.0, abs(cr.sub(0.8))));
+  const fill = smoothstep(0.95, 0.2, cr).mul(0.12);
+  const cMat = new THREE.MeshBasicNodeMaterial();
+  const cA = rim.add(dashes.mul(0.8)).add(fill);
+  cMat.colorNode = cu.color.mul(rim.mul(0.6).add(1.2));
+  cMat.opacityNode = cA.mul(cD.mask).clamp(0, 1);
+  const cursor = decalMesh(cMat, 9);
+  cursor.visible = false;
+  scene.add(cursor);
+  const colorOf = (it) => it.settings.color ?? it.settings.colorMid ?? '#a07ef6';
+  // Hur stor effekten blir på marken: markörens radie, besvärjelsens område (cirkel, brännmärke, ring) eller utsändaren
+  function radiusOf(it) {
+    const s = { ...defaults(it.kind), ...it.settings };
+    if (it.kind === 'marker') return s.radius;
+    if (it.kind === 'particles') return Math.max(0.5, (s.emit === 'point' ? 0.2 : s.radius) * 1.4 + 0.3);
+    const layers = info.spells[s.spell]?.layers ?? [];
+    const r = (t, k = 1) => Math.max(0, ...layers.filter((L) => L.type === t).map((L) => (L.set?.radius ?? 0) * k));
+    return Math.max(r('marker'), r('scorch'), r('portal'), r('ring', 0.5), 0.8) * (s.size ?? 1);
+  }
+
+  // Klick i gräset (inte en dragning med kameran, och inte på lådans knappar); ringen följer pekaren
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let down = null;
+  const groundAt = (e) => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    return ray.intersectObject(ground)[0]?.point ?? null;
+  };
+  view.addEventListener('pointerdown', (e) => { down = e.target === renderer.domElement ? [e.clientX, e.clientY] : null; });
+  view.addEventListener('pointerup', (e) => {
+    if (!picked || !down || e.button !== 0 || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+    down = null;
+    const p = groundAt(e);
+    if (p) spawn(picked, p);
+  });
+  view.addEventListener('pointermove', (e) => {
+    const p = picked && e.target === renderer.domElement ? groundAt(e) : null;
+    cursor.visible = !!p;
+    if (p) placeDecal(cursor, p, radiusOf(picked), { height: 3 });
+  });
+  view.addEventListener('pointerleave', () => { cursor.visible = false; });
+
   // Välj: förbered en instans redan nu, så att klicket inte väntar
   for (const [it, b] of btns) b.addEventListener('click', () => { if (picked === it && !pools.has(it.id)) { make(it); hint.textContent = `Brewing ${it.label}… then click in the grass`; } });
 
@@ -124,6 +181,7 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
     // dt i sekunder (följer flikens slow motion och paus)
     update(dt) {
       time += dt;
+      cu.time.value += dt;
       if (warmLeft > 0 && --warmLeft === 0 && picked) hint.textContent = `Click in the grass to place ${picked.label}`;
       const wanted = [];
       for (const inst of liveList()) {
