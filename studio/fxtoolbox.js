@@ -34,7 +34,7 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
   const box = el('div', 'fxbox glass');
   const head = el('header'), title = el('b', null, 'Cauldron'), hint = el('span', 'note', 'Pick an effect, then click in the grass');
   const clear = el('button', null, 'Clear');
-  clear.title = 'Remove every effect you have placed';
+  clear.title = 'Remove every effect you have placed (Esc unselects the effect)';
   head.append(title, hint, clear);
   const body = el('div', 'fxbody');
   box.append(head, body);
@@ -42,19 +42,23 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
   let picked = null;
   head.onclick = (e) => { if (e.target !== clear) box.classList.toggle('closed'); };
   const btns = [];
+  // Välj en effekt (eller ingen): knappen markeras, pekaren blir ett hårkors och ringen får effektens färg
+  function pick(it) {
+    picked = it;
+    for (const [i2, b2] of btns) b2.classList.toggle('on', i2 === picked);
+    hint.textContent = picked ? `Click in the grass to place ${it.label}` : 'Pick an effect, then click in the grass';
+    renderer.domElement.style.cursor = picked ? 'crosshair' : '';
+    if (picked) cu.color.value.set(colorOf(picked)); else cursor.visible = false;
+  }
+  // Esc avmarkerar
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && picked && view.clientWidth > 0) pick(null); });
   for (const g of groups) {
     if (!g.items.length) continue;
     const row = el('div', 'fxrow');
     row.append(el('small', null, g.title));
     for (const it of g.items) {
       const b = el('button', 'chip', it.label);
-      b.onclick = () => {
-        picked = picked === it ? null : it;
-        for (const [i2, b2] of btns) b2.classList.toggle('on', i2 === picked);
-        hint.textContent = picked ? `Click in the grass to place ${it.label}` : 'Pick an effect, then click in the grass';
-        renderer.domElement.style.cursor = picked ? 'crosshair' : '';
-        if (picked) cu.color.value.set(colorOf(picked)); else cursor.visible = false;
-      };
+      b.onclick = () => pick(picked === it ? null : it);
       btns.push([it, b]);
       row.append(b);
     }
@@ -92,17 +96,18 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
     for (const l of lights) { const parent = l.parent; parent.remove(l); l.userData.parent = parent; }
     // Uttonad den första bilden: shaders kompileras utan att något syns
     if (fx.prepare) fx.prepare(time, camera); else fx.setFade?.(0);
-    const inst = { it, fx, group, s, live: false, ready: false, born: 0, life: Infinity, lights };
+    const inst = { it, fx, group, s, live: false, ready: false, born: 0, life: Infinity, lights, warm: 2 }; // warm: bilder kvar att kompilera på
     if (!pools.has(it.id)) pools.set(it.id, []);
     pools.get(it.id).push(inst);
     warmLeft = 2;
     return inst;
   }
   const liveList = () => [...pools.values()].flat().filter((i) => i.live);
+  // Ur bild: gruppen döljs helt (ljusen ligger utanför scenen i ljusbudgeten, så antalet ljus ändras inte)
   function retire(inst) {
     inst.live = false;
-    // Besvärjelser släcker sina lager själva (ljusen ligger kvar släckta); övrigt döljs
-    if (inst.it.kind !== 'spell') { inst.fx.setFade?.(0); inst.group.visible = false; }
+    if (inst.it.kind !== 'spell') inst.fx.setFade?.(0);
+    inst.group.visible = false;
   }
   clear.onclick = () => { for (const i of liveList()) retire(i); };
   function start(inst) {
@@ -183,6 +188,9 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
       time += dt;
       cu.time.value += dt;
       if (warmLeft > 0 && --warmLeft === 0 && picked) hint.textContent = `Click in the grass to place ${picked.label}`;
+      // Förvärmda instanser döljs när deras shaders har kompilerats (annars lämnar delar som inte tonas, t.ex.
+      // meteorens rök längs banan, spår vid origo)
+      for (const inst of [...pools.values()].flat()) if (inst.warm > 0 && --inst.warm === 0 && !inst.live) inst.group.visible = false;
       const wanted = [];
       for (const inst of liveList()) {
         if (!inst.ready) { start(inst); continue; }
@@ -201,6 +209,7 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
       });
     },
     count: () => liveList().length,
+    shown: () => [...pools.values()].flat().filter((i) => i.group.visible).length, // för prov: grupper som syns
     spawn: (id, at) => { const it = groups.flatMap((g) => g.items).find((x) => x.id === id); if (it) spawn(it, at); }, // för prov
     items: () => groups.flatMap((g) => g.items.map((x) => x.id)),
   };
