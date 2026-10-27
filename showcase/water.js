@@ -202,9 +202,11 @@ const FRAG = `
     col += uSunColor * (smoothstep(0.35, 0.45, s) * 1.4 + s * 0.4);
     // Skum: kant mot land, band mot stranden, forsar i grunt strömmande vatten, vågband på havet
     float edge = 1.0 - smoothstep(0.0, 0.035, vD);
-    float rapids = uTurb * smoothstep(0.4, 1.4, length(vFlow)) * (1.0 - smoothstep(0.05, 0.45, vD)) * smoothstep(0.5, 0.8, vnoise(vW.xz * 3.0 - vFlow * uTime * 1.5));
-    float surf = uShore * smoothstep(0.82, 0.92, fract(vD * 0.6 + uTime * 0.12 + vnoise(vW.xz * 0.3) * 0.3)) * (1.0 - smoothstep(0.3, 2.5, vD));
-    float foam = max(edge * 0.55 * smoothstep(0.3, 0.7, vnoise(vW.xz * 6.0 + uTime * 0.4)), max(rapids, surf * 0.8));
+    // Mjukt, målat skum: stora rundade fläckar och breda band som bryts i tungor, inga spretiga trådar
+    float blot = smoothstep(0.3, 0.65, vnoise(vW.xz * 0.8 + uTime * 0.05));
+    float rapids = uTurb * smoothstep(0.4, 1.4, length(vFlow)) * (1.0 - smoothstep(0.05, 0.45, vD)) * smoothstep(0.42, 0.72, vnoise(vW.xz * 1.6 - vFlow * uTime * 1.5));
+    float surf = uShore * smoothstep(0.7, 0.9, fract(vD * 0.6 + uTime * 0.12 + vnoise(vW.xz * 0.3) * 0.3)) * blot * (1.0 - smoothstep(0.3, 2.5, vD));
+    float foam = max(edge * 0.55 * smoothstep(0.25, 0.75, vnoise(vW.xz * 2.5 + uTime * 0.3)), max(rapids, surf * 0.8));
     col = mix(col, uFoam, clamp(foam, 0.0, 1.0));
     float alpha = clamp(0.1 + murk * 0.85 + fres * 0.8 + foam + s * 0.5, 0.0, 1.0) * smoothstep(-0.02, 0.03, vD); // tunn yta, grumligt med djupet
     gl_FragColor = vec4(col, alpha);

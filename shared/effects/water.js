@@ -80,13 +80,14 @@ function textures() {
     sx[y * N + x] = dx; sy[y * N + x] = dy; m = Math.max(m, Math.abs(dx), Math.abs(dy));
   }
   for (let i = 0; i < N * N; i++) { slope[i * 4] = 127.5 + (127.5 * sx[i]) / m; slope[i * 4 + 1] = 127.5 + (127.5 * sy[i]) / m; slope[i * 4 + 2] = 128; slope[i * 4 + 3] = 255; }
-  // Skum (R: spetsigt nät av bubblor, G: fläckar) och kaustik (B: ljusa trådar där cellerna möts)
+  // Skum (R: mjuka runda bubblor, G: fläckar) och kaustik (B: ljusa trådar där cellerna möts). Bubblorna är avståndet
+  // till cellernas mitt (runda, målade fläckar) i två storlekar, inte cellkanterna (som gav ett spretigt nät)
   const misc = new Uint8Array(N * N * 4), lace = worley(10, 3), lace2 = worley(23, 5), blot = worley(5, 9), caus = worley(7, 11);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const u = x / N, v = y / N, i = (y * N + x) * 4;
-    const [a1, a2] = lace(u, v), [b1, b2] = lace2(u, v), [c1] = blot(u, v), [k1, k2] = caus(u, v);
-    const net = 1 - smoothN(0.04, 0.3, a2 - a1), fine = 1 - smoothN(0.03, 0.22, b2 - b1);
-    misc[i] = 255 * Math.min(1, net * 0.7 + fine * 0.45);
+    const [a1] = lace(u, v), [b1] = lace2(u, v), [c1] = blot(u, v), [k1, k2] = caus(u, v);
+    const big = 1 - smoothN(0.05, 0.55, a1), small = 1 - smoothN(0.03, 0.5, b1);
+    misc[i] = 255 * Math.min(1, big * 0.75 + small * 0.4);
     misc[i + 1] = 255 * (1 - smoothN(0.15, 0.75, c1));
     misc[i + 2] = 255 * Math.pow(1 - smoothN(0, 0.2, k2 - k1), 2.2);
     misc[i + 3] = 255;
@@ -251,15 +252,18 @@ export function createWater({ geometry, level = 0, sky }) {
 
     // Skum: strand och stenar, vassa krön, strömt grunt vatten
     const fuvB = Pw.xz.div(u.foamScale.mul(8)).add(vec2(t.mul(0.011), t.mul(-0.007)));
-    const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.18);
-    const fuvA = Pw.xz.div(u.foamScale.mul(3)).sub(f.mul(t.mul(0.33))).add(warp);
+    const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.1);
+    const fuvA = Pw.xz.div(u.foamScale.mul(6)).sub(f.mul(t.mul(0.33))).add(warp);
     const blot = texture(T.misc, fuvB).g;
-    const noise = texture(T.misc, fuvA).r.mul(blot.mul(0.6).add(0.55)).mul(0.7).add(blot.mul(0.38));
+    // De stora fläckarna formar skummets kant, bubblorna ger rundade hål och tungor i den
+    const noise = mix(blot, texture(T.misc, fuvA).r, 0.45);
     const shore = float(1).sub(smoothstep(0, u.foamWidth, dv)).mul(u.shoreFoam);
     const crest = smoothstep(0.5, 0.9, vPinch.div(max(u.steep, 0.01))).mul(u.crestFoam).mul(1.4);
     const rapids = saturate(fl.mul(0.8)).mul(float(1).sub(smoothstep(0.05, 0.45, dv))).mul(u.flowFoam).mul(1.3);
     const mask = saturate(max(max(shore, crest), max(rapids, vBore.mul(u.shoreFoam).mul(1.4))));
-    const foam = saturate(noise.sub(float(1).sub(mask)).mul(4)).mul(saturate(mask.mul(2)));
+    // Mjuk kant: skummet blir runda fläckar som tonar ut, inte vassa trådar
+    const edge0 = float(1).sub(mask);
+    const foam = smoothstep(edge0, edge0.add(0.22), noise).mul(saturate(mask.mul(2)));
     col = mix(col, vec3(0.92, 0.95, 0.96).mul(lightAmt.add(u.sunColor.mul(u.sunI).mul(max(u.sunDir.y, 0).mul(0.3)))), foam);
     // Mot stranden tonar ytan ut (inget hårt snitt där vattnet möter marken)
     return vec4(col, smoothstep(0, u.edge, dv));
