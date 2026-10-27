@@ -4,7 +4,7 @@
 // shared/effects/vfx.js spelar upp, samma modul som Tinkertown ska använda. Egen renderare (WebGPU, WebGL2 som reserv)
 // med glöd (bloom). Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
-import { pass, texture, positionWorld, mix, smoothstep, length, mx_noise_float, vec3 } from 'three/tsl';
+import { pass, texture, positionWorld, mix, smoothstep, length, mx_noise_float, mx_noise_vec3, vec2, vec3, uniform, screenUV, exp, normalize } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
@@ -20,6 +20,7 @@ const PLACES = {
   marker: [['figure', 'Figure'], ['dummy', 'Dummy'], ['ground', 'Ground']],
   particles: [['ground', 'Ground'], ['lantern', 'Lantern'], ['figure', 'Figure'], ['dummy', 'Dummy']],
   trail: [],
+  spell: [['ground', 'Spot (click)']],
 };
 
 export async function createCauldron({ api, el, view, side, drawer, footer }) {
@@ -48,8 +49,45 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
   const pipeline = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera);
   const sceneColor = scenePass.getTextureNode('output');
-  const glowPass = bloom(sceneColor, 0.8, 0.45, 0.85);
-  pipeline.outputNode = sceneColor.add(glowPass);
+  // Skärmeffekter (FX10 i AAA-referensen): chockvågor som trycker isär bilden i en ring som vidgas, och värmedallring
+  // med brus inom en cirkel. Ett fast antal platser som besvärjelsens post() fyller varje bild.
+  const shockU = [0, 1, 2, 3].map(() => uniform(new THREE.Vector4())); // x, y (skärmen), radie, styrka
+  const hazeU = [0, 1, 2].map(() => uniform(new THREE.Vector4()));
+  const aspectU = uniform(1), timeU = uniform(0);
+  const asp = vec2(aspectU, 1);
+  let off = vec2(0, 0);
+  for (const S of shockU) {
+    const d = screenUV.sub(S.xy).mul(asp), r = length(d);
+    off = off.add(normalize(d.add(1e-5)).mul(exp(r.sub(S.z).div(0.035).pow(2).negate())).mul(S.w));
+  }
+  for (const H of hazeU) {
+    const d = screenUV.sub(H.xy).mul(asp);
+    off = off.add(mx_noise_vec3(vec3(screenUV.mul(asp).mul(45), timeU.mul(4))).xy.mul(smoothstep(H.z, 0, length(d))).mul(H.w));
+  }
+  const bent = sceneColor.sample(screenUV.sub(off));
+  const glowPass = bloom(bent, 0.8, 0.45, 0.85);
+  pipeline.outputNode = bent.add(glowPass);
+  const P = new THREE.Vector3();
+  const toScreen = (pos) => { P.copy(pos).project(camera); return P.z < 1 ? [P.x * 0.5 + 0.5, 0.5 - P.y * 0.5] : null; };
+  // Kameraknycken: en liten förskjutning som slumpas varje bild och tas bort efter ritningen
+  const kick = new THREE.Vector3();
+  function applyPost() {
+    timeU.value = time;
+    aspectU.value = camera.aspect;
+    const post = fx?.post?.(time) ?? { shocks: [], hazes: [], shake: 0 };
+    shockU.forEach((U, i) => {
+      const sh = post.shocks[i], sc = sh && toScreen(sh.pos);
+      if (!sc) { U.value.set(0, 0, 0, 0); return; }
+      const e = 1 - (1 - Math.min(1, sh.k)) ** 3;
+      U.value.set(sc[0], sc[1], sh.radius * e, sh.strength * (1 - Math.min(1, sh.k)));
+    });
+    hazeU.forEach((U, i) => {
+      const h = post.hazes[i], sc = h && toScreen(h.pos);
+      U.value.set(sc?.[0] ?? 0, sc?.[1] ?? 0, h?.radius ?? 0, sc ? h.strength : 0);
+    });
+    kick.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0).multiplyScalar(post.shake).applyQuaternion(camera.quaternion);
+    camera.position.add(kick);
+  }
 
   // --- Ljuset: från natt till dag, skymning som förval så att effekterna syns ---
   const hemi = new THREE.HemisphereLight('#9fb4e0', '#3a3428', 1);
@@ -144,7 +182,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
   const state = {};
   for (const k of info.kinds) state[k.id] = { settings: { ...defaults(k.id), ...(Object.values(info.presets[k.id] ?? {})[0] ?? {}) }, preset: Object.keys(info.presets[k.id] ?? {})[0] ?? null, place: PLACES[k.id][0]?.[0] };
   for (const st of Object.values(state)) delete st.settings.label;
-  let kind = 'glow', fx = null, groundPoint = new THREE.Vector3(0, 0, 2.4), time = 0;
+  let kind = 'glow', fx = null, groundPoint = new THREE.Vector3(0, 0, 2.4), time = 0, lastCast = -1e9;
   let loop = true, nextPlay = 0, timeScale = 1, paused = false, windSpeed = 2, windDir = 30;
   const cur = () => state[kind];
   function anchor() {
@@ -155,10 +193,22 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     return groundPoint.clone();
   }
   const topOf = () => (cur().place === 'dummy' ? dumBox.max.y : cur().place === 'figure' ? figBox.max.y : groundPoint.y + 1.6);
+  // Besvärjelsernas fästpunkter: kastaren, handen, målet, marken under det, himlen ovanför och platsen man klickat på
+  function anchors() {
+    const caster = feet(figBox), tg = feet(dumBox);
+    return {
+      caster, casterChest: chest(figBox, 0.6), hand: chest(figBox, 0.72).add(new THREE.Vector3(0.35, 0, 0)),
+      target: chest(dumBox, 0.68), targetGround: tg, sky: tg.clone().add(new THREE.Vector3(-0.9, 14, -0.7)),
+      mid: caster.clone().lerp(tg, 0.5), spot: groundPoint.clone(), spotUp: groundPoint.clone().add(new THREE.Vector3(0, 1.1, 0)),
+      spotPortal: groundPoint.clone().add(new THREE.Vector3(0, 1.2, 0)),
+    };
+  }
+  const spellDefaults = () => ({ particles: defaults('particles'), marker: defaults('marker'), glow: defaults('glow') });
   function build() {
     if (fx) { scene.remove(fx.object); fx.dispose(); fx = null; }
     const s = cur().settings, at = anchor();
-    const ctx = { at, ground, top: topOf(), target: cur().place === 'dummy' ? dummy : figure, figure, from: chest(figBox, 0.72).add(new THREE.Vector3(0.35, 0, 0)), to: chest(dumBox, 0.68) };
+    const ctx = { at, ground, top: topOf(), target: cur().place === 'dummy' ? dummy : figure, figure, dummy, from: chest(figBox, 0.72).add(new THREE.Vector3(0.35, 0, 0)), to: chest(dumBox, 0.68),
+      spells: info.spells, defaults: spellDefaults(), anchors: anchors(), groundY: heightAt };
     try {
       fx = createEffect(kind, s, ctx);
     } catch (e) { setNote(`The effect could not be built: ${e.message}`); console.error(e); return; }
@@ -166,6 +216,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     fx.loop = loop;
     scene.add(fx.object);
     nextPlay = time;
+    if (kind === 'spell') { fx.play(time); lastCast = time; nextPlay = time + fx.duration + s.pause; }
   }
   function changed() { fx?.set(cur().settings); if (fx) fx.loop = loop; }
 
@@ -194,7 +245,8 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
   for (const k of info.kinds) {
     const els = [];
     const get = (key) => state[k.id].settings[key], set = (key, v) => { state[k.id].settings[key] = v; };
-    const onChange = () => { markPreset(null); changed(); };
+    // En besvärjelse byggs om när den byts, när ett lager slås av eller på och när storleken ändras
+    const onChange = (q) => { markPreset(null); if (k.id === 'spell' && (q?.key === 'spell' || q?.type === 'bool' || q?.key === 'size')) build(); else changed(); };
     for (const g of k.groups) {
       const body = cards.card(g.label, '#8b5cf6', { closed: false });
       for (const q of k.params.filter((x) => x.group === g.id)) body.append(cards.rowFor(q)(q, get, set, onChange));
@@ -297,6 +349,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     marker: () => `${KIND.marker.params.find((q) => q.key === 'shape').options.find((o) => o.id === s.shape)?.label} · ${s.radius} m`,
     particles: () => `${s.mode === 'burst' ? 'burst' : 'continuous'} · ${s.count} · ${s.sprite}`,
     trail: () => (s.mode === 'sword' ? 'sword swing' : `projectile · ${s.speed} m/s`),
+    spell: () => `${info.spells[s.spell]?.layers.length ?? 0} layers${info.spells[s.spell]?.ambient ? ' · lasting' : ''}`,
   })[kind]();
   function tile(id, label, settings) {
     const f = el('button', `wprof${cur().preset === id ? ' on' : ''}`);
@@ -320,9 +373,9 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     const modeChanged = kind === 'trail' && full.mode !== cur().settings.mode;
     cur().settings = full;
     markPreset(id);
-    if (modeChanged) build(); else changed();
+    if (modeChanged || kind === 'spell') build(); else changed();
     showCards();
-    nextPlay = time;
+    if (kind !== 'spell') nextPlay = time;
   }
 
   // --- Footern ---
@@ -352,7 +405,7 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
       const s = cur().settings;
       block(fStats, 'Arena', `${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'}`);
-      const n = kind === 'particles' ? `${s.count} particles` : kind === 'glow' ? `${s.motes} motes` : kind === 'trail' ? (s.mode === 'sword' ? 'sword' : `${s.sparks} + ${s.hitSparks} sparks`) : s.shape;
+      const n = kind === 'particles' ? `${s.count} particles` : kind === 'glow' ? `${s.motes} motes` : kind === 'trail' ? (s.mode === 'sword' ? 'sword' : `${s.sparks} + ${s.hitSparks} sparks`) : kind === 'spell' ? info.spells[s.spell]?.label : s.shape;
       block(fFx, KIND[kind].label, `${cur().preset?.replace(/^saved:/, '') ?? 'custom'} · ${n}`);
     }
   }
@@ -362,9 +415,16 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     // Smällar upprepas i loop: en ny när den förra har dött ut
     const s = cur().settings;
     if (fx && loop && kind === 'particles' && s.mode === 'burst' && time >= nextPlay) { fx.play(time); nextPlay = time + s.lifetime + (s.burstSpread ?? 0) + 0.4; }
+    // Besvärjelser kastas om efter sin längd och pausen (de som pågår hela tiden, som lägerelden, en gång)
+    if (fx && kind === 'spell' && !fx.ambient) {
+      if (nextPlay <= lastCast) nextPlay = lastCast + fx.duration + s.pause;
+      if (loop && time >= nextPlay) { fx.play(time); lastCast = time; nextPlay = time + fx.duration + s.pause; }
+    }
     fx?.update(time, { camera, wind: windVec });
     controls.update();
+    applyPost();
     pipeline.render();
+    camera.position.sub(kick);
   }
 
   function select(k) {
@@ -388,9 +448,18 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     get kind() { return kind; },
     select, scene, camera, controls, renderer, get fx() { return fx; }, state,
+    // För prov: spela effekten från början och frys den efter t sekunder (Loop stängs av); resume() släpper den
+    seek(t, step = 1 / 30) {
+      loop = loopBox.checked = false; if (fx) fx.loop = false;
+      paused = false; fx?.play?.(time); lastCast = time;
+      for (let x = 0; x < t; x += step) tick(step);
+      paused = pauseBox.checked = true;
+    },
+    resume() { paused = pauseBox.checked = false; loop = loopBox.checked = true; if (fx) fx.loop = true; },
     // För prov utan ritslinga (dold flik): stega tiden och rita, och spara bilden som build/shots/studio_<namn>.png
     async shot(name, seconds = 1, step = 1 / 30) {
       for (let t = 0; t < seconds; t += step) tick(step);
+      tick(0); // rita en gång till och läs bilden i samma uppgift
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
       return (await fetch(`/api/shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).json();
     },

@@ -26,6 +26,21 @@ def write(data):
         out.append('      ]')
         out.append('    }' + (',' if i < len(data['kinds']) - 1 else ''))
     out.append('  ],')
+    if 'spells' in data:
+        # Besvärjelsernas tidslinjer: ett lager per rad
+        out.append('  "spells": {')
+        names = list(data['spells'])
+        for i, n in enumerate(names):
+            sp = data['spells'][n]
+            head = {k: v for k, v in sp.items() if k != 'layers'}
+            out.append(f'    {one(n)}: {{')
+            for k, v in head.items():
+                out.append(f'      {one(k)}: {one(v)},')
+            out.append('      "layers": [')
+            out.append(',\n'.join(f'        {one(L)}' for L in sp['layers']))
+            out.append('      ]')
+            out.append('    }' + (',' if i < len(names) - 1 else ''))
+        out.append('  },')
     out.append('  "presets": {')
     kinds = list(data['presets'])
     for i, kind in enumerate(kinds):

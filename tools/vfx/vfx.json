@@ -47,6 +47,7 @@
         {"key": "width", "group": "shape", "label": "Ring width", "min": 0.01, "max": 0.6, "step": 0.005, "default": 0.08, "help": "The ring's width (m)"},
         {"key": "dashes", "group": "shape", "label": "Dashes", "min": 0, "max": 48, "step": 1, "default": 0, "help": "Breaks the ring into dashes; 0 = solid"},
         {"key": "dashFill", "group": "shape", "label": "Dash length", "min": 0.05, "max": 1, "step": 0.01, "default": 0.6, "help": "How much of each dash is drawn"},
+        {"key": "runes", "group": "shape", "label": "Runes", "min": 0, "max": 1, "step": 0.01, "default": 0, "help": "A band of runes inside the ring, like a casting circle"},
         {"key": "signSize", "group": "shape", "label": "Sign size", "min": 0.2, "max": 1.5, "step": 0.05, "default": 0.6, "help": "The exclamation mark's height (m)"},
         {"key": "color", "group": "look", "label": "Colour", "type": "color", "default": "#5cff8a", "help": "The ring and the lines"},
         {"key": "color2", "group": "look", "label": "Inner colour", "type": "color", "default": "#1f8a45", "help": "The fill inside the ring, and the sign's outline"},
@@ -60,6 +61,7 @@
         {"key": "ripples", "group": "motion", "label": "Ripples", "min": 0, "max": 4, "step": 1, "default": 0, "help": "Rings that run across the marker; 0 = none"},
         {"key": "rippleSpeed", "group": "motion", "label": "Ripple speed", "min": -2, "max": 2, "step": 0.05, "default": 0.6, "help": "Positive: outward. Negative: inward, like \"move here\""},
         {"key": "charge", "group": "motion", "label": "Cast time", "min": 0, "max": 6, "step": 0.1, "default": 0, "help": "Area: fills from the centre over this many seconds and starts again; 0 = off"},
+        {"key": "reveal", "group": "motion", "label": "Draw-in time", "min": 0, "max": 3, "step": 0.05, "default": 0, "help": "The marker draws itself around the circle when it appears (s); press Play to see it again; 0 = at once"},
         {"key": "bob", "group": "motion", "label": "Sign bob", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "help": "How much the exclamation mark bobs (m)"}
       ]
     },
@@ -86,8 +88,10 @@
         {"key": "drag", "group": "motion", "label": "Drag", "min": 0, "max": 6, "step": 0.05, "default": 0.5, "help": "Air resistance: the particles slow down"},
         {"key": "swirl", "group": "motion", "label": "Swirl", "min": -6, "max": 6, "step": 0.05, "default": 0, "help": "Turns around the emitter (radians per second)"},
         {"key": "turbulence", "group": "motion", "label": "Turbulence", "min": 0, "max": 3, "step": 0.01, "default": 0.2, "help": "Wobble along the way (m)"},
+        {"key": "flow", "group": "motion", "label": "Flow", "min": 0, "max": 2, "step": 0.01, "default": 0, "help": "Drift through a smooth noise field, so swarms and smoke billow instead of shaking (m/s)"},
+        {"key": "flowScale", "group": "motion", "label": "Flow size", "min": 0.1, "max": 4, "step": 0.05, "default": 1, "help": "Small: wide, slow swirls. Large: tight curls"},
         {"key": "wind", "group": "motion", "label": "Wind", "min": 0, "max": 1.5, "step": 0.01, "default": 0.3, "help": "How much the wind carries them (the Wind slider under View)"},
-        {"key": "sprite", "group": "look", "label": "Sprite", "type": "choice", "options": [{"id": "soft", "label": "Soft dot"}, {"id": "spark", "label": "Spark"}, {"id": "smoke", "label": "Smoke puff"}, {"id": "star", "label": "Star"}, {"id": "leaf", "label": "Leaf"}, {"id": "ring", "label": "Ring"}], "default": "soft", "help": "The particle's shape"},
+        {"key": "sprite", "group": "look", "label": "Sprite", "type": "choice", "options": [{"id": "soft", "label": "Soft dot"}, {"id": "spark", "label": "Spark"}, {"id": "smoke", "label": "Smoke puff"}, {"id": "star", "label": "Star"}, {"id": "leaf", "label": "Leaf"}, {"id": "ring", "label": "Ring"}, {"id": "flame", "label": "Flame"}], "default": "soft", "help": "The particle's shape"},
         {"key": "additive", "group": "look", "label": "Additive", "type": "bool", "default": true, "help": "Light that adds up (fire, magic, sparks) or paint that covers (smoke, dust, leaves)", "sub": "Glows instead of covering"},
         {"key": "sizeStart", "group": "look", "label": "Size at birth", "min": 0.01, "max": 3, "step": 0.01, "default": 0.15, "help": "Size when born (m)"},
         {"key": "sizeEnd", "group": "look", "label": "Size at death", "min": 0, "max": 3, "step": 0.01, "default": 0.05, "help": "Size when it dies (m)"},
@@ -98,6 +102,7 @@
         {"key": "colorMid", "group": "look", "label": "Colour mid-life", "type": "color", "default": "#ff9a2e", "help": "Colour halfway"},
         {"key": "colorEnd", "group": "look", "label": "Colour at death", "type": "color", "default": "#b8321c", "help": "Colour when it dies"},
         {"key": "alpha", "group": "look", "label": "Opacity", "min": 0, "max": 1, "step": 0.01, "default": 1, "help": "How opaque"},
+        {"key": "soft", "group": "look", "label": "Soft edges", "min": 0, "max": 2, "step": 0.05, "default": 0, "help": "Fades the particles where they meet the ground or a figure (m), so smoke and fire do not cut off sharply; 0 = off"},
         {"key": "fadeIn", "group": "look", "label": "Fade in", "min": 0, "max": 1, "step": 0.01, "default": 0.1, "help": "Share of the life spent fading in"},
         {"key": "fadeOut", "group": "look", "label": "Fade out", "min": 0, "max": 1, "step": 0.01, "default": 0.4, "help": "Share of the life spent fading out"},
         {"key": "glow", "group": "look", "label": "Glow", "min": 0, "max": 8, "step": 0.05, "default": 1.5, "help": "Brightness; above 1 it blooms"},
@@ -119,6 +124,8 @@
         {"key": "cover", "group": "trail", "label": "Blade cover", "min": 0.1, "max": 1, "step": 0.01, "default": 0.75, "help": "Sword: how much of the blade leaves a trail, from the tip"},
         {"key": "width", "group": "trail", "label": "Tail width", "min": 0.02, "max": 1.5, "step": 0.01, "default": 0.25, "help": "Projectile: the tail's width (m)"},
         {"key": "softness", "group": "trail", "label": "Edge softness", "min": 0, "max": 1, "step": 0.01, "default": 0.5, "help": "How softly the trail fades towards its edges"},
+        {"key": "taper", "group": "trail", "label": "Taper", "min": 0, "max": 1, "step": 0.01, "default": 0.7, "help": "The trail narrows as it ages: towards the tip for a sword, towards the middle for a tail"},
+        {"key": "streaks", "group": "trail", "label": "Streaks", "min": 0, "max": 1, "step": 0.01, "default": 0.5, "help": "Streaks along the motion, so the trail looks like torn light instead of a flat sheet"},
         {"key": "colorHead", "group": "trail", "label": "Head colour", "type": "color", "default": "#e8f4ff", "help": "The fresh end of the trail"},
         {"key": "colorTail", "group": "trail", "label": "Tail colour", "type": "color", "default": "#4a7dff", "help": "The old end of the trail"},
         {"key": "glow", "group": "trail", "label": "Glow", "min": 0, "max": 6, "step": 0.05, "default": 1.5, "help": "Brightness; above 1 it blooms. Near 0 it is paint instead of light"},
@@ -136,8 +143,176 @@
         {"key": "hitRing", "group": "hit", "label": "Shock ring", "min": 0, "max": 3, "step": 0.05, "default": 0.9, "help": "The expanding ring's radius (m); 0 = none"},
         {"key": "flash", "group": "hit", "label": "Flash", "min": 0, "max": 60, "step": 0.5, "default": 14, "help": "A short flash of light"}
       ]
+    },
+    {
+      "id": "spell", "label": "Spells", "help": "Spells as timed compositions of layers: wind-up, flash, core, sparks, smoke, embers, rings, distortion and a camera kick",
+      "groups": [
+        {"id": "spell", "label": "Spell"},
+        {"id": "layers", "label": "Layers"},
+        {"id": "screen", "label": "Screen"}
+      ],
+      "params": [
+        {"key": "spell", "group": "spell", "label": "Spell", "type": "choice", "options": [{"id": "fireball", "label": "Fireball"}, {"id": "chain_lightning", "label": "Chain lightning"}, {"id": "thunderbolt", "label": "Thunderbolt"}, {"id": "frost_spikes", "label": "Frost spikes"}, {"id": "healing", "label": "Healing"}, {"id": "meteor", "label": "Meteor"}, {"id": "campfire", "label": "Campfire"}, {"id": "portal", "label": "Portal"}], "default": "fireball", "help": "Which composition of layers to play"},
+        {"key": "color", "group": "spell", "label": "Main colour", "type": "color", "default": "#ff6a1a", "help": "The spell's main colour: flames, rings, lightning"},
+        {"key": "color2", "group": "spell", "label": "Second colour", "type": "color", "default": "#ff3a0a", "help": "Fill, spikes and the portal's rim"},
+        {"key": "color3", "group": "spell", "label": "Hot core", "type": "color", "default": "#fff2a0", "help": "The hottest parts: cores, sparks and highlights"},
+        {"key": "size", "group": "spell", "label": "Size", "min": 0.5, "max": 2, "step": 0.05, "default": 1, "help": "Scales every layer", "rebuild": true},
+        {"key": "intensity", "group": "spell", "label": "Intensity", "min": 0.2, "max": 3, "step": 0.05, "default": 1, "help": "Brightness of every layer"},
+        {"key": "pause", "group": "spell", "label": "Pause", "min": 0, "max": 4, "step": 0.1, "default": 1.2, "help": "Seconds between casts when looping"},
+        {"key": "distortion", "group": "screen", "label": "Distortion", "min": 0, "max": 3, "step": 0.05, "default": 1, "help": "How hard the shock wave and heat haze bend the image"},
+        {"key": "shake", "group": "screen", "label": "Camera kick", "min": 0, "max": 3, "step": 0.05, "default": 1, "help": "How hard the camera kicks at impact"},
+        {"key": "layer_cast", "group": "layers", "label": "Cast", "type": "bool", "default": true, "help": "The wind-up: casting circle, gathering sparks and a glow in the hand", "sub": ""},
+        {"key": "layer_travel", "group": "layers", "label": "Travel", "type": "bool", "default": true, "help": "The projectile on its way", "sub": ""},
+        {"key": "layer_flash", "group": "layers", "label": "Flash", "type": "bool", "default": true, "help": "The short white-hot flash", "sub": ""},
+        {"key": "layer_core", "group": "layers", "label": "Core", "type": "bool", "default": true, "help": "The main shape: flames, lightning, spikes, portal or aura", "sub": ""},
+        {"key": "layer_sparks", "group": "layers", "label": "Sparks", "type": "bool", "default": true, "help": "Sparks and shards", "sub": ""},
+        {"key": "layer_smoke", "group": "layers", "label": "Smoke", "type": "bool", "default": true, "help": "Smoke, dust and mist", "sub": ""},
+        {"key": "layer_embers", "group": "layers", "label": "Embers", "type": "bool", "default": true, "help": "Lingering embers and glints", "sub": ""},
+        {"key": "layer_ring", "group": "layers", "label": "Rings", "type": "bool", "default": true, "help": "Shock rings on the ground", "sub": ""},
+        {"key": "layer_decal", "group": "layers", "label": "Scorch", "type": "bool", "default": true, "help": "A burn mark left on the ground", "sub": ""},
+        {"key": "layer_distortion", "group": "layers", "label": "Distortion", "type": "bool", "default": true, "help": "The shock wave and heat haze in the image", "sub": ""},
+        {"key": "layer_shake", "group": "layers", "label": "Camera kick", "type": "bool", "default": true, "help": "A short kick of the camera at impact", "sub": ""},
+        {"key": "layer_light", "group": "layers", "label": "Lights", "type": "bool", "default": true, "help": "Lights that flare up and die out", "sub": ""}
+      ]
     }
   ],
+  "spells": {
+    "fireball": {
+      "label": "Fireball",
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "caster", "at": 0, "dur": 0.95, "fi": 0.05, "fo": 0.25, "set": {"shape": "area", "radius": 0.85, "width": 0.04, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.3, "spin": 1.2, "fill": 0.12, "glow": 2.2, "pulse": 0.1}},
+        {"role": "cast", "type": "particles", "anchor": "hand", "at": 0, "dur": 0.6, "set": {"mode": "loop", "count": 120, "lifetime": 0.45, "lifeVar": 0.3, "emit": "sphere", "radius": 0.6, "speed": 0, "radial": -1.6, "gravity": 0, "drag": 0.2, "sprite": "spark", "additive": true, "stretch": 1.2, "sizeStart": 0.05, "sizeEnd": 0.02, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2.5, "fadeIn": 0.3, "fadeOut": 0.2}},
+        {"role": "cast", "type": "flames", "anchor": "hand", "at": 0.2, "dur": 0.55, "fi": 0.2, "fo": 0.05, "set": {"count": 5, "radius": 0.02, "radiusEnd": 0.06, "height": 0.15, "heightEnd": 0.45, "width": 0.25, "inner": "$c3", "outer": "$c1", "intensity": 2, "speed": 2}},
+        {"role": "light", "type": "light", "anchor": "hand", "at": 0.1, "dur": 0.7, "set": {"color": "$c1", "intensity": 6, "flicker": 0.5, "lift": 0}},
+        {"role": "travel", "type": "bolt", "at": 0.75, "dur": 0.5, "from": "hand", "to": "target", "set": {"speed": 11, "arc": 0.7, "size": 0.3, "color": "$c1", "inner": "$c3", "intensity": 2.5, "sparks": 160, "smoke": 70, "light": 8, "trail": 0.35}},
+        {"role": "flash", "type": "flash", "anchor": "target", "at": 0, "dur": 0.18, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "#ffffff", "size": 2.6, "intensity": 5, "light": 45}},
+        {"role": "core", "type": "flames", "anchor": "targetGround", "at": 0, "dur": 0.9, "fi": 0.02, "fo": 0.45, "after": "impact", "set": {"count": 16, "radius": 0.15, "radiusEnd": 0.9, "height": 2.2, "heightEnd": 0.8, "width": 0.9, "inner": "$c3", "outer": "$c1", "intensity": 2.2, "speed": 1.6}},
+        {"role": "sparks", "type": "particles", "anchor": "target", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 260, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.03, "emit": "sphere", "radius": 0.1, "speed": 7, "speedVar": 0.6, "spread": 110, "gravity": 7, "drag": 1.3, "sprite": "spark", "additive": true, "stretch": 1.6, "sizeStart": 0.07, "sizeEnd": 0.015, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "fadeOut": 0.5}},
+        {"role": "smoke", "type": "particles", "anchor": "targetGround", "at": 0.12, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 50, "burstSpread": 0.5, "lifetime": 2.8, "lifeVar": 0.35, "emit": "disc", "radius": 0.6, "speed": 1.2, "speedVar": 0.5, "spread": 30, "radial": 0.4, "gravity": -0.6, "drag": 1.1, "flow": 0.35, "flowScale": 0.8, "wind": 0.6, "sprite": "smoke", "additive": false, "sizeStart": 0.6, "sizeEnd": 2.0, "sizeVar": 0.3, "spin": 0.5, "colorStart": "#2a2420", "colorMid": "#3c3632", "colorEnd": "#57524e", "alpha": 0.6, "fadeIn": 0.12, "fadeOut": 0.6, "soft": 0.6}},
+        {"role": "embers", "type": "particles", "anchor": "targetGround", "at": 0.2, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 70, "burstSpread": 1.2, "lifetime": 2.2, "lifeVar": 0.5, "emit": "disc", "radius": 0.7, "speed": 0.8, "speedVar": 0.6, "spread": 25, "gravity": -0.4, "drag": 0.8, "flow": 0.4, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.05, "sizeEnd": 0.01, "colorStart": "#fff0b0", "colorMid": "$c1", "colorEnd": "#7a1406", "glow": 3, "flicker": 0.5, "fadeOut": 0.5}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0.02, "dur": 0.55, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c1", "radius": 2.6, "intensity": 2.5, "thickness": 0.03}},
+        {"role": "distortion", "type": "shock", "anchor": "target", "at": 0, "dur": 0.45, "fi": 0, "fo": 0.05, "after": "impact", "set": {"radius": 0.35, "strength": 0.0123}},
+        {"role": "distortion", "type": "haze", "anchor": "target", "at": 0.1, "dur": 1.2, "fi": 0.1, "fo": 0.6, "after": "impact", "set": {"radius": 0.14, "strength": 0.006}},
+        {"role": "decal", "type": "scorch", "anchor": "targetGround", "at": 0.03, "dur": 4.5, "fi": 0.05, "fo": 1.5, "after": "impact", "set": {"radius": 1.1, "ember": "$c1"}},
+        {"role": "shake", "type": "shake", "at": 0, "dur": 0.35, "after": "impact", "set": {"amount": 0.09}},
+        {"role": "light", "type": "light", "anchor": "target", "at": 0, "dur": 1.2, "after": "impact", "set": {"color": "$c1", "intensity": 30, "lift": 0.2}}
+      ]
+    },
+    "chain_lightning": {
+      "label": "Chain lightning",
+      "impact": 0.45,
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "caster", "at": 0, "dur": 0.7, "fi": 0.05, "fo": 0.25, "set": {"shape": "area", "radius": 0.7, "width": 0.04, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.3, "spin": 1.2, "fill": 0.12, "glow": 2.2, "pulse": 0.1}},
+        {"role": "cast", "type": "particles", "anchor": "hand", "at": 0, "dur": 0.5, "set": {"mode": "loop", "count": 80, "lifetime": 0.25, "lifeVar": 0.5, "emit": "sphere", "radius": 0.15, "speed": 1.6, "speedVar": 0.6, "spread": 180, "gravity": 0, "drag": 2, "sprite": "spark", "additive": true, "stretch": 2, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c1", "glow": 3, "flicker": 0.6}},
+        {"role": "flash", "type": "flash", "anchor": "hand", "at": 0.45, "dur": 0.12, "fi": 0, "fo": 0.04, "set": {"color": "$c3", "size": 1, "intensity": 4, "light": 15}},
+        {"role": "core", "type": "lightning", "at": 0.45, "dur": 0.45, "fi": 0, "fo": 0.1, "from": "hand", "to": "target", "set": {"color": "$c1", "core": "$c3", "width": 0.07, "jitter": 0.55, "branches": 4, "regen": 0.05, "intensity": 3}},
+        {"role": "core", "type": "lightning", "at": 0.5, "dur": 0.35, "fi": 0, "fo": 0.1, "from": "hand", "to": "target", "set": {"color": "$c1", "core": "$c3", "width": 0.045, "jitter": 0.7, "branches": 2, "regen": 0.07, "intensity": 2.5}},
+        {"role": "flash", "type": "flash", "anchor": "target", "at": 0, "dur": 0.15, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "#ffffff", "size": 2, "intensity": 5, "light": 35}},
+        {"role": "sparks", "type": "particles", "anchor": "target", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 180, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.03, "emit": "sphere", "radius": 0.1, "speed": 6, "speedVar": 0.6, "spread": 110, "gravity": 7, "drag": 1.3, "sprite": "spark", "additive": true, "stretch": 1.6, "sizeStart": 0.07, "sizeEnd": 0.015, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "fadeOut": 0.5}},
+        {"role": "embers", "type": "particles", "anchor": "target", "at": 0.1, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 30, "burstSpread": 0.6, "lifetime": 1.6, "lifeVar": 0.4, "emit": "sphere", "radius": 0.3, "speed": 0.3, "spread": 40, "gravity": -0.5, "drag": 1, "flow": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.08, "sizeEnd": 0.02, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c2", "glow": 2, "flicker": 0.4, "fadeOut": 0.6}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0, "dur": 0.4, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c1", "radius": 1.6, "intensity": 2.5, "thickness": 0.025}},
+        {"role": "distortion", "type": "shock", "anchor": "target", "at": 0, "dur": 0.35, "fi": 0, "fo": 0.05, "after": "impact", "set": {"radius": 0.25, "strength": 0.0087}},
+        {"role": "decal", "type": "scorch", "anchor": "targetGround", "at": 0, "dur": 3, "fi": 0.05, "fo": 1.2, "after": "impact", "set": {"radius": 0.6, "ember": "$c1"}},
+        {"role": "shake", "type": "shake", "at": 0, "dur": 0.3, "after": "impact", "set": {"amount": 0.05}},
+        {"role": "light", "type": "light", "anchor": "target", "at": 0, "dur": 0.5, "after": "impact", "set": {"color": "$c1", "intensity": 25, "flicker": 0.8, "lift": 0.2}}
+      ]
+    },
+    "thunderbolt": {
+      "label": "Thunderbolt",
+      "impact": 0.9,
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "targetGround", "at": 0, "dur": 0.95, "fi": 0.05, "fo": 0.1, "set": {"shape": "area", "radius": 1.6, "width": 0.05, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.3, "spin": 0.8, "fill": 0.15, "charge": 0.9, "glow": 2}},
+        {"role": "cast", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "set": {"mode": "burst", "count": 60, "burstSpread": 0.8, "lifetime": 0.8, "lifeVar": 0.4, "emit": "disc", "radius": 1.4, "speed": 1.5, "speedVar": 0.5, "spread": 10, "gravity": 0, "drag": 1, "sprite": "spark", "additive": true, "stretch": 2, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c1", "glow": 3, "flicker": 0.6}},
+        {"role": "core", "type": "lightning", "at": 0.9, "dur": 0.3, "fi": 0, "fo": 0.08, "from": "sky", "to": "targetGround", "set": {"color": "$c1", "core": "$c3", "width": 0.16, "jitter": 0.45, "branches": 6, "regen": 0.05, "intensity": 4}},
+        {"role": "core", "type": "lightning", "at": 0.98, "dur": 0.2, "fi": 0, "fo": 0.06, "from": "sky", "to": "targetGround", "set": {"color": "$c1", "core": "$c3", "width": 0.1, "jitter": 0.6, "branches": 3, "regen": 0.06, "intensity": 3}},
+        {"role": "flash", "type": "flash", "anchor": "targetGround", "at": 0, "dur": 0.2, "fi": 0, "fo": 0.06, "after": "impact", "set": {"color": "#ffffff", "size": 4, "intensity": 6, "light": 80}},
+        {"role": "sparks", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 300, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.03, "emit": "sphere", "radius": 0.1, "speed": 8, "speedVar": 0.6, "spread": 80, "gravity": 7, "drag": 1.3, "sprite": "spark", "additive": true, "stretch": 1.6, "sizeStart": 0.07, "sizeEnd": 0.015, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "fadeOut": 0.5}},
+        {"role": "smoke", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 40, "burstSpread": 0.1, "lifetime": 1.8, "lifeVar": 0.4, "emit": "disc", "radius": 0.3, "speed": 0.5, "spread": 80, "radial": 3, "gravity": 0.2, "drag": 2.5, "flow": 0.2, "sprite": "smoke", "additive": false, "sizeStart": 0.5, "sizeEnd": 1.8, "sizeVar": 0.3, "spin": 0.5, "colorStart": "#6a6258", "colorMid": "#7a7268", "colorEnd": "#8a8278", "alpha": 0.55, "fadeIn": 0.05, "fadeOut": 0.6, "soft": 0.5}},
+        {"role": "embers", "type": "particles", "anchor": "targetGround", "at": 0.05, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 40, "burstSpread": 1, "lifetime": 1.2, "lifeVar": 0.5, "emit": "disc", "radius": 1, "speed": 0.4, "spread": 30, "gravity": 0, "drag": 1, "flow": 0.6, "sprite": "star", "additive": true, "sizeStart": 0.08, "sizeEnd": 0.02, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2.5, "flicker": 0.6}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0, "dur": 0.6, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c1", "radius": 3.2, "intensity": 3, "thickness": 0.03}},
+        {"role": "distortion", "type": "shock", "anchor": "targetGround", "at": 0, "dur": 0.5, "fi": 0, "fo": 0.05, "after": "impact", "set": {"radius": 0.45, "strength": 0.0175}},
+        {"role": "decal", "type": "scorch", "anchor": "targetGround", "at": 0, "dur": 4, "fi": 0.05, "fo": 1.5, "after": "impact", "set": {"radius": 1.3, "ember": "$c1"}},
+        {"role": "shake", "type": "shake", "at": 0, "dur": 0.5, "after": "impact", "set": {"amount": 0.16}},
+        {"role": "light", "type": "light", "anchor": "targetGround", "at": 0, "dur": 0.6, "after": "impact", "set": {"color": "$c1", "intensity": 40, "flicker": 0.7, "lift": 1}}
+      ]
+    },
+    "frost_spikes": {
+      "label": "Frost spikes",
+      "impact": 0.75,
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "caster", "at": 0, "dur": 0.8, "fi": 0.05, "fo": 0.25, "set": {"shape": "area", "radius": 0.9, "width": 0.04, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.3, "spin": 1.2, "fill": 0.12, "glow": 2.2, "pulse": 0.1}},
+        {"role": "cast", "type": "particles", "anchor": "hand", "at": 0, "dur": 0.4, "set": {"mode": "loop", "count": 120, "lifetime": 0.45, "lifeVar": 0.3, "emit": "sphere", "radius": 0.6, "speed": 0, "radial": -1.6, "gravity": 0, "drag": 0.2, "sprite": "star", "additive": true, "stretch": 1.2, "sizeStart": 0.05, "sizeEnd": 0.02, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2.5, "fadeIn": 0.3, "fadeOut": 0.2}},
+        {"role": "core", "type": "spikes", "at": 0.35, "dur": 2.6, "fi": 0, "fo": 0.05, "from": "caster", "to": "targetGround", "set": {"count": 16, "height": 1.5, "width": 0.22, "color": "$c2", "rim": "$c1", "rimStrength": 1.6, "roughness": 0.15, "wave": 7, "sink": 0.4, "spread": 0.7}},
+        {"role": "smoke", "type": "particles", "anchor": "mid", "at": 0.35, "dur": 0.05, "set": {"mode": "burst", "count": 40, "burstSpread": 1.2, "lifetime": 3, "lifeVar": 0.4, "emit": "disc", "radius": 1.6, "speed": 0.15, "spread": 60, "radial": 0.3, "gravity": 0.05, "drag": 1.5, "flow": 0.25, "flowScale": 0.6, "wind": 0.4, "sprite": "smoke", "additive": false, "sizeStart": 0.6, "sizeEnd": 1.8, "sizeVar": 0.3, "spin": 0.3, "colorStart": "#dff4ff", "colorMid": "#c4e4f4", "colorEnd": "#b0d4e8", "alpha": 0.35, "fadeIn": 0.2, "fadeOut": 0.6, "soft": 0.6}},
+        {"role": "sparks", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 120, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.03, "emit": "sphere", "radius": 0.1, "speed": 4, "speedVar": 0.6, "spread": 70, "gravity": 6, "drag": 1.3, "sprite": "star", "additive": true, "stretch": 0, "sizeStart": 0.09, "sizeEnd": 0.015, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "fadeOut": 0.5}},
+        {"role": "embers", "type": "particles", "anchor": "mid", "at": 0.5, "dur": 0.05, "set": {"mode": "burst", "count": 40, "burstSpread": 2, "lifetime": 1, "lifeVar": 0.5, "emit": "disc", "radius": 1.4, "speed": 0.3, "spread": 30, "gravity": 0, "drag": 1, "flow": 0.2, "sprite": "star", "additive": true, "sizeStart": 0.07, "sizeEnd": 0.01, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "flicker": 0.7}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0, "dur": 0.5, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c1", "radius": 2, "intensity": 2.2, "thickness": 0.03}},
+        {"role": "flash", "type": "flash", "anchor": "target", "at": 0, "dur": 0.12, "fi": 0, "fo": 0.04, "after": "impact", "set": {"color": "$c3", "size": 1.4, "intensity": 3, "light": 15}},
+        {"role": "sparks", "type": "particles", "anchor": "mid", "at": 2.55, "dur": 0.05, "set": {"mode": "burst", "count": 150, "burstSpread": 0.15, "lifetime": 0.9, "lifeVar": 0.4, "emit": "disc", "radius": 1.6, "speed": 3.5, "speedVar": 0.6, "spread": 70, "gravity": 8, "drag": 0.8, "sprite": "star", "additive": true, "sizeStart": 0.08, "sizeEnd": 0.02, "colorStart": "#ffffff", "colorMid": "$c1", "colorEnd": "$c2", "glow": 2.5, "fadeOut": 0.4}},
+        {"role": "light", "type": "light", "anchor": "target", "at": 0, "dur": 1.6, "after": "impact", "set": {"color": "$c1", "intensity": 10, "lift": 0}},
+        {"role": "shake", "type": "shake", "at": 0, "dur": 0.3, "after": "impact", "set": {"amount": 0.05}}
+      ]
+    },
+    "healing": {
+      "label": "Healing",
+      "impact": 0.2,
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "caster", "at": 0, "dur": 2.6, "fi": 0.05, "fo": 0.6, "set": {"shape": "area", "radius": 1.3, "width": 0.04, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.4, "spin": 0.4, "fill": 0.18, "ripples": 2, "rippleSpeed": 0.4, "glow": 1.8, "pulse": 0.1}},
+        {"role": "core", "type": "aura", "anchor": "figure", "at": 0.1, "dur": 2.4, "fi": 0.4, "fo": 0.8, "set": {"color": "$c1", "color2": "$c3", "intensity": 1.4, "rim": 2.2, "noise": 0.5, "flow": 0.8, "pillar": 0.9, "pillarRadius": 0.7, "pillarHeight": 2.6, "groundGlow": 0, "light": 0, "motes": 0, "pulse": 0.15}},
+        {"role": "sparks", "type": "particles", "anchor": "caster", "at": 0.15, "dur": 0.05, "set": {"mode": "burst", "count": 90, "burstSpread": 1.8, "lifetime": 1.4, "lifeVar": 0.3, "emit": "disc", "radius": 0.8, "speed": 1.6, "speedVar": 0.4, "spread": 6, "gravity": -0.5, "drag": 0.3, "swirl": 1.2, "flow": 0.2, "sprite": "spark", "additive": true, "stretch": 2.5, "sizeStart": 0.06, "sizeEnd": 0.02, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c2", "glow": 2.5, "fadeIn": 0.2, "fadeOut": 0.5}},
+        {"role": "embers", "type": "particles", "anchor": "casterChest", "at": 0.1, "dur": 0.05, "set": {"mode": "burst", "count": 60, "burstSpread": 1.6, "lifetime": 1.2, "lifeVar": 0.3, "emit": "ring", "radius": 1.6, "speed": 0.6, "spread": 40, "radial": -1.2, "gravity": 0, "drag": 0.4, "sprite": "star", "additive": true, "sizeStart": 0.08, "sizeEnd": 0.02, "colorStart": "#ffffff", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2.5, "flicker": 0.5}},
+        {"role": "smoke", "type": "particles", "anchor": "caster", "at": 0.3, "dur": 0.05, "set": {"mode": "burst", "count": 40, "burstSpread": 2, "lifetime": 2.5, "lifeVar": 0.4, "emit": "disc", "radius": 1, "speed": 0.5, "spread": 10, "gravity": 0, "drag": 0.5, "flow": 0.4, "sprite": "soft", "additive": true, "sizeStart": 0.1, "sizeEnd": 0.03, "colorStart": "$c3", "colorMid": "$c1", "colorEnd": "$c2", "glow": 1.8, "flicker": 0.3}},
+        {"role": "flash", "type": "flash", "anchor": "casterChest", "at": 0, "dur": 0.3, "fi": 0, "fo": 0.1, "set": {"color": "$c1", "size": 2, "intensity": 2, "light": 12}},
+        {"role": "light", "type": "light", "anchor": "casterChest", "at": 0, "dur": 2.6, "fi": 0.3, "fo": 0.8, "set": {"color": "$c1", "intensity": 8, "flicker": 0.15, "lift": 0}}
+      ]
+    },
+    "meteor": {
+      "label": "Meteor",
+      "layers": [
+        {"role": "cast", "type": "marker", "anchor": "targetGround", "at": 0, "dur": 1.35, "fi": 0.05, "fo": 0.1, "set": {"shape": "area", "radius": 2, "width": 0.05, "color": "$c1", "color2": "$c2", "runes": 1, "reveal": 0.3, "spin": 0.5, "fill": 0.2, "charge": 1.3, "glow": 2}},
+        {"role": "travel", "type": "bolt", "at": 0.4, "dur": 0.5, "from": "sky", "to": "targetGround", "set": {"speed": 16, "arc": 0, "size": 0.7, "color": "$c1", "inner": "$c3", "intensity": 2.5, "sparks": 300, "smoke": 120, "light": 14, "trail": 0.5, "width": 1.2}},
+        {"role": "flash", "type": "flash", "anchor": "targetGround", "at": 0, "dur": 0.22, "fi": 0, "fo": 0.06, "after": "impact", "set": {"color": "#ffffff", "size": 5, "intensity": 6, "light": 90}},
+        {"role": "core", "type": "flames", "anchor": "targetGround", "at": 0, "dur": 1.1, "fi": 0.02, "fo": 0.5, "after": "impact", "set": {"count": 22, "radius": 0.3, "radiusEnd": 1.6, "height": 3.2, "heightEnd": 1, "width": 1.2, "inner": "$c3", "outer": "$c1", "intensity": 2.2, "speed": 1.5}},
+        {"role": "sparks", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 400, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.03, "emit": "sphere", "radius": 0.1, "speed": 10, "speedVar": 0.6, "spread": 75, "gravity": 7, "drag": 1.3, "sprite": "spark", "additive": true, "stretch": 1.6, "sizeStart": 0.07, "sizeEnd": 0.015, "colorStart": "#ffffff", "colorMid": "$c3", "colorEnd": "$c1", "glow": 3, "fadeOut": 0.5}},
+        {"role": "sparks", "type": "particles", "anchor": "targetGround", "at": 0, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 60, "burstSpread": 0.05, "lifetime": 1.6, "lifeVar": 0.3, "emit": "disc", "radius": 0.4, "speed": 7, "speedVar": 0.5, "spread": 55, "gravity": 9.8, "drag": 0.3, "sprite": "soft", "additive": false, "sizeStart": 0.14, "sizeEnd": 0.1, "sizeVar": 0.5, "spin": 4, "colorStart": "#2a1a10", "colorMid": "#1e140c", "colorEnd": "#140c08", "alpha": 1, "fadeIn": 0, "fadeOut": 0.1}},
+        {"role": "smoke", "type": "particles", "anchor": "targetGround", "at": 0.1, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 70, "burstSpread": 0.8, "lifetime": 4, "lifeVar": 0.35, "emit": "disc", "radius": 1, "speed": 1.2, "speedVar": 0.5, "spread": 30, "radial": 0.4, "gravity": -1, "drag": 1.1, "flow": 0.35, "flowScale": 0.8, "wind": 0.6, "sprite": "smoke", "additive": false, "sizeStart": 0.8, "sizeEnd": 3.2, "sizeVar": 0.3, "spin": 0.5, "colorStart": "#2a2420", "colorMid": "#3c3632", "colorEnd": "#57524e", "alpha": 0.6, "fadeIn": 0.12, "fadeOut": 0.6, "soft": 0.6}},
+        {"role": "embers", "type": "particles", "anchor": "targetGround", "at": 0.2, "dur": 0.05, "after": "impact", "set": {"mode": "burst", "count": 120, "burstSpread": 2, "lifetime": 2.2, "lifeVar": 0.5, "emit": "disc", "radius": 1.4, "speed": 0.8, "speedVar": 0.6, "spread": 25, "gravity": -0.4, "drag": 0.8, "flow": 0.4, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.05, "sizeEnd": 0.01, "colorStart": "#fff0b0", "colorMid": "$c1", "colorEnd": "#7a1406", "glow": 3, "flicker": 0.5, "fadeOut": 0.5}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0, "dur": 0.7, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c1", "radius": 4.5, "intensity": 3, "thickness": 0.03}},
+        {"role": "ring", "type": "ring", "anchor": "targetGround", "at": 0.12, "dur": 0.6, "fi": 0, "fo": 0.05, "after": "impact", "set": {"color": "$c3", "radius": 3, "intensity": 2, "thickness": 0.025}},
+        {"role": "distortion", "type": "shock", "anchor": "targetGround", "at": 0, "dur": 0.6, "fi": 0, "fo": 0.05, "after": "impact", "set": {"radius": 0.55, "strength": 0.0245}},
+        {"role": "distortion", "type": "haze", "anchor": "target", "at": 0.1, "dur": 1.8, "fi": 0.1, "fo": 0.8, "after": "impact", "set": {"radius": 0.2, "strength": 0.008}},
+        {"role": "decal", "type": "scorch", "anchor": "targetGround", "at": 0.02, "dur": 6, "fi": 0.05, "fo": 2, "after": "impact", "set": {"radius": 2.2, "ember": "$c1"}},
+        {"role": "shake", "type": "shake", "at": 0, "dur": 0.7, "after": "impact", "set": {"amount": 0.25}},
+        {"role": "light", "type": "light", "anchor": "targetGround", "at": 0, "dur": 1.6, "after": "impact", "set": {"color": "$c1", "intensity": 60, "lift": 1}}
+      ]
+    },
+    "campfire": {
+      "label": "Campfire",
+      "ambient": true,
+      "layers": [
+        {"role": "core", "type": "flames", "anchor": "spot", "at": 0, "fi": 0.4, "set": {"count": 9, "radius": 0.18, "height": 1.0, "width": 0.55, "inner": "$c3", "outer": "$c1", "intensity": 1.8, "speed": 1.2}},
+        {"role": "embers", "type": "particles", "anchor": "spot", "at": 0, "set": {"mode": "loop", "count": 60, "lifetime": 2.4, "lifeVar": 0.5, "emit": "disc", "radius": 0.2, "speed": 0.8, "speedVar": 0.6, "spread": 20, "gravity": -0.6, "drag": 0.8, "turbulence": 0.2, "flow": 0.35, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "#fff2b0", "colorMid": "$c1", "colorEnd": "#9a1e08", "glow": 3, "flicker": 0.5, "fadeOut": 0.5}},
+        {"role": "smoke", "type": "particles", "anchor": "spotUp", "at": 0, "set": {"mode": "loop", "count": 40, "lifetime": 4.5, "lifeVar": 0.3, "emit": "disc", "radius": 0.15, "speed": 0.5, "speedVar": 0.4, "spread": 10, "gravity": -0.25, "drag": 0.6, "turbulence": 0.1, "flow": 0.35, "flowScale": 0.7, "wind": 1, "sprite": "smoke", "additive": false, "sizeStart": 0.3, "sizeEnd": 1.6, "sizeVar": 0.3, "spin": 0.4, "colorStart": "#3a3430", "colorMid": "#57524c", "colorEnd": "#7a7670", "alpha": 0.4, "fadeIn": 0.2, "fadeOut": 0.6, "soft": 0.5}},
+        {"role": "ring", "type": "marker", "anchor": "spot", "at": 0, "set": {"shape": "ring", "radius": 1.1, "width": 0.02, "fill": 0.55, "color": "$c1", "color2": "$c1", "glow": 0.7, "softness": 0.2, "spin": 0, "pulse": 0.1, "pulseSpeed": 3}},
+        {"role": "light", "type": "light", "anchor": "spot", "at": 0, "set": {"color": "$c1", "intensity": 9, "flicker": 0.45, "lift": 0.6}},
+        {"role": "distortion", "type": "haze", "anchor": "spotUp", "at": 0, "set": {"radius": 0.1, "strength": 0.005}}
+      ]
+    },
+    "portal": {
+      "label": "Portal",
+      "ambient": true,
+      "layers": [
+        {"role": "flash", "type": "flash", "anchor": "spotPortal", "at": 0, "dur": 0.3, "fi": 0, "fo": 0.1, "set": {"color": "$c2", "size": 3, "intensity": 3, "light": 20}},
+        {"role": "ring", "type": "ring", "anchor": "spot", "at": 0, "dur": 0.6, "fi": 0, "fo": 0.05, "set": {"color": "$c2", "radius": 2.4, "intensity": 2.5, "thickness": 0.03}},
+        {"role": "core", "type": "portal", "anchor": "spot", "at": 0, "set": {"radius": 1.1, "color": "$c1", "color2": "$c2", "core": "$c3", "intensity": 2}},
+        {"role": "sparks", "type": "particles", "anchor": "spotPortal", "at": 0.3, "set": {"mode": "loop", "count": 160, "lifetime": 1.2, "lifeVar": 0.4, "emit": "sphere", "radius": 1.8, "speed": 0, "radial": -1.4, "gravity": 0, "drag": 0.2, "swirl": 1.5, "sprite": "spark", "additive": true, "stretch": 1, "sizeStart": 0.05, "sizeEnd": 0.01, "colorStart": "$c2", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2.5, "fadeIn": 0.3, "fadeOut": 0.2}},
+        {"role": "cast", "type": "marker", "anchor": "spot", "at": 0, "fi": 0.3, "set": {"shape": "area", "radius": 1.4, "width": 0.035, "color": "$c2", "color2": "$c1", "runes": 1, "reveal": 0.8, "spin": 0.3, "fill": 0.1, "glow": 1.6}},
+        {"role": "embers", "type": "particles", "anchor": "spot", "at": 0, "set": {"mode": "loop", "count": 40, "lifetime": 3, "lifeVar": 0.4, "emit": "disc", "radius": 1.2, "speed": 0.3, "spread": 20, "gravity": -0.1, "drag": 0.5, "flow": 0.4, "sprite": "soft", "additive": true, "sizeStart": 0.05, "sizeEnd": 0.02, "colorStart": "$c2", "colorMid": "$c1", "colorEnd": "$c1", "glow": 2, "flicker": 0.5}},
+        {"role": "light", "type": "light", "anchor": "spotPortal", "at": 0, "set": {"color": "$c2", "intensity": 8, "flicker": 0.2, "lift": 0}},
+        {"role": "distortion", "type": "haze", "anchor": "spotPortal", "at": 0, "set": {"radius": 0.16, "strength": 0.004}}
+      ]
+    }
+  },
   "presets": {
     "glow": {
       "holy": {"label": "Holy light", "color": "#ffc94a", "color2": "#fff3c4", "intensity": 2, "pillar": 0.8, "pillarRadius": 0.6, "groundGlow": 1.4, "light": 6, "motes": 80, "moteSwirl": 0.6},
@@ -150,27 +325,40 @@
     "marker": {
       "selected": {"label": "Selected unit", "shape": "ring", "color": "#5cff8a", "color2": "#1f8a45", "radius": 0.7, "width": 0.07, "fill": 0.12, "spin": 0, "pulse": 0.1},
       "enemy": {"label": "Enemy target", "shape": "target", "color": "#ff4a3a", "color2": "#7a1410", "radius": 0.9, "width": 0.06, "dashes": 4, "dashFill": 0.75, "fill": 0.05, "spin": 0.6, "pulse": 0.2, "pulseSpeed": 1.6},
-      "fire_area": {"label": "Fire area (cast)", "shape": "area", "color": "#ff8a2a", "color2": "#ff3a0a", "radius": 2.4, "width": 0.1, "fill": 0.25, "spin": 0.4, "charge": 2.5, "pulse": 0.05, "glow": 2},
-      "heal_circle": {"label": "Healing circle", "shape": "area", "color": "#7dffb0", "color2": "#2acf6a", "radius": 2, "width": 0.06, "dashes": 32, "dashFill": 0.5, "fill": 0.18, "spin": 0.25, "ripples": 3, "rippleSpeed": 0.35, "pulse": 0.1},
+      "fire_area": {"label": "Fire area (cast)", "shape": "area", "color": "#ff8a2a", "color2": "#ff3a0a", "radius": 2.4, "width": 0.1, "fill": 0.25, "spin": 0.4, "charge": 2.5, "pulse": 0.05, "glow": 2, "runes": 1, "reveal": 0.5, "dashes": 0},
+      "heal_circle": {"label": "Healing circle", "shape": "area", "color": "#7dffb0", "color2": "#2acf6a", "radius": 2, "width": 0.06, "dashes": 32, "dashFill": 0.5, "fill": 0.18, "spin": 0.25, "ripples": 3, "rippleSpeed": 0.35, "pulse": 0.1, "runes": 0.8, "reveal": 0.6},
       "move_here": {"label": "Move here", "shape": "ring", "color": "#ffffff", "color2": "#a0c8ff", "radius": 0.5, "width": 0.04, "fill": 0, "spin": 0, "ripples": 2, "rippleSpeed": -0.9, "pulse": 0, "glow": 1.2},
       "quest": {"label": "Quest giver", "shape": "exclaim", "color": "#ffd23a", "color2": "#7a5200", "radius": 0.6, "width": 0.05, "fill": 0.08, "glow": 1.6, "signSize": 0.75, "bob": 0.1, "pulse": 0.2}
     },
     "particles": {
-      "embers": {"label": "Embers", "mode": "loop", "count": 120, "lifetime": 2.4, "lifeVar": 0.5, "emit": "disc", "radius": 0.15, "speed": 0.6, "speedVar": 0.6, "spread": 20, "gravity": -0.6, "drag": 0.8, "turbulence": 0.35, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "#fff2b0", "colorMid": "#ff8a24", "colorEnd": "#9a1e08", "glow": 3, "flicker": 0.5, "fadeOut": 0.5},
-      "fire": {"label": "Fire", "mode": "loop", "count": 220, "lifetime": 0.9, "lifeVar": 0.4, "emit": "disc", "radius": 0.25, "speed": 0.6, "speedVar": 0.5, "spread": 15, "radial": -0.15, "gravity": -4.5, "drag": 1.2, "turbulence": 0.12, "wind": 0.4, "sprite": "smoke", "additive": true, "sizeStart": 0.32, "sizeEnd": 0.05, "sizeVar": 0.4, "spin": 1.5, "colorStart": "#fff0a0", "colorMid": "#ff7a1a", "colorEnd": "#7a1406", "alpha": 0.75, "fadeIn": 0.15, "fadeOut": 0.5, "glow": 1.3},
-      "smoke": {"label": "Smoke", "mode": "loop", "count": 70, "lifetime": 4.5, "lifeVar": 0.3, "emit": "disc", "radius": 0.2, "speed": 0.4, "speedVar": 0.4, "spread": 10, "gravity": -0.25, "drag": 0.6, "turbulence": 0.3, "wind": 1, "sprite": "smoke", "additive": false, "sizeStart": 0.4, "sizeEnd": 1.8, "sizeVar": 0.3, "spin": 0.4, "colorStart": "#5a5550", "colorMid": "#77726c", "colorEnd": "#9a9590", "alpha": 0.55, "fadeIn": 0.15, "fadeOut": 0.6, "glow": 1},
-      "magic": {"label": "Magic swirl", "mode": "loop", "count": 400, "lifetime": 1.8, "lifeVar": 0.3, "emit": "ring", "radius": 0.8, "speed": 0.8, "speedVar": 0.3, "spread": 5, "radial": -0.35, "gravity": 0, "drag": 0.3, "swirl": 2.4, "turbulence": 0.05, "wind": 0, "sprite": "star", "additive": true, "sizeStart": 0.12, "sizeEnd": 0.02, "sizeVar": 0.5, "spin": 3, "colorStart": "#ffffff", "colorMid": "#b47aff", "colorEnd": "#4a1aff", "glow": 2.5, "flicker": 0.4},
-      "leaves": {"label": "Whirling leaves", "mode": "loop", "count": 60, "lifetime": 4, "lifeVar": 0.3, "emit": "disc", "radius": 1.6, "speed": 1.2, "speedVar": 0.5, "spread": 30, "radial": 0.2, "gravity": 0.5, "drag": 1, "swirl": 1.4, "turbulence": 0.6, "wind": 1, "sprite": "leaf", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.12, "sizeVar": 0.3, "spin": 4, "colorStart": "#d9a43a", "colorMid": "#c46a1e", "colorEnd": "#7a3a12", "alpha": 1, "fadeIn": 0.05, "fadeOut": 0.2, "glow": 1},
-      "dust": {"label": "Footstep dust", "mode": "burst", "count": 40, "lifetime": 1.2, "lifeVar": 0.4, "burstSpread": 0.05, "emit": "disc", "radius": 0.2, "speed": 0.6, "speedVar": 0.5, "spread": 70, "radial": 1.2, "gravity": 0.4, "drag": 2.5, "turbulence": 0.1, "wind": 0.6, "sprite": "smoke", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.45, "sizeVar": 0.4, "spin": 0.6, "colorStart": "#b5a184", "colorMid": "#a8987e", "colorEnd": "#a09682", "alpha": 0.6, "fadeIn": 0.05, "fadeOut": 0.7, "glow": 1},
+      "embers": {"label": "Embers", "mode": "loop", "count": 120, "lifetime": 2.4, "lifeVar": 0.5, "emit": "disc", "radius": 0.15, "speed": 0.6, "speedVar": 0.6, "spread": 20, "gravity": -0.6, "drag": 0.8, "turbulence": 0.35, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "#fff2b0", "colorMid": "#ff8a24", "colorEnd": "#9a1e08", "glow": 3, "flicker": 0.5, "fadeOut": 0.5, "flow": 0.35},
+      "fire": {"label": "Fire", "mode": "loop", "count": 70, "lifetime": 0.8, "lifeVar": 0.4, "emit": "disc", "radius": 0.22, "speed": 0.5, "speedVar": 0.5, "spread": 15, "radial": -0.1, "gravity": -2.5, "drag": 1, "turbulence": 0.12, "wind": 0.4, "sprite": "flame", "additive": true, "sizeStart": 0.55, "sizeEnd": 0.2, "sizeVar": 0.35, "spin": 1.5, "colorStart": "#fff2a8", "colorMid": "#ff8a24", "colorEnd": "#c42a0a", "alpha": 1, "fadeIn": 0.2, "fadeOut": 0.45, "glow": 1.8, "soft": 0.3, "flow": 0.15},
+      "smoke": {"label": "Smoke", "mode": "loop", "count": 70, "lifetime": 4.5, "lifeVar": 0.3, "emit": "disc", "radius": 0.2, "speed": 0.4, "speedVar": 0.4, "spread": 10, "gravity": -0.25, "drag": 0.6, "turbulence": 0.1, "wind": 1, "sprite": "smoke", "additive": false, "sizeStart": 0.4, "sizeEnd": 1.8, "sizeVar": 0.3, "spin": 0.4, "colorStart": "#5a5550", "colorMid": "#77726c", "colorEnd": "#9a9590", "alpha": 0.55, "fadeIn": 0.15, "fadeOut": 0.6, "glow": 1, "soft": 0.6, "flow": 0.35, "flowScale": 0.7},
+      "magic": {"label": "Magic swirl", "mode": "loop", "count": 400, "lifetime": 1.8, "lifeVar": 0.3, "emit": "ring", "radius": 0.8, "speed": 0.8, "speedVar": 0.3, "spread": 5, "radial": -0.35, "gravity": 0, "drag": 0.3, "swirl": 2.4, "turbulence": 0.05, "wind": 0, "sprite": "star", "additive": true, "sizeStart": 0.12, "sizeEnd": 0.02, "sizeVar": 0.5, "spin": 3, "colorStart": "#ffffff", "colorMid": "#b47aff", "colorEnd": "#4a1aff", "glow": 2.5, "flicker": 0.4, "flow": 0.3, "flowScale": 1.5},
+      "leaves": {"label": "Whirling leaves", "mode": "loop", "count": 60, "lifetime": 4, "lifeVar": 0.3, "emit": "disc", "radius": 1.6, "speed": 1.2, "speedVar": 0.5, "spread": 30, "radial": 0.2, "gravity": 0.5, "drag": 1, "swirl": 1.4, "turbulence": 0.6, "wind": 1, "sprite": "leaf", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.12, "sizeVar": 0.3, "spin": 4, "colorStart": "#d9a43a", "colorMid": "#c46a1e", "colorEnd": "#7a3a12", "alpha": 1, "fadeIn": 0.05, "fadeOut": 0.2, "glow": 1, "flow": 0.5, "flowScale": 0.6},
+      "dust": {"label": "Footstep dust", "mode": "burst", "count": 40, "lifetime": 1.2, "lifeVar": 0.4, "burstSpread": 0.05, "emit": "disc", "radius": 0.2, "speed": 0.6, "speedVar": 0.5, "spread": 70, "radial": 1.2, "gravity": 0.4, "drag": 2.5, "turbulence": 0.1, "wind": 0.6, "sprite": "smoke", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.45, "sizeVar": 0.4, "spin": 0.6, "colorStart": "#b5a184", "colorMid": "#a8987e", "colorEnd": "#a09682", "alpha": 0.6, "fadeIn": 0.05, "fadeOut": 0.7, "glow": 1, "soft": 0.4},
       "sparks": {"label": "Spark burst", "mode": "burst", "count": 250, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.02, "emit": "sphere", "radius": 0.05, "speed": 6, "speedVar": 0.6, "spread": 70, "gravity": 7, "drag": 1.2, "turbulence": 0, "wind": 0.1, "sprite": "spark", "additive": true, "sizeStart": 0.06, "sizeEnd": 0.015, "stretch": 1.5, "colorStart": "#ffffff", "colorMid": "#ffd060", "colorEnd": "#ff5a10", "glow": 3, "fadeOut": 0.5}
     },
     "trail": {
-      "steel": {"label": "Steel slash", "mode": "sword", "trailTime": 0.22, "cover": 0.7, "softness": 0.6, "colorHead": "#ffffff", "colorTail": "#8fb8ff", "glow": 1.2, "swingSpeed": 0.9, "arc": 150, "tilt": 50},
-      "fire_blade": {"label": "Fire blade", "mode": "sword", "trailTime": 0.35, "cover": 0.9, "softness": 0.4, "colorHead": "#fff0a0", "colorTail": "#ff3a0a", "glow": 3, "swingSpeed": 0.8, "arc": 200, "tilt": -55},
-      "frost_blade": {"label": "Frost blade", "mode": "sword", "trailTime": 0.5, "cover": 0.6, "softness": 0.7, "colorHead": "#eaffff", "colorTail": "#2a8aff", "glow": 2.2, "swingSpeed": 0.7, "arc": 170, "tilt": 70},
+      "steel": {"label": "Steel slash", "mode": "sword", "trailTime": 0.22, "cover": 0.7, "softness": 0.6, "colorHead": "#ffffff", "colorTail": "#8fb8ff", "glow": 1.2, "swingSpeed": 0.9, "arc": 150, "tilt": 50, "taper": 0.8, "streaks": 0.6},
+      "fire_blade": {"label": "Fire blade", "mode": "sword", "trailTime": 0.35, "cover": 0.9, "softness": 0.4, "colorHead": "#fff0a0", "colorTail": "#ff3a0a", "glow": 3, "swingSpeed": 0.8, "arc": 200, "tilt": -55, "taper": 0.6, "streaks": 0.8},
+      "frost_blade": {"label": "Frost blade", "mode": "sword", "trailTime": 0.5, "cover": 0.6, "softness": 0.7, "colorHead": "#eaffff", "colorTail": "#2a8aff", "glow": 2.2, "swingSpeed": 0.7, "arc": 170, "tilt": 70, "taper": 0.9, "streaks": 0.5},
       "fireball": {"label": "Fireball", "mode": "projectile", "trailTime": 0.3, "width": 0.35, "softness": 0.8, "colorHead": "#ffe08a", "colorTail": "#ff4a0a", "glow": 3, "speed": 10, "arcHeight": 0.6, "size": 0.28, "sparks": 220, "interval": 1.8, "hitColor": "#ff8a2a", "hitSparks": 260, "hitSpeed": 6, "hitRing": 1.2, "flash": 25},
       "arcane_missile": {"label": "Arcane missile", "mode": "projectile", "trailTime": 0.45, "width": 0.18, "softness": 0.9, "colorHead": "#ffffff", "colorTail": "#9a4dff", "glow": 2.6, "speed": 16, "arcHeight": 1.4, "size": 0.16, "sparks": 160, "interval": 0.9, "hitColor": "#c49aff", "hitSparks": 120, "hitSpeed": 4, "hitRing": 0.8, "flash": 12},
       "arrow": {"label": "Arrow", "mode": "projectile", "trailTime": 0.15, "width": 0.04, "softness": 0.5, "colorHead": "#e8e2d0", "colorTail": "#b8b0a0", "glow": 0.6, "speed": 30, "arcHeight": 0.3, "size": 0.05, "sparks": 0, "interval": 1.2, "hitColor": "#c9b48a", "hitSparks": 30, "hitSpeed": 2, "hitRing": 0, "flash": 0}
+    },
+    "spell": {
+      "fireball": {"label": "Fireball", "spell": "fireball", "color": "#ff6a1a", "color2": "#ff3a0a", "color3": "#fff2a0"},
+      "frostfire": {"label": "Frostfire bolt", "spell": "fireball", "color": "#3a9cff", "color2": "#7a3cff", "color3": "#e6f6ff"},
+      "chain_lightning": {"label": "Chain lightning", "spell": "chain_lightning", "color": "#5aa8ff", "color2": "#2a4aff", "color3": "#f0f8ff"},
+      "thunderbolt": {"label": "Thunderbolt", "spell": "thunderbolt", "color": "#b9a6ff", "color2": "#6a4aff", "color3": "#ffffff"},
+      "frost_spikes": {"label": "Frost spikes", "spell": "frost_spikes", "color": "#7fe0ff", "color2": "#8fd0ea", "color3": "#ffffff"},
+      "earth_spikes": {"label": "Earth spikes", "spell": "frost_spikes", "color": "#c8a070", "color2": "#6b5644", "color3": "#f0e0c0", "intensity": 0.6},
+      "healing": {"label": "Healing", "spell": "healing", "color": "#7dff9a", "color2": "#2acf6a", "color3": "#fff6b0"},
+      "meteor": {"label": "Meteor", "spell": "meteor", "color": "#ff5a14", "color2": "#ff2a00", "color3": "#ffe08a", "pause": 2},
+      "campfire": {"label": "Campfire", "spell": "campfire", "color": "#ff7a1a", "color2": "#ff4a0a", "color3": "#fff0a0"},
+      "portal": {"label": "Arcane portal", "spell": "portal", "color": "#7a3cff", "color2": "#4ab0ff", "color3": "#12042a"},
+      "void_portal": {"label": "Void portal", "spell": "portal", "color": "#3aff7a", "color2": "#b4ff3a", "color3": "#020804"}
     }
   }
 }

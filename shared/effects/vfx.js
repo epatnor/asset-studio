@@ -22,18 +22,28 @@ import * as THREE from 'three/webgpu';
 import {
   uniform, attribute, float, vec2, vec3, vec4, uint, instanceIndex, hash, sin, cos, exp, floor, fract, mix, smoothstep, select,
   length, atan, pow, max, min, clamp, abs, sqrt, normalize, dot, uv, positionLocal, normalLocal, normalView, positionView,
-  positionWorld, modelWorldMatrix, cameraViewMatrix, mx_noise_float, varying, PI2,
+  positionWorld, modelWorldMatrix, cameraViewMatrix, mx_noise_float, mx_noise_vec3, varying, PI2, viewportLinearDepth, linearDepth,
+  cameraNear, cameraFar,
 } from 'three/tsl';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
+import { createSpell } from './spells.js';
 
-export const KINDS = ['glow', 'marker', 'particles', 'trail'];
-const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring'];
+export const KINDS = ['glow', 'marker', 'particles', 'trail', 'spell'];
+const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring', 'flame'];
 const EMITS = ['point', 'sphere', 'disc', 'ring'];
 const MARKS = ['ring', 'target', 'area', 'exclaim'];
 const DEG = Math.PI / 180;
 const additive = (m, on) => { const b = on ? THREE.AdditiveBlending : THREE.NormalBlending; if (m.blending !== b) { m.blending = b; m.needsUpdate = true; } };
 
+// Mjuka partiklar (FX04 i AAA-referensen): genomskinligheten tonar ut där ytan bakom är närmare än soft meter, så att
+// rök, damm och lågor inte klipps av hårt mot marken. 0 = av.
+export function softFade(soft) {
+  const gap = viewportLinearDepth.sub(linearDepth()).mul(cameraFar.sub(cameraNear));
+  return select(soft.greaterThan(0), clamp(gap.div(max(soft, 1e-3)), 0, 1), float(1));
+}
+
 export function createEffect(kind, settings, ctx = {}) {
+  if (kind === 'spell') return createSpell(settings, ctx);
   if (kind === 'glow') return createAura(settings, ctx);
   if (kind === 'marker') return createMarker(settings, ctx);
   if (kind === 'particles') return createParticles(settings, ctx);
@@ -56,6 +66,8 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
     size0: uniform(0.1), size1: uniform(0.1), sizeVar: uniform(0), stretch: uniform(0), spin: uniform(0),
     c0: C(), c1: C(), c2: C(), alpha: uniform(1), fadeIn: uniform(0.1), fadeOut: uniform(0.3), glow: uniform(1), flicker: uniform(0), sprite: uniform(0),
     path: uniform(0), pFrom: V(), pTo: V(), pArc: uniform(0), pT0: uniform(-1e4), pDur: uniform(1),
+    // Utsändningsfönstret (födda mellan tStart och tStop), flödesbrus, mjuk kant mot ytor och lagrets tonning
+    tStart: uniform(-1e9), tStop: uniform(1e9), flow: uniform(0), flowScale: uniform(1), soft: uniform(0), fade: uniform(1),
   };
   const idx = float(instanceIndex);
   const loop = u.burst.lessThan(0.5);
@@ -95,6 +107,8 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
     const sa = u.swirl.mul(t); // virvel kring utsändarens lodlinje
     p = vec3(p.x.mul(cos(sa)).sub(p.z.mul(sin(sa))), p.y, p.x.mul(sin(sa)).add(p.z.mul(cos(sa))));
     p = p.add(vec3(sin(t.mul(2.1).add(w)), sin(t.mul(1.3).add(w.mul(2))).mul(0.6), cos(t.mul(1.7).add(w.mul(3)))).mul(u.turb).mul(min(t, 1)));
+    // Flöde (FX07): ett mjukt brusfält som partikeln driver genom, så att svärmar och rök böljar i stället för att skaka
+    p = p.add(mx_noise_vec3(origin.add(off).mul(u.flowScale).add(vec3(w, t.mul(0.45), rnd(12).mul(5)))).mul(u.flow).mul(t));
     // Vinden drar partikeln mot sin fart på ungefär en halv sekund
     p = p.add(u.wind.mul(u.windAmt).mul(t.sub(float(1).sub(exp(t.mul(-2))).div(2))));
     return origin.add(p);
@@ -102,21 +116,24 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
   const pos = posAt(age);
   const vel = pos.sub(posAt(max(age.sub(0.04), 0))).div(0.04);
   const vv = cameraViewMatrix.mul(vec4(vel, 0)).xy;
-  const alive = age.greaterThanEqual(0).and(age.lessThan(life)).and(idx.lessThan(u.count)).and(pathOk);
+  const birth = u.time.sub(age);
+  const alive = age.greaterThanEqual(0).and(age.lessThan(life)).and(idx.lessThan(u.count)).and(pathOk).and(birth.greaterThanEqual(u.tStart)).and(birth.lessThanEqual(u.tStop));
   const size = mix(u.size0, u.size1, lt).mul(float(1).sub(u.sizeVar.mul(rnd(8))));
   const streak = float(1).add(u.stretch.mul(length(vv)).mul(0.12));
 
   const mat = new THREE.SpriteNodeMaterial({ transparent: true, depthWrite: false });
   mat.positionNode = pos;
   mat.scaleNode = vec2(size.mul(streak), size).mul(select(alive, float(1), float(0)));
-  mat.rotationNode = select(u.stretch.greaterThan(0), atan(vv.y, vv.x), rnd(9).mul(PI2).add(u.spin.mul(rnd(10).mul(2).sub(1)).mul(age)));
+  // Lågor står upprätt (med en liten lutning), sträckta gnistor följer farten, resten snurrar
+  const upright = rnd(9).sub(0.5).mul(0.3).add(sin(u.time.mul(3).add(rnd(10).mul(9))).mul(0.06));
+  mat.rotationNode = select(u.sprite.equal(6), upright, select(u.stretch.greaterThan(0), atan(vv.y, vv.x), rnd(9).mul(PI2).add(u.spin.mul(rnd(10).mul(2).sub(1)).mul(age))));
   const vt = varying(lt), vr = varying(rnd(11));
   const col = select(vt.lessThan(0.5), mix(u.c0, u.c1, vt.mul(2)), mix(u.c1, u.c2, vt.mul(2).sub(1)));
-  const sh = spriteShape(u.sprite, vr, u.time);
+  const sh = spriteShape(u.sprite, vr, u.time, vt);
   const fade = smoothstep(0, max(u.fadeIn, 0.001), vt).mul(float(1).sub(smoothstep(float(1).sub(max(u.fadeOut, 0.001)), 1, vt)));
   const flick = float(1).sub(u.flicker.mul(0.5).mul(sin(u.time.mul(23).add(vr.mul(60))).add(1)));
   mat.colorNode = col.mul(u.glow).mul(sh.shade);
-  mat.opacityNode = clamp(sh.alpha.mul(fade).mul(u.alpha).mul(flick), 0, 1);
+  mat.opacityNode = clamp(sh.alpha.mul(fade).mul(u.alpha).mul(flick).mul(softFade(u.soft)).mul(u.fade), 0, 1);
   const sprite = new THREE.Sprite(mat);
   sprite.frustumCulled = false;
   sprite.count = 1;
@@ -140,11 +157,14 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
       u.size0.value = p.sizeStart; u.size1.value = p.sizeEnd;
       u.c0.value.set(p.colorStart); u.c1.value.set(p.colorMid); u.c2.value.set(p.colorEnd);
       u.sprite.value = Math.max(0, SPRITES.indexOf(p.sprite));
+      u.flow.value = p.flow ?? 0; u.flowScale.value = p.flowScale ?? 1; u.soft.value = p.soft ?? 0;
       additive(mat, p.additive);
     },
     // Var partiklarna sänds ut ifrån (i världen)
     place(v) { u.origin.value.copy(v); },
-    play(time) { u.t0.value = time; u.salt.value = (u.salt.value + 1) % 4096; },
+    // En smäll, eller (löpande) utsändning från nu i emitFor sekunder; utan emitFor fortsätter den
+    play(time, emitFor) { u.t0.value = time; u.salt.value = (u.salt.value + 1) % 4096; u.tStart.value = time; u.tStop.value = emitFor ? time + emitFor : 1e9; },
+    setFade(f) { u.fade.value = f; },
     update(time, { wind } = {}) { u.time.value = time; if (wind) u.wind.value.set(...wind); },
     // Längs en bana (projektilens svans): från, till, bågens höjd, start och flygtid
     path(from, to, arc, t0, dur) { u.path.value = 1; u.pFrom.value.copy(from); u.pTo.value.copy(to); u.pArc.value = arc; u.pT0.value = t0; u.pDur.value = Math.max(0.01, dur); },
@@ -156,7 +176,7 @@ export function createParticles(s, { at, max: maxCount = 4000 } = {}) {
 }
 
 // Spritens form ur uv: mjuk prick, gnista, rökmoln, stjärna, löv och ring. shade mörkar löven längs nerven.
-function spriteShape(kind, r, time) {
+function spriteShape(kind, r, time, age = float(0)) {
   const p = uv().mul(2).sub(1), d = length(p), inv = clamp(float(1).sub(d), 0, 1);
   const soft = inv.mul(inv);
   const spark = pow(inv, 1.5).add(smoothstep(0.35, 0, d).mul(0.6));
@@ -166,8 +186,17 @@ function spriteShape(kind, r, time) {
   const half = float(0.5).mul(float(1).sub(p.y.mul(p.y)));
   const leaf = smoothstep(0.05, 0, abs(p.x).sub(half));
   const ring = smoothstep(0.16, 0.02, abs(d.sub(0.7)));
-  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, soft)))));
-  const shade = select(kind.equal(4), float(1).sub(smoothstep(0.06, 0, abs(p.x)).mul(0.35)).mul(float(0.8).add(p.y.mul(0.2))), float(1));
+  // Låga (FX03): en droppe som smalnar uppåt, vriden av brus som stiger, med en het kärna
+  const fy = uv().y, fx = uv().x;
+  const fWind = mx_noise_float(vec3(fy.mul(3).sub(time.mul(1.6)), r.mul(17), 0)).mul(0.22).mul(fy);
+  const fTurb = mx_noise_float(vec3(fx.mul(6), fy.mul(6).sub(time.mul(3.2)), r.mul(9))).mul(0.12).mul(fy);
+  const halfW = pow(max(float(1).sub(fy), 0), 1.25).mul(0.4).add(0.02).mul(float(1).sub(age.mul(0.35)));
+  const fDist = abs(fx.sub(0.5).sub(fWind).sub(fTurb));
+  const flame = float(1).sub(smoothstep(halfW.mul(0.6), halfW, fDist)).mul(smoothstep(0, 0.14, fy)).mul(float(1).sub(smoothstep(0.75, 1, fy)));
+  const fCore = float(1).sub(smoothstep(0, halfW.mul(0.5), fDist)).mul(pow(max(float(1).sub(fy), 0), 0.5));
+  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, select(kind.equal(6), flame, soft))))));
+  const shade = select(kind.equal(4), float(1).sub(smoothstep(0.06, 0, abs(p.x)).mul(0.35)).mul(float(0.8).add(p.y.mul(0.2))),
+    select(kind.equal(6), float(0.7).add(clamp(fCore, 0, 1).mul(2.2)), float(1)));
   return { alpha: clamp(alpha, 0, 1), shade };
 }
 
@@ -179,9 +208,9 @@ export function createAura(s, { target }) {
   const u = {
     time: uniform(0), c: C(), c2: C(), intensity: uniform(1), rim: uniform(2), thick: uniform(0.03), fill: uniform(0), noise: uniform(0),
     nScale: uniform(3), flow: uniform(1), pulse: uniform(0), pulseSpeed: uniform(1), y0: uniform(0), y1: uniform(2),
-    pillar: uniform(0), ground: uniform(0),
+    pillar: uniform(0), ground: uniform(0), fade: uniform(1),
   };
-  const pulse = float(1).add(u.pulse.mul(sin(u.time.mul(u.pulseSpeed).mul(PI2))));
+  const pulse = float(1).add(u.pulse.mul(sin(u.time.mul(u.pulseSpeed).mul(PI2)))).mul(u.fade);
   const hT = clamp(positionWorld.y.sub(u.y0).div(u.y1.sub(u.y0)), 0, 1);
   const n = mx_noise_float(positionWorld.mul(u.nScale).sub(vec3(0, u.time.mul(u.flow), 0))).mul(0.5).add(0.5);
   const noiseF = mix(float(1), n.mul(2), u.noise);
@@ -254,8 +283,9 @@ export function createAura(s, { target }) {
       motes.update(time, ctx);
       const pl = 1 + s.pulse * Math.sin(time * s.pulseSpeed * Math.PI * 2);
       const fl = 1 - s.flicker * (0.5 + 0.5 * Math.sin(time * 17.3) * Math.sin(time * 7.1 + 1.3));
-      light.intensity = s.light * pl * fl;
+      light.intensity = s.light * pl * fl * u.fade.value;
     },
+    setFade(f) { u.fade.value = f; motes.setFade(f); },
     dispose() {
       for (const [o, sh] of shells) o.remove(sh);
       shellMat.dispose(); pMat.dispose(); gMat.dispose(); pillar.geometry.dispose(); disc.geometry.dispose(); motes.dispose();
@@ -283,7 +313,7 @@ export function createMarker(s, { ground, at, top }) {
   const u = {
     time: uniform(0), shape: uniform(0), c: C(), c2: C(), w: uniform(0.1), soft: uniform(0.03), dashes: uniform(0), dashFill: uniform(0.6),
     fill: uniform(0), glow: uniform(1), spin: uniform(0), pulse: uniform(0), pulseSpeed: uniform(1), ripples: uniform(0), rippleSpeed: uniform(0.5),
-    charge: uniform(0), size: uniform(0.5),
+    charge: uniform(0), size: uniform(0.5), runes: uniform(0), reveal: uniform(0), born: uniform(-1e4), fade: uniform(1), salt: uniform(0),
   };
   const p = uv().mul(2).sub(1).mul(PAD);
   const sw = sin(u.time.mul(u.pulseSpeed).mul(PI2));
@@ -309,13 +339,31 @@ export function createMarker(s, { ground, at, top }) {
     rip = rip.add(band(ph, float(0.05)).mul(sin(ph.mul(Math.PI))).mul(select(float(k).lessThan(u.ripples), float(0.8), float(0))));
   }
   lines = lines.add(rip);
+  // Runring (FX01, besvärjelsens tecken): ett band av tecken mellan två tunna ringar. Varje cell får tre streck med
+  // ändpunkter i ett 3 × 3-rutnät ur cellens slumptal, så att det ser ut som runor och inte som brus.
+  const RN = 18, a3 = atan(p.y, p.x).add(u.time.mul(u.spin).mul(-0.6));
+  const ca = fract(a3.div(PI2)).mul(RN), cell = floor(ca);
+  const q2 = vec2(fract(ca), r.sub(0.66).div(0.2));
+  const seg = (k) => {
+    const g = (j) => floor(hash(cell.add(k * 5 + j).add(u.salt).toUint()).mul(3)).mul(0.35).add(0.15);
+    const a0 = vec2(g(0), g(1)), b0 = vec2(g(2), g(3)), pa = q2.sub(a0), ba = b0.sub(a0);
+    return length(pa.sub(ba.mul(clamp(dot(pa, ba).div(max(dot(ba, ba), 1e-4)), 0, 1))));
+  };
+  const glyph = smoothstep(0.1, 0.05, min(min(seg(0), seg(1)), seg(2))).mul(step01(q2.y)).mul(step01(float(1).sub(q2.y)));
+  const runeRing = glyph.add(band(float(0.63), u.w.mul(0.35))).add(band(float(0.89), u.w.mul(0.35)));
+  lines = lines.add(runeRing.mul(u.runes));
+  // Framträdandet: tecknet ritas runt varvet från start (reveal sekunder), med en ljus front
+  const rp = select(u.reveal.greaterThan(0), clamp(u.time.sub(u.born).div(max(u.reveal, 0.01)), 0, 1), float(1));
+  const an = fract(atan(p.y, p.x).div(PI2).add(0.25));
+  const shown = smoothstep(rp.add(0.01), rp.sub(0.01), an).add(smoothstep(0.05, 0, abs(an.sub(rp))).mul(select(rp.lessThan(1), float(2), float(0))));
+  lines = lines.mul(shown);
   const fill = u.fill.mul(smoothstep(1, 0.97, r)).mul(pow(r, 3).mul(0.65).add(0.35));
   const halo = exp(max(r.sub(1), 0).mul(-9)).mul(smoothstep(0.98, 1.0, r)).mul(0.3);
   const bright = float(1).add(u.pulse.mul(0.5).mul(sw));
   const dim = select(u.shape.equal(3), float(0.45), float(1)); // utropstecknets ring på marken är svag
   const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  mat.colorNode = u.c.mul(clamp(lines, 0, 1.5)).add(u.c2.mul(fill)).add(u.c.mul(halo)).mul(u.glow).mul(bright).mul(dim);
-  mat.opacityNode = clamp(lines.add(fill).add(halo), 0, 1).mul(dim);
+  mat.colorNode = u.c.mul(clamp(lines, 0, 2)).add(u.c2.mul(fill.mul(rp))).add(u.c.mul(halo.mul(rp))).mul(u.glow).mul(bright).mul(dim);
+  mat.opacityNode = clamp(lines.add(fill.mul(rp)).add(halo.mul(rp)), 0, 1).mul(dim).mul(u.fade);
 
   const group = new THREE.Group();
   let decal = null, where = (at ?? new THREE.Vector3()).clone(), built = '';
@@ -355,6 +403,7 @@ export function createMarker(s, { ground, at, top }) {
       u.w.value = Math.min(0.9, v.width / Math.max(0.05, v.radius));
       u.soft.value = v.softness;
       for (const key of ['dashes', 'dashFill', 'fill', 'glow', 'spin', 'pulse', 'pulseSpeed', 'ripples', 'rippleSpeed', 'charge']) u[key].value = v[key];
+      u.runes.value = v.runes ?? 0; u.reveal.value = v.reveal ?? 0;
       u.size.value = v.signSize;
       sign.visible = v.shape === 'exclaim';
       additive(mat, v.additive);
@@ -362,7 +411,9 @@ export function createMarker(s, { ground, at, top }) {
     },
     // Flytta markören till en punkt på marken; top är figurens höjd (för utropstecknet)
     place(v, topAt) { where.copy(v); if (topAt !== undefined) top = topAt; rebuild(); },
-    play() {},
+    // Börjar om: tecknet ritas fram igen och runorna slumpas om
+    play(time) { u.born.value = time; u.salt.value = (u.salt.value + 7) % 997; },
+    setFade(f) { u.fade.value = f; sMat.opacityNode && (sign.visible = s.shape === 'exclaim' && f > 0.01); },
     update(time) {
       u.time.value = time;
       sign.position.set(where.x, topY() + s.signSize * 0.5 + s.bob * Math.sin(time * 3), where.z);
@@ -376,8 +427,8 @@ const step01 = (x) => select(x.greaterThan(0), float(1), float(0));
 
 // --- Spår och träffar ---
 // Ett band (triangelremsa) som följer två punkter och tonar ut med åldern: svärdets klinga, eller projektilens svans.
-function createRibbon(maxSeg = 160) {
-  const pos = new Float32Array(maxSeg * 2 * 3), born = new Float32Array(maxSeg * 2), side = new Float32Array(maxSeg * 2);
+export function createRibbon(maxSeg = 160) {
+  const pos = new Float32Array(maxSeg * 2 * 3), other = new Float32Array(maxSeg * 2 * 3), born = new Float32Array(maxSeg * 2), side = new Float32Array(maxSeg * 2);
   const index = [];
   for (let i = 0; i < maxSeg - 1; i++) { const a = i * 2; index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
   for (let i = 0; i < maxSeg; i++) { side[i * 2] = 0; side[i * 2 + 1] = 1; }
@@ -385,6 +436,7 @@ function createRibbon(maxSeg = 160) {
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aBorn', new THREE.BufferAttribute(born, 1).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute('aSide', new THREE.BufferAttribute(side, 1));
+  geo.setAttribute('aOther', new THREE.BufferAttribute(other, 3).setUsage(THREE.DynamicDrawUsage)); // parets andra hörn, för avsmalningen
   geo.setIndex(index);
   geo.setDrawRange(0, 0);
   const mesh = new THREE.Mesh(geo, null);
@@ -397,8 +449,9 @@ function createRibbon(maxSeg = 160) {
     clear() { pts.length = 0; geo.setDrawRange(0, 0); },
     update(time, len) {
       while (pts.length && time - pts[0].t > len) pts.shift();
-      pts.forEach((q, i) => { q.a.toArray(pos, i * 6); q.b.toArray(pos, i * 6 + 3); born[i * 2] = born[i * 2 + 1] = q.t; });
+      pts.forEach((q, i) => { q.a.toArray(pos, i * 6); q.b.toArray(pos, i * 6 + 3); q.b.toArray(other, i * 6); q.a.toArray(other, i * 6 + 3); born[i * 2] = born[i * 2 + 1] = q.t; });
       geo.attributes.position.needsUpdate = true;
+      geo.attributes.aOther.needsUpdate = true;
       geo.attributes.aBorn.needsUpdate = true;
       geo.setDrawRange(0, Math.max(0, pts.length - 1) * 6);
     },
@@ -407,7 +460,8 @@ function createRibbon(maxSeg = 160) {
 
 export function createTrail(s, { from, to, figure }) {
   const C = () => uniform(new THREE.Color());
-  const u = { time: uniform(0), len: uniform(0.25), head: C(), tail: C(), glow: uniform(1), soft: uniform(0.5), sym: uniform(0), size: uniform(0.2), hitT: uniform(-10), hitR: uniform(1), hit: C() };
+  const u = { time: uniform(0), len: uniform(0.25), head: C(), tail: C(), glow: uniform(1), soft: uniform(0.5), sym: uniform(0), size: uniform(0.2), hitT: uniform(-10), hitR: uniform(1), hit: C(),
+    taper: uniform(0.7), streaks: uniform(0.5), fade: uniform(1) };
   const group = new THREE.Group();
   const ribbon = createRibbon();
   const rMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
@@ -416,8 +470,15 @@ export function createTrail(s, { from, to, figure }) {
   // Svärdet: ljusast ytterst vid spetsen; svansen: ljusast i mitten
   const across = select(u.sym.greaterThan(0.5), float(1).sub(abs(sd.mul(2).sub(1))), sd);
   const edge = smoothstep(0, max(u.soft, 0.02), across);
-  rMat.colorNode = mix(u.head, u.tail, lt).mul(u.glow);
-  rMat.opacityNode = pow(float(1).sub(lt), 1.5).mul(edge);
+  // Avsmalning: svärdets inre kant glider ut mot spetsen med åldern, svansen drar ihop sig mot mitten
+  const oth = attribute('aOther', 'vec3');
+  const toward = select(u.sym.greaterThan(0.5), positionLocal.add(oth).mul(0.5), select(sd.lessThan(0.5), oth, positionLocal));
+  rMat.positionNode = mix(positionLocal, toward, lt.mul(u.taper));
+  // Strimmor längs rörelsen och en het kärna vid kanten (svärd) eller i mitten (svans)
+  const streak = mix(float(1), mx_noise_float(vec3(sd.mul(9), lt.mul(1.4), attribute('aBorn', 'float').mul(0.7))).mul(0.9).add(0.75), u.streaks);
+  const core = select(u.sym.greaterThan(0.5), smoothstep(0.35, 0, abs(sd.sub(0.5))), smoothstep(0.7, 1, sd)).mul(float(1).sub(lt));
+  rMat.colorNode = mix(mix(u.head, u.tail, lt), vec3(1, 1, 1), core.mul(0.6)).mul(u.glow).mul(float(1).add(core));
+  rMat.opacityNode = pow(float(1).sub(lt), 1.5).mul(edge).mul(streak).mul(u.fade);
   ribbon.mesh.material = rMat;
   group.add(ribbon.mesh);
 
@@ -473,6 +534,7 @@ export function createTrail(s, { from, to, figure }) {
     set(v) {
       const modeChanged = s.mode !== v.mode;
       s = v;
+      u.taper.value = v.taper ?? 0.7; u.streaks.value = v.streaks ?? 0.5;
       u.len.value = v.trailTime; u.head.value.set(v.colorHead); u.tail.value.set(v.colorTail); u.glow.value = v.glow; u.soft.value = v.softness;
       u.sym.value = v.mode === 'projectile' ? 1 : 0; u.hitR.value = v.hitRing; u.hit.value.set(v.hitColor);
       additive(rMat, v.glow > 0.05);

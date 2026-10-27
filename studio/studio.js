@@ -571,6 +571,7 @@ const FX_TABS = [
   ['marker', 'Markers', 'Selection rings, targets, ability areas and exclamation marks on the ground'],
   ['particles', 'Particles', 'Sparks, fire, smoke, magic, leaves and dust'],
   ['trail', 'Trails & hits', 'Sword trails, projectiles and hits'],
+  ['spell', 'Spells', 'Spells as timed layers: wind-up, flash, flames, lightning, spikes, sparks, smoke, distortion and a camera kick'],
 ];
 for (const [id, label, tip] of FX_TABS) {
   const b = el('button', null, label);

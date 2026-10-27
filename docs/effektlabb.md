@@ -82,7 +82,17 @@ Texturerna (flipbooks, gnistor, rökmoln, runor) görs i Ateljén, gärna med Kr
 - **Markörer:** ritade ur uv på en dekal (`DecalGeometry`) som projiceras på marken och följer kullen: valring, sikte, område (runring och laddning från mitten) och utropstecken ovanför figuren; streck, fyllning, snurr, puls och vågor utåt eller inåt. Färdiga: Selected unit, Enemy target, Fire area (cast), Healing circle, Move here och Quest giver.
 - **Spår och träffar:** ett band efter svärdets klinga (bredast ytterst), eller en projektil i en båge från figuren till dockan med en svans mot kameran, gnistor längs vägen och en träff med gnistsmäll, chockring och blixt. Färdiga: Steel slash, Fire blade, Frost blade, Fireball, Arcane missile och Arrow.
 
-Kvar: texturer från Ateljén i stället för de ritade spritarna (flipbooks), effekterna i Skattkammaren, markörer som inte lägger sig på gräset, och uppspelningen i Tinkertown.
+**Besvärjelser och AAA-lyftet (byggt 2026-10-27, efter `patriks_input/AAA_Game_VFX_ThreeJS_Reference.md`):** referensens huvudpoäng är att en effekt är en tidsatt komposition av lager som samarbetar (förvarning, en kort vit blixt, silhuetten som växer, gnistor, rök, glöd som dör ut), inte ett enda lager. Därför en femte flik, **Spells**, och bättre byggstenar:
+
+- **Byggstenarna:** partiklarna har mjuka kanter mot marken (FX04: djupet bakom jämförs med partikelns, `softFade` i `vfx.js`), flöde genom ett brusfält (FX07), en låg-sprite (FX03) och ett utsändningsfönster så att de kan ingå i en tidslinje. Markörerna har en runring med tecken ur ett 3 × 3-rutnät och ritar fram sig runt varvet (FX01). Spåren smalnar av med åldern och har strimmor och en het kärna (FX08).
+- **Nya lager** i `shared/effects/spells.js`: lågor (kort mot kameran med brusvriden låga och het kärna), blixt (förgrenade band med mittpunktsförskjutning som slumpas om), spjut av is eller sten (facetterade koner med kantglöd som reser sig i en våg och sjunker undan), ljusblixt, chockring på marken, brännmärke med glöd som slocknar, portal (polära koordinater med virvlande trådar), ljus och projektil (lågor, kärna, band, rök och gnistor längs vägen).
+- **Tidslinjerna är data** i `tools/vfx/vfx.json` under `spells`: ett lager per rad med roll, typ, fästpunkt (kastaren, handen, målet, marken under målet, himlen, platsen man klickat på), start (`at`, eller efter träffen med `after: "impact"`), längd och tonning. Färgerna skrivs `$c1`–`$c3`, och storlek och styrka skalas för hela besvärjelsen. Åtta tidslinjer: Fireball, Chain lightning, Thunderbolt, Frost spikes, Healing, Meteor, Campfire och Portal, och elva färdiga besvärjelser (bl.a. Frostfire bolt, Earth spikes och Void portal).
+- **Skärmen** (FX10 och avsnitt 5): besvärjelsen lämnar chockvågor, värmedallring och kameraknyck till arenan (`post()`), som böjer bilden före glöden och knycker kameran en bild i taget.
+- **Kortet Layers** slår av och på varje roll (Cast, Travel, Flash, Core, Sparks, Smoke, Embers, Rings, Scorch, Distortion, Camera kick, Lights), som referensens felsökningsgalleri; Pause under View fryser tiden.
+
+Provat: alla besvärjelser byggs utan fel, cirka 56–60 fps i webbläsarpanelen under meteoren. För prov finns `__studio.cauldron.seek(t)` (spela från början och frys efter t sekunder) och `shot(namn, 0)`.
+
+Kvar: texturer från Ateljén i stället för de ritade spritarna (flipbooks), effekterna i Skattkammaren, markörer som inte lägger sig på gräset, uppspelningen i Tinkertown, och ur referensens katalog bl.a. sköld med träffvågor, upplösning (dissolve) och teleport, och ljusstrålar (som hör till Väderfliken).
 
 ## Faser
 
