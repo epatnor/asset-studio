@@ -137,8 +137,11 @@ export function createWater({ geometry, level = 0, sky }) {
   // s är var i sin cykel vågen är (0 = den når strandlinjen), strength hur stark just den vågen är
   const surgePhase = (t, x) => t.div(u.surgePeriod).add(sin(x.mul(0.13)).mul(0.12)).add(sin(x.mul(0.31).add(1.3)).mul(0.06));
   const waveStrength = (w) => fract(sin(w.mul(12.9898)).mul(43758.5453)).mul(0.45).add(0.55);
+  // Sköljningen börjar en tiondels cykel innan vågryggen når strandlinjen, så att ryggen sjunker ned i den i stället för
+  // att försvinna vid kanten (då klipptes vågorna i varandra)
+  const runPhase = (t, x) => surgePhase(t, x).add(0.1);
   const surgeAt = (t, x) => {
-    const ph = surgePhase(t, x), s = fract(ph);
+    const ph = runPhase(t, x), s = fract(ph);
     const prof = select(s.lessThan(0.2), smoothstep(0, 0.2, s), pow(float(1).sub(s.sub(0.2).div(0.8)), 1.7));
     return prof.mul(waveStrength(floor(ph))).mul(u.surge);
   };
@@ -151,10 +154,12 @@ export function createWater({ geometry, level = 0, sky }) {
     const str = waveStrength(floor(ph).add(1)).mul(on);
     const grow = float(1).sub(smoothstep(0.4, 1.8, at)).mul(0.8).add(0.35); // högre när det grundas
     const shape = exp(d.mul(d).div(0.12).negate());
-    const h = shape.mul(grow).mul(str).mul(u.surge).mul(1.3).mul(smoothstep(-0.05, 0.1, depth0));
-    const dh = shape.mul(d).mul(-2 / 0.12).mul(grow).mul(str).mul(u.surge).mul(1.3); // dh/d(djup)
+    const sink = smoothstep(0.05, 0.6, at); // ryggen sjunker ned i sköljningen sista biten
+    const h = shape.mul(grow).mul(str).mul(u.surge).mul(1.3).mul(sink).mul(smoothstep(-0.05, 0.1, depth0));
+    const dh = shape.mul(d).mul(-2 / 0.12).mul(grow).mul(str).mul(u.surge).mul(1.3).mul(sink); // dh/d(djup)
     const trail = select(d.greaterThan(0), exp(d.div(-0.6)), exp(d.mul(d).div(0.02).negate())).mul(str).mul(smoothstep(0, 0.4, at.add(0.1)));
-    const swash = float(1).sub(smoothstep(-0.1, 0.45, depth0)).mul(float(1).sub(smoothstep(0.1, 0.62, s))).mul(waveStrength(floor(ph))).mul(select(u.surge.greaterThan(0), 1, 0));
+    const rp = runPhase(u.time, P0.x), rs = fract(rp);
+    const swash = float(1).sub(smoothstep(-0.1, 0.45, depth0)).mul(float(1).sub(smoothstep(0.1, 0.62, rs))).mul(waveStrength(floor(rp))).mul(select(u.surge.greaterThan(0), 1, 0));
     // Lutningen ur djupets lutning (djupet minskar uppför stranden)
     return { h, n: vec3(bedSlope.x.mul(dh), 0, bedSlope.y.mul(dh)), foam: max(trail.mul(0.85), swash) };
   })();
@@ -285,7 +290,7 @@ export function createWater({ geometry, level = 0, sky }) {
     const y = positionWorld.y, above = y.sub(levelNode);
     const band = float(1).sub(smoothstep(0, max(u.wetBand, 0.001), above));
     // Sanden som vågen nyss sköljde över är fortfarande våt: den högsta sköljningen de senaste sekunderna
-    const ph = surgePhase(u.time, positionWorld.x), s = fract(ph), n = floor(ph);
+    const ph = runPhase(u.time, positionWorld.x), s = fract(ph), n = floor(ph);
     const prof = select(s.lessThan(0.2), smoothstep(0, 0.2, s), float(1).sub(s.sub(0.2).mul(0.45)));
     const line = max(prof.mul(waveStrength(n)), waveStrength(n.sub(1)).mul(float(0.7).sub(s.mul(0.25)))).mul(u.surge);
     const washed = float(1).sub(smoothstep(line.sub(0.1), line.add(0.01), above)).mul(0.75).add(float(1).sub(smoothstep(line.sub(0.01), line.add(0.03), above)).mul(0.25));
