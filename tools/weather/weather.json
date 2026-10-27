@@ -1,0 +1,49 @@
+{
+  "_doc": "Väderfliken i Väderkvarnen (docs/effektlabb.md, E4): spakarna, färdiga väderlägen och platsens modeller. Börjar med ljusstrålar (volymetriskt solljus genom skuggkartan, shared/effects/weather.js). Texten som visas är på engelska. Sparade väderlägen hamnar i assets/weather/<namn>.weather.json.",
+  "groups": [
+    {"id": "sun", "label": "Sun"},
+    {"id": "shafts", "label": "Light shafts"},
+    {"id": "air", "label": "Air"}
+  ],
+  "params": [
+    {"key": "hour", "group": "sun", "label": "Time of day", "min": 4, "max": 21, "step": 0.05, "default": 7.5, "help": "Where the sun stands over a Nordic summer day (up at 5, down at 21): low and warm in the morning and evening, high and white in the middle of the day"},
+    {"key": "azimuth", "group": "sun", "label": "Sun direction", "min": 0, "max": 359, "step": 1, "default": 20, "help": "The compass direction of the sun (0 = behind the cottage, against the camera, which gives backlit shafts)"},
+    {"key": "sun", "group": "sun", "label": "Sunlight", "min": 0, "max": 6, "step": 0.05, "default": 3, "help": "How strong the sunlight is"},
+    {"key": "shafts", "group": "shafts", "label": "Strength", "min": 0, "max": 1, "step": 0.01, "default": 0.45, "help": "How strongly the shafts colour the air (the brightest they can get)"},
+    {"key": "density", "group": "shafts", "label": "Density", "min": 0, "max": 3, "step": 0.01, "default": 0.55, "help": "How thick the air is: thin air gives faint shafts, thick air shafts that fill the clearing"},
+    {"key": "falloff", "group": "shafts", "label": "Falloff", "min": 0, "max": 6, "step": 0.05, "default": 2, "help": "How fast the shafts fade far from the sun's source"},
+    {"key": "backlight", "group": "shafts", "label": "Backlight", "min": 0, "max": 0.9, "step": 0.01, "default": 0.6, "help": "How much brighter the shafts are when you look toward the sun. High: they blaze in backlight and almost vanish from the side, like real sunbeams. 0: the same from every direction"},
+    {"key": "followSun", "group": "shafts", "label": "Shaft colour", "type": "bool", "default": true, "sub": "Follow the time of day", "help": "Warm in the morning and evening, pale at noon. Turn off to choose the colour yourself"},
+    {"key": "shaftColor", "group": "shafts", "label": "Colour", "type": "color", "default": "#ffd9a0", "help": "The shafts' colour when they do not follow the time of day"},
+    {"key": "quality", "group": "shafts", "label": "Quality", "type": "choice", "options": [{"id": "low", "label": "Low"}, {"id": "medium", "label": "Medium"}, {"id": "high", "label": "High"}], "default": "medium", "help": "Low: quarter resolution and 30 steps. Medium: half resolution and 60 steps. High: full resolution and 90 steps"},
+    {"key": "haze", "group": "air", "label": "Haze", "min": 0, "max": 0.06, "step": 0.001, "default": 0.012, "help": "Distance haze in the sky's colour"},
+    {"key": "glow", "group": "air", "label": "Sun glow", "min": 0, "max": 3, "step": 0.05, "default": 1, "help": "The sun disc and the glare around it"},
+    {"key": "dust", "group": "air", "label": "Dust in the light", "min": 0, "max": 800, "step": 1, "default": 180, "help": "Specks of dust drifting in the air, glinting in the light"},
+    {"key": "exposure", "group": "air", "label": "Exposure", "min": 0.4, "max": 2, "step": 0.01, "default": 1.1, "help": "Overall brightness"}
+  ],
+  "presets": {
+    "morning_forest": {"label": "Morning forest", "hour": 7.5, "azimuth": 20, "sun": 3, "shafts": 0.5, "density": 0.7, "falloff": 2, "haze": 0.012, "dust": 220},
+    "dawn_mist": {"label": "Dawn mist", "hour": 5.7, "azimuth": 350, "sun": 2.2, "shafts": 0.65, "density": 1.2, "falloff": 1.5, "haze": 0.024, "dust": 300, "exposure": 1.25},
+    "cathedral": {"label": "Cathedral light", "hour": 9, "azimuth": 10, "sun": 3.6, "shafts": 0.75, "density": 1.0, "falloff": 1.4, "haze": 0.012, "dust": 400},
+    "noon": {"label": "Noon", "hour": 13, "azimuth": 0, "sun": 3.8, "shafts": 0.25, "density": 0.35, "falloff": 3, "haze": 0.005, "dust": 80},
+    "golden_hour": {"label": "Golden hour", "hour": 19.4, "azimuth": 340, "sun": 2.8, "shafts": 0.55, "density": 0.8, "falloff": 1.8, "haze": 0.014, "dust": 250},
+    "dusk": {"label": "Dusk", "hour": 20.5, "azimuth": 320, "sun": 1.8, "shafts": 0.45, "density": 0.9, "falloff": 1.5, "haze": 0.02, "dust": 120, "exposure": 1.35}
+  },
+  "scene": [
+    {"id": "cottage", "model": "assets/buildings/fantasy_cottage/fantasy_cottage.gltf", "pos": [1.5, 0, -11], "rot": 15},
+    {"id": "oak1", "model": "assets/trees/cardtree_71924/cardtree_71924.gltf", "pos": [-6.5, 0, -6.5], "rot": 0, "scale": 1.15},
+    {"id": "oak2", "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf", "pos": [7.5, 0, -5], "rot": 120, "scale": 1.1},
+    {"id": "oak3", "model": "assets/trees/cardtree_71924/cardtree_71924.gltf", "pos": [-11, 0, -13], "rot": 210, "scale": 1.3},
+    {"id": "ash1", "model": "assets/trees/ash_v2/ash_v2.gltf", "pos": [-3, 0, -17], "rot": 40, "scale": 1.2},
+    {"id": "ash2", "model": "assets/trees/ash_v2/ash_v2.gltf", "pos": [10, 0, -15], "rot": 300, "scale": 1.1},
+    {"id": "birch1", "model": "assets/trees/birch_v2/birch_v2.gltf", "pos": [-9, 0, -1], "rot": 80, "scale": 1},
+    {"id": "birch2", "model": "assets/trees/birch_v2/birch_v2.gltf", "pos": [4.2, 0, -2.2], "rot": 160, "scale": 0.9},
+    {"id": "aspen", "model": "assets/trees/aspen_v2/aspen_v2.gltf", "pos": [12, 0, -8], "rot": 30, "scale": 1.1},
+    {"id": "oak4", "model": "assets/trees/cardtree_71924/variants/cardtree_71924_s37585/cardtree_71924_s37585.gltf", "pos": [-1.5, 0, -24], "rot": 90, "scale": 1.4},
+    {"id": "bush1", "model": "assets/trees/ballbush_v2/ballbush_v2.gltf", "pos": [-4, 0, -9.5], "rot": 0},
+    {"id": "bush2", "model": "assets/trees/cardbush_78676/cardbush_78676.gltf", "pos": [6, 0, -9], "rot": 50},
+    {"id": "stone", "model": "assets/props/boulder1/boulder1.gltf", "pos": [-2.5, 0, -3], "rot": 30},
+    {"id": "stump", "model": "assets/props/mossy_stump1/mossy_stump1.gltf", "pos": [2.6, 0, 1.5], "rot": 0}
+  ],
+  "camera": {"pos": [0.5, 2.2, 13], "target": [0, 3.2, -5]}
+}

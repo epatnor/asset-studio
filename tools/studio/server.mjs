@@ -565,6 +565,34 @@ async function vfxSave({ name, kind, settings, overwrite }) {
   await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
   return { entry, file: `${VFX_SAVED}/${name}.vfx.json` };
 }
+// --- Väderkvarnen, fliken Väder (docs/effektlabb.md, E4): spakar, väderlägen och platsen (tools/weather/weather.json),
+// sparade väderlägen i assets/weather/ ---
+const WEATHER_JSON = 'tools/weather/weather.json', WEATHER_SAVED = 'assets/weather';
+async function weatherInfo() {
+  const X = await readJson(WEATHER_JSON);
+  const dir = path.join(ROOT, WEATHER_SAVED);
+  const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.weather.json')).map((f) => readJson(`${WEATHER_SAVED}/${f}`)))).filter(Boolean) : [];
+  return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
+}
+async function weatherSave({ name, settings, overwrite }) {
+  name = String(name ?? '').trim().toLowerCase();
+  if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
+  const X = await readJson(WEATHER_JSON);
+  const clean = {};
+  for (const q of X.params) {
+    const v = settings?.[q.key];
+    if (q.type === 'color') clean[q.key] = /^#[0-9a-f]{6}$/i.test(v) ? v : q.default;
+    else if (q.type === 'bool') clean[q.key] = v === undefined ? q.default : !!v;
+    else if (q.type === 'choice') clean[q.key] = q.options.some((o) => o.id === v) ? v : q.default;
+    else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
+  }
+  const file = path.join(ROOT, WEATHER_SAVED, `${name}.weather.json`);
+  if (existsSync(file) && !overwrite) return { exists: true };
+  await mkdir(path.dirname(file), { recursive: true });
+  const entry = { name, settings: clean, saved: new Date().toISOString() };
+  await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
+  return { entry, file: `${WEATHER_SAVED}/${name}.weather.json` };
+}
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();
@@ -672,6 +700,8 @@ async function api(req, res, url) {
   if (url.pathname === '/api/grass/save' && req.method === 'POST') return json(res, 200, await grassSave(await body(req)));
   if (url.pathname === '/api/vfx' && req.method === 'GET') return json(res, 200, await vfxInfo());
   if (url.pathname === '/api/vfx/save' && req.method === 'POST') return json(res, 200, await vfxSave(await body(req)));
+  if (url.pathname === '/api/weather' && req.method === 'GET') return json(res, 200, await weatherInfo());
+  if (url.pathname === '/api/weather/save' && req.method === 'POST') return json(res, 200, await weatherSave(await body(req)));
   if (url.pathname === '/api/wind/glade' && req.method === 'GET') {
     gladeBusy ??= windGlade().finally(() => { gladeBusy = null; }); // flera flikar som frågar samtidigt får samma bygge
     return json(res, 200, await gladeBusy);

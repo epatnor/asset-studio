@@ -16,6 +16,7 @@ import { createHome, DEPARTMENTS, VAULT } from './home.js';
 import { createForgeDrawer } from './drawer.js';
 import { createWindmill } from './windmill.js';
 import { createCauldron } from './cauldron.js';
+import { createWeather } from './weather.js';
 import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
@@ -511,7 +512,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || valueOf(paramAt(p.when.path)) === p.when.equals);
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
   drawer?.setKind(kind);
   applyDept();
 }
@@ -557,7 +558,11 @@ const windBtn = el('button', null, 'Wind');
 windBtn.dataset.dept = 'windmill';
 windBtn.title = 'The Windmill: one wind for trees, bushes, flowers, grass and flags, tried in a glade';
 $('kinds').append(windBtn);
-for (const [label, tip] of [['Water', 'Every kind of water in one basin'], ['Weather', 'Time of day, clouds, rain, snow and storms']]) {
+// Väder (studio/weather.js): börjar med solen och ljusstrålarna
+const weatherBtn = el('button', null, 'Weather');
+weatherBtn.dataset.dept = 'windmill';
+weatherBtn.title = 'The Windmill: time of day and light shafts through the trees (clouds, rain, snow and storms will follow)';
+for (const [label, tip] of [['Water', 'Every kind of water in one basin']]) {
   const b = el('button', null, label);
   b.dataset.dept = 'windmill';
   b.disabled = true;
@@ -565,6 +570,7 @@ for (const [label, tip] of [['Water', 'Every kind of water in one basin'], ['Wea
   b.append(el('span', 'soon', 'soon'));
   $('kinds').append(b);
 }
+$('kinds').append(weatherBtn);
 // Häxkitteln (studio/cauldron.js): fyra flikar med en gemensam arena (docs/effektlabb.md, E6)
 const FX_TABS = [
   ['glow', 'Glow & aura', 'Glowing rims, light pillars and auras around figures'],
@@ -582,7 +588,7 @@ for (const [id, label, tip] of FX_TABS) {
   $('kinds').append(b);
 }
 let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false, windmill = null, windMode = false;
-let cauldron = null, fxMode = false, fxKind = 'glow';
+let cauldron = null, fxMode = false, fxKind = 'glow', weather = null, weatherMode = false;
 // Miniatyrerna (The Vault och lådan) får samma material som studion, utan vind
 const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
 const thumbPatch = createMaterialPatcher(THREE, { wind: thumbWind, sunDir });
@@ -609,7 +615,7 @@ function openDept(id) {
   else if (id === 'cauldron') openCauldron(fxKind);
   else selectKind(kind);
 }
-const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode ? 'windmill' : fxMode ? 'cauldron' : 'forge');
+const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode ? 'windmill' : fxMode ? 'cauldron' : 'forge');
 function applyDept() {
   const d = currentDept();
   if (d) document.documentElement.dataset.dept = d; else delete document.documentElement.dataset.dept;
@@ -654,6 +660,7 @@ libBtn.onclick = async () => {
   leaveTextureMode();
   leaveWindMode();
   leaveFxMode();
+  leaveWeatherMode();
   libraryMode = true;
   document.body.classList.add('library-mode');
   paused = true;
@@ -689,6 +696,7 @@ texBtn.onclick = async () => {
   leaveLibraryMode();
   leaveWindMode();
   leaveFxMode();
+  leaveWeatherMode();
   textureMode = true;
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
@@ -701,6 +709,7 @@ windBtn.onclick = async () => {
   leaveLibraryMode();
   leaveTextureMode();
   leaveFxMode();
+  leaveWeatherMode();
   windMode = true;
   document.body.classList.add('wind-mode');
   paused = true; // studions egen 3D-vy behövs inte; gläntan har sin egen renderare
@@ -726,6 +735,7 @@ async function openCauldron(id) {
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
+  leaveWeatherMode();
   fxMode = true;
   fxKind = id;
   document.body.classList.add('fx-mode');
@@ -739,6 +749,32 @@ async function openCauldron(id) {
     return;
   }
   if (fxMode) cauldron.show(fxKind);
+}
+weatherBtn.onclick = async () => {
+  leaveHome();
+  leaveLibraryMode();
+  leaveTextureMode();
+  leaveWindMode();
+  leaveFxMode();
+  weatherMode = true;
+  document.body.classList.add('weather-mode');
+  paused = true; // platsen har sin egen renderare
+  refreshUi();
+  try {
+    weather ??= await createWeather({ api, el, view: $('wxview'), side: $('wxside'), drawer: $('wxdrawer'), footer: $('wxfoot') });
+  } catch (e) {
+    $('wxfoot').replaceChildren(el('div', 'msg', `The weather could not start: ${e.message ?? e}`));
+    console.error(e);
+    return;
+  }
+  if (weatherMode) weather.show();
+};
+function leaveWeatherMode() {
+  if (!weatherMode) return;
+  weatherMode = false;
+  document.body.classList.remove('weather-mode');
+  weather?.hide();
+  paused = false;
 }
 function leaveFxMode() {
   if (!fxMode) return;
@@ -755,7 +791,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (homeMode || textureMode || libraryMode || windMode || fxMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); if (k.id === kind.id) return refreshUi(); }
+  if (homeMode || textureMode || libraryMode || windMode || fxMode || weatherMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -824,6 +860,7 @@ window.__studio = {
   camera, controls, state, frame: () => frame(current, ...pinned), measure,
   get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
   get windmill() { return windmill; }, // Väderkvarnen (wind, scene, stats), när den har öppnats
+  get weather() { return weather; }, // Väderfliken (vals, apply, shafts, stats), när den har öppnats
   get cauldron() { return cauldron; }, // Häxkitteln (fx, select, stats), när den har öppnats
   prepareThumb, // för att rendera om miniatyrer: renderThumb(url, __studio.prepareThumb) i library.js
   shot: async (name) => {
@@ -844,7 +881,7 @@ regenerate();
 const home = createHome({ el, api, root: $('home'), open: openDept });
 createGpuMenu({ el, api, button: $('gpu'), root: document.body });
 function goHome() {
-  leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode();
+  leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode();
   homeMode = true;
   paused = true; // 3D-vyn behövs inte under landningssidan
   home.show();
@@ -857,9 +894,10 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek, #vind, #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
 else if (location.hash === '#vind') windBtn.onclick();
+else if (location.hash === '#vader') weatherBtn.onclick();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();

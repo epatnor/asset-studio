@@ -125,12 +125,12 @@
   @media (max-width: 900px) { #unpin, #redo, header#top h1 span { display: none; } }
 
   /* Paneler till höger (tillgångarnas kort, verkstadens kort): en dockad panel med kort som sektioner */
-  #side, #wside, #wmside, #cvside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
+  #side, #wside, #wmside, #cvside, #wxside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
                   overflow-y: auto; flex-direction: column; gap: 0; background: var(--surface); backdrop-filter: blur(14px) saturate(1.2);
                   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); box-sizing: border-box; }
   #side { display: flex; }
   #side:empty { display: none; }
-  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
   .card { flex: none; border-bottom: 1px solid var(--line); }
   .card > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
   .card > header::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--part, var(--accent)); flex: none; }
@@ -196,10 +196,10 @@
   .tex .grid figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Footer: siffror i block med små rubriker */
-  footer#bottom, #wfoot, #wmfoot, #cvfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
+  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
                           background: var(--surface-solid); border-top: 1px solid var(--line); box-sizing: border-box; }
   footer#bottom { display: flex; }
-  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
+  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
   footer .block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   footer .block > b { font-size: 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
@@ -268,12 +268,12 @@
   .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
 
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib, #fdrawer, #wmdrawer, #cvdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
+  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
           border-radius: var(--radius); flex-direction: column; overflow: hidden; z-index: 1; }
   body.texture-mode #wlib { display: flex; }
   /* Lådan (studio/drawer.js och verkstadens bibliotek): till vänster i varje avdelning, Ctrl+Mellanslag fäller ihop den */
-  body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode) #fdrawer { display: flex; }
-  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed .lside { display: none !important; }
+  body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode):not(.weather-mode) #fdrawer { display: flex; }
+  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed .lside { display: none !important; }
   #drawerbtn { align-self: center; margin-right: 4px; }
   #drawerbtn.on { color: var(--accent); }
   body.home-mode #drawerbtn { display: none; }
@@ -347,6 +347,18 @@
   .gpupop .seg button { flex: 1; justify-content: center; padding: 0 4px; }
   @media (max-width: 1000px) { .gpubtn .gpuname { display: none; } }
   .gswatch { width: 100%; height: 6px; border-radius: 3px; }
+  /* Väderfliken (studio/weather.js): samma upplägg, med stugan i gläntan */
+  #wxview, #wxside, #wxfoot { display: none; }
+  body.weather-mode #app, body.weather-mode #side, body.weather-mode #bottom, body.weather-mode .asset-tool { display: none; }
+  body.weather-mode #wxview { display: block; position: fixed; inset: 0; background: var(--viewport); }
+  body.weather-mode #wxview canvas { display: block; }
+  body.weather-mode #wxside, body.weather-mode #wxdrawer, body.weather-mode #wxfoot { display: flex; }
+  #wxfoot .msg { margin-left: auto; color: var(--muted); text-align: right; }
+  #wxside .rows > button { justify-content: center; }
+  #wxside .card > header { cursor: pointer; }
+  #wxside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #wxside .card.closed > header h2::after { transform: none; }
+  #wxside .card.closed > .rows { display: none; }
   /* Häxkitteln (studio/cauldron.js): samma upplägg som Väderkvarnen, med arenan i stället för gläntan */
   #cvview, #cvside, #cvfoot { display: none; }
   body.fx-mode #app, body.fx-mode #side, body.fx-mode #bottom, body.fx-mode .asset-tool { display: none; }
@@ -538,6 +550,10 @@
 <div id="wmside"></div>
 <div id="wmdrawer" class="glass"></div>
 <footer id="wmfoot" class="glass"></footer>
+<div id="wxview"></div>
+<div id="wxside"></div>
+<div id="wxdrawer" class="glass"></div>
+<footer id="wxfoot" class="glass"></footer>
 <div id="cvview"></div>
 <div id="cvside"></div>
 <div id="cvdrawer" class="glass"></div>

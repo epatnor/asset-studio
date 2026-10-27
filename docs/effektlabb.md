@@ -59,6 +59,8 @@ Alla tre läser samma tid och samma vind, så att ett oväder gör att träden b
 
 ## Fliken Väder
 
+**Byggt 2026-10-27, ljusstrålarna först:** fliken Weather i Väderkvarnen (`studio/weather.js`, länk `…/studio/#vader`) med en stuga i en glänta bland träd och buskar ur biblioteket (platsen och kameran är data i `tools/weather/weather.json`). `shared/effects/weather.js` har solen över en nordisk sommardag (`sunAt`: upp klockan 5, högst 55° klockan 13, ned klockan 21; riktning, färg och himlens färger), himlen med solskiva och sken (`createSky`) och ljusstrålarna (`createShafts`): three.js GodraysNode (från three-good-godrays) marscherar genom luften och läser solens skuggkarta, ett bilateralt filter suddar, och ljuset läggs ovanpå bilden viktat med vinkeln mot solen (Henyey-Greenstein, spaken Backlight), så att strålarna lyser i motljus och nästan försvinner från sidan. Kort: Sun (tid, riktning, styrka), Light shafts (styrka, täthet, avtoning, motljus, färg efter tiden eller egen, kvalitet) och Air (dis, solsken, stoft i ljuset, exponering). Färdiga väderlägen: Morning forest, Dawn mist, Cathedral light, Noon, Golden hour och Dusk; egna sparas i `assets/weather/<namn>.weather.json`. Cirka 46–59 fps i webbläsarpanelen (WebGL2).
+
 **Grundscenen:** en liten plats med ett hus, några träd, mark, en pöl och lite vatten, så att alla effekter syns på riktiga ytor.
 
 **Spakar:** tid på dygnet; molntäcke och molnsort; regn (täthet, droppstorlek, stänk, våta ytor som mörknar och blir blanka); snö (fall och snö som lägger sig på uppåtvända ytor); dimma och markdimma; storm med blixtar; vindens styrka och byar (vindmodulen); färgton. Väderlägen sparas som recept (klart, mulet, regn, storm, snö, dimma) och kan blandas över tid.
