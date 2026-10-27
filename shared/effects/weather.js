@@ -43,15 +43,18 @@ export function sunAt(hour, azimuth = 0) {
 // Himlen: en gradient från horisonten till zenit, en solskiva och ett sken runt den (som lyser i glöden)
 export function createSky() {
   const u = { zenith: uniform(C('#3f7cd0')), horizon: uniform(C('#c4dcf2')), sunColor: uniform(C('#fff3dc')), sunDir: uniform(new THREE.Vector3(0, 1, 0)), glow: uniform(1), sun: uniform(1) };
-  const d = normalize(positionWorldDirection);
-  const h = max(d.y, 0);
-  const sky = mix(u.horizon, u.zenith, pow(h, 0.55));
-  const c = max(dot(d, u.sunDir), 0);
-  const disc = smoothstep(0.9993, 0.9997, c).mul(30);
-  const halo = pow(c, 64).mul(1.4).add(pow(c, 6).mul(0.35));
-  const node = sky.add(u.sunColor.mul(disc.add(halo)).mul(u.glow).mul(u.sun));
+  // Himlens färg i en riktning (världen); vattnet speglar samma himmel genom colorAt
+  const colorAt = (dir, discGain = 1) => {
+    const d = normalize(dir);
+    const sky = mix(u.horizon, u.zenith, pow(max(d.y, 0), 0.55));
+    const c = max(dot(d, u.sunDir), 0);
+    const disc = smoothstep(0.9993, 0.9997, c).mul(30 * discGain);
+    const halo = pow(c, 64).mul(1.4).add(pow(c, 6).mul(0.35));
+    return sky.add(u.sunColor.mul(disc.add(halo)).mul(u.glow).mul(u.sun));
+  };
+  const node = colorAt(positionWorldDirection);
   return {
-    node, uniforms: u,
+    node, uniforms: u, colorAt,
     set(sun, glow = 1) { u.zenith.value.copy(sun.zenith); u.horizon.value.copy(sun.horizon); u.sunColor.value.copy(sun.color); u.sunDir.value.copy(sun.dir); u.glow.value = glow; u.sun.value = sun.strength; },
   };
 }

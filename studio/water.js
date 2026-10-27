@@ -1,0 +1,491 @@
+// Väderkvarnen, fliken Vatten (docs/effektlabb.md, E3): vattnet provas i fyra scener, öppet vatten, en strand där
+// vågorna sköljer in, en bäck med vattenväxter och en liten sjö med träd för speglingar. Ytan är shared/effects/water.js,
+// himlen och solen weather.js. Spakarna, vattentyperna och scenerna är data i tools/water/water.json; sparade
+// vattentyper i assets/water/. Egen renderare (WebGPU, WebGL2 som reserv), som Väder-fliken. Texten i appen är på engelska.
+import * as THREE from 'three/webgpu';
+import { pass, texture, positionWorld, mix, smoothstep, mx_noise_float, vec3, float, attribute } from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { sunAt, createSky } from '../shared/effects/weather.js';
+import { createWater, bedAndFlow } from '../shared/effects/water.js';
+import { gpuPreference, frameGate } from './gpu.js';
+import { createCards } from './cards.js';
+
+const DEG = Math.PI / 180;
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// Låg-frekvent brus i JS (för terrängen): några sinusvågor i olika riktningar
+const hills = (x, z) => Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09 - 0.4) * 0.5 + Math.sin(x * 0.043 - z * 0.051) * 0.7 + Math.sin(x * 0.27 + z * 0.19) * 0.12;
+
+// Koordinater längs en axel: tätt i [fineMin, fineMax], allt glesare utanför (växer med growth per steg)
+function axis(min, max, fineMin, fineMax, step, growth = 1.07) {
+  const xs = [];
+  for (let x = fineMin; x <= fineMax + 1e-6; x += step) xs.push(x);
+  for (let s = step, x = fineMin; x > min;) { s *= growth; x = Math.max(min, x - s); xs.unshift(x); }
+  for (let s = step, x = xs[xs.length - 1]; x < max;) { s *= growth; x = Math.min(max, x + s); xs.push(x); }
+  return xs;
+}
+// Ett rutnät i världen: xs × zs, höjden ur yAt
+function grid(xs, zs, yAt) {
+  const nx = xs.length, nz = zs.length, pos = new Float32Array(nx * nz * 3), idx = [];
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = (j * nx + i) * 3; pos[k] = xs[i]; pos[k + 1] = yAt(xs[i], zs[j]); pos[k + 2] = zs[j]; }
+  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+export async function createWaterTab({ api, el, view, side, drawer, footer }) {
+  const info = await api('/api/water');
+  const defaults = Object.fromEntries(info.params.map((q) => [q.key, q.default]));
+  const isRecipe = (q) => q.recipe !== false;
+  const vals = { ...defaults };
+  let current = null;
+
+  // --- Renderaren (se weather.js): WebGPU bara på ett riktigt grafikkort ---
+  const pref = gpuPreference() === 'default' ? undefined : gpuPreference();
+  const adapter = navigator.gpu ? await navigator.gpu.requestAdapter({ powerPreference: pref }).catch(() => null) : null;
+  const software = !adapter || adapter.info?.isFallbackAdapter || adapter.isFallbackAdapter || /swiftshader|llvmpipe/i.test(`${adapter.info?.architecture} ${adapter.info?.description}`);
+  const renderer = new THREE.WebGPURenderer({ antialias: true, powerPreference: pref, forceWebGL: software });
+  await renderer.init();
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.shadowMap.enabled = true;
+  view.append(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 900);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.maxDistance = 120;
+
+  // --- Solen och himlen ---
+  const sky = createSky();
+  scene.backgroundNode = sky.node;
+  const hemi = new THREE.HemisphereLight('#cfe0ff', '#4a5a30', 1);
+  const sunLight = new THREE.DirectionalLight('#ffffff', 3);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.bias = -0.0004;
+  sunLight.shadow.normalBias = 0.04;
+  Object.assign(sunLight.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 140 });
+  scene.add(hemi, sunLight, sunLight.target);
+
+  // --- Bilden: scenen (med djup, som vattnet läser) och glöden från solglittret ---
+  const pipeline = new THREE.RenderPipeline(renderer);
+  const scenePass = pass(scene, camera, { samples: 4 });
+  const out = scenePass.getTextureNode('output');
+  pipeline.outputNode = out.add(bloom(out, 0.18, 0.25, 1.6)); // bara det starkaste (solglittret) glöder
+
+  // --- Texturer och modeller ---
+  const texLoader = new THREE.TextureLoader();
+  const texCache = new Map();
+  const tex = (name) => {
+    if (!texCache.has(name)) { const t = texLoader.load(`/assets/textures/${name}.png`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; texCache.set(name, t); }
+    return texture(texCache.get(name), positionWorld.xz.div(name === 'ground_meadow' ? 3 : 2.2)).rgb;
+  };
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const models = new Map(), failed = new Set();
+  const loadModel = (url) => {
+    if (!models.has(url)) models.set(url, loader.loadAsync(`/${url}`).then((g) => g.scene).catch(() => { failed.add(url.split('/').pop()); return null; }));
+    return models.get(url);
+  };
+  async function place(group, url, x, y, z, rot = 0, scale = 1) {
+    const src = await loadModel(url);
+    if (!src) return null;
+    const root = src.clone(true);
+    root.position.set(x, y, z);
+    root.rotation.y = rot * DEG;
+    root.scale.setScalar(scale);
+    root.traverse((o) => {
+      if (/_LOD[12]$/.test(o.name)) o.visible = false;
+      if (!o.isMesh) return;
+      const m = o.material;
+      o.castShadow = m.userData?.castShadow !== false;
+      o.receiveShadow = m.userData?.receiveShadow !== false && !m.userData?.shadowProxy;
+      if (m.userData?.shadowProxy) { m.colorWrite = false; m.depthWrite = false; }
+    });
+    group.add(root);
+    return root;
+  }
+
+  // --- Marken: lager efter höjden över vattnet (levelNode), våt och med kaustik genom vattnet ---
+  function groundMaterial(water, levelNode, { low, mid, high, highAt = 0.9 }) {
+    const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.92 });
+    const y = positionWorld.y.sub(levelNode), n = mx_noise_float(vec3(positionWorld.xz.mul(0.35), 0)).mul(0.25);
+    let c = mix(tex(low), tex(mid), smoothstep(-0.12, 0.05, y.add(n.mul(0.4))));
+    c = mix(c, tex(high), smoothstep(highAt - 0.25, highAt + 0.25, y.add(n)));
+    m.colorNode = water.groundColor(c.mul(0.92), levelNode);
+    m.roughnessNode = water.groundRoughness(float(0.92), levelNode);
+    return m;
+  }
+
+  // ---------- De fyra scenerna ----------
+  const BUILD = {
+    // Öppet vatten till horisonten: en sandbotten långt ned och inget annat
+    async plane(S, group) {
+      const L = S.level ?? 0, bedAt = (x, z) => -9 + hills(x, z) * 0.8;
+      const geo = bedAndFlow(grid(axis(-450, 450, -60, 60, 0.45, 1.04), axis(-450, 450, -70, 40, 0.45, 1.04), () => L), bedAt);
+      const water = createWater({ geometry: geo, level: L, sky });
+      const ground = new THREE.Mesh(grid(axis(-450, 450, -60, 60, 3), axis(-450, 450, -60, 60, 3), bedAt), null);
+      ground.material = groundMaterial(water, water.uniforms.level, { low: 'surface_sand', mid: 'surface_sand', high: 'surface_sand' });
+      return { water, ground, level: L, bedAt };
+    },
+    // En strand längs x: havet bortåt (-z), sanden stiger mot kameran, dyner med gräs och tallar bakom
+    async beach(S, group) {
+      const L = S.level ?? 0;
+      const bedAt = (x, z) => {
+        let h = -0.15 + 0.07 * z + Math.sin(x * 0.15) * 0.18 * smooth(-12, 4, z) + Math.sin(x * 0.41 + 2) * 0.05;
+        if (z < -28) h = -0.15 + 0.07 * -28 - (-28 - z) * 0.035;
+        h += 0.35 * Math.exp(-(((z + 15) / 3.5) ** 2)) * (0.8 + 0.2 * Math.sin(x * 0.07)); // sandrevel
+        h += smooth(9, 17, z) * (0.7 + hills(x, z) * 0.5); // dynerna
+        return Math.max(h, -7);
+      };
+      const geo = bedAndFlow(grid(axis(-260, 260, -36, 36, 0.28, 1.045), axis(-320, 14, -26, 14, 0.25, 1.045), () => L), bedAt);
+      const water = createWater({ geometry: geo, level: L, sky });
+      const ground = new THREE.Mesh(grid(axis(-260, 260, -40, 40, 0.5), axis(-320, 120, -30, 40, 0.5), bedAt), null);
+      ground.material = groundMaterial(water, water.uniforms.level, { low: 'surface_sand', mid: 'surface_sand', high: 'surface_grass', highAt: 1.9 });
+      return { water, ground, level: L, bedAt };
+    },
+    // En bäck som slingrar sig genom en äng mot kameran, med en bred, lugn göl på mitten
+    async stream(S, group) {
+      // Catmull-Rom genom punkterna [x, z, halva bredden], samplad var 0,4 m
+      const P = S.path, smp = [];
+      for (let i = 0; i < P.length - 1; i++) {
+        const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+        const n = Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 0.4);
+        for (let k = 0; k < n; k++) {
+          const t = k / n, t2 = t * t, t3 = t2 * t;
+          const cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+          smp.push({ x: cr(p0[0], p1[0], p2[0], p3[0]), z: cr(p0[1], p1[1], p2[1], p3[1]), w: p1[2] + (p2[2] - p1[2]) * (t2 * (3 - 2 * t)) });
+        }
+      }
+      smp.push({ x: P.at(-1)[0], z: P.at(-1)[1], w: P.at(-1)[2] });
+      const base = (x, z) => 0.6 - 0.01 * z + hills(x, z) * 0.35;
+      let s = 0, lvl = Infinity;
+      smp.forEach((p, i) => {
+        const q = smp[Math.min(i + 1, smp.length - 1)], r = smp[Math.max(i - 1, 0)];
+        const tx = q.x - r.x, tz = q.z - r.z, tl = Math.hypot(tx, tz) || 1;
+        p.tx = tx / tl; p.tz = tz / tl;
+        if (i) s += Math.hypot(p.x - smp[i - 1].x, p.z - smp[i - 1].z);
+        p.s = s;
+        lvl = Math.min(lvl, base(p.x, p.z) - 0.32); // ytan sluttar nedströms och stiger aldrig
+        p.level = lvl;
+        p.depth = 0.22 + 0.2 * p.w;
+      });
+      const nearest = (x, z) => {
+        let best = 1e9, bi = 0;
+        for (let i = 0; i < smp.length; i += 2) { const d = (smp[i].x - x) ** 2 + (smp[i].z - z) ** 2; if (d < best) { best = d; bi = i; } }
+        for (let i = Math.max(0, bi - 2); i <= Math.min(smp.length - 1, bi + 2); i++) { const d = (smp[i].x - x) ** 2 + (smp[i].z - z) ** 2; if (d < best) { best = d; bi = i; } }
+        return [smp[bi], Math.sqrt(best)];
+      };
+      const bedAt = (x, z) => {
+        const [p, d] = nearest(x, z), k = d / p.w;
+        const chan = p.level - p.depth * Math.max(0, 1 - k * k) ** 0.7 + Math.max(0, d - p.w * 0.9) * 0.45 + 0.06;
+        return Math.min(base(x, z), chan);
+      };
+      // Vattnet: ett band längs bäcken, lite bredare än fåran (kanterna göms av marken)
+      const pos = [], idx = [], across = 10, edgeK = 1.35;
+      smp.forEach((p) => { for (let j = 0; j <= across; j++) { const o = (j / across * 2 - 1) * p.w * edgeK; pos.push(p.x - p.tz * o, p.level, p.z + p.tx * o); } });
+      for (let i = 0; i < smp.length - 1; i++) for (let j = 0; j < across; j++) { const a = i * (across + 1) + j, b = a + 1, c = a + across + 1, d = c + 1; idx.push(a, b, c, b, d, c); }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      // Strömmen: snabbare där bäcken är smal, långsammare vid kanterna och i gölen
+      bedAndFlow(geo, bedAt, (x, z, i) => {
+        const p = smp[Math.floor(i / (across + 1))], j = (i % (across + 1)) / across * 2 - 1, v = (1.1 / p.w) ** 0.9 * (1 - 0.6 * j * j);
+        return [p.tx * v, p.tz * v];
+      });
+      const near = nearest(0, 2)[0];
+      const water = createWater({ geometry: geo, level: near.level, sky });
+      const tg = grid(axis(-90, 90, -30, 30, 0.35), axis(-120, 120, -50, 40, 0.35), bedAt);
+      // Vattnets nivå vid varje markhörn, för våt strand och kaustik
+      const tp = tg.attributes.position, wl = new Float32Array(tp.count);
+      for (let i = 0; i < tp.count; i++) { const [p, d] = nearest(tp.getX(i), tp.getZ(i)); wl[i] = d < p.w * 3 ? p.level : -50; }
+      tg.setAttribute('wlevel', new THREE.BufferAttribute(wl, 1));
+      const ground = new THREE.Mesh(tg, null);
+      ground.material = groundMaterial(water, attribute('wlevel', 'float'), { low: 'surface_riverbed', mid: 'surface_mud', high: 'ground_meadow', highAt: 0.18 });
+      // Platserna för modellerna: längs bäcken (andel av längden, sidled i bredder), på bankarna och i gölen
+      const along = (t, off) => { const p = smp[Math.round(t * (smp.length - 1))]; return [p.x - p.tz * off * p.w, p.z + p.tx * off * p.w, p]; };
+      const pool = smp.reduce((a, b) => (b.w > a.w ? b : a));
+      return { water, ground, level: near.level, bedAt, along, pool, smp, mirrorLevel: near.level };
+    },
+    // En liten sjö med oregelbunden strand, en kulle bakom och träd runt om
+    async lake(S, group) {
+      const L = S.level ?? 0, { radius: R, depth, wobble } = S.basin;
+      const radiusAt = (a) => R * (1 + wobble * (Math.sin(3 * a + 0.7) * 0.6 + Math.sin(5 * a + 2.1) * 0.35));
+      const kAt = (x, z) => Math.hypot(x, z) / radiusAt(Math.atan2(-z, x));
+      const bedAt = (x, z) => {
+        const k = kAt(x, z), h0 = 0.25 + smooth(1.3, 2.6, k) * (0.4 + hills(x, z) * 0.4) + 3.2 * smooth(-R * 1.3, -R * 3, z) * (0.7 + 0.3 * Math.sin(x * 0.08));
+        return mix1(L - 0.12 - depth * Math.max(0, 1 - k * k) ** 0.8, h0, smooth(0.97, 1.45, k));
+      };
+      const geo = bedAndFlow(grid(axis(-R * 2, R * 2, -R * 1.8, R * 1.8, 0.35), axis(-R * 2, R * 2, -R * 1.8, R * 1.8, 0.35), () => L), bedAt);
+      const water = createWater({ geometry: geo, level: L, sky });
+      const ground = new THREE.Mesh(grid(axis(-260, 260, -R * 2.2, R * 2.2, 0.4), axis(-260, 260, -R * 2.6, R * 2.2, 0.4), bedAt), null);
+      ground.material = groundMaterial(water, water.uniforms.level, { low: 'surface_pondbed', mid: 'surface_mud', high: 'ground_meadow', highAt: 0.3 });
+      const shore = (deg, k) => { const a = deg * DEG, r = radiusAt(Math.atan2(Math.sin(a), Math.cos(a))) * k; return [Math.cos(a) * r, -Math.sin(a) * r]; };
+      return { water, ground, level: L, bedAt, shore };
+    },
+  };
+  const mix1 = (a, b, t) => a + (b - a) * t;
+
+  // Bygg en scen en gång; sedan byts den bara in och ut
+  const built = {};
+  let active = null;
+  async function buildScene(id) {
+    const S = info.scenes[id], group = new THREE.Group();
+    const B = await BUILD[id](S, group);
+    B.ground.receiveShadow = true;
+    group.add(B.ground, B.water.mesh);
+    if (B.mirrorLevel !== undefined) B.water.setLevel(B.mirrorLevel);
+    // Modellerna ur water.json. Utströdda växter (scatter) blir en InstancedMesh per del och modell: ett anrop i stället
+    // för ett per exemplar, i bilden, i speglingen och i skuggan (där de inte är med alls)
+    const r = rng(id.length * 977 + 13), floats = [], jobs = [], flocks = [];
+    const rand = (a, b) => a + (b - a) * r();
+    for (const m of S.models ?? []) {
+      const n = m.scatter ?? 1, [s0, s1] = Array.isArray(m.scale) ? m.scale : [m.scale ?? 1, m.scale ?? 1], list = [];
+      for (let i = 0; i < n; i++) {
+        let x, z;
+        if (m.at) [x, z] = m.at;
+        else if (m.along) [x, z] = B.along(...m.along);
+        else if (m.shore) [x, z] = B.shore(...m.shore);
+        else if (m.ring) [x, z] = B.shore(rand(m.ring[0], m.ring[1]), rand(m.ring[2], m.ring[3]));
+        else if (m.pool) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * B.pool.w * 0.75; [x, z] = [B.pool.x + Math.cos(a) * d, B.pool.z + Math.sin(a) * d]; }
+        else if (m.bank) { const [px, pz] = B.along(rand(0.05, 0.95), (r() < 0.5 ? -1 : 1) * rand(m.bank[0], m.bank[1])); [x, z] = [px, pz]; }
+        else if (m.zone) [x, z] = [rand(m.zone[0], m.zone[1]), rand(m.zone[2], m.zone[3])];
+        else continue;
+        const bed = B.bedAt(x, z), lvl = B.smp ? nearestLevel(B, x, z) : B.level;
+        const y = m.float ? lvl + 0.01 : bed - (m.scatter ? 0.03 : 0.08);
+        const rot = m.rot ?? r() * 360, sc = m.scatter ? rand(s0, s1) : s0, ph = r() * 6;
+        if (m.float && bed > lvl - 0.05) continue; // näckrosor bara där det är vatten
+        if (!m.float && !m.pool && m.scatter && bed < lvl - 0.05 && !/reed|cattail/.test(m.model)) continue; // gräs inte under vattnet
+        if (m.scatter) list.push({ x, y, z, rot, sc, float: !!m.float, lvl, bed, ph });
+        else jobs.push(place(group, m.model, x, y, z, rot, sc));
+      }
+      if (list.length) flocks.push({ url: m.model, list });
+    }
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+    const baseOf = (it, y = it.y) => M.compose(V.set(it.x, y, it.z), Q.setFromAxisAngle(UP, it.rot * DEG), SC.setScalar(it.sc));
+    for (const { url, list } of flocks) jobs.push(loadModel(url).then((src) => {
+      if (!src) return;
+      src.updateMatrixWorld(true);
+      const parts = [];
+      src.traverse((o) => {
+        if (!o.isMesh || o.material.userData?.shadowProxy) return;
+        for (let a = o; a && a !== src; a = a.parent) if (/_LOD[12]$/.test(a.name)) return;
+        const im = new THREE.InstancedMesh(o.geometry, o.material, list.length);
+        im.castShadow = false;
+        im.receiveShadow = true;
+        if (list.some((it) => it.float)) im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // guppar varje bildruta
+        list.forEach((it, i) => im.setMatrixAt(i, baseOf(it).multiply(o.matrixWorld)));
+        im.computeBoundingSphere();
+        group.add(im);
+        parts.push({ im, local: o.matrixWorld.clone() });
+      });
+      list.forEach((it, i) => { if (it.float) floats.push({ ...it, i, parts }); });
+    }));
+    await Promise.all(jobs);
+    return { ...B, group, floats, S };
+  }
+  const nearestLevel = (B, x, z) => { let best = 1e9, lv = 0; for (const p of B.smp) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) { best = d; lv = p.level; } } return lv; };
+
+  async function showScene(id, { keep = false } = {}) {
+    note.textContent = built[id] ? '' : 'Building the scene…';
+    built[id] ??= buildScene(id);
+    const B = await built[id];
+    if (active && active !== B) scene.remove(active.group);
+    active = B;
+    scene.add(B.group);
+    const S = B.S;
+    if (!keep) {
+      Object.assign(vals, stripLabel(info.presets[S.preset] ?? {}), S.sky ?? {});
+      current = S.preset;
+      const [cx, cy, cz] = S.camera.pos;
+      camera.position.set(cx, S.camera.overGround ? Math.max(B.bedAt(cx, cz), B.level) + cy : cy, cz);
+      const [tx, ty, tz] = S.camera.target;
+      controls.target.set(tx, S.camera.overGround ? B.level + ty : ty, tz); // overGround: kameran över marken, målet över vattnet
+      controls.update();
+      cards.sync();
+      markDrawer();
+    }
+    relevant();
+    apply();
+    note.textContent = failed.size ? `Could not load: ${[...failed].join(', ')}` : 'Click the water to make ripples';
+  }
+
+  // --- Spakarna verkställs: solen, himlen, dis och vattnet ---
+  let sun = sunAt(vals.hour, vals.azimuth);
+  function apply() {
+    sun = sunAt(vals.hour, vals.azimuth);
+    const c = new THREE.Vector3(...(active?.S.camera.target ?? [0, 0, 0]));
+    sunLight.target.position.copy(c);
+    sunLight.position.copy(c).addScaledVector(sun.dir, 70);
+    sunLight.color.copy(sun.color);
+    sunLight.intensity = vals.sun * sun.strength;
+    sunLight.castShadow = sun.strength > 0.01;
+    hemi.intensity = sun.ambient;
+    hemi.color.copy(sun.zenith).lerp(new THREE.Color('#ffffff'), 0.45);
+    sky.set(sun, vals.glow);
+    scene.fog = vals.haze > 0 ? new THREE.FogExp2(sun.horizon, vals.haze) : null;
+    renderer.toneMappingExposure = vals.exposure;
+    active?.water.set(vals, sun, { light: vals.sun, ambient: sun.ambient });
+  }
+
+  // --- Korten: scenen först, sedan himlen och vattnet ---
+  const cards = createCards({ el, side });
+  const COLORS = { scene: '#4a90d9', sky: '#e0a030', color: '#3fa6a0', waves: '#5aa0d8', light: '#f0d080', foam: '#e8eef0', shore: '#c8a878', flow: '#58b0c8', caustics: '#a0e0f0' };
+  const get = (k) => vals[k], set = (k, v) => { vals[k] = v; };
+  const groupCards = {}, rows = {};
+  for (const g of info.groups) {
+    const body = cards.card(g.label, COLORS[g.id] ?? '#7aa8d8', { closed: g.id === 'sky' });
+    groupCards[g.id] = body.parentElement;
+    for (const q of info.params.filter((x) => x.group === g.id)) {
+      const row = cards.rowFor(q)(q, get, set, () => {
+        if (q.key === 'scene') { showScene(vals.scene); return; }
+        if (isRecipe(q)) markDrawer(null);
+        apply();
+      });
+      rows[q.key] = row;
+      body.append(row);
+    }
+  }
+  // Det som inte finns i scenen döljs: ström bara i bäcken, strand och kaustik inte på öppet vatten
+  function relevant() {
+    const id = vals.scene;
+    groupCards.flow.hidden = id !== 'stream';
+    groupCards.shore.hidden = id === 'plane';
+    groupCards.caustics.hidden = id === 'plane';
+    rows.surge.hidden = rows.surgePeriod.hidden = id === 'stream';
+  }
+  const saveCard = cards.card('Save', '#4a90d9');
+  const saveMsg = el('div', 'note');
+  const saveBtn = el('button', 'primary', 'Save water type…');
+  saveBtn.title = 'Saves the water sliders (not the scene or the sky) as a water type in assets/water/, for the studio, the showcase and Tinkertown';
+  saveBtn.onclick = async () => {
+    const name = prompt('Name of the water type (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_water');
+    if (!name) return;
+    let r = await api('/api/water/save', { name, settings: vals });
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/water/save', { name, settings: vals, overwrite: true });
+    saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
+    if (!r.entry) return;
+    info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
+    current = `saved:${r.entry.name}`;
+    renderDrawer();
+  };
+  saveCard.append(saveBtn, saveMsg);
+
+  // --- Lådan: färdiga och sparade vattentyper (bara vattnets spakar; scenen och himlen står kvar) ---
+  const head = el('div', 'libhead'), body = el('div', 'libbody');
+  head.append(el('h2', null, 'Water types'), el('div', 'note', 'Click a water type to try it in the scene. Save your own in the Save card.'));
+  drawer.append(head, body);
+  function tile(id, label, settings) {
+    const v = Object.fromEntries(info.params.filter(isRecipe).map((q) => [q.key, settings[q.key] ?? q.default]));
+    const f = el('button', `wprof${current === id ? ' on' : ''}`);
+    f.dataset.id = id;
+    const sw = el('span', 'gswatch');
+    sw.style.background = `linear-gradient(90deg, ${v.shallow}, ${v.deep})`;
+    f.append(el('b', null, label), sw, el('span', 'wmeta', `waves ${v.waveHeight.toFixed(2)} m · clear ${v.clarity} m${v.flowSpeed && v.flowFoam ? ` · current ${v.flowSpeed}` : ''}`));
+    f.onclick = () => { Object.assign(vals, v); markDrawer(id); cards.sync(); apply(); };
+    return f;
+  }
+  function renderDrawer() {
+    body.replaceChildren();
+    const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const gr = el('div', 'wprofs'); gr.append(...tiles); g.append(el('h3', null, title), gr); body.append(g); };
+    sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings)));
+  }
+  function markDrawer(id = current) { current = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.dataset.id === id); }
+  renderDrawer();
+
+  // --- Footern ---
+  const fStats = el('div', 'block'), fSun = el('div', 'block'), note = el('div', 'msg');
+  footer.append(fStats, fSun, note);
+  const block = (b, title, text) => { b.replaceChildren(el('b', null, title), el('div', 'vals', text)); };
+  const clock = (h) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60) % 60).padStart(2, '0')}`;
+
+  // --- Klick på vattnet: ringar ---
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let down = null;
+  renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', (e) => {
+    if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5 || !active) return;
+    const rc = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects([active.water.mesh, active.ground], false)[0];
+    if (hit?.object === active.water.mesh) active.water.splash(hit.point.x, hit.point.z, 1);
+  });
+
+  // --- Rendering ---
+  let running = false, last = performance.now(), frames = 0, fpsT = last, fps = 0, time = 0;
+  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener('resize', () => { if (running) resize(); });
+  const gate = frameGate();
+  const bob = new THREE.Matrix4(), bobQ = new THREE.Quaternion(), bobV = new THREE.Vector3(), bobS = new THREE.Vector3(), bobUp = new THREE.Vector3(0, 1, 0);
+  function tick(dt) {
+    time += dt;
+    if (active) {
+      active.water.update(time);
+      // Näckrosorna guppar med vågorna
+      const moved = new Set();
+      for (const f of active.floats) {
+        const y = active.water.heightAt(f.x, f.z, f.lvl, f.bed) + 0.01 + Math.sin(time * 0.9 + f.ph) * 0.006;
+        for (const { im, local } of f.parts) { im.setMatrixAt(f.i, bob.compose(bobV.set(f.x, y, f.z), bobQ.setFromAxisAngle(bobUp, f.rot * DEG), bobS.setScalar(f.sc)).multiply(local)); moved.add(im); }
+      }
+      for (const im of moved) im.instanceMatrix.needsUpdate = true;
+      // Kameran stannar ovanför ytan
+      const minY = (active.mirrorLevel ?? active.level) + 0.3;
+      if (camera.position.y < minY) camera.position.y = minY;
+    }
+    controls.update();
+    pipeline.render();
+  }
+  function frame() {
+    const now = performance.now();
+    if (!gate(now)) return;
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    tick(dt);
+    frames++;
+    if (now - fpsT > 500) {
+      fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
+      block(fStats, 'Water', `${info.params[0].options.find((o) => o.id === vals.scene)?.label} · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'}`);
+      block(fSun, 'Sun', `${clock(vals.hour)} · ${Math.round(sun.elevation / DEG)}° up · toward ${Math.round(vals.azimuth)}°`);
+    }
+  }
+  await showScene(vals.scene);
+  // För prov: ?shot=<namn> sparar en bild av varje scen (build/shots/studio_<namn>_<scen>_<renderare>_<fps>.png), som
+  // Väder-fliken; med test=1 stängs provfönstret efter den sista
+  const q = new URLSearchParams(location.search), shotName = q.get('shot');
+  if (shotName && /^[\w-]{1,40}$/.test(shotName) && /vatten/.test(location.hash)) setTimeout(async () => {
+    const ids = Object.keys(info.scenes);
+    for (const [i, id] of ids.entries()) {
+      vals.scene = id;
+      await showScene(id);
+      cards.sync();
+      await new Promise((r) => setTimeout(r, 4000));
+      tick(0);
+      const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+      const test = q.get('test') === '1' && i === ids.length - 1 ? '&test=1' : '';
+      await fetch(`/api/shot?name=${shotName}_${id}_${renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl'}_${fps}fps${test}`, { method: 'POST', body: blob });
+    }
+  }, 5000);
+  return {
+    show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
+    hide() { running = false; renderer.setAnimationLoop(null); },
+    scene, camera, controls, renderer, vals, apply, showScene,
+    get active() { return active; },
+    stats: () => ({ fps, failed: [...failed], backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl', scene: vals.scene }),
+    // För prov: rita en gång till och spara bilden som build/shots/studio_<namn>.png
+    async shot(name) {
+      tick(0);
+      const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
+      return (await fetch(`/api/shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).json();
+    },
+  };
+}
+function stripLabel(p) { const { label: _l, ...rest } = p; return rest; }

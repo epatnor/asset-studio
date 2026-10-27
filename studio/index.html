@@ -125,12 +125,12 @@
   @media (max-width: 900px) { #unpin, #redo, header#top h1 span { display: none; } }
 
   /* Paneler till höger (tillgångarnas kort, verkstadens kort): en dockad panel med kort som sektioner */
-  #side, #wside, #wmside, #cvside, #wxside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
+  #side, #wside, #wmside, #cvside, #wxside, #waside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
                   overflow-y: auto; flex-direction: column; gap: 0; background: var(--surface); backdrop-filter: blur(14px) saturate(1.2);
                   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); box-sizing: border-box; }
   #side { display: flex; }
   #side:empty { display: none; }
-  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass, #waside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
   .card { flex: none; border-bottom: 1px solid var(--line); }
   .card > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
   .card > header::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--part, var(--accent)); flex: none; }
@@ -196,10 +196,10 @@
   .tex .grid figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Footer: siffror i block med små rubriker */
-  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
+  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot, #wafoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
                           background: var(--surface-solid); border-top: 1px solid var(--line); box-sizing: border-box; }
   footer#bottom { display: flex; }
-  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
+  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass, #wafoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
   footer .block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   footer .block > b { font-size: 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
@@ -268,12 +268,12 @@
   .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
 
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
+  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer, #wadrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
           border-radius: var(--radius); flex-direction: column; overflow: hidden; z-index: 1; }
   body.texture-mode #wlib { display: flex; }
   /* Lådan (studio/drawer.js och verkstadens bibliotek): till vänster i varje avdelning, Ctrl+Mellanslag fäller ihop den */
   body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode):not(.weather-mode) #fdrawer { display: flex; }
-  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed .lside { display: none !important; }
+  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed #wadrawer, body.drawer-closed .lside { display: none !important; }
   #drawerbtn { align-self: center; margin-right: 4px; }
   #drawerbtn.on { color: var(--accent); }
   body.home-mode #drawerbtn { display: none; }
@@ -359,6 +359,17 @@
   #wxside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #wxside .card.closed > header h2::after { transform: none; }
   #wxside .card.closed > .rows { display: none; }
+  #waview, #waside, #wafoot { display: none; }
+  body.water-mode #app, body.water-mode #side, body.water-mode #bottom, body.water-mode .asset-tool { display: none; }
+  body.water-mode #waview { display: block; position: fixed; inset: 0; background: var(--viewport); }
+  body.water-mode #waview canvas { display: block; }
+  body.water-mode #waside, body.water-mode #wadrawer, body.water-mode #wafoot { display: flex; }
+  #wafoot .msg { margin-left: auto; color: var(--muted); text-align: right; }
+  #waside .rows > button { justify-content: center; }
+  #waside .card > header { cursor: pointer; }
+  #waside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #waside .card.closed > header h2::after { transform: none; }
+  #waside .card.closed > .rows { display: none; }
   /* Häxkittelns verktygslåda i andra avdelningar (studio/fxtoolbox.js): en liten låda nederst i mitten av vyn */
   .fxbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot) + var(--gap)); width: min(620px, calc(100vw - 720px)); min-width: 300px;
            border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; z-index: 2; box-sizing: border-box; --accent: #8b5cf6; --accent-soft: color-mix(in srgb, #8b5cf6 30%, transparent); }
@@ -570,6 +581,10 @@
 <div id="wxside"></div>
 <div id="wxdrawer" class="glass"></div>
 <footer id="wxfoot" class="glass"></footer>
+<div id="waview"></div>
+<div id="waside"></div>
+<div id="wadrawer" class="glass"></div>
+<footer id="wafoot" class="glass"></footer>
 <div id="cvview"></div>
 <div id="cvside"></div>
 <div id="cvdrawer" class="glass"></div>
