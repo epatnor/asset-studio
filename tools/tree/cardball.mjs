@@ -24,7 +24,7 @@ function cardNormals(k, r) {
 /**
  * @param {number[][]} twigs  kvistpunkter från skelettet
  * @param {object} o  { seed, height, clusters, ballsPerCluster, cardsPerBall, ballScale, cardScale, minBall,
- *                      normalBlend, normalOffset, normalLift, innerTint, bottomCool, bottomCoolStrength, flattenY }
+ *                      normalBlend, normalOffset, normalLift, innerTint, bottomCool, bottomCoolStrength, flattenY, ballSpread }
  */
 export function buildCardBalls(twigs, o) {
   const r = rng(o.seed ?? 1);
@@ -38,15 +38,26 @@ export function buildCardBalls(twigs, o) {
     own[bi].push(p);
   }
   const balls = [];
+  // ballSpread (0–1) särar på bollarna: varje boll flyttas utåt från kronans mitt, till de yttre kvistarna i sin
+  // egen klase. Den sitter alltså kvar på skelettet, men det blir glipor mellan bollarna och kronan blir klumpigare.
+  const spread = o.ballSpread ?? 0;
+  const mid = twigs.reduce((a, p) => add(a, p), [0, 0, 0]).map((v) => v / Math.max(1, twigs.length));
   clusters.forEach((cl, ci) => {
     const n = o.ballsPerCluster ?? 1;
     const parts = n > 1 && own[ci].length >= n * 6 ? clusterLeaves(own[ci], n, r, o.flattenY ?? 1) : [cl];
     for (const b of parts) {
       const R = Math.max((b.radii[0] + b.radii[1] + b.radii[2]) / 3 * (o.ballScale ?? 1), (o.minBall ?? 0.07) * height);
       // Bollen sitter på en kvist: centrum dras mot närmaste kvist
-      let best = own[ci][0] ?? b.center, bd = Infinity;
-      for (const p of own[ci]) { const d = dist(p, b.center); if (d < bd) { bd = d; best = p; } }
-      const center = bd > 0.3 * R ? lerp(best, b.center, 0.3 * R / bd) : b.center;
+      let aim = b.center;
+      if (spread > 0 && own[ci].length) {
+        const out = sub(b.center, mid), want = add(b.center, mul([out[0], out[1] * 0.6, out[2]], spread));
+        let far = own[ci][0], fd = Infinity;
+        for (const p of own[ci]) { const d = dist(p, want); if (d < fd) { fd = d; far = p; } }
+        aim = lerp(b.center, far, Math.min(1, spread * 1.5));
+      }
+      let best = own[ci][0] ?? aim, bd = Infinity;
+      for (const p of own[ci]) { const d = dist(p, aim); if (d < bd) { bd = d; best = p; } }
+      const center = bd > 0.3 * R ? lerp(best, aim, 0.3 * R / bd) : aim;
       balls.push({ center, radii: [R, R, R], count: b.count, ci });
     }
   });

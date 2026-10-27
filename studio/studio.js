@@ -541,6 +541,7 @@ for (const part of P.parts) {
     det.open = !!g.open;
     det.append(el('summary', null, g.label));
     const rows = el('div', 'rows');
+    if (g.help) rows.append(el('div', 'note grouphelp', g.help)); // en rad om vad gruppen gör, överst
     for (const q of items) rows.append(makeRow(q));
     det.append(rows);
     card.append(det);
