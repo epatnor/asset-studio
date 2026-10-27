@@ -58,6 +58,11 @@ export async function createFxToolbox({ api, el, root, view, scene, camera, rend
     row.append(el('small', null, g.title));
     for (const it of g.items) {
       const b = el('button', 'chip', it.label);
+      const [kind, id] = it.id.split(':'), icon = el('img');
+      icon.alt = '';
+      icon.src = `/assets/icons/vfx/${kind}/${id}.png`; // samma ikon som i Häxkittelns låda
+      icon.onerror = () => icon.remove();
+      b.prepend(icon);
       b.onclick = () => pick(picked === it ? null : it);
       btns.push([it, b]);
       row.append(b);

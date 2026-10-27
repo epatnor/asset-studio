@@ -1,0 +1,91 @@
+{
+  "_doc": "Ikonerna för mallarna i lådorna till vänster (Väderkvarnen och Häxkitteln). Ett ark per område ritas av gpt-image-2 via OpenRouter i ett fast rutnät och skärs ut av tools/icons/make_icons.py till assets/icons/<område>/<id>.png (128 px). Rutorna läses rad för rad; null är en tom ruta. Kör: python3 -I tools/icons/make_icons.py '{\"sheet\": \"water\"}'.",
+  "model": "openai/gpt-image-2",
+  "size": 128,
+  "style": "A sheet of small game UI icons for a stylized fantasy game editor, laid out as an exact grid of {cols} columns and {rows} rows of equal square cells with even gaps. Each cell holds one icon: a rounded-square tile with a soft dark {tint} gradient background, and on it one bold, instantly readable symbol of the subject, centered, filling about 70 percent of the tile. Simple chunky shapes, thick clean silhouettes, stylized painted look with soft gradients and gentle highlights, like World of Warcraft or Overwatch ability icons but simpler and clearer at a tiny size. High contrast, few details, consistent style and lighting across all icons. Plain flat {page} page background between the tiles. No text, no letters, no numbers, no labels, no borders other than the tile itself.",
+  "sheets": {
+    "windmill": {"cols": 3, "rows": 3, "aspect": "1:1", "tint": "blue", "page": "dark grey", "items": [
+      {"id": "wind/calm", "prompt": "calm air: a single soft curling breeze line over a still blade of grass"},
+      {"id": "wind/breeze", "prompt": "a breeze: two flowing wind swirls and a few drifting leaves"},
+      {"id": "wind/windy", "prompt": "strong wind: three bold streaming wind lines bending a tall grass tuft"},
+      {"id": "wind/storm", "prompt": "a storm: a dark swirling gust with a small lightning bolt and flying leaves"},
+      {"id": "grass/meadow", "prompt": "a green meadow: a tuft of grass with two small wildflowers"},
+      {"id": "grass/lush", "prompt": "lush bright anime grass: a thick vivid green tuft with soft round tips"},
+      {"id": "grass/pampas", "prompt": "pampas grass: tall golden feathery plumes swaying"},
+      {"id": "grass/lawn", "prompt": "a lawn: short neat even green grass, a clean trimmed strip"},
+      {"id": "grass/steppe", "prompt": "dry steppe grass: sparse straw-yellow tufts on dry ground"}
+    ]},
+    "weather": {"cols": 3, "rows": 2, "aspect": "3:2", "tint": "blue", "page": "dark grey", "items": [
+      {"id": "weather/morning_forest", "prompt": "morning in the forest: a low warm sun behind two fir trees with soft light rays"},
+      {"id": "weather/dawn_mist", "prompt": "dawn mist: a pale rising sun on the horizon with layered soft fog bands"},
+      {"id": "weather/cathedral", "prompt": "cathedral light: strong bright light beams falling down through a gap in tree crowns"},
+      {"id": "weather/noon", "prompt": "noon: a bright white high sun with short rays in a clear blue sky"},
+      {"id": "weather/golden_hour", "prompt": "golden hour: a big warm golden sun low over a hill, orange glow"},
+      {"id": "weather/dusk", "prompt": "dusk: a half-set sun on the horizon under a purple sky with the first star"}
+    ]},
+    "water": {"cols": 4, "rows": 4, "aspect": "1:1", "tint": "teal blue", "page": "dark grey", "items": [
+      {"id": "water/calm_lake", "prompt": "a calm lake: still blue water with a mirrored fir tree reflection"},
+      {"id": "water/mountain_tarn", "prompt": "a mountain tarn: a small clear dark-blue lake below a snowy mountain peak"},
+      {"id": "water/windy_lake", "prompt": "a windy lake: choppy blue water with small white crests and a wind swirl"},
+      {"id": "water/forest_pond", "prompt": "a forest pond: dark green still water with a lily pad and a reed"},
+      {"id": "water/forest_creek", "prompt": "a forest creek: a small stream winding between mossy stones"},
+      {"id": "water/mountain_stream", "prompt": "a mountain stream: fast clear white-foamed water rushing over rocks"},
+      {"id": "water/tropical_lagoon", "prompt": "a tropical lagoon: bright turquoise shallow water with a palm leaf and white sand"},
+      {"id": "water/beach_surf", "prompt": "beach surf: a white foamy wave washing onto golden sand"},
+      {"id": "water/rolling_ocean", "prompt": "a rolling ocean: big smooth deep-blue swells with a glint of sun"},
+      {"id": "water/storm_sea", "prompt": "a storm sea: a dark towering wave with white spray and a lightning bolt"},
+      {"id": "water/swamp", "prompt": "a swamp: murky olive-green water with a dead branch and a bubble"},
+      null,
+      {"id": "waterscene/plane", "prompt": "open water: a flat sea horizon line with gentle waves, nothing else"},
+      {"id": "waterscene/beach", "prompt": "a beach: sand, a wave line and a small rock"},
+      {"id": "waterscene/stream", "prompt": "a stream: a winding blue ribbon of water through green grass with cattails"},
+      {"id": "waterscene/lake", "prompt": "a small lake: a round blue lake with trees on the far shore"}
+    ]},
+    "cauldron_a": {"cols": 4, "rows": 3, "aspect": "4:3", "tint": "purple", "page": "dark grey", "items": [
+      {"id": "vfx/glow/holy", "prompt": "holy light: a radiant golden glow with a soft halo"},
+      {"id": "vfx/glow/arcane", "prompt": "arcane glow: a violet magic aura with small sparkles"},
+      {"id": "vfx/glow/poison", "prompt": "poison aura: a sickly green glow with a tiny skull and bubbles"},
+      {"id": "vfx/glow/frost", "prompt": "frost aura: an icy pale-blue glow with a snowflake"},
+      {"id": "vfx/glow/rage", "prompt": "rage aura: a fierce red-orange flaring glow"},
+      {"id": "vfx/glow/highlight", "prompt": "selected highlight: a bright clean white outline glow around a simple shape"},
+      {"id": "vfx/marker/selected", "prompt": "selected unit marker: a glowing green ring on the ground seen at an angle"},
+      {"id": "vfx/marker/enemy", "prompt": "enemy target marker: a red ring with four inward arrow ticks on the ground"},
+      {"id": "vfx/marker/fire_area", "prompt": "fire area marker: an orange glowing circle of flame on the ground"},
+      {"id": "vfx/marker/heal_circle", "prompt": "healing circle: a soft green rune circle on the ground with a plus sign glow"},
+      {"id": "vfx/marker/move_here", "prompt": "move here marker: a downward chevron arrow above a small ground ring"},
+      {"id": "vfx/marker/quest", "prompt": "quest giver marker: a big yellow exclamation mark glowing"}
+    ]},
+    "cauldron_b": {"cols": 4, "rows": 4, "aspect": "1:1", "tint": "purple", "page": "dark grey", "items": [
+      {"id": "vfx/particles/embers", "prompt": "embers: glowing orange sparks rising"},
+      {"id": "vfx/particles/fire", "prompt": "fire: a stylized bold flame"},
+      {"id": "vfx/particles/smoke", "prompt": "smoke: soft grey puffs billowing upward"},
+      {"id": "vfx/particles/magic", "prompt": "magic swirl: a spiral of violet sparkles"},
+      {"id": "vfx/particles/leaves", "prompt": "whirling leaves: three green leaves spinning in a swirl"},
+      {"id": "vfx/particles/dust", "prompt": "footstep dust: a small brown dust puff from a boot print"},
+      {"id": "vfx/particles/sparks", "prompt": "spark burst: a bright yellow starburst of sparks"},
+      null,
+      {"id": "vfx/trail/steel", "prompt": "steel slash: a bright silver crescent sword slash arc"},
+      {"id": "vfx/trail/fire_blade", "prompt": "fire blade: a flaming orange sword slash arc"},
+      {"id": "vfx/trail/frost_blade", "prompt": "frost blade: an icy blue sword slash arc with ice shards"},
+      {"id": "vfx/trail/fireball", "prompt": "fireball trail: a fireball flying with a long fiery tail"},
+      {"id": "vfx/trail/arcane_missile", "prompt": "arcane missile: a violet glowing orb with a sparkling trail"},
+      {"id": "vfx/trail/arrow", "prompt": "arrow: a flying arrow with a faint white motion trail"},
+      null,
+      null
+    ]},
+    "cauldron_c": {"cols": 4, "rows": 3, "aspect": "4:3", "tint": "purple", "page": "dark grey", "items": [
+      {"id": "vfx/spell/fireball", "prompt": "fireball spell: a big blazing fireball exploding on impact"},
+      {"id": "vfx/spell/frostfire", "prompt": "frostfire bolt: a bolt that is half blue ice, half orange fire"},
+      {"id": "vfx/spell/chain_lightning", "prompt": "chain lightning: a lightning bolt jumping between three points"},
+      {"id": "vfx/spell/thunderbolt", "prompt": "thunderbolt: a single huge lightning bolt striking down from a cloud"},
+      {"id": "vfx/spell/frost_spikes", "prompt": "frost spikes: a row of sharp ice spikes bursting from the ground"},
+      {"id": "vfx/spell/earth_spikes", "prompt": "earth spikes: jagged brown rock spikes erupting from the ground"},
+      {"id": "vfx/spell/healing", "prompt": "healing: soft green light with small translucent leaves rising"},
+      {"id": "vfx/spell/meteor", "prompt": "meteor: a flaming rock falling diagonally from the sky"},
+      {"id": "vfx/spell/campfire", "prompt": "campfire: a small fire on crossed logs"},
+      {"id": "vfx/spell/portal", "prompt": "arcane portal: a swirling violet-blue magic ring portal"},
+      {"id": "vfx/spell/void_portal", "prompt": "void portal: a dark swirling black-purple vortex ring"},
+      null
+    ]}
+  }
+}

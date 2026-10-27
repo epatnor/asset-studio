@@ -75,4 +75,5 @@ Kommandoradsvarianter:
 | `python3 -I tools/texture/make_leafsheet.py '<recept>'` | Procedurellt lövark (2x2, runda lövklasar för kortbollar): white, painted eller color |
 | `python3 -I tools/texture/workshop.py '<recept>'` | Material från recept (källa, steg, ingredienser) → kartor (färg, normal, höjd, ruffighet …) som förhandsvisning eller `assets/textures/<namn>*.png` + recept + katalograd |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed]` | Bild från Krea-2 |
+| `python3 -I tools/icons/make_icons.py '{"sheet": "water"}'` | Ikoner för mallarna i lådorna: ett ark ur `tools/icons/icons.json` ritas av gpt-image-2 (OpenRouter, ca 0,05 USD) och skärs till `assets/icons/<område>/<id>.png` |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

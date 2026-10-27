@@ -11,7 +11,7 @@ import { createWind, rigTexture } from '../shared/effects/wind.js';
 import { createGrass, colorTexture, groundSampler } from '../shared/effects/grass.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCloth } from '../shared/effects/cloth.js';
-import { createCards } from './cards.js';
+import { createCards, withIcon } from './cards.js';
 import { createFxToolbox } from './fxtoolbox.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
@@ -437,9 +437,12 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     const isWind = kind === 'wind';
     const name = prompt(`Name of the ${isWind ? 'wind profile' : 'grass'} (a–z, 0–9 and _):`, (isWind ? currentProfile : currentGrass) ?? (isWind ? 'my_wind' : 'my_meadow'));
     if (!name) return;
+    // Mallen den byggdes från: en färdig direkt, en sparad genom sin egen from
+    const base = isWind ? (info.presets[currentProfile] ? currentProfile : info.saved.find((p) => p.name === currentProfile)?.from)
+      : (G.presets[currentGrass] ? currentGrass : G.saved.find((p) => p.name === currentGrass)?.from);
     const payload = isWind
-      ? { name, profile: Object.fromEntries(info.params.filter((q) => !q.view).map((q) => [q.key, valueFor(q.key)])) }
-      : { name, settings: { ...grassVals }, flowers: { ...flowerVals } };
+      ? { name, from: base, profile: Object.fromEntries(info.params.filter((q) => !q.view).map((q) => [q.key, valueFor(q.key)])) }
+      : { name, from: base, settings: { ...grassVals }, flowers: { ...flowerVals } };
     const url = isWind ? '/api/wind/save' : '/api/grass/save';
     let r = await api(url, payload);
     if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api(url, { ...payload, overwrite: true });
@@ -463,16 +466,16 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
   const head = el('div', 'libhead'), body = el('div', 'libbody');
   head.append(el('h2', null, 'Windmill drawer'), el('div', 'note', 'Click a wind profile or a grass to use it. Save your own in the Save card.'));
   drawer.append(head, body);
-  function profileTile(id, label, prof) {
+  function profileTile(id, label, prof, icon) {
     const f = el('button', `wprof${currentProfile === id ? ' on' : ''}`);
     f.dataset.id = `wind:${id}`;
     const bar = el('span', 'wbar2');
     bar.style.setProperty('--s', Math.min(1, (prof.strength ?? 0) / 1.5));
     f.append(el('b', null, label), bar, el('span', 'wmeta', `strength ${(prof.strength ?? 0).toFixed(2)} · gusts ${(prof.gust ?? 0).toFixed(2)}`));
     f.onclick = () => applyProfile(id, prof);
-    return f;
+    return withIcon(el, f, 'wind', icon, label);
   }
-  function grassTile(id, label, settings, flowers) {
+  function grassTile(id, label, settings, flowers, icon) {
     const f = el('button', `wprof${currentGrass === id ? ' on' : ''}`);
     f.dataset.id = `grass:${id}`;
     const v = { ...Object.fromEntries(G.params.map((q) => [q.key, q.default])), ...settings };
@@ -480,15 +483,15 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     sw2.style.background = `linear-gradient(90deg, ${v.base}, ${v.mid} 35%, ${v.tip} 75%, ${v.dry})`;
     f.append(el('b', null, label), sw2, el('span', 'wmeta', `${v.heightMin.toFixed(2)}–${v.heightMax.toFixed(2)} m${flowers ? ` · ${flowers.plants.length} flower kinds` : ''}`));
     f.onclick = () => applyGrass(id, v, flowers);
-    return f;
+    return withIcon(el, f, 'grass', icon, label);
   }
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
-    sec('Wind', Object.entries(info.presets).map(([id, p]) => profileTile(id, p.label, p)));
-    sec('Saved wind', info.saved.map((p) => profileTile(p.name, p.name, p)));
-    sec('Grass', Object.entries(G.presets).map(([id, p]) => { const { label, ...st } = p; return grassTile(id, label, st); }));
-    sec('Saved grass', G.saved.map((p) => grassTile(p.name, p.name, p.settings, p.flowers)));
+    sec('Wind', Object.entries(info.presets).map(([id, p]) => profileTile(id, p.label, p, id)));
+    sec('Saved wind', info.saved.map((p) => profileTile(p.name, p.name, p, p.from)));
+    sec('Grass', Object.entries(G.presets).map(([id, p]) => { const { label, ...st } = p; return grassTile(id, label, st, null, id); }));
+    sec('Saved grass', G.saved.map((p) => grassTile(p.name, p.name, p.settings, p.flowers, p.from)));
   }
   const markIn = (prefix, id) => { for (const b of body.querySelectorAll(`.wprof[data-id^="${prefix}:"]`)) b.classList.toggle('on', b.dataset.id === `${prefix}:${id}`); };
   function markProfile(id) { currentProfile = id; markIn('wind', id); }

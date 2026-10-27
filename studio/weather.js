@@ -11,7 +11,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { sunAt, createSky, createShafts } from '../shared/effects/weather.js';
 import { createParticles } from '../shared/effects/vfx.js';
 import { gpuPreference, frameGate } from './gpu.js';
-import { createCards } from './cards.js';
+import { createCards, withIcon } from './cards.js';
 import { createFxToolbox } from './fxtoolbox.js';
 
 const DEG = Math.PI / 180;
@@ -137,8 +137,9 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   saveBtn.onclick = async () => {
     const name = prompt('Name of the weather (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_weather');
     if (!name) return;
-    let r = await api('/api/weather/save', { name, settings: vals });
-    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/weather/save', { name, settings: vals, overwrite: true });
+    const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
+    let r = await api('/api/weather/save', { name, settings: vals, from });
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/weather/save', { name, settings: vals, from, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
     if (!r.entry) return;
     info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
@@ -152,7 +153,7 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
   head.append(el('h2', null, 'Weather'), el('div', 'note', 'Click a weather to use it. Save your own in the Save card.'));
   drawer.append(head, body);
   const clock = (h) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60) % 60).padStart(2, '0')}`;
-  function tile(id, label, settings) {
+  function tile(id, label, settings, icon) {
     const v = { ...defaults, ...stripLabel(settings) }, s = sunAt(v.hour, v.azimuth);
     const f = el('button', `wprof${current === id ? ' on' : ''}`);
     f.dataset.id = id;
@@ -160,13 +161,13 @@ export async function createWeather({ api, el, view, side, drawer, footer }) {
     sw.style.background = `linear-gradient(90deg, #${s.horizon.getHexString()}, #${s.color.getHexString()} 50%, #${s.zenith.getHexString()})`;
     f.append(el('b', null, label), sw, el('span', 'wmeta', `${clock(v.hour)} · shafts ${v.shafts.toFixed(2)} · haze ${v.haze.toFixed(3)}`));
     f.onclick = () => { Object.assign(vals, v); mark(id); cards.sync(); apply(); };
-    return f;
+    return withIcon(el, f, 'weather', icon, label);
   }
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
-    sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings)));
+    sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p, id)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings, x.from)));
   }
   function mark(id) { current = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.dataset.id === id); }
   renderDrawer();

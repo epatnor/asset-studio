@@ -11,7 +11,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEffect } from '../shared/effects/vfx.js';
 import { gpuPreference, frameGate } from './gpu.js';
-import { createCards } from './cards.js';
+import { createCards, withIcon } from './cards.js';
 
 const DEG = Math.PI / 180;
 // Där effekten sitter: per slag vilka platser som går att välja
@@ -419,7 +419,8 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
   saveBtn.onclick = async () => {
     const name = prompt('Name of the effect (a–z, 0–9 and _):', cur().preset ?? `my_${kind}`);
     if (!name) return;
-    const payload = { name, kind, settings: cur().settings };
+    const pre = cur().preset, from = pre?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === pre)?.from : pre;
+    const payload = { name, kind, settings: cur().settings, from };
     let r = await api('/api/vfx/save', payload);
     if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/vfx/save', { ...payload, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
@@ -448,22 +449,22 @@ export async function createCauldron({ api, el, view, side, drawer, footer }) {
     trail: () => (s.mode === 'sword' ? 'sword swing' : `projectile · ${s.speed} m/s`),
     spell: () => `${info.spells[s.spell]?.layers.length ?? 0} layers${info.spells[s.spell]?.ambient ? ' · lasting' : ''}`,
   })[kind]();
-  function tile(id, label, settings) {
+  function tile(id, label, settings, icon) {
     const f = el('button', `wprof${cur().preset === id ? ' on' : ''}`);
     f.dataset.id = id;
     const full = { ...defaults(kind), ...settings };
     delete full.label;
     f.append(el('b', null, label), swatch(full), el('span', 'wmeta', metaOf(full)));
     f.onclick = () => applyPreset(id, full);
-    return f;
+    return withIcon(el, f, `vfx/${kind}`, icon, label);
   }
   function renderDrawer() {
     headTitle.textContent = `${KIND[kind].label}`;
     headNote.textContent = 'Click an effect to brew it. Save your own in the Save card.';
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
-    sec('Ready-made', Object.entries(info.presets[kind] ?? {}).map(([id, p]) => tile(id, p.label, p)));
-    sec('Saved', info.saved.filter((x) => x.kind === kind).map((x) => tile(`saved:${x.name}`, x.name, x.settings)));
+    sec('Ready-made', Object.entries(info.presets[kind] ?? {}).map(([id, p]) => tile(id, p.label, p, id)));
+    sec('Saved', info.saved.filter((x) => x.kind === kind).map((x) => tile(`saved:${x.name}`, x.name, x.settings, x.from)));
   }
   function markPreset(id) { cur().preset = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.dataset.id === id); }
   function applyPreset(id, full) {

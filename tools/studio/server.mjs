@@ -471,7 +471,9 @@ async function windInfo() {
   const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.wind.json')).map((f) => readJson(`${WIND_SAVED}/${f}`)))).filter(Boolean) : [];
   return { ...W, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
 }
-async function windSave({ name, profile, overwrite }) {
+// Mallen en sparad produkt byggdes från (ett id ur de färdiga), så att den får mallens ikon i lådan
+const fromOf = (from) => (/^[a-z0-9_]{1,40}$/.test(String(from ?? '')) ? { from } : {});
+async function windSave({ name, profile, overwrite, from }) {
   name = String(name ?? '').trim().toLowerCase();
   if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
   const W = await readJson(WIND_JSON);
@@ -479,7 +481,7 @@ async function windSave({ name, profile, overwrite }) {
   const file = path.join(ROOT, WIND_SAVED, `${name}.wind.json`);
   if (existsSync(file) && !overwrite) return { exists: true };
   await mkdir(path.dirname(file), { recursive: true });
-  const entry = { name, ...clean, saved: new Date().toISOString() };
+  const entry = { name, ...clean, ...fromOf(from), saved: new Date().toISOString() };
   await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
   return { entry, file: `${WIND_SAVED}/${name}.wind.json` };
 }
@@ -513,7 +515,7 @@ async function grassInfo() {
   const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.grass.json')).map((f) => readJson(`${GRASS_SAVED}/${f}`)))).filter(Boolean) : [];
   return { ...G, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
 }
-async function grassSave({ name, settings, flowers, overwrite }) {
+async function grassSave({ name, settings, flowers, overwrite, from }) {
   name = String(name ?? '').trim().toLowerCase();
   if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
   const G = await readJson('tools/grass/grass.json');
@@ -532,7 +534,7 @@ async function grassSave({ name, settings, flowers, overwrite }) {
   const file = path.join(ROOT, GRASS_SAVED, `${name}.grass.json`);
   if (existsSync(file) && !overwrite) return { exists: true };
   await mkdir(path.dirname(file), { recursive: true });
-  const entry = { name, settings: clean, ...(fl ? { flowers: fl } : {}), saved: new Date().toISOString() };
+  const entry = { name, settings: clean, ...(fl ? { flowers: fl } : {}), ...fromOf(from), saved: new Date().toISOString() };
   await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
   return { entry, file: `${GRASS_SAVED}/${name}.grass.json` };
 }
@@ -544,7 +546,7 @@ async function vfxInfo() {
   const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith('.vfx.json')).map((f) => readJson(`${VFX_SAVED}/${f}`)))).filter(Boolean) : [];
   return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
 }
-async function vfxSave({ name, kind, settings, overwrite }) {
+async function vfxSave({ name, kind, settings, overwrite, from }) {
   name = String(name ?? '').trim().toLowerCase();
   if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
   const X = await readJson(VFX_JSON);
@@ -563,7 +565,7 @@ async function vfxSave({ name, kind, settings, overwrite }) {
   const file = path.join(ROOT, VFX_SAVED, `${name}.vfx.json`);
   if (existsSync(file) && !overwrite) return { exists: true };
   await mkdir(path.dirname(file), { recursive: true });
-  const entry = { name, kind, settings: clean, saved: new Date().toISOString() };
+  const entry = { name, kind, settings: clean, ...fromOf(from), saved: new Date().toISOString() };
   await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
   return { entry, file: `${VFX_SAVED}/${name}.vfx.json` };
 }
@@ -579,7 +581,7 @@ function recipeStore(area) {
       const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith(EXT)).map((f) => readJson(`${SAVED}/${f}`)))).filter(Boolean) : [];
       return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
     },
-    async save({ name, settings, overwrite }) {
+    async save({ name, settings, overwrite, from }) {
       name = String(name ?? '').trim().toLowerCase();
       if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
       const X = await readJson(JSON_FILE);
@@ -595,7 +597,7 @@ function recipeStore(area) {
       const file = path.join(ROOT, SAVED, `${name}${EXT}`);
       if (existsSync(file) && !overwrite) return { exists: true };
       await mkdir(path.dirname(file), { recursive: true });
-      const entry = { name, settings: clean, saved: new Date().toISOString() };
+      const entry = { name, settings: clean, ...fromOf(from), saved: new Date().toISOString() };
       await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
       return { entry, file: `${SAVED}/${name}${EXT}` };
     },

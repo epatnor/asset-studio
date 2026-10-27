@@ -84,3 +84,24 @@ export function createCards({ el, side }) {
   const rowFor = (q) => ROWS[q.type] ?? slider;
   return { syncs, sync, card, slider, toggleRow, colorRow, choiceRow, rowFor };
 }
+
+// Mallarnas ikoner i lådorna (assets/icons/<område>/<id>.png, ritade av tools/icons/make_icons.py). withIcon lägger
+// ikonen till vänster i en mallruta; en sparad produkt får ikonen från mallen den byggdes från (from), annars sin
+// första bokstav.
+export function withIcon(el, tile, area, id, label) {
+  const box = el('span', 'ticon');
+  const letter = () => { box.replaceChildren(el('i', null, String(label ?? '?').trim().charAt(0).toUpperCase())); box.classList.add('letter'); };
+  if (id) {
+    const img = el('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.src = `/assets/icons/${area}/${id}.png`;
+    img.onerror = letter;
+    box.append(img);
+  } else letter();
+  const text = el('span', 'tbody');
+  text.append(...tile.childNodes);
+  tile.classList.add('has-icon');
+  tile.append(box, text);
+  return tile;
+}

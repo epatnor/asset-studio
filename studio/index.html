@@ -330,6 +330,12 @@
   .wprof:hover { border-color: var(--line-strong); }
   .wprof.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
   .wprof b { font-weight: 600; }
+  /* Mallrutor med ikon (cards.js withIcon): ikonen till vänster, namnet och raderna till höger */
+  .wprof.has-icon { grid-template-columns: 44px 1fr; align-items: center; column-gap: 10px; padding: 6px 10px 6px 6px; }
+  .wprof .ticon { width: 44px; height: 44px; border-radius: 9px; overflow: hidden; display: grid; place-items: center; background: var(--raised); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+  .wprof .ticon img { width: 100%; height: 100%; display: block; }
+  .wprof .ticon.letter i { font-style: normal; font-weight: 700; font-size: 18px; color: var(--muted); }
+  .wprof .tbody { display: grid; gap: 4px; min-width: 0; justify-items: start; width: 100%; }
   .wbar2 { width: 100%; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) calc(var(--s) * 100%), var(--line) 0); }
   .wmeta { font-size: 11px; color: var(--muted); }
   /* Grafikkortet (studio/gpu.js): knappen i headern och menyn under den */
@@ -370,16 +376,12 @@
   #waside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #waside .card.closed > header h2::after { transform: none; }
   #waside .card.closed > .rows { display: none; }
-  /* Vattnet: platsen (scener, himmel) i lådan till vänster, vattentypen och dess spakar till höger */
-  #wadrawer .libbody { overflow-y: auto; }
-  #wadrawer .card { border-top: 1px solid var(--line); border-bottom: 0; }
-  #wadrawer .card > header { background: transparent; cursor: pointer; }
-  #wadrawer .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
-  #wadrawer .card.closed > header h2::after { transform: none; }
-  #wadrawer .card.closed > .rows { display: none; }
-  #wadrawer .row { grid-template-columns: 92px 1fr 38px; }
-  #wadrawer .wprof .wmeta { white-space: normal; }
-  #waside .gswatch { display: block; margin-top: 2px; }
+  /* Provplatsen (vattnets scener): en rad ikonknappar överst i bilden, mellan lådan och panelen */
+  .stagebar { position: fixed; top: calc(var(--head) + var(--gap)); left: calc(288px + 2 * var(--gap)); right: calc(min(350px, calc(100vw - 24px)) + 2 * var(--gap)); display: flex; justify-content: center; gap: 6px; pointer-events: none; z-index: 1; }
+  .stagebar button { pointer-events: auto; display: flex; align-items: center; gap: 8px; height: 40px; padding: 4px 12px 4px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); backdrop-filter: blur(12px); color: var(--ink-2); }
+  .stagebar button img { width: 32px; height: 32px; border-radius: 7px; }
+  .stagebar button.on { border-color: var(--accent); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 2px var(--accent-soft); }
+  body.drawer-closed .stagebar { left: var(--gap); }
   /* Häxkittelns verktygslåda i andra avdelningar (studio/fxtoolbox.js): en liten låda nederst i mitten av vyn */
   .fxbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot) + var(--gap)); width: min(620px, calc(100vw - 720px)); min-width: 300px;
            border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; z-index: 2; box-sizing: border-box; --accent: #8b5cf6; --accent-soft: color-mix(in srgb, #8b5cf6 30%, transparent); }
@@ -391,7 +393,8 @@
   .fxbody { display: grid; gap: 5px; max-height: 30vh; overflow-y: auto; }
   .fxrow { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .fxrow small { width: 62px; color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .fxrow .chip { height: 24px; padding: 0 9px; font-size: 11.5px; }
+  .fxrow .chip { height: 26px; padding: 0 9px 0 3px; font-size: 11.5px; }
+  .fxrow .chip img { width: 20px; height: 20px; border-radius: 6px; }
   .fxrow .chip.on { background: var(--accent-soft); border-color: var(--accent); }
   /* Häxkitteln (studio/cauldron.js): samma upplägg som Väderkvarnen, med arenan i stället för gläntan */
   #cvview, #cvside, #cvfoot { display: none; }
