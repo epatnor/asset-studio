@@ -29,7 +29,7 @@ import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { createSpell } from './spells.js';
 
 export const KINDS = ['glow', 'marker', 'particles', 'trail', 'spell'];
-const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring', 'flame'];
+const SPRITES = ['soft', 'spark', 'smoke', 'star', 'leaf', 'ring', 'flame', 'shard'];
 const EMITS = ['point', 'sphere', 'disc', 'ring'];
 const MARKS = ['ring', 'target', 'area', 'exclaim'];
 const DEG = Math.PI / 180;
@@ -194,9 +194,12 @@ function spriteShape(kind, r, time, age = float(0)) {
   const fDist = abs(fx.sub(0.5).sub(fWind).sub(fTurb));
   const flame = float(1).sub(smoothstep(halfW.mul(0.6), halfW, fDist)).mul(smoothstep(0, 0.14, fy)).mul(float(1).sub(smoothstep(0.75, 1, fy)));
   const fCore = float(1).sub(smoothstep(0, halfW.mul(0.5), fDist)).mul(pow(max(float(1).sub(fy), 0), 0.5));
-  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, select(kind.equal(6), flame, soft))))));
+  // Skärva: en kantig romb med olika proportioner per partikel och två ljusa och mörka facetter
+  const shardD = abs(p.x).mul(r.mul(0.6).add(0.75)).add(abs(p.y).mul(float(1.25).sub(r.mul(0.5)))).add(p.x.mul(p.y).mul(r.sub(0.5)).mul(0.6));
+  const shard = smoothstep(0.82, 0.74, shardD);
+  const alpha = select(kind.equal(1), spark, select(kind.equal(2), smoke, select(kind.equal(3), star, select(kind.equal(4), leaf, select(kind.equal(5), ring, select(kind.equal(6), flame, select(kind.equal(7), shard, soft)))))));
   const shade = select(kind.equal(4), float(1).sub(smoothstep(0.06, 0, abs(p.x)).mul(0.35)).mul(float(0.8).add(p.y.mul(0.2))),
-    select(kind.equal(6), float(0.7).add(clamp(fCore, 0, 1).mul(2.2)), float(1)));
+    select(kind.equal(6), float(0.7).add(clamp(fCore, 0, 1).mul(2.2)), select(kind.equal(7), select(p.x.add(p.y.mul(0.4)).greaterThan(0), float(1.15), float(0.7)), float(1))));
   return { alpha: clamp(alpha, 0, 1), shade };
 }
 

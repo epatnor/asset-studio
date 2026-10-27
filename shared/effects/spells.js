@@ -13,7 +13,8 @@
 import * as THREE from 'three/webgpu';
 import {
   uniform, float, vec2, vec3, uv, instanceIndex, hash, sin, cos, exp, mix, smoothstep, select, length, atan, pow, max,
-  clamp, abs, normalize, dot, uint, mx_noise_float, positionView, normalView, PI2, varying, attribute,
+  clamp, abs, normalize, dot, uint, mx_noise_float, mx_worley_noise_vec2, positionView, normalView, positionLocal, positionWorld,
+  texture, PI2, varying, attribute,
 } from 'three/tsl';
 import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { createParticles, createMarker, createAura, createRibbon, softFade } from './vfx.js';
@@ -169,61 +170,214 @@ export function createLightning(s) {
   return fx;
 }
 
-// --- Spjut (FX06): facetterade koner av is eller sten som reser sig i en våg längs en linje eller i en ring, med
-// kantglöd (fresnel), och som sjunker undan på slutet ---
-export function createSpikes(s, { from, to, groundY }) {
-  const N = Math.max(1, Math.round(s.count ?? 14));
-  const geo = new THREE.ConeGeometry(1, 1, 6, 1).translate(0, 0.5, 0).toNonIndexed();
-  geo.computeVertexNormals();
-  const u = { rim: uniform(new THREE.Color(s.rim ?? '#bfefff')), rimStrength: uniform(s.rimStrength ?? 1.5), fade: uniform(1) };
-  const mat = new THREE.MeshStandardNodeMaterial({ color: s.color ?? '#7fc8e8', roughness: s.roughness ?? 0.2, metalness: 0, flatShading: true });
+// --- Spjut (FX06): is eller sten som reser sig i en våg längs ett spår (eller i en ring) ---
+// Varje plats i spåret får en klunga av ett till tre spjut av olika modeller (kristallprisma, nål med sned spets, platt
+// skärva och kort kristall; för sten taggiga block med trubbig topp och flata hällar), olika långa och tjocka och
+// lutade ut från spåret. Is är delvis genomskinlig med strimmor, frost vid foten och en lysande kant; sten har Ateljéns
+// klipptextur med normalkarta. Längs spåret spricker marken upp i takt med vågen (en dekal: frusen skorpa med lysande
+// sprickor, eller uppriven jord med mörka sprickor), och skärvor och damm eller froströk sprutar upp där vågen går fram.
+const TEX_BASE = '/assets/textures/';
+const texCache = new Map();
+function loadTex(name, srgb = true, base = TEX_BASE) {
+  const key = `${base}${name}|${srgb}`;
+  if (!texCache.has(key)) {
+    const t = new THREE.TextureLoader().load(`${base}${name}.png`);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    texCache.set(key, t);
+  }
+  return texCache.get(key);
+}
+// En spjutmodell: en kon med sidor och höjdsegment som formas om (prisma nedtill, spets upptill), skevas och skakas
+// med ett frö, så att ingen ser ut som en annan. Platta ytor (toNonIndexed) ger facetterna.
+function spikeGeometry(kind, seed) {
+  let st = seed;
+  const rnd = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const V = {
+    crystal: { seg: 6, prism: 0.62, tip: 0, skew: 0, jit: 0.025, flat: 1 },
+    needle: { seg: 5, prism: 0, tip: 0, skew: 0.22, jit: 0.03, flat: 1 },
+    shard: { seg: 4, prism: 0.2, tip: 0, skew: 0.12, jit: 0.04, flat: 0.45 },
+    stubby: { seg: 6, prism: 0.4, tip: 0, skew: 0.05, jit: 0.03, flat: 1 },
+    rock: { seg: 7, prism: 0, tip: 0.16, skew: 0.15, jit: 0.13, flat: 1 },
+    slab: { seg: 5, prism: 0.3, tip: 0.1, skew: 0.2, jit: 0.1, flat: 0.5 },
+    jag: { seg: 6, prism: 0, tip: 0.05, skew: 0.3, jit: 0.16, flat: 0.85 },
+    pillar: { seg: 6, prism: 0.55, tip: 0.22, skew: 0.08, jit: 0.1, flat: 1 },
+  }[kind];
+  const geo = new THREE.ConeGeometry(1, 1, V.seg, 5).translate(0, 0.5, 0);
+  const p = geo.attributes.position, sk = (rnd() - 0.5) * 2 * V.skew, sk2 = (rnd() - 0.5) * 2 * V.skew;
+  const jit = new Map(); // samma skakning för hörn på samma plats, så att ytan inte rämnar
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r0 = Math.hypot(x, z) / Math.max(1e-4, 1 - y), a = Math.atan2(z, x);
+    const prof = y < V.prism ? 1 - 0.12 * y : V.tip + (1 - V.tip) * (1 - y) / Math.max(1e-3, 1 - V.prism) * (1 - 0.12 * V.prism);
+    const r = r0 * prof * (y >= 0.999 ? (V.tip > 0 ? 1 : 0) : 1);
+    const k = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+    if (!jit.has(k)) jit.set(k, [(rnd() - 0.5) * V.jit, (rnd() - 0.5) * V.jit * 0.5, (rnd() - 0.5) * V.jit]);
+    const [jx, jy, jz] = jit.get(k);
+    p.setXYZ(i, Math.cos(a) * r * V.flat + sk * y * y + jx * (y < 0.98 ? 1 : 0.3), Math.min(1, Math.max(0, y + jy)), Math.sin(a) * r + sk2 * y * y + jz);
+  }
+  const g = geo.toNonIndexed();
+  g.computeVertexNormals();
+  geo.dispose();
+  return g;
+}
+export function createSpikes(s, { from, to, groundY, ground, defaults = {}, texBase }) {
+  const ice = (s.style ?? 'ice') === 'ice';
+  const sites = Math.max(1, Math.round(s.count ?? 14));
+  const kinds = ice ? ['crystal', 'needle', 'shard', 'stubby'] : ['rock', 'slab', 'jag', 'pillar'];
+  const geos = kinds.map((k, i) => spikeGeometry(k, 977 + i * 131));
+  const u = { rim: uniform(new THREE.Color(s.rim ?? '#bfefff')), rimStrength: uniform(s.rimStrength ?? 1.5), fade: uniform(1), color: uniform(new THREE.Color(s.color ?? '#7fc8e8')) };
   const nv = abs(dot(normalize(normalView), normalize(positionView).negate()));
-  mat.emissiveNode = u.rim.mul(pow(float(1).sub(nv), 3)).mul(u.rimStrength).mul(u.fade);
-  const mesh = new THREE.InstancedMesh(geo, mat, N);
-  mesh.castShadow = mesh.receiveShadow = true;
-  mesh.frustumCulled = false;
+  const fres = pow(float(1).sub(nv), 3);
+  const yl = positionLocal.y; // 0 vid foten, 1 i toppen
+  let mat;
+  if (ice) {
+    // Is: delvis genomskinlig, tätare i kanterna (fresnel), lodräta strimmor och luftbubblor, frost vid foten
+    mat = new THREE.MeshStandardNodeMaterial({ transparent: true, roughness: 0.08, metalness: 0, flatShading: true });
+    const streak = mx_noise_float(vec3(positionLocal.x.mul(7), yl.mul(1.2), positionLocal.z.mul(7))).mul(0.5).add(0.5);
+    const frost = smoothstep(0.28, 0.02, yl).mul(mx_noise_float(positionLocal.mul(14)).mul(0.4).add(0.8));
+    const deep = u.color.mul(0.55), light = u.color.add(vec3(0.25, 0.3, 0.3));
+    mat.colorNode = mix(mix(deep, light, streak), vec3(0.92, 0.97, 1), clamp(frost, 0, 1));
+    mat.opacityNode = clamp(mix(float(0.42), float(0.95), fres).add(frost.mul(0.5)).add(streak.mul(0.12)), 0, 1);
+    mat.emissiveNode = u.rim.mul(fres.mul(u.rimStrength).add(smoothstep(0.55, 1, streak).mul(0.12))).mul(u.fade);
+  } else {
+    // Sten: Ateljéns klipptextur med normalkarta, mörkare och fuktigare vid foten, svag kant i besvärjelsens färg
+    const map = loadTex(s.texture ?? 'surface_cliff', true, texBase), nmap = loadTex(`${s.texture ?? 'surface_cliff'}_normal`, false, texBase);
+    map.repeat.set(1, 2); nmap.repeat.set(1, 2);
+    mat = new THREE.MeshStandardNodeMaterial({ map, normalMap: nmap, roughness: 0.92, metalness: 0, flatShading: true });
+    mat.colorNode = texture(map).rgb.mul(u.color.mul(1.6)).mul(mix(float(0.55), float(1.05), smoothstep(0, 0.35, yl)));
+    mat.emissiveNode = u.rim.mul(fres).mul(u.rimStrength).mul(u.fade);
+  }
   const dir = new THREE.Vector3().subVectors(to, from).setY(0);
   const len = dir.length();
   dir.normalize();
-  const perp = new THREE.Vector3(-dir.z, 0, dir.x);
+  const perp = new THREE.Vector3(-dir.z, 0, dir.x), up = new THREE.Vector3(0, 1, 0);
+  let st = 4242;
+  const rnd = () => ((st = (st * 1664525 + 1013904223) >>> 0) / 4294967296);
   const spikes = [];
-  for (let i = 0; i < N; i++) {
-    const k = (i + 0.5) / N;
-    let p, d;
+  const D0 = 0.6, span = Math.max(0.5, len - D0);
+  for (let i = 0; i < sites; i++) {
+    const k = (i + 0.5) / sites;
+    let base, d, out;
     if (s.mode === 'ring') {
-      const a = (i / N) * Math.PI * 2 + Math.random() * 0.3, r = (s.radius ?? 1.4) * (0.75 + Math.random() * 0.4);
-      p = to.clone().add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
-      d = r;
+      const a = (i / sites) * Math.PI * 2 + rnd() * 0.3, r = (s.radius ?? 1.4) * (0.75 + rnd() * 0.4);
+      base = to.clone().add(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+      d = r; out = base.clone().sub(to).setY(0).normalize();
     } else {
-      d = 0.6 + k * Math.max(0.5, len - 0.6);
-      p = from.clone().addScaledVector(dir, d).addScaledVector(perp, (Math.random() - 0.5) * (s.spread ?? 0.7));
+      const side = rnd() < 0.5 ? -1 : 1, lat = (0.15 + rnd() * 0.85) * (s.spread ?? 0.7) * 0.5 * side;
+      d = D0 + k * span + (rnd() - 0.5) * (span / sites) * 0.6;
+      base = from.clone().addScaledVector(dir, d).addScaledVector(perp, lat);
+      out = perp.clone().multiplyScalar(side);
     }
-    p.y = (groundY?.(p.x, p.z) ?? p.y) - 0.08;
-    // Lutar ut från linjen (eller ringens mitt), större mot målet
-    const out = s.mode === 'ring' ? p.clone().sub(to).setY(0).normalize() : perp.clone().multiplyScalar(Math.sign(Math.random() - 0.5));
-    const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(out.z, 0, -out.x).normalize(), -(0.15 + Math.random() * 0.4));
-    const q = tilt.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 6.28));
-    const grow = s.mode === 'ring' ? 1 : 0.6 + 0.6 * k;
-    spikes.push({ p, q, d, h: (s.height ?? 1.4) * grow * (0.65 + Math.random() * 0.5), w: (s.width ?? 0.22) * grow * (0.7 + Math.random() * 0.5) });
+    const grow = s.mode === 'ring' ? 1 : 0.55 + 0.65 * k;
+    // En klunga: ett huvudspjut och upp till två mindre som lutar längre ut
+    const n = 1 + (rnd() < 0.65 ? 1 : 0) + (rnd() < 0.3 ? 1 : 0);
+    for (let c = 0; c < n; c++) {
+      const main = c === 0;
+      const p = base.clone().addScaledVector(out, main ? 0 : 0.12 + rnd() * 0.25).addScaledVector(dir, main ? 0 : (rnd() - 0.5) * 0.4);
+      p.y = (groundY?.(p.x, p.z) ?? p.y) - 0.06;
+      const lean = (main ? 0.12 + rnd() * 0.45 : 0.45 + rnd() * 0.4); // radianer ut från spåret
+      const fwd = (rnd() - 0.35) * 0.35; // lite framåt i vågens riktning
+      const axis = new THREE.Vector3().crossVectors(up, out).normalize();
+      const q = new THREE.Quaternion().setFromAxisAngle(axis, lean)
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3().crossVectors(up, dir).normalize(), -fwd))
+        .multiply(new THREE.Quaternion().setFromAxisAngle(up, rnd() * 6.28));
+      const h = (s.height ?? 1.4) * grow * (main ? 0.7 + rnd() * 0.55 : 0.3 + rnd() * 0.35);
+      const w = (s.width ?? 0.22) * grow * (main ? 0.7 + rnd() * 0.7 : 0.45 + rnd() * 0.4) * (0.8 + 0.4 * (h / (s.height ?? 1.4)));
+      spikes.push({ p, q, d: d + (main ? 0 : 0.05 + rnd() * 0.08), h, w, kind: Math.floor(rnd() * geos.length) });
+    }
   }
+  const group = new THREE.Group();
+  const meshes = geos.map((g, gi) => {
+    const list = spikes.filter((sp) => sp.kind === gi);
+    const m = new THREE.InstancedMesh(g, mat, Math.max(1, list.length));
+    m.count = list.length;
+    m.castShadow = true; m.receiveShadow = !ice;
+    m.frustumCulled = false;
+    m.renderOrder = ice ? 4 : 0;
+    group.add(m);
+    return { mesh: m, list };
+  });
+
+  // Spåret: en dekal på marken längs linjen som spricker upp där vågen har gått fram
+  let trail = null, tu = null;
+  if (s.mode !== 'ring' && ground && s.trail !== false) {
+    tu = { front: uniform(-1), fade: uniform(1), from: uniform(from.clone()), dir: uniform(dir.clone()), perp: uniform(perp.clone()), width: uniform((s.spread ?? 0.7) * 0.5 + (s.width ?? 0.22) * 2.2),
+      len: uniform(len), rim: u.rim, color: u.color, glow: uniform(ice ? (s.rimStrength ?? 1.5) : 0.15) };
+    const rel = positionWorld.sub(tu.from);
+    const along = dot(rel.xz, tu.dir.xz), across = dot(rel.xz, tu.perp.xz).div(tu.width);
+    const wob = mx_noise_float(vec3(positionWorld.xz.mul(1.3), 2)).mul(0.35);
+    const edgeM = float(1).sub(smoothstep(0.45, 1.0, abs(across).add(wob)));
+    const ends = smoothstep(0.1, 0.6, along).mul(smoothstep(tu.len.add(0.6), tu.len.sub(0.2), along));
+    const shown = smoothstep(tu.front, tu.front.sub(0.35), along);
+    const wv = mx_worley_noise_vec2(positionWorld.xz.mul(ice ? 2.2 : 1.6));
+    const crack = smoothstep(0.09, 0.0, wv.y.sub(wv.x));
+    const crack2 = smoothstep(0.05, 0.0, mx_worley_noise_vec2(positionWorld.xz.mul(5.5)).y.sub(mx_worley_noise_vec2(positionWorld.xz.mul(5.5)).x)).mul(0.6);
+    const cracks = clamp(crack.add(crack2), 0, 1).mul(smoothstep(1.0, 0.3, abs(across)));
+    const tex = texture(loadTex(ice ? 'surface_snow' : 'surface_dirt', true, texBase), positionWorld.xz.div(1.6)).rgb;
+    const tmat = new THREE.MeshStandardNodeMaterial({ transparent: true, depthWrite: false, roughness: ice ? 0.25 : 0.95, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    // Is: frusen skorpa i besvärjelsens färg med lysande sprickor. Jord: uppriven mörk jord med svarta sprickor och
+    // ljusare upptryckta kanter.
+    tmat.colorNode = ice ? mix(tex.mul(mix(vec3(1, 1, 1), tu.color, 0.45)), tu.color.mul(0.5), cracks)
+      : mix(tex.mul(tu.color.mul(1.1)).mul(mix(float(1.15), float(0.7), smoothstep(0.2, 0.7, abs(across)))), vec3(0.05, 0.035, 0.025), cracks);
+    tmat.emissiveNode = tu.rim.mul(cracks).mul(tu.glow).mul(shown).mul(tu.fade);
+    tmat.opacityNode = clamp(edgeM.mul(ends).mul(shown).mul(ice ? 0.92 : 0.95).add(cracks.mul(edgeM).mul(shown).mul(0.3)), 0, 1).mul(tu.fade);
+    const mid = from.clone().addScaledVector(dir, len / 2);
+    const ang = Math.atan2(dir.x, dir.z);
+    const tgeo = new DecalGeometry(ground, mid, new THREE.Euler(-Math.PI / 2, 0, ang, 'XYZ'), new THREE.Vector3(Math.max(len, 1) + 1.5, Math.max(len, 1) + 1.5, 6));
+    trail = new THREE.Mesh(tgeo, tmat);
+    trail.renderOrder = 2;
+    trail.receiveShadow = true;
+    group.add(trail);
+  }
+
+  // Skärvor och damm (eller froströk) längs spåret: föds där vågen är när de föds (partiklarnas bana)
+  const P = (k) => ({ ...defaults.particles, mode: 'loop', ...k });
+  const debris = createParticles(P({ count: s.debris ?? 160, lifetime: 1.1, lifeVar: 0.4, emit: 'sphere', radius: 0.3, speed: 3.6, speedVar: 0.6, spread: 38, radial: 1.4, gravity: 9.5, drag: 0.4,
+    turbulence: 0, sprite: 'shard', additive: false, sizeStart: (s.width ?? 0.22) * 0.65, sizeEnd: (s.width ?? 0.22) * 0.4, sizeVar: 0.6, spin: 9, stretch: 0,
+    colorStart: ice ? '#eaf8ff' : '#6a5440', colorMid: ice ? `#${new THREE.Color(s.color ?? '#7fc8e8').getHexString()}` : '#4a382a', colorEnd: ice ? '#b8e0f4' : '#3a2a1e',
+    alpha: 1, fadeIn: 0.02, fadeOut: 0.15, glow: ice ? 1.3 : 1, soft: 0 }), { max: 800 });
+  const dust = createParticles(P({ count: s.dust ?? 70, lifetime: 1.8, lifeVar: 0.4, emit: 'sphere', radius: 0.35, speed: 1.1, speedVar: 0.5, spread: 55, radial: 0.8, gravity: ice ? 0.1 : -0.15, drag: 2,
+    flow: 0.25, flowScale: 0.8, wind: 0.5, sprite: 'smoke', additive: false, sizeStart: 0.35, sizeEnd: 1.3, sizeVar: 0.4, spin: 0.6,
+    colorStart: ice ? '#f0faff' : '#8a7458', colorMid: ice ? '#d8eef8' : '#7a6650', colorEnd: ice ? '#c8e2f0' : '#6e5c48', alpha: ice ? 0.45 : 0.6, fadeIn: 0.08, fadeOut: 0.65, glow: 1, soft: 0.5 }), { max: 400 });
+  group.add(debris.object, dust.object);
+  debris.object.visible = dust.object.visible = s.mode !== 'ring'; // i en ring finns inget spår att spricka upp
+  const pathFrom = from.clone().addScaledVector(dir, D0), pathTo = from.clone().addScaledVector(dir, len);
+  pathFrom.y = (groundY?.(pathFrom.x, pathFrom.z) ?? pathFrom.y) + 0.05; pathTo.y = (groundY?.(pathTo.x, pathTo.z) ?? pathTo.y) + 0.05;
+
   const M = new THREE.Matrix4(), S = new THREE.Vector3();
+  let t0 = 0;
+  const wave = () => Math.max(0.5, s.wave ?? 8);
   const fx = {
-    object: mesh, uniforms: u,
-    set(v) { mat.color.set(v.color ?? '#7fc8e8'); u.rim.value.set(v.rim ?? '#bfefff'); u.rimStrength.value = v.rimStrength ?? 1.5; mat.roughness = v.roughness ?? 0.2; },
-    // t: sekunder sedan lagret började, dur: hela lagrets längd (sista sink sekunderna sjunker de undan)
-    update(time, lt, { t = 0, dur = 2 } = {}) {
-      const sink = s.sink ?? 0.35, wave = Math.max(0.5, s.wave ?? 8);
-      spikes.forEach((sp, i) => {
-        let g = easeBack(clamp01((t - sp.d / wave) / 0.16));
-        if (t > dur - sink) g *= 1 - easeOut(clamp01((t - (dur - sink)) / sink));
-        g = Math.max(0, g);
-        M.compose(sp.p, sp.q, S.set(sp.w * (0.4 + 0.6 * Math.min(1, g)), sp.h * g + 1e-4, sp.w * (0.4 + 0.6 * Math.min(1, g))));
-        mesh.setMatrixAt(i, M);
-      });
-      mesh.instanceMatrix.needsUpdate = true;
+    object: group, uniforms: u,
+    set(v) { s = { ...s, ...v }; u.color.value.set(v.color ?? '#7fc8e8'); u.rim.value.set(v.rim ?? '#bfefff'); u.rimStrength.value = v.rimStrength ?? 1.5; },
+    start(time) {
+      t0 = time;
+      if (s.mode !== 'ring') {
+        const flight = span / wave();
+        debris.path(pathFrom, pathTo, 0, time + D0 / wave(), flight);
+        dust.path(pathFrom, pathTo, 0, time + D0 / wave(), flight);
+      }
     },
-    setFade(f) { u.fade.value = f; },
-    dispose() { geo.dispose(); mat.dispose(); },
+    // t: sekunder sedan lagret började, dur: hela lagrets längd (de sista sink sekunderna sjunker de undan)
+    update(time, lt, { t = 0, dur = 2, wind } = {}) {
+      const sink = s.sink ?? 0.35;
+      for (const { mesh, list } of meshes) {
+        list.forEach((sp, i) => {
+          let g = easeBack(clamp01((t - sp.d / wave()) / 0.16));
+          if (t > dur - sink) g *= 1 - easeOut(clamp01((t - (dur - sink)) / sink));
+          g = Math.max(0, g);
+          const wg = 0.35 + 0.65 * Math.min(1, g);
+          M.compose(sp.p, sp.q, S.set(sp.w * wg, sp.h * g + 1e-4, sp.w * wg));
+          mesh.setMatrixAt(i, M);
+        });
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+      if (tu) { tu.front.value = t * wave(); tu.fade.value = u.fade.value; }
+      debris.update(time, { wind }); dust.update(time, { wind });
+    },
+    setFade(f) { u.fade.value = f; if (tu) tu.fade.value = f; },
+    dispose() { for (const g of geos) g.dispose(); mat.dispose(); if (trail) { trail.geometry.dispose(); trail.material.dispose(); } debris.dispose(); dust.dispose(); },
   };
   return fx;
 }
@@ -459,7 +613,7 @@ export function createSpell(s, ctx) {
       case 'aura': fx = createAura({ ...D.glow, ...set }, { target: L.anchor === 'dummy' ? ctx.dummy : ctx.figure }); break;
       case 'flames': fx = createFlames(set, { at }); break;
       case 'lightning': fx = createLightning(set); fx.ends(anchor(L.from ?? 'hand'), anchor(L.to ?? 'target')); break;
-      case 'spikes': fx = createSpikes(set, { from: anchor(L.from ?? 'caster'), to: anchor(L.to ?? 'targetGround'), groundY: ctx.groundY }); break;
+      case 'spikes': fx = createSpikes(set, { from: anchor(L.from ?? 'caster'), to: anchor(L.to ?? 'targetGround'), groundY: ctx.groundY, ground: ctx.ground, defaults: D, texBase: ctx.texBase }); break;
       case 'flash': fx = createFlash(set, { at }); break;
       case 'ring': fx = createRing(set, { at }); break;
       case 'scorch': fx = createScorch(set, { at, ground: ctx.ground }); break;
