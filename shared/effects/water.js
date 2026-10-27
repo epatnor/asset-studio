@@ -254,10 +254,18 @@ export function createWater({ geometry, level = 0, sky }) {
     // Skum: strand och stenar, vassa krön, strömt grunt vatten
     const fuvB = Pw.xz.div(u.foamScale.mul(8)).add(vec2(t.mul(0.011), t.mul(-0.007)));
     const warp = slopeAt(Pw.xz.div(u.foamScale.mul(5)).add(vec2(t.mul(-0.013), t.mul(0.009)))).mul(0.04);
-    const fuvA = Pw.xz.div(u.foamScale.mul(6)).sub(f.mul(t.mul(0.33))).add(warp);
+    const fuvA = Pw.xz.div(u.foamScale.mul(6)).add(warp);
+    // Skummet följer strömmen med samma tvåfas-flöde som krusningarna: två kopior glider med strömmen och tonas
+    // växelvis in och ut (triangelvikter), så att skummet driver längs bäckens kontur utan att töjas ut med tiden.
+    // Långsammare cykel än krusningarna (ca 6,7 s), annars pulserar skummet
+    const qa = fract(t.mul(0.15)), qb = fract(t.mul(0.15).add(0.5));
+    const wa = float(1).sub(abs(qa.mul(2).sub(1))), wb = float(1).sub(abs(qb.mul(2).sub(1)));
+    const oa = f.mul(qa.div(0.15).mul(0.33)), ob = f.mul(qb.div(0.15).mul(0.33));
     // De stora fläckarna formar skummets kant, bubblorna ger rundade hål och tungor i den. k skalar koordinaterna
     // per axel: k.x < 1 drar ut skummet längs x
-    const foamNoise = (k) => mix(texture(T.misc, fuvB.mul(k)).g, texture(T.misc, fuvA.mul(k)).r, 0.3);
+    const foamAt = (k, o, s0) => mix(texture(T.misc, fuvB.sub(o.mul(0.75)).add(s0).mul(k)).g, texture(T.misc, fuvA.sub(o).add(s0).mul(k)).r, 0.3);
+    // Den andra kopian förskjuts bara där det strömmar: i stilla vatten (strand, sjö) är kopiorna lika och inget pulserar
+    const foamNoise = (k) => foamAt(k, oa, vec2(0)).mul(wa).add(foamAt(k, ob, vec2(0.5, 0.37).mul(saturate(fl.mul(4)))).mul(wb));
     // Utdraget längs strandlinjen: bruset samplas utdraget längs x och längs z och blandas efter bottnens lutning
     // (lutar botten i z går stranden längs x). Ingen vridning per pixel, så inga virvlar där stranden kröker sig.
     // På plant vatten (ingen lutning) är skummet runt som förut.
