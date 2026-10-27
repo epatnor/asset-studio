@@ -53,6 +53,13 @@ const GENERATORS = {
     species: 'tools/tree/species.json',
     assets: 'assets/trees',
   },
+  // Stenarna (Smedjans flik Stone): props-generatorn med sina spakar; arterna är presets i props.json
+  prop: {
+    params: 'tools/props/params.json',
+    script: 'tools/props/make_prop.py',
+    species: 'tools/props/props.json',
+    assets: 'assets/props',
+  },
 };
 
 const json = (res, code, body) => {
@@ -98,7 +105,7 @@ async function cleanPreviews() {
 
 // Receptet från studion: bara kända fält går vidare till generatorn
 const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) =>
-  ['preset', 'seed', 'height', 'bole', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_uv', 'bark_blend'].includes(k)));
+  ['preset', 'seed', 'height', 'bole', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_uv', 'bark_blend', 'params', 'stone_tint', 'moss_tint'].includes(k)));
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];

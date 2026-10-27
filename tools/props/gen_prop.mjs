@@ -101,7 +101,7 @@ function buildLowpolyRock(size, o, rr, offset = [0, 0, 0]) {
 
 function lowpolyChunk(size, o, rr, offset) {
   const pickR = ([a, b]) => Math.round(a + (b - a) * rr());
-  const sq = Array.isArray(o.squash) ? o.squash[0] + (o.squash[1] - o.squash[0]) * rr() : o.squash ?? 0.7;
+  const sq = (Array.isArray(o.squash) ? o.squash[0] + (o.squash[1] - o.squash[0]) * rr() : o.squash ?? 0.7) * (o.tall ?? 1);
   const R = [size * 0.5 * (0.85 + rr() * 0.3), size * 0.5 * sq, size * 0.5 * (0.85 + rr() * 0.3)];
   const cut = -R[1] * 0.25; // stenen sjunker en bit ner i marken
   const P = [];
@@ -226,12 +226,12 @@ function rockLods() {
   const n = pick(sp.count ?? [1, 1]);
   // Basaltpelare står tätt i ett sexkantsmönster (närmast mitten först); andra stenar strös inom spread
   const hex = sp.prism ? (() => {
-    const w = (Array.isArray(sp.size) ? sp.size[1] : sp.size) * 0.92, cells = [];
+    const w = (Array.isArray(sp.size) ? sp.size[1] : sp.size) * 0.92 * (sp.scale ?? 1), cells = [];
     for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) cells.push([(i + j * 0.5) * w, j * w * 0.866]);
     return cells.sort((a, b) => Math.hypot(...a) - Math.hypot(...b) + (r() - 0.5) * w * 0.3);
   })() : null;
   const placements = Array.from({ length: n }, (_, i) => {
-    const s = Array.isArray(sp.size) ? between(sp.size) : sp.size * (n > 1 ? 0.6 + r() * 0.6 : 1);
+    const s = (Array.isArray(sp.size) ? between(sp.size) : sp.size * (n > 1 ? 0.6 + r() * 0.6 : 1)) * (sp.scale ?? 1);
     const a = r() * Math.PI * 2, d = n > 1 ? (sp.spread ?? 1) * Math.sqrt(r()) : 0;
     const off = hex ? [hex[i][0], 0, hex[i][1]] : [Math.cos(a) * d, 0, Math.sin(a) * d];
     return { s, off, seed: Math.floor(r() * 2 ** 31) };

@@ -146,7 +146,11 @@ renderer.setAnimationLoop((t) => {
 
 // --- Tillstånd: receptet, arten (som i species.json) och visningens val ---
 const gens = await api('/api/generators');
-const G = gens.tree, P = G.params;
+// Träden är huvudgeneratorn (flikarna står i dess params.json); andra generatorer (stenarna: prop) lägger till sina kort,
+// grupper och spakar, och en flik med generator: prop bygger med den. Korten har kinds, så att bara flikens kort syns.
+const G = gens.tree, GX = Object.entries(gens).filter(([id]) => id !== 'tree').map(([, g]) => g.params);
+const P = { ...G.params, parts: [...G.params.parts, ...GX.flatMap((x) => x.parts)], groups: [...G.params.groups, ...GX.flatMap((x) => x.groups)], params: [...G.params.params, ...GX.flatMap((x) => x.params)] };
+const genOf = (k) => k?.generator ?? 'tree';
 const state = { recipe: {}, spec: {}, view: {} };
 let kind = P.kinds[0];
 const getPath = (obj, p) => p.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -175,7 +179,7 @@ function setValue(p, v) {
   } else setPath(state, p.path, v);
 }
 function resetSpecies(preset, height) {
-  state.spec = structuredClone(G.species[preset]);
+  state.spec = structuredClone(gens[genOf(kind)].species[preset]);
   state.recipe = { preset, height: height ?? state.recipe.height ?? kind.height ?? 8, seed: state.recipe.seed ?? 47,
     bark_blend: structuredClone(state.spec.bark_blend ?? {}) };
 }
@@ -205,7 +209,8 @@ function blendNow() {
   for (const p of P.params.filter((q) => q.path.startsWith('recipe.bark_blend.'))) setPath(out, p.path.slice(18), valueOf(p));
   return out;
 }
-const recipeNow = () => ({
+// Stenarna (props-generatorn): presetet, fröet och presetets värden med spakarna ovanpå
+const recipeNow = () => (genOf(kind) === 'prop' ? { preset: state.recipe.preset, seed: state.recipe.seed, params: { ...state.spec } } : {
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
   species: { trunk: state.spec.trunk, levels: state.spec.levels, stemless: !!state.spec.stemless }, canopy: state.spec.foliage, bark_blend: blendNow(),
@@ -315,7 +320,7 @@ async function regenerate() {
   const id = ++latest;
   busy(true, 'Building…');
   const t0 = performance.now();
-  const res = await api('/api/generate', { generator: 'tree', recipe: recipeNow() });
+  const res = await api('/api/generate', { generator: genOf(kind), recipe: recipeNow() });
   if (id !== latest) return;
   if (res.error) return showError(res.error);
   await showModel(res.url);
@@ -334,7 +339,11 @@ function showAssetStats(res, ms) {
   const c = res.checks ?? {};
   $('lamp').className = 'lamp ' + (c.ok ? 'ok' : 'bad');
   setState(c.ok ? 'Checks are green' : 'Checks are red');
-  const vals = [
+  const vals = genOf(kind) === 'prop' ? [
+    ['Triangles', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
+    ['Resting on the ground', c.resting_on_ground ? 'yes' : 'no'],
+    ['Build time', `${fmt(ms / 1000, 1)} s`],
+  ] : [
     ['Height', res.height_m != null ? `${fmt(res.height_m, 1)} m` : '–'], // med stamhöjden (gen_tree: top)
     ['Triangles', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
     ['of which alpha', (res.alpha_tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
@@ -491,11 +500,13 @@ function makeRow(p) {
 }
 
 let assetTitle = null;
+const partCards = []; // kort som bara hör till vissa flikar (part.kinds)
 for (const part of P.parts) {
   const groups = P.groups.filter((g) => g.part === part.id);
   const params = P.params.filter((q) => groups.some((g) => g.id === q.group));
   if (!params.length) continue;
   const card = el('section', 'card glass');
+  if (part.kinds) partCards.push([card, part]);
   card.style.setProperty('--part', part.accent);
   const head = el('header'), h2 = el('h2', null, part.label);
   if (part.id === 'asset') assetTitle = h2; // byter namn efter fliken (Träd, Buske ...)
@@ -522,6 +533,7 @@ const holds = (w) => { const v = valueOf(paramAt(w.path)); return 'not' in w ? v
 function refreshUi() {
   for (const s of syncs) s();
   for (const [det, w] of whens) det.style.display = holds(w) ? '' : 'none';
+  for (const [card, part] of partCards) card.style.display = part.kinds.includes(kind.id) ? '' : 'none';
   if (assetTitle) assetTitle.textContent = kind.label;
   for (const [row, p] of kindRows) {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || holds(p.when));
@@ -883,7 +895,7 @@ async function save() {
   const name = prompt('Name in the library (a–z, 0–9 and _):', suggestion);
   if (!name) return;
   const tags = [kind.label.toLowerCase(), ...(prompt('Tags, comma separated (e.g. forest, summer):', '') ?? '').split(',')];
-  const payload = { generator: 'tree', name: name.trim().toLowerCase(), tags, recipe: recipeNow(), thumbnail: thumbnail() };
+  const payload = { generator: genOf(kind), name: name.trim().toLowerCase(), tags, recipe: recipeNow(), thumbnail: thumbnail() };
   busy(true, 'Saving…');
   let res = await api('/api/library', payload);
   if (res.exists && confirm(`${payload.name} already exists. Overwrite?`)) res = await api('/api/library', { ...payload, overwrite: true });

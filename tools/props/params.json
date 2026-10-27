@@ -1,0 +1,31 @@
+{
+  "_doc": "Spakarna för stenar i Asset Studio (Smedjans flik Stone), som tools/tree/params.json: spec.* = presetets värden i tools/props/props.json (skickas som params till make_prop.py), recipe.* = receptets fält. scale och tall är multiplikatorer på storleken och höjden, så att de fungerar även för presets med intervall (stengrupper, basalt). Texten som visas är på engelska.",
+  "generator": "prop",
+  "label": "Stones",
+  "species": ["rock", "rock_mossy", "boulder_lowpoly", "boulder_mossy", "rock_slab", "standing_stone", "rock_cluster", "basalt"],
+  "parts": [
+    {"id": "stone", "label": "Stone", "accent": "#8a8478", "kinds": ["rock"]}
+  ],
+  "groups": [
+    {"id": "stone_kind", "part": "stone", "label": "Kind and size", "open": true},
+    {"id": "stone_shape", "part": "stone", "label": "Shape", "open": true},
+    {"id": "stone_edge", "part": "stone", "label": "Worn edges", "open": true},
+    {"id": "stone_group", "part": "stone", "label": "Several stones", "open": false}
+  ],
+  "params": [
+    {"path": "recipe.preset", "group": "stone_kind", "label": "Kind", "type": "select", "options": {"Rock": "rock", "Mossy rock": "rock_mossy", "Boulder": "boulder_lowpoly", "Mossy boulder": "boulder_mossy", "Slab": "rock_slab", "Standing stone": "standing_stone", "Rock cluster": "rock_cluster", "Basalt columns": "basalt"}},
+    {"path": "recipe.seed", "group": "stone_kind", "label": "Seed", "type": "seed", "default": 3},
+    {"path": "spec.scale", "group": "stone_kind", "label": "Size", "type": "number", "min": 0.2, "max": 4, "step": 0.05, "default": 1, "help": "Scales the stone (and every stone in a group)"},
+    {"path": "spec.tall", "group": "stone_kind", "label": "Height", "type": "number", "min": 0.3, "max": 3, "step": 0.05, "default": 1, "help": "Flatter or taller than the kind's own shape"},
+    {"path": "spec.moss", "group": "stone_kind", "label": "Moss", "type": "number", "min": 0, "max": 1, "step": 0.01, "default": 0, "help": "Moss on the upward faces (drawn by the material, softly edged)"},
+    {"path": "spec.points", "group": "stone_shape", "label": "Corners", "type": "intrange", "min": 6, "max": 30, "help": "How many points the stone's hull is built from: few gives big chunky faces, many a rounder stone"},
+    {"path": "spec.flatTop", "group": "stone_shape", "label": "Flat top", "type": "number", "min": 0, "max": 1, "step": 0.05, "default": 0.4, "help": "Chance of a flat face on top"},
+    {"path": "spec.chunks", "group": "stone_shape", "label": "Blocks", "type": "intrange", "min": 1, "max": 4, "help": "A boulder can be several blocks leaning into each other"},
+    {"path": "spec.prism", "group": "stone_shape", "label": "Column sides", "type": "int", "min": 0, "max": 8, "default": 0, "help": "Basalt: the number of sides of each column (0 = an ordinary stone)"},
+    {"path": "spec.bevel", "group": "stone_edge", "label": "Edge width", "type": "number", "min": 0, "max": 0.15, "step": 0.005, "default": 0.05, "help": "How wide the worn strip along every edge is, as a share of the stone's size"},
+    {"path": "spec.faceTint", "group": "stone_edge", "label": "Face shade", "type": "number", "min": 0.5, "max": 1, "step": 0.01, "default": 0.84, "help": "How much darker the flat faces are than the worn edges (1 = no difference)"},
+    {"path": "spec.merge", "group": "stone_edge", "label": "Merge faces (°)", "type": "number", "min": 0, "max": 35, "step": 1, "default": 15, "help": "Neighbouring faces closer than this angle become one face, so wear only shows on real edges"},
+    {"path": "spec.count", "group": "stone_group", "label": "Stones", "type": "intrange", "min": 1, "max": 14},
+    {"path": "spec.spread", "group": "stone_group", "label": "Spread (m)", "type": "number", "min": 0, "max": 4, "step": 0.05, "default": 0.9}
+  ]
+}
