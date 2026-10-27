@@ -50,6 +50,7 @@
     },
     {
       "key": "rootFromGround",
+      "sub": "Follow ground texture color",
       "group": "ground",
       "label": "Grass root color",
       "type": "bool",

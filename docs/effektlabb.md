@@ -74,6 +74,16 @@ Fyra flikar med en gemensam grundscen: en liten arena med en figur (stand-in til
 
 Texturerna (flipbooks, gnistor, rökmoln, runor) görs i Ateljén, gärna med Krea. Effekterna är recept i Skattkammaren, och Tinkertown spelar upp samma recept med `shared/effects/vfx.js`.
 
+**Byggt 2026-10-27:** Häxkitteln är öppen i studion (`studio/cauldron.js`, länk `…/studio/#kitteln` eller `#kitteln-particles` osv.) med fyra flikar och en gemensam arena i skymning: Tripos referenskropp som figur (en docka av kapslar om den saknas), en träningsdocka, kullersten och äng med en kulle, och Azsharas lykta. Glöd (bloom) ovanpå, och spakar för dagsljus, glöd, slow motion, vind och paus. Plats väljs i kortet Play (figur, docka, lykta, eller klick på marken), och Play once eller Loop spelar upp smällar, hugg och skott.
+
+- **Modulen** `shared/effects/vfx.js`: `createEffect(kind, settings, ctx)` med `object`, `set`, `play`, `update(time, { camera, wind })` och `dispose`, så att Tinkertown kan spela upp samma recept. Recepten är data i `tools/vfx/vfx.json` (spakar per slag i grupper, och färdiga effekter; formateras med `tools/vfx/write_vfx.py`), sparade i `assets/vfx/<namn>.vfx.json` (`/api/vfx`, `/api/vfx/save`, värdena kläms till spakarnas gränser).
+- **Partiklar:** helt på grafikkortet och utan tillstånd: varje partikels ålder och slumptal räknas ur tiden och dess nummer, och läget ur en exakt lösning med luftmotstånd och tyngd, plus virvel, turbulens och vind. Utsändare punkt, sfär, skiva och ring; löpande eller smäll; sprites mjuk prick, gnista (sträckt längs farten), rökmoln, stjärna, löv och ring; färg i tre steg över livet. Färdiga: Embers, Fire, Smoke, Magic swirl, Whirling leaves, Footstep dust och Spark burst.
+- **Glöd och aura:** ett skal längs figurens normaler som lyser i kanten (fresnel) och flimrar uppåt med brus, en pelare av ljus, glöd på marken, ett punktljus och stigande gnistor. Färdiga: Holy light, Arcane, Poison, Frost, Rage och Selected.
+- **Markörer:** ritade ur uv på en dekal (`DecalGeometry`) som projiceras på marken och följer kullen: valring, sikte, område (runring och laddning från mitten) och utropstecken ovanför figuren; streck, fyllning, snurr, puls och vågor utåt eller inåt. Färdiga: Selected unit, Enemy target, Fire area (cast), Healing circle, Move here och Quest giver.
+- **Spår och träffar:** ett band efter svärdets klinga (bredast ytterst), eller en projektil i en båge från figuren till dockan med en svans mot kameran, gnistor längs vägen och en träff med gnistsmäll, chockring och blixt. Färdiga: Steel slash, Fire blade, Frost blade, Fireball, Arcane missile och Arrow.
+
+Kvar: texturer från Ateljén i stället för de ritade spritarna (flipbooks), effekterna i Skattkammaren, markörer som inte lägger sig på gräset, och uppspelningen i Tinkertown.
+
 ## Faser
 
 | Fas | Innehåll | Klart när |
@@ -82,5 +92,5 @@ Texturerna (flipbooks, gnistor, rökmoln, runor) görs i Ateljén, gärna med Kr
 | E2. Vinden i alla klienter | Visningen och Tinkertown läser vindmodulen (batchar, instansierade växter och impostors); vinden blir ett lager i Tinkertowns värld som havet delar; flaggor, rankor och lyktor riggas | Samma vind överallt |
 | E3. Fliken Vatten | `shared/effects/water.js` från visningens vattengenerator och Tinkertowns hav; bassängen med alla typer; vattentyper som recept | Alla sorters vatten provas och sparas i en scen |
 | E4. Fliken Väder | `shared/effects/weather.js` från visningens atmosfär och effekter; platsen; väderlägen som recept | Väderlägen provas och sparas, och styr vind och vatten |
-| E6. Häxkitteln | `shared/effects/vfx.js`; arenan; glöd och aura, markörer, partiklar, spår och träffar som recept | Spelets effekter görs och provas i studion och spelas upp i Tinkertown |
+| E6. Häxkitteln | `shared/effects/vfx.js`; arenan; glöd och aura, markörer, partiklar, spår och träffar som recept | Spelets effekter görs och provas i studion och spelas upp i Tinkertown (studion byggd 2026-10-27; Tinkertown kvar) |
 | E5. Export | vindriggen i ett format som Pivot Painter i Unreal, Godot och Unity kan läsa; recepten dokumenterade | Effekterna följer med ut ur projektet |

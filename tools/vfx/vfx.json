@@ -1,0 +1,176 @@
+{
+  "_doc": "Häxkittelns effekter som recept (shared/effects/vfx.js, docs/effektlabb.md, E6): spakarna per slag, grupperade i kort, och färdiga effekter. Texten som visas är på engelska. Sparade effekter hamnar i assets/vfx/<namn>.vfx.json ({ name, kind, settings }). Formatera med tools/vfx/write_vfx.py.",
+  "kinds": [
+    {
+      "id": "glow", "label": "Glow & aura", "help": "Glowing rims, light pillars and auras around figures and objects",
+      "groups": [
+        {"id": "aura", "label": "Aura"},
+        {"id": "pillar", "label": "Pillar of light"},
+        {"id": "ground", "label": "Ground glow & light"},
+        {"id": "motes", "label": "Rising motes"}
+      ],
+      "params": [
+        {"key": "color", "group": "aura", "label": "Colour", "type": "color", "default": "#ffc94a", "help": "The glow at the feet and along the rim"},
+        {"key": "color2", "group": "aura", "label": "Top colour", "type": "color", "default": "#fff3c4", "help": "The glow towards the head; the aura fades from Colour to this"},
+        {"key": "intensity", "group": "aura", "label": "Intensity", "min": 0, "max": 6, "step": 0.05, "default": 2, "help": "How bright the rim glows (above 1 it blooms)"},
+        {"key": "rim", "group": "aura", "label": "Rim sharpness", "min": 0.5, "max": 8, "step": 0.1, "default": 2.5, "help": "High: only a thin edge glows. Low: the whole figure glows"},
+        {"key": "thickness", "group": "aura", "label": "Shell offset", "min": 0, "max": 0.15, "step": 0.005, "default": 0.03, "help": "How far outside the figure the glowing shell sits (m)"},
+        {"key": "fill", "group": "aura", "label": "Inner fill", "min": 0, "max": 1, "step": 0.01, "default": 0.1, "help": "Glow over the whole figure, not just the rim"},
+        {"key": "noise", "group": "aura", "label": "Flicker", "min": 0, "max": 1, "step": 0.01, "default": 0.4, "help": "Noise that breaks the glow into rising flames"},
+        {"key": "noiseScale", "group": "aura", "label": "Flicker size", "min": 0.5, "max": 10, "step": 0.1, "default": 3, "help": "Small values: big slow tongues. Large values: fine sparkle"},
+        {"key": "flow", "group": "aura", "label": "Flow speed", "min": 0, "max": 4, "step": 0.05, "default": 1, "help": "How fast the flicker rises (m/s)"},
+        {"key": "pulse", "group": "aura", "label": "Pulse", "min": 0, "max": 1, "step": 0.01, "default": 0.2, "help": "How much the whole aura breathes"},
+        {"key": "pulseSpeed", "group": "aura", "label": "Pulse speed", "min": 0, "max": 4, "step": 0.05, "default": 0.8, "help": "Pulses per second"},
+        {"key": "pillar", "group": "pillar", "label": "Strength", "min": 0, "max": 4, "step": 0.05, "default": 0, "help": "A column of light around the figure; 0 = none"},
+        {"key": "pillarRadius", "group": "pillar", "label": "Radius", "min": 0.2, "max": 2, "step": 0.05, "default": 0.7, "help": "The column's radius (m)"},
+        {"key": "pillarHeight", "group": "pillar", "label": "Height", "min": 0.5, "max": 6, "step": 0.1, "default": 2.6, "help": "The column's height (m)"},
+        {"key": "groundGlow", "group": "ground", "label": "Ground glow", "min": 0, "max": 4, "step": 0.05, "default": 1, "help": "A bright pool on the ground under the figure"},
+        {"key": "groundRadius", "group": "ground", "label": "Ground radius", "min": 0.3, "max": 4, "step": 0.05, "default": 1.2, "help": "The size of the pool (m)"},
+        {"key": "light", "group": "ground", "label": "Light", "min": 0, "max": 30, "step": 0.5, "default": 4, "help": "A point light in the aura's colour that lights the surroundings"},
+        {"key": "flicker", "group": "ground", "label": "Light flicker", "min": 0, "max": 1, "step": 0.01, "default": 0, "help": "Makes the light waver, like fire"},
+        {"key": "motes", "group": "motes", "label": "Count", "min": 0, "max": 600, "step": 1, "default": 60, "help": "Sparks rising around the figure; 0 = none"},
+        {"key": "moteSize", "group": "motes", "label": "Size", "min": 0.01, "max": 0.3, "step": 0.005, "default": 0.06, "help": "The size of a spark (m)"},
+        {"key": "moteSpeed", "group": "motes", "label": "Rise speed", "min": 0, "max": 3, "step": 0.05, "default": 0.6, "help": "How fast they rise (m/s)"},
+        {"key": "moteSwirl", "group": "motes", "label": "Swirl", "min": -4, "max": 4, "step": 0.05, "default": 1, "help": "How fast they circle the figure (negative: the other way)"}
+      ]
+    },
+    {
+      "id": "marker", "label": "Markers", "help": "Selection rings, targets, ability areas and exclamation marks, projected onto the ground",
+      "groups": [
+        {"id": "shape", "label": "Shape"},
+        {"id": "look", "label": "Look"},
+        {"id": "motion", "label": "Motion"}
+      ],
+      "params": [
+        {"key": "shape", "group": "shape", "label": "Shape", "type": "choice", "options": [{"id": "ring", "label": "Selection ring"}, {"id": "target", "label": "Target"}, {"id": "area", "label": "Area"}, {"id": "exclaim", "label": "Exclamation"}], "default": "ring", "help": "Selection ring: under the selected unit. Target: an aim with ticks. Area: an ability's area with runes and a cast timer. Exclamation: a quest sign over the head"},
+        {"key": "radius", "group": "shape", "label": "Radius", "min": 0.2, "max": 6, "step": 0.05, "default": 0.8, "help": "The marker's size on the ground (m). It is projected onto the ground and follows slopes", "rebuild": true},
+        {"key": "width", "group": "shape", "label": "Ring width", "min": 0.01, "max": 0.6, "step": 0.005, "default": 0.08, "help": "The ring's width (m)"},
+        {"key": "dashes", "group": "shape", "label": "Dashes", "min": 0, "max": 48, "step": 1, "default": 0, "help": "Breaks the ring into dashes; 0 = solid"},
+        {"key": "dashFill", "group": "shape", "label": "Dash length", "min": 0.05, "max": 1, "step": 0.01, "default": 0.6, "help": "How much of each dash is drawn"},
+        {"key": "signSize", "group": "shape", "label": "Sign size", "min": 0.2, "max": 1.5, "step": 0.05, "default": 0.6, "help": "The exclamation mark's height (m)"},
+        {"key": "color", "group": "look", "label": "Colour", "type": "color", "default": "#5cff8a", "help": "The ring and the lines"},
+        {"key": "color2", "group": "look", "label": "Inner colour", "type": "color", "default": "#1f8a45", "help": "The fill inside the ring, and the sign's outline"},
+        {"key": "fill", "group": "look", "label": "Inner fill", "min": 0, "max": 1, "step": 0.01, "default": 0.12, "help": "How much the inside is filled"},
+        {"key": "softness", "group": "look", "label": "Edge softness", "min": 0, "max": 0.3, "step": 0.005, "default": 0.03, "help": "Sharp or soft edges"},
+        {"key": "glow", "group": "look", "label": "Glow", "min": 0, "max": 6, "step": 0.05, "default": 1.5, "help": "Brightness; above 1 it blooms"},
+        {"key": "additive", "group": "look", "label": "Additive", "type": "bool", "default": true, "help": "Light that adds to the ground (on) or paint that covers it (off)", "sub": "Glows instead of covering"},
+        {"key": "spin", "group": "motion", "label": "Spin", "min": -3, "max": 3, "step": 0.05, "default": 0.3, "help": "Rotation of dashes and ticks (radians per second)"},
+        {"key": "pulse", "group": "motion", "label": "Pulse", "min": 0, "max": 1, "step": 0.01, "default": 0.15, "help": "Size and brightness that breathe"},
+        {"key": "pulseSpeed", "group": "motion", "label": "Pulse speed", "min": 0, "max": 4, "step": 0.05, "default": 1.2, "help": "Pulses per second"},
+        {"key": "ripples", "group": "motion", "label": "Ripples", "min": 0, "max": 4, "step": 1, "default": 0, "help": "Rings that run across the marker; 0 = none"},
+        {"key": "rippleSpeed", "group": "motion", "label": "Ripple speed", "min": -2, "max": 2, "step": 0.05, "default": 0.6, "help": "Positive: outward. Negative: inward, like \"move here\""},
+        {"key": "charge", "group": "motion", "label": "Cast time", "min": 0, "max": 6, "step": 0.1, "default": 0, "help": "Area: fills from the centre over this many seconds and starts again; 0 = off"},
+        {"key": "bob", "group": "motion", "label": "Sign bob", "min": 0, "max": 0.5, "step": 0.01, "default": 0.12, "help": "How much the exclamation mark bobs (m)"}
+      ]
+    },
+    {
+      "id": "particles", "label": "Particles", "help": "Sparks, fire, smoke, magic, leaves and dust: particle systems on the graphics card",
+      "groups": [
+        {"id": "emitter", "label": "Emitter"},
+        {"id": "motion", "label": "Motion"},
+        {"id": "look", "label": "Look"}
+      ],
+      "params": [
+        {"key": "mode", "group": "emitter", "label": "Mode", "type": "choice", "options": [{"id": "loop", "label": "Continuous"}, {"id": "burst", "label": "Burst"}], "default": "loop", "help": "Continuous: a steady stream. Burst: everything at once when you press Play (or every few seconds with Loop)"},
+        {"key": "count", "group": "emitter", "label": "Count", "min": 1, "max": 3000, "step": 1, "default": 200, "help": "How many particles live at the same time (continuous) or in one burst"},
+        {"key": "lifetime", "group": "emitter", "label": "Lifetime", "min": 0.1, "max": 8, "step": 0.05, "default": 1.5, "help": "How long a particle lives (s)"},
+        {"key": "lifeVar", "group": "emitter", "label": "Lifetime spread", "min": 0, "max": 1, "step": 0.01, "default": 0.3, "help": "Some particles die sooner"},
+        {"key": "burstSpread", "group": "emitter", "label": "Burst length", "min": 0, "max": 2, "step": 0.01, "default": 0.05, "help": "Burst: spreads the births over this many seconds"},
+        {"key": "emit", "group": "emitter", "label": "Emitter", "type": "choice", "options": [{"id": "point", "label": "Point"}, {"id": "sphere", "label": "Sphere"}, {"id": "disc", "label": "Disc"}, {"id": "ring", "label": "Ring"}], "default": "point", "help": "Where the particles are born"},
+        {"key": "radius", "group": "emitter", "label": "Emitter size", "min": 0, "max": 3, "step": 0.01, "default": 0.2, "help": "The radius of the sphere, disc or ring (m)"},
+        {"key": "speed", "group": "motion", "label": "Speed", "min": 0, "max": 20, "step": 0.05, "default": 2, "help": "Start speed (m/s)"},
+        {"key": "speedVar", "group": "motion", "label": "Speed spread", "min": 0, "max": 1, "step": 0.01, "default": 0.4, "help": "Some particles start slower"},
+        {"key": "spread", "group": "motion", "label": "Cone angle", "min": 0, "max": 180, "step": 1, "default": 25, "help": "Spread around straight up (degrees); 180 = every direction"},
+        {"key": "radial", "group": "motion", "label": "Outward", "min": -5, "max": 5, "step": 0.05, "default": 0, "help": "Extra speed out from the emitter's centre (negative: inward)"},
+        {"key": "gravity", "group": "motion", "label": "Gravity", "min": -10, "max": 10, "step": 0.05, "default": 2, "help": "Pulls down (m/s²); negative values make them rise, like smoke and fire"},
+        {"key": "drag", "group": "motion", "label": "Drag", "min": 0, "max": 6, "step": 0.05, "default": 0.5, "help": "Air resistance: the particles slow down"},
+        {"key": "swirl", "group": "motion", "label": "Swirl", "min": -6, "max": 6, "step": 0.05, "default": 0, "help": "Turns around the emitter (radians per second)"},
+        {"key": "turbulence", "group": "motion", "label": "Turbulence", "min": 0, "max": 3, "step": 0.01, "default": 0.2, "help": "Wobble along the way (m)"},
+        {"key": "wind", "group": "motion", "label": "Wind", "min": 0, "max": 1.5, "step": 0.01, "default": 0.3, "help": "How much the wind carries them (the Wind slider under View)"},
+        {"key": "sprite", "group": "look", "label": "Sprite", "type": "choice", "options": [{"id": "soft", "label": "Soft dot"}, {"id": "spark", "label": "Spark"}, {"id": "smoke", "label": "Smoke puff"}, {"id": "star", "label": "Star"}, {"id": "leaf", "label": "Leaf"}, {"id": "ring", "label": "Ring"}], "default": "soft", "help": "The particle's shape"},
+        {"key": "additive", "group": "look", "label": "Additive", "type": "bool", "default": true, "help": "Light that adds up (fire, magic, sparks) or paint that covers (smoke, dust, leaves)", "sub": "Glows instead of covering"},
+        {"key": "sizeStart", "group": "look", "label": "Size at birth", "min": 0.01, "max": 3, "step": 0.01, "default": 0.15, "help": "Size when born (m)"},
+        {"key": "sizeEnd", "group": "look", "label": "Size at death", "min": 0, "max": 3, "step": 0.01, "default": 0.05, "help": "Size when it dies (m)"},
+        {"key": "sizeVar", "group": "look", "label": "Size spread", "min": 0, "max": 1, "step": 0.01, "default": 0.3, "help": "Some particles are smaller"},
+        {"key": "stretch", "group": "look", "label": "Stretch", "min": 0, "max": 4, "step": 0.05, "default": 0, "help": "Stretches the sprite along its motion, for streaks; 0 = round and spinning"},
+        {"key": "spin", "group": "look", "label": "Spin", "min": 0, "max": 10, "step": 0.1, "default": 1, "help": "How fast the sprites turn (radians per second)"},
+        {"key": "colorStart", "group": "look", "label": "Colour at birth", "type": "color", "default": "#fff1b0", "help": "Colour when born"},
+        {"key": "colorMid", "group": "look", "label": "Colour mid-life", "type": "color", "default": "#ff9a2e", "help": "Colour halfway"},
+        {"key": "colorEnd", "group": "look", "label": "Colour at death", "type": "color", "default": "#b8321c", "help": "Colour when it dies"},
+        {"key": "alpha", "group": "look", "label": "Opacity", "min": 0, "max": 1, "step": 0.01, "default": 1, "help": "How opaque"},
+        {"key": "fadeIn", "group": "look", "label": "Fade in", "min": 0, "max": 1, "step": 0.01, "default": 0.1, "help": "Share of the life spent fading in"},
+        {"key": "fadeOut", "group": "look", "label": "Fade out", "min": 0, "max": 1, "step": 0.01, "default": 0.4, "help": "Share of the life spent fading out"},
+        {"key": "glow", "group": "look", "label": "Glow", "min": 0, "max": 8, "step": 0.05, "default": 1.5, "help": "Brightness; above 1 it blooms"},
+        {"key": "flicker", "group": "look", "label": "Flicker", "min": 0, "max": 1, "step": 0.01, "default": 0, "help": "Each particle twinkles"}
+      ]
+    },
+    {
+      "id": "trail", "label": "Trails & hits", "help": "Sword trails, projectiles with tails, and hits",
+      "groups": [
+        {"id": "mode", "label": "Kind"},
+        {"id": "trail", "label": "Trail"},
+        {"id": "sword", "label": "Sword swing"},
+        {"id": "projectile", "label": "Projectile"},
+        {"id": "hit", "label": "Hit"}
+      ],
+      "params": [
+        {"key": "mode", "group": "mode", "label": "Mode", "type": "choice", "options": [{"id": "sword", "label": "Sword swing"}, {"id": "projectile", "label": "Projectile"}], "default": "sword", "help": "Sword swing: a ribbon behind the blade. Projectile: a shot from the figure to the dummy, with a tail and a hit"},
+        {"key": "trailTime", "group": "trail", "label": "Length", "min": 0.05, "max": 1.5, "step": 0.01, "default": 0.25, "help": "How long the trail stays (s)"},
+        {"key": "cover", "group": "trail", "label": "Blade cover", "min": 0.1, "max": 1, "step": 0.01, "default": 0.75, "help": "Sword: how much of the blade leaves a trail, from the tip"},
+        {"key": "width", "group": "trail", "label": "Tail width", "min": 0.02, "max": 1.5, "step": 0.01, "default": 0.25, "help": "Projectile: the tail's width (m)"},
+        {"key": "softness", "group": "trail", "label": "Edge softness", "min": 0, "max": 1, "step": 0.01, "default": 0.5, "help": "How softly the trail fades towards its edges"},
+        {"key": "colorHead", "group": "trail", "label": "Head colour", "type": "color", "default": "#e8f4ff", "help": "The fresh end of the trail"},
+        {"key": "colorTail", "group": "trail", "label": "Tail colour", "type": "color", "default": "#4a7dff", "help": "The old end of the trail"},
+        {"key": "glow", "group": "trail", "label": "Glow", "min": 0, "max": 6, "step": 0.05, "default": 1.5, "help": "Brightness; above 1 it blooms. Near 0 it is paint instead of light"},
+        {"key": "swingSpeed", "group": "sword", "label": "Swings per second", "min": 0.2, "max": 3, "step": 0.05, "default": 0.9, "help": "Sword: how often it swings"},
+        {"key": "arc", "group": "sword", "label": "Arc", "min": 30, "max": 300, "step": 1, "default": 150, "help": "Sword: how wide the swing is (degrees)"},
+        {"key": "tilt", "group": "sword", "label": "Tilt", "min": -80, "max": 80, "step": 1, "default": 50, "help": "Sword: tilts the swing from flat to diagonal (degrees)"},
+        {"key": "speed", "group": "projectile", "label": "Speed", "min": 2, "max": 40, "step": 0.5, "default": 12, "help": "Projectile: speed (m/s)"},
+        {"key": "arcHeight", "group": "projectile", "label": "Arc height", "min": 0, "max": 4, "step": 0.05, "default": 0.8, "help": "Projectile: how high the path bows (m)"},
+        {"key": "size", "group": "projectile", "label": "Head size", "min": 0.05, "max": 1, "step": 0.01, "default": 0.2, "help": "Projectile: the glowing head's size (m)"},
+        {"key": "sparks", "group": "projectile", "label": "Tail sparks", "min": 0, "max": 600, "step": 1, "default": 120, "help": "Projectile: sparks shed along the way"},
+        {"key": "interval", "group": "projectile", "label": "Shot interval", "min": 0.3, "max": 5, "step": 0.05, "default": 1.6, "help": "Projectile: seconds between shots when looping"},
+        {"key": "hitColor", "group": "hit", "label": "Hit colour", "type": "color", "default": "#9fc4ff", "help": "The hit's sparks, ring and flash"},
+        {"key": "hitSparks", "group": "hit", "label": "Sparks", "min": 0, "max": 1500, "step": 1, "default": 160, "help": "Sparks thrown out by the hit"},
+        {"key": "hitSpeed", "group": "hit", "label": "Spark speed", "min": 0, "max": 15, "step": 0.1, "default": 5, "help": "How fast the sparks fly (m/s)"},
+        {"key": "hitRing", "group": "hit", "label": "Shock ring", "min": 0, "max": 3, "step": 0.05, "default": 0.9, "help": "The expanding ring's radius (m); 0 = none"},
+        {"key": "flash", "group": "hit", "label": "Flash", "min": 0, "max": 60, "step": 0.5, "default": 14, "help": "A short flash of light"}
+      ]
+    }
+  ],
+  "presets": {
+    "glow": {
+      "holy": {"label": "Holy light", "color": "#ffc94a", "color2": "#fff3c4", "intensity": 2, "pillar": 0.8, "pillarRadius": 0.6, "groundGlow": 1.4, "light": 6, "motes": 80, "moteSwirl": 0.6},
+      "arcane": {"label": "Arcane", "color": "#8b4dff", "color2": "#ff7ae0", "intensity": 2.4, "rim": 2, "noise": 0.7, "noiseScale": 4, "flow": 1.4, "groundGlow": 1.2, "light": 5, "motes": 140, "moteSize": 0.05, "moteSwirl": 2.2, "pulse": 0.3},
+      "poison": {"label": "Poison", "color": "#4dff3a", "color2": "#c8ff5a", "intensity": 1.6, "rim": 1.6, "fill": 0.2, "noise": 0.8, "noiseScale": 2.5, "flow": 0.5, "groundGlow": 0.9, "groundRadius": 1.5, "light": 3, "motes": 50, "moteSize": 0.09, "moteSpeed": 0.3, "moteSwirl": 0.2, "pulse": 0.35, "pulseSpeed": 0.5},
+      "frost": {"label": "Frost", "color": "#5cc8ff", "color2": "#eaf8ff", "intensity": 1.8, "rim": 3.5, "noise": 0.3, "noiseScale": 6, "flow": 0.3, "groundGlow": 1.1, "light": 4, "motes": 90, "moteSize": 0.04, "moteSpeed": 0.25, "moteSwirl": 0.4, "pulse": 0.1},
+      "rage": {"label": "Rage", "color": "#ff3a1a", "color2": "#ffb02e", "intensity": 3, "rim": 1.8, "noise": 0.9, "noiseScale": 3.5, "flow": 2.6, "pillar": 1.2, "pillarRadius": 0.55, "pillarHeight": 2.4, "groundGlow": 1.6, "light": 9, "flicker": 0.6, "motes": 220, "moteSize": 0.05, "moteSpeed": 1.6, "moteSwirl": 0.3, "pulse": 0.25, "pulseSpeed": 2.2},
+      "highlight": {"label": "Selected", "color": "#ffffff", "color2": "#ffffff", "intensity": 1.1, "rim": 4, "thickness": 0.01, "fill": 0, "noise": 0, "pulse": 0.25, "pulseSpeed": 1, "groundGlow": 0, "light": 0, "motes": 0}
+    },
+    "marker": {
+      "selected": {"label": "Selected unit", "shape": "ring", "color": "#5cff8a", "color2": "#1f8a45", "radius": 0.7, "width": 0.07, "fill": 0.12, "spin": 0, "pulse": 0.1},
+      "enemy": {"label": "Enemy target", "shape": "target", "color": "#ff4a3a", "color2": "#7a1410", "radius": 0.9, "width": 0.06, "dashes": 4, "dashFill": 0.75, "fill": 0.05, "spin": 0.6, "pulse": 0.2, "pulseSpeed": 1.6},
+      "fire_area": {"label": "Fire area (cast)", "shape": "area", "color": "#ff8a2a", "color2": "#ff3a0a", "radius": 2.4, "width": 0.1, "fill": 0.25, "spin": 0.4, "charge": 2.5, "pulse": 0.05, "glow": 2},
+      "heal_circle": {"label": "Healing circle", "shape": "area", "color": "#7dffb0", "color2": "#2acf6a", "radius": 2, "width": 0.06, "dashes": 32, "dashFill": 0.5, "fill": 0.18, "spin": 0.25, "ripples": 3, "rippleSpeed": 0.35, "pulse": 0.1},
+      "move_here": {"label": "Move here", "shape": "ring", "color": "#ffffff", "color2": "#a0c8ff", "radius": 0.5, "width": 0.04, "fill": 0, "spin": 0, "ripples": 2, "rippleSpeed": -0.9, "pulse": 0, "glow": 1.2},
+      "quest": {"label": "Quest giver", "shape": "exclaim", "color": "#ffd23a", "color2": "#7a5200", "radius": 0.6, "width": 0.05, "fill": 0.08, "glow": 1.6, "signSize": 0.75, "bob": 0.1, "pulse": 0.2}
+    },
+    "particles": {
+      "embers": {"label": "Embers", "mode": "loop", "count": 120, "lifetime": 2.4, "lifeVar": 0.5, "emit": "disc", "radius": 0.15, "speed": 0.6, "speedVar": 0.6, "spread": 20, "gravity": -0.6, "drag": 0.8, "turbulence": 0.35, "wind": 0.5, "sprite": "soft", "additive": true, "sizeStart": 0.04, "sizeEnd": 0.01, "colorStart": "#fff2b0", "colorMid": "#ff8a24", "colorEnd": "#9a1e08", "glow": 3, "flicker": 0.5, "fadeOut": 0.5},
+      "fire": {"label": "Fire", "mode": "loop", "count": 220, "lifetime": 0.9, "lifeVar": 0.4, "emit": "disc", "radius": 0.25, "speed": 0.6, "speedVar": 0.5, "spread": 15, "radial": -0.15, "gravity": -4.5, "drag": 1.2, "turbulence": 0.12, "wind": 0.4, "sprite": "smoke", "additive": true, "sizeStart": 0.32, "sizeEnd": 0.05, "sizeVar": 0.4, "spin": 1.5, "colorStart": "#fff0a0", "colorMid": "#ff7a1a", "colorEnd": "#7a1406", "alpha": 0.75, "fadeIn": 0.15, "fadeOut": 0.5, "glow": 1.3},
+      "smoke": {"label": "Smoke", "mode": "loop", "count": 70, "lifetime": 4.5, "lifeVar": 0.3, "emit": "disc", "radius": 0.2, "speed": 0.4, "speedVar": 0.4, "spread": 10, "gravity": -0.25, "drag": 0.6, "turbulence": 0.3, "wind": 1, "sprite": "smoke", "additive": false, "sizeStart": 0.4, "sizeEnd": 1.8, "sizeVar": 0.3, "spin": 0.4, "colorStart": "#5a5550", "colorMid": "#77726c", "colorEnd": "#9a9590", "alpha": 0.55, "fadeIn": 0.15, "fadeOut": 0.6, "glow": 1},
+      "magic": {"label": "Magic swirl", "mode": "loop", "count": 400, "lifetime": 1.8, "lifeVar": 0.3, "emit": "ring", "radius": 0.8, "speed": 0.8, "speedVar": 0.3, "spread": 5, "radial": -0.35, "gravity": 0, "drag": 0.3, "swirl": 2.4, "turbulence": 0.05, "wind": 0, "sprite": "star", "additive": true, "sizeStart": 0.12, "sizeEnd": 0.02, "sizeVar": 0.5, "spin": 3, "colorStart": "#ffffff", "colorMid": "#b47aff", "colorEnd": "#4a1aff", "glow": 2.5, "flicker": 0.4},
+      "leaves": {"label": "Whirling leaves", "mode": "loop", "count": 60, "lifetime": 4, "lifeVar": 0.3, "emit": "disc", "radius": 1.6, "speed": 1.2, "speedVar": 0.5, "spread": 30, "radial": 0.2, "gravity": 0.5, "drag": 1, "swirl": 1.4, "turbulence": 0.6, "wind": 1, "sprite": "leaf", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.12, "sizeVar": 0.3, "spin": 4, "colorStart": "#d9a43a", "colorMid": "#c46a1e", "colorEnd": "#7a3a12", "alpha": 1, "fadeIn": 0.05, "fadeOut": 0.2, "glow": 1},
+      "dust": {"label": "Footstep dust", "mode": "burst", "count": 40, "lifetime": 1.2, "lifeVar": 0.4, "burstSpread": 0.05, "emit": "disc", "radius": 0.2, "speed": 0.6, "speedVar": 0.5, "spread": 70, "radial": 1.2, "gravity": 0.4, "drag": 2.5, "turbulence": 0.1, "wind": 0.6, "sprite": "smoke", "additive": false, "sizeStart": 0.12, "sizeEnd": 0.45, "sizeVar": 0.4, "spin": 0.6, "colorStart": "#b5a184", "colorMid": "#a8987e", "colorEnd": "#a09682", "alpha": 0.6, "fadeIn": 0.05, "fadeOut": 0.7, "glow": 1},
+      "sparks": {"label": "Spark burst", "mode": "burst", "count": 250, "lifetime": 0.9, "lifeVar": 0.5, "burstSpread": 0.02, "emit": "sphere", "radius": 0.05, "speed": 6, "speedVar": 0.6, "spread": 70, "gravity": 7, "drag": 1.2, "turbulence": 0, "wind": 0.1, "sprite": "spark", "additive": true, "sizeStart": 0.06, "sizeEnd": 0.015, "stretch": 1.5, "colorStart": "#ffffff", "colorMid": "#ffd060", "colorEnd": "#ff5a10", "glow": 3, "fadeOut": 0.5}
+    },
+    "trail": {
+      "steel": {"label": "Steel slash", "mode": "sword", "trailTime": 0.22, "cover": 0.7, "softness": 0.6, "colorHead": "#ffffff", "colorTail": "#8fb8ff", "glow": 1.2, "swingSpeed": 0.9, "arc": 150, "tilt": 50},
+      "fire_blade": {"label": "Fire blade", "mode": "sword", "trailTime": 0.35, "cover": 0.9, "softness": 0.4, "colorHead": "#fff0a0", "colorTail": "#ff3a0a", "glow": 3, "swingSpeed": 0.8, "arc": 200, "tilt": -55},
+      "frost_blade": {"label": "Frost blade", "mode": "sword", "trailTime": 0.5, "cover": 0.6, "softness": 0.7, "colorHead": "#eaffff", "colorTail": "#2a8aff", "glow": 2.2, "swingSpeed": 0.7, "arc": 170, "tilt": 70},
+      "fireball": {"label": "Fireball", "mode": "projectile", "trailTime": 0.3, "width": 0.35, "softness": 0.8, "colorHead": "#ffe08a", "colorTail": "#ff4a0a", "glow": 3, "speed": 10, "arcHeight": 0.6, "size": 0.28, "sparks": 220, "interval": 1.8, "hitColor": "#ff8a2a", "hitSparks": 260, "hitSpeed": 6, "hitRing": 1.2, "flash": 25},
+      "arcane_missile": {"label": "Arcane missile", "mode": "projectile", "trailTime": 0.45, "width": 0.18, "softness": 0.9, "colorHead": "#ffffff", "colorTail": "#9a4dff", "glow": 2.6, "speed": 16, "arcHeight": 1.4, "size": 0.16, "sparks": 160, "interval": 0.9, "hitColor": "#c49aff", "hitSparks": 120, "hitSpeed": 4, "hitRing": 0.8, "flash": 12},
+      "arrow": {"label": "Arrow", "mode": "projectile", "trailTime": 0.15, "width": 0.04, "softness": 0.5, "colorHead": "#e8e2d0", "colorTail": "#b8b0a0", "glow": 0.6, "speed": 30, "arcHeight": 0.3, "size": 0.05, "sparks": 0, "interval": 1.2, "hitColor": "#c9b48a", "hitSparks": 30, "hitSpeed": 2, "hitRing": 0, "flash": 0}
+    }
+  }
+}

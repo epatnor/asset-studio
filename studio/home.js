@@ -9,7 +9,7 @@ export const DEPARTMENTS = [
   { id: 'atelier', name: 'The Atelier', sub: 'Paint materials and textures', accent: '#c99a1c', img: 'img/atelier.webp',
     text: 'Seamless textures and full materials from recipes, painted by algorithms or by AI, tried on real shapes.', ready: true },
   { id: 'cauldron', name: 'The Cauldron', sub: 'Spells and game effects', accent: '#8b5cf6', img: 'img/cauldron.webp',
-    text: 'Glows and auras, markers on the ground, particles, trails and hits, brewed as recipes for the game.', ready: false },
+    text: 'Glows and auras, markers on the ground, particles, trails and hits, brewed as recipes for the game.', ready: true },
 ];
 export const VAULT = { id: 'vault', name: 'The Vault', sub: 'Everything you have saved', accent: '#8a8f98', img: 'img/vault.webp',
   text: 'Families that grow new variants, fixed models with their own textures, and every recipe, in one place.', ready: true };

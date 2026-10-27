@@ -11,6 +11,7 @@ import { createWind, rigTexture } from '../shared/effects/wind.js';
 import { createGrass, colorTexture, groundSampler } from '../shared/effects/grass.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCloth } from '../shared/effects/cloth.js';
+import { createCards } from './cards.js';
 
 const LEAFY = /^(Leaves|LeafMass|Fronds|leaf|petal|blade|grass|frond)/i;
 const DEG = Math.PI / 180;
@@ -350,34 +351,10 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     pivotGroup.visible = debug;
   }
 
-  // --- Spakar (kort till höger, fälls ihop med ett klick på rubriken) ---
-  const syncs = [];
+  // --- Spakar (kort till höger, studio/cards.js) ---
+  const { syncs, card, slider, toggleRow, colorRow } = createCards({ el, side });
   const valueFor = (k) => (k === 'dir' ? Math.round(((wind.state.dir / DEG) % 360 + 360) % 360) : wind.state[k]);
   const setParam = (k, v) => wind.set({ [k]: k === 'dir' ? v * DEG : v });
-  function card(title, accent, { closed = false, help } = {}) {
-    const c = el('section', `card glass${closed ? ' closed' : ''}`);
-    c.style.setProperty('--part', accent);
-    const head = el('header'), body = el('div', 'rows');
-    head.append(el('h2', null, title));
-    if (help) head.title = help;
-    head.onclick = () => c.classList.toggle('closed');
-    c.append(head, body);
-    side.append(c);
-    return body;
-  }
-  // En spak: get och set läser och skriver värdet, changed körs efter varje ändring
-  function slider(q, get, set, changed) {
-    const row = el('div', 'row'), r = el('input'), out = el('output');
-    if (q.help) row.title = q.help;
-    Object.assign(r, { type: 'range', min: q.min, max: q.max, step: q.step });
-    const dec = q.step >= 1 ? 0 : q.step >= 0.1 ? 1 : q.step >= 0.01 ? 2 : 3;
-    syncs.push(() => { r.value = get(q.key); out.textContent = Number(r.value).toFixed(dec); });
-    // Spakar som bygger om (rebuild) gör det när man släpper, de andra medan man drar
-    const apply = () => { set(q.key, Number(r.value)); out.textContent = Number(r.value).toFixed(dec); changed?.(); };
-    if (q.rebuild) { r.oninput = () => { out.textContent = Number(r.value).toFixed(dec); }; r.onchange = apply; } else r.oninput = apply;
-    row.append(el('label', null, q.label), r, out);
-    return row;
-  }
   // Marktexturen: små tumnaglar att klicka på, plus None
   function textureRow(q, get, set, changed) {
     const row = el('div', 'row span2 texpick'), grid = el('div', 'gtex');
@@ -396,33 +373,6 @@ export async function createWindmill({ api, el, view, side, drawer, footer }) {
     const sync = () => { for (const [n, b] of btns) b.classList.toggle('on', n === get(q.key)); };
     syncs.push(sync);
     row.append(el('label', null, q.label), grid);
-    return row;
-  }
-  // Av och på (iOS-reglage); hjälptexten står under etiketten
-  function toggleRow(q, get, set, changed) {
-    const row = el('div', 'row span2'), box = el('input', 'switch'), lab = el('label', 'twoline');
-    box.type = 'checkbox';
-    lab.append(document.createTextNode(q.label), el('small', null, q.key === 'rootFromGround' ? 'Follow ground texture color' : ''));
-    if (q.help) row.title = q.help;
-    syncs.push(() => { box.checked = !!get(q.key); });
-    box.onchange = () => { set(q.key, box.checked); changed?.(); };
-    row.append(lab, box);
-    return row;
-  }
-  function colorRow(q, get, set, changed) {
-    const row = el('div', 'row span2'), c = el('input');
-    c.type = 'color';
-    if (q.help) row.title = q.help;
-    syncs.push(() => { c.value = get(q.key); });
-    c.oninput = () => { set(q.key, c.value); changed?.(q); };
-    if (q.reset) {
-      // Återställ (till ingen ändring)
-      const wrap = el('div', 'colreset'), b = el('button', 'icon', '↺');
-      b.title = 'Reset (no change)';
-      b.onclick = () => { set(q.key, q.default); c.value = q.default; changed?.(q); };
-      wrap.append(c, b);
-      row.append(el('label', null, q.label), wrap);
-    } else row.append(el('label', null, q.label), c);
     return row;
   }
   const windCard = card('Wind', '#4a90d9');
