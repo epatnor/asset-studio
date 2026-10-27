@@ -39,16 +39,19 @@
       "gnarl": 0.2,
       "bend": 0.3
     },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "irregular",
-      "width": 0.5,
-      "gaps": 0.6,
-      "points": 320,
-      "irregular": 0.8
-    },
     "foliage": {
       "type": "none"
+    },
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 6,
+      "crownHeight": 4.5,
+      "trunkRadius": 0.35,
+      "limbs": 3,
+      "limbAngle": 45,
+      "orders": 4,
+      "angleLateral": 50,
+      "gnarl": 0.35
     }
   },
   "name": "deadtree",

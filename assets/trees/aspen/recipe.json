@@ -2,7 +2,7 @@
   "leaves": "leaffine_pointed",
   "bark": "bark_birch_stylized",
   "canopy": {
-    "ballScale": 2.1,
+    "ballScale": 2.4,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
@@ -11,7 +11,8 @@
     "tipCards": 4,
     "cardCore": 0,
     "groupJitter": 0,
-    "maxGrow": 1.35
+    "maxGrow": 1.35,
+    "clusters": 10
   },
   "bark_blend": {
     "base": {
@@ -33,21 +34,24 @@
   },
   "preset": "cardtree",
   "seed": 31,
-  "height": 10,
+  "height": 11,
   "leaf_tint": "#86B24C",
   "species": {
     "trunk": {
-      "radius": 0.045,
       "flare": 0.4,
       "roots": 3
     },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "oval",
-      "width": 0.36,
-      "crownStart": 0.38,
-      "tropism": 0.25,
-      "gaps": 0.3
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 4.5,
+      "crownHeight": 6,
+      "trunkRadius": 0.2,
+      "limbs": 2,
+      "limbAngle": 25,
+      "orders": 4,
+      "angleLateral": 38,
+      "ratioMain": 0.85,
+      "tropism": 0.25
     }
   },
   "name": "aspen",

@@ -24,16 +24,21 @@
   "height": 1.3,
   "leaf_tint": "#C24A2E",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "round",
-      "width": 0.85,
-      "crownStart": 0.06,
-      "points": 240,
-      "gaps": 0.25,
-      "irregular": 0.5,
-      "influence": 0.26
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 2.2,
+      "crownHeight": 1.25,
+      "trunkRadius": 0.045,
+      "limbs": 5,
+      "limbAngle": 45,
+      "orders": 3,
+      "angleLateral": 50,
+      "gnarl": 0.25,
+      "leafSegments": 3
     }
+  },
+  "canopy": {
+    "clusters": 8
   },
   "name": "bush_autumn",
   "leaf_mass": "leaf_mass"

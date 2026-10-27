@@ -23,6 +23,20 @@
   "seed": 3,
   "height": 10,
   "leaf_tint": "#4E8A34",
+  "species": {
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 5,
+      "crownHeight": 6.5,
+      "trunkRadius": 0.2,
+      "limbs": 2,
+      "limbAngle": 30,
+      "orders": 4,
+      "angleLateral": 40,
+      "tropism": 0.1,
+      "gravity": 0.1
+    }
+  },
   "name": "birch",
   "leaf_mass": "leaf_mass"
 }

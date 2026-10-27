@@ -21,20 +21,20 @@
   },
   "preset": "cardbirch",
   "seed": 5,
-  "height": 8,
+  "height": 9,
   "leaf_tint": "#7FA64A",
   "species": {
-    "trunk": {
-      "radius": 0.06
-    },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "weeping",
-      "width": 0.55,
-      "crownStart": 0.35,
-      "gravity": 0.45,
-      "points": 140,
-      "influence": 0.34
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 9,
+      "crownHeight": 7.5,
+      "trunkRadius": 0.45,
+      "limbs": 4,
+      "limbAngle": 50,
+      "orders": 4,
+      "angleLateral": 45,
+      "tropism": -0.1,
+      "gravity": 0.35
     }
   },
   "name": "willow",

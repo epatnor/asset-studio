@@ -2,7 +2,7 @@
   "leaves": "leaffine_sprig",
   "bark": "bark_furrowed_stylized",
   "canopy": {
-    "ballScale": 1.5,
+    "ballScale": 2.1,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
@@ -12,7 +12,7 @@
     "cardCore": 0,
     "groupJitter": 0,
     "maxGrow": 1.35,
-    "clusters": 8
+    "clusters": 12
   },
   "bark_blend": {
     "base": {
@@ -37,16 +37,20 @@
   "height": 7.5,
   "leaf_tint": "#7A9A3E",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "umbrella",
-      "width": 0.75,
-      "crownStart": 0.55,
-      "gaps": 0.25,
-      "tropism": 0.18
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 10,
+      "crownHeight": 3,
+      "trunkRadius": 0.28,
+      "limbs": 3,
+      "limbAngle": 45,
+      "orders": 4,
+      "angleLateral": 55,
+      "angleMain": 25,
+      "tropism": 0.0,
+      "gnarl": 0.18
     }
   },
-  "bole": 2.8,
   "name": "acacia",
   "leaf_mass": "leaf_mass"
 }

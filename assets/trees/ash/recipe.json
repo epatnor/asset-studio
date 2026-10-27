@@ -2,7 +2,7 @@
   "leaves": "leaffine_pointed",
   "bark": "bark_smooth_stylized",
   "canopy": {
-    "ballScale": 2.1,
+    "ballScale": 2.3,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
@@ -11,7 +11,8 @@
     "tipCards": 4,
     "cardCore": 0,
     "groupJitter": 0,
-    "maxGrow": 1.35
+    "maxGrow": 1.35,
+    "clusters": 12
   },
   "bark_blend": {
     "base": {
@@ -33,23 +34,22 @@
   },
   "preset": "cardtree",
   "seed": 7,
-  "height": 11,
+  "height": 12,
   "leaf_tint": "#6E9F42",
   "species": {
-    "trunk": {
-      "radius": 0.065
-    },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "oval",
-      "width": 0.46,
-      "crownStart": 0.42,
-      "gaps": 0.55,
-      "irregular": 0.5,
-      "tropism": 0.2
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 8,
+      "crownHeight": 7,
+      "trunkRadius": 0.32,
+      "limbs": 3,
+      "limbAngle": 35,
+      "orders": 4,
+      "angleLateral": 40,
+      "ratioLateral": 0.55,
+      "tropism": 0.18
     }
   },
-  "bole": 5,
   "name": "ash",
   "leaf_mass": "leaf_mass"
 }

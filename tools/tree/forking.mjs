@@ -14,14 +14,14 @@
 //   Att ändra höjden gör alltså bara stammen längre, och kronan behåller sin storlek.
 // Skelettet får samma form som buildSkeleton (grenar i kedjor med level, nodes, parent, t), så bark, lövbollar,
 // LOD och vindriggen fungerar oförändrade. En kedja följer huvudgrenen genom gafflarna; sidogrenar blir egna kedjor.
-// Varje kedjas sista gaffelsträcka bär löv (leafFrom). Ren JS utan Three.js/DOM.
+// Varje kedjas sista leafSegments gaffelsträckor bär löv (leafFrom). Ren JS utan Three.js/DOM.
 import { add, sub, mul, norm, len, UP, rng, randomUnit, basis } from './vec.mjs';
 import { twigsOf } from './skeleton.mjs';
 
 export const FORK_DEFAULTS = {
   crownWidth: 8, crownHeight: 6, limbs: 3, limbAngle: 40, orders: 3,
   ratioMain: 0.82, ratioLateral: 0.62, angleMain: 14, angleLateral: 44, divergence: 137.5,
-  gnarl: 0.12, tropism: 0.15, gravity: 0.04, pipe: 2, trunkRadius: 0.4, thickness: 1, collar: 1.3, spacing: 0.4, fill: 0.85,
+  gnarl: 0.12, tropism: 0.15, gravity: 0.04, pipe: 2, trunkRadius: 0.4, thickness: 1, collar: 1.3, spacing: 0.4, fill: 0.85, leafSegments: 2,
 };
 
 const rad = (d) => (d * Math.PI) / 180;
@@ -36,7 +36,9 @@ export function forkSkeleton(sp, seed, height) {
   const F = { ...FORK_DEFAULTS, ...(sp.branching ?? {}) };
   const r = rng(seed * 2654435761 + 11);
   const crownH = Math.min(F.crownHeight, height * 0.9);
-  const bole = Math.max(0.4, height - crownH);
+  const bole = Math.max(0.05, height - crownH);
+  // Ringavståndet följer trädets storlek, så att en buske får lika mjuka grenar som en ek
+  const spacing = Math.min(F.spacing, Math.max(0.05, height / 25));
 
   // --- 1. Gaffelträdet som sträckor i en enhetsskala (huvudgrenarna 1 långa); varje sträcka böjs lite ---
   // seg: { pts: [[x,y,z]...], kids: [seg], main: seg|null }
@@ -81,7 +83,9 @@ export function forkSkeleton(sp, seed, height) {
   const rx = Math.max(1e-3, ...all.map((p) => Math.hypot(p[0], p[2])));
   const hy = Math.max(1e-3, ...all.map((p) => p[1]));
   const kx = (F.crownWidth / 2) * F.fill / rx, ky = crownH * F.fill / hy; // fill: skelettets andel, bollarna resten
-  const place = (p) => [p[0] * kx, bole + p[1] * ky, p[2] * kx];
+  // Hängande grenar (pil) stannar strax ovanför marken
+  const floor = Math.min(0.25, height * 0.05);
+  const place = (p) => [p[0] * kx, Math.max(floor, bole + p[1] * ky), p[2] * kx];
   const mapSeg = (s) => { s.pts = s.pts.map(place); if (s.main) mapSeg(s.main); s.kids.forEach(mapSeg); };
   limbs.forEach(mapSeg);
 
@@ -111,7 +115,7 @@ export function forkSkeleton(sp, seed, height) {
     let run = 0;
     for (let i = 1; i < pts.length; i++) {
       run += len(sub(pts[i], pts[i - 1]));
-      if (i === pts.length - 1 || run >= F.spacing) { out.push(pts[i]); run = 0; }
+      if (i === pts.length - 1 || run >= spacing) { out.push(pts[i]); run = 0; }
     }
     return out;
   };
@@ -119,8 +123,9 @@ export function forkSkeleton(sp, seed, height) {
   // chain(first, parentIdx, t, level, startPts, startR): följer huvudgrenen; sidogrenarna köas med sin fogpunkt
   const chain = (first, parent, level, prefix = [], prefixR = []) => {
     const nodes = prefix.map((p, i) => ({ p, r: prefixR[i] }));
-    const forks = [];
+    const forks = [], starts = [];
     for (let s = first; s; s = s.main) {
+      starts.push(Math.max(0, nodes.length - 1));
       const pts = resample(s.pts);
       const r0 = s.r * F.thickness, r1 = (s.main ? s.main.r : s.r * 0.75) * F.thickness;
       pts.forEach((p, i) => {
@@ -128,7 +133,8 @@ export function forkSkeleton(sp, seed, height) {
         const k = pts.length > 1 ? i / (pts.length - 1) : 0;
         nodes.push({ p, r: r0 + (r1 - r0) * k });
       });
-      if (!s.main) nodes.leafFrom = Math.max(1, nodes.length - pts.length);
+      // Löven sitter på kedjans sista leafSegments gaffelsträckor
+      if (!s.main) nodes.leafFrom = Math.max(1, starts[Math.max(0, starts.length - F.leafSegments)]);
       for (const kid of s.kids) forks.push({ kid, at: nodes.length - 1 });
     }
     const idx = branches.length;
@@ -140,8 +146,8 @@ export function forkSkeleton(sp, seed, height) {
   };
   // Stammen: rakt upp till kronans bas, sedan den första huvudgrenen
   const trunkPts = [];
-  for (let i = 0; i <= Math.max(2, Math.round(bole / F.spacing)); i++) {
-    const k = i / Math.max(2, Math.round(bole / F.spacing));
+  for (let i = 0; i <= Math.max(2, Math.round(bole / spacing)); i++) {
+    const k = i / Math.max(2, Math.round(bole / spacing));
     trunkPts.push(add(mul(lean, bole * k * 0.02), [0, bole * k, 0]));
   }
   trunkPts[trunkPts.length - 1] = [0, bole, 0];

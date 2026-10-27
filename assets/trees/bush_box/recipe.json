@@ -24,16 +24,21 @@
   "height": 0.9,
   "leaf_tint": "#4F8A3A",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "round",
-      "width": 0.9,
-      "crownStart": 0.1,
-      "points": 300,
-      "gaps": 0,
-      "irregular": 0,
-      "influence": 0.24
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 1.4,
+      "crownHeight": 0.85,
+      "trunkRadius": 0.04,
+      "limbs": 6,
+      "limbAngle": 40,
+      "orders": 3,
+      "angleLateral": 45,
+      "gnarl": 0.1,
+      "leafSegments": 3
     }
+  },
+  "canopy": {
+    "clusters": 8
   },
   "name": "bush_box",
   "leaf_mass": "leaf_mass"

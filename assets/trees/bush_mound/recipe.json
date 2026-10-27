@@ -24,15 +24,21 @@
   "height": 0.8,
   "leaf_tint": "#5C9A3A",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "umbrella",
-      "width": 1.2,
-      "crownStart": 0.05,
-      "points": 220,
-      "gaps": 0.15,
-      "influence": 0.3
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 3.0,
+      "crownHeight": 0.75,
+      "trunkRadius": 0.05,
+      "limbs": 6,
+      "limbAngle": 70,
+      "orders": 3,
+      "angleLateral": 55,
+      "tropism": 0.0,
+      "leafSegments": 3
     }
+  },
+  "canopy": {
+    "clusters": 8
   },
   "name": "bush_mound",
   "leaf_mass": "leaf_mass"

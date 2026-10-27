@@ -2,7 +2,7 @@
   "leaves": "leaffine_white",
   "bark": "bark_cherry_stylized",
   "canopy": {
-    "ballScale": 1.8,
+    "ballScale": 2.3,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
@@ -12,7 +12,7 @@
     "cardCore": 0,
     "groupJitter": 0,
     "maxGrow": 1.35,
-    "clusters": 8
+    "clusters": 12
   },
   "bark_blend": {
     "base": {
@@ -38,19 +38,21 @@
   "leaf_tint": "#F0A8C0",
   "species": {
     "trunk": {
-      "radius": 0.075,
       "bend": 0.25
     },
-    "growth": "colonize",
-    "colonize": {
-      "shape": "round",
-      "width": 0.68,
-      "crownStart": 0.36,
-      "gaps": 0.3,
-      "irregular": 0.5
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 7.5,
+      "crownHeight": 4.5,
+      "trunkRadius": 0.3,
+      "limbs": 4,
+      "limbAngle": 55,
+      "orders": 4,
+      "angleLateral": 50,
+      "tropism": 0.05,
+      "gnarl": 0.2
     }
   },
-  "bole": 2.5,
   "name": "cherry",
   "leaf_mass": "leaf_mass"
 }

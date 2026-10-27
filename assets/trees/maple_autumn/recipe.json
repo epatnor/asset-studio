@@ -2,7 +2,7 @@
   "leaves": "leaffine_painted",
   "bark": "bark_smooth_stylized",
   "canopy": {
-    "ballScale": 1.9,
+    "ballScale": 2.2,
     "bottomCoolStrength": 0.7,
     "gradientFalloff": 2,
     "cardGroup": 3,
@@ -12,7 +12,7 @@
     "cardCore": 0,
     "groupJitter": 0,
     "maxGrow": 1.35,
-    "clusters": 7
+    "clusters": 12
   },
   "bark_blend": {
     "base": {
@@ -34,21 +34,23 @@
   },
   "preset": "cardtree",
   "seed": 24,
-  "height": 8.5,
+  "height": 9,
   "leaf_tint": "#D2702C",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "oval",
-      "width": 0.52,
-      "crownStart": 0.3,
-      "gaps": 0.25
-    },
-    "trunk": {
-      "radius": 0.08
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 8,
+      "crownHeight": 6.5,
+      "trunkRadius": 0.38,
+      "limbs": 3,
+      "limbAngle": 40,
+      "orders": 4,
+      "angleLateral": 45,
+      "angleMain": 15,
+      "ratioMain": 0.8,
+      "tropism": 0.12
     }
   },
-  "bole": 3,
   "name": "maple_autumn",
   "leaf_mass": "leaf_mass"
 }

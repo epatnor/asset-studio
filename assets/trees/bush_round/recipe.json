@@ -24,15 +24,21 @@
   "height": 1.5,
   "leaf_tint": "#6FB04A",
   "species": {
-    "growth": "colonize",
-    "colonize": {
-      "shape": "round",
-      "width": 0.8,
-      "crownStart": 0.08,
-      "points": 260,
-      "gaps": 0.15,
-      "influence": 0.26
+    "growth": "fork",
+    "branching": {
+      "crownWidth": 2.2,
+      "crownHeight": 1.45,
+      "trunkRadius": 0.05,
+      "limbs": 5,
+      "limbAngle": 40,
+      "orders": 3,
+      "angleLateral": 45,
+      "gnarl": 0.2,
+      "leafSegments": 3
     }
+  },
+  "canopy": {
+    "clusters": 8
   },
   "name": "bush_round",
   "leaf_mass": "leaf_mass"
