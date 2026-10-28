@@ -14,6 +14,7 @@ import { generateTerrain, worldGrid } from '../../shared/terrain/generate.js';
 import { computeBiomes } from '../../shared/terrain/biomes.js';
 import { regionField } from '../../shared/terrain/regions.js';
 import { applyEdits, brushDab, rampStroke, encodeDelta, decodeDelta } from '../../shared/terrain/sculpt.js';
+import { STAMP_IDS, createStamp, LANDFORM_IDS, createLandform, placeLandform } from '../../shared/terrain/stamps.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -181,6 +182,48 @@ async function sculptScene() {
     for (const p of c.smp) if (e.heightAt(p.x, p.z) > p.level - 0.05) dry++; // botten i mitten ska ligga under ytan
     out.channels[c.kind] = { samples: c.smp.length, level_rises: rises, dry_centre: dry, level_from: r2(c.smp[0].level), level_to: r2(c.smp.at(-1).level) };
     ok &&= rises === 0 && dry <= c.smp.length * 0.02;
+  }
+  // Penslarna var för sig på en kopia: varje mönster med Raise (inga NaN, något ändras; kratern sänker mitten och höjer
+  // vallen), Terrace (höjderna samlas vid stegen) och Erode (ändrar marken utan spetsar)
+  const k0 = Math.floor(n / 2) * n + Math.floor(n / 2), cx = 0, cz = 0, at = (x, z) => Math.round((z + half) / cell) * n + Math.round((x + half) / cell);
+  out.brushes = {};
+  for (const id of STAMP_IDS) {
+    const hh = t.heights.slice(), dd = new Float32Array(n * n);
+    brushDab(hh, dd, n, cell, half, cx, cz, { tool: 'raise', radius: 40, strength: 1, hardness: 0.3, stamp: createStamp(id, 7), angle: 0.6 });
+    let lo = 0, hi = 0, bad = 0;
+    for (let k = 0; k < n * n; k++) { lo = Math.min(lo, dd[k]); hi = Math.max(hi, dd[k]); if (!Number.isFinite(hh[k])) bad++; }
+    out.brushes[id] = { min_m: r2(lo), max_m: r2(hi) };
+    ok &&= bad === 0 && hi - lo > 0.05;
+  }
+  const crater = out.brushes.crater;
+  { const hh = t.heights.slice(), dd = new Float32Array(n * n); brushDab(hh, dd, n, cell, half, cx, cz, { tool: 'raise', radius: 40, strength: 1, stamp: createStamp('crater', 7) }); crater.centre_m = r2(dd[at(cx, cz)]); crater.rim_m = r2(dd[at(cx + 28, cz)]); ok &&= dd[at(cx, cz)] < 0 && dd[at(cx + 28, cz)] > 0; }
+  {
+    const hh = t.heights.slice(), dd = new Float32Array(n * n), step = 4;
+    for (let q = 0; q < 25; q++) brushDab(hh, dd, n, cell, half, cx, cz, { tool: 'terrace', radius: 40, strength: 1, hardness: 0.6, stepHeight: step });
+    let on = 0, all = 0;
+    for (let j = -15; j <= 15; j++) for (let i = -15; i <= 15; i++) { const v = hh[k0 + j * n + i] / step; all++; if (Math.abs(v - Math.round(v)) < 0.12) on++; }
+    out.brushes.terrace = { on_steps_pct: Math.round((100 * on) / all) };
+    ok &&= on / all > 0.6;
+  }
+  {
+    const hh = t.heights.slice(), dd = new Float32Array(n * n);
+    for (let q = 0; q < 10; q++) brushDab(hh, dd, n, cell, half, cx + q * 3, cz, { tool: 'erode', radius: 30, strength: 1 });
+    let moved = 0;
+    for (let k = 0; k < n * n; k++) moved += Math.abs(dd[k]);
+    out.brushes.erode = { moved_m3: Math.round(moved * cell * cell), spikes: spikes(hh, n), nan: hh.some((v) => !Number.isFinite(v)) };
+    ok &&= moved > 1 && !out.brushes.erode.nan && out.brushes.erode.spikes <= 2;
+  }
+  // Landformerna med ett klick: toppen når ungefär höjden, inga NaN eller spetsar; ön reser sig ur havet
+  out.landforms = {};
+  for (const id of LANDFORM_IDS) {
+    const hh = t.heights.slice(), dd = new Float32Array(n * n), island = id === 'island';
+    const px = island ? 0.38 * size : 0, pz = island ? 0.38 * size : 0; // ön ute i havet, i hörnet
+    placeLandform(hh, dd, n, cell, half, px, pz, createLandform(id, 3), { radius: island ? 110 : 150, height: island ? 25 : 120, depth: id === 'canyon' ? 60 : 20, angle: 0.4, blend: island ? 'max' : 'add', base: island ? 0 : 0 });
+    let lo = 0, hi = 0;
+    for (let k = 0; k < n * n; k++) { lo = Math.min(lo, dd[k]); hi = Math.max(hi, dd[k]); }
+    const sp = spikes(hh, n), nan = hh.some((x) => !Number.isFinite(x)), top = hh[at(px, pz)];
+    out.landforms[id] = { min_m: r2(lo), max_m: r2(hi), spikes: sp, ...(island ? { centre_m: r2(top), before_m: r2(t.heights[at(px, pz)]) } : {}) };
+    ok &&= !nan && sp <= 2 && (id === 'canyon' ? lo < -30 : hi > 40 * (island ? 0.4 : 1)) && (!island || (top > 2 && t.heights[at(px, pz)] < 0));
   }
   const mouth = e.heightAt(0.01 * size, 0.3 * size);
   let raised = 0;

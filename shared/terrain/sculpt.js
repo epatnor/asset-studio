@@ -9,7 +9,8 @@
 //   havets nivå och fylls av havet.
 //
 //   const e = applyEdits(t, recipe);   // en ny terräng (heights, wet, heightAt) och kanalerna ({ kind, smp, level })
-//   brushDab(h, delta, n, cell, half, x, z, opts)   // ett penseltryck på höjderna (i studion, medan man drar)
+//   brushDab(h, delta, n, cell, half, x, z, opts)   // ett penseltryck på höjderna (i studion, medan man drar),
+//                                                   // rund eller med ett mönster ur stamps.js
 
 import { createChannel, smoothstep } from './shapes.js';
 import { createNoise } from './generate.js';
@@ -80,34 +81,51 @@ export function applyEdits(t, R) {
   return { ...t, heights, wet, heightAt: gridSampler(heights, n, cell, half), channels, editMs: Math.round(t1 - t0) };
 }
 
+// Penselns falloff: full verkan inom hardness · radien, sedan mjukt ut till kanten (0 = en kupol, 1 = en skarp kant)
+export const falloff = (d, hardness = 0.25) => (d >= 1 ? 0 : smoothstep(1, Math.min(0.97, hardness), d));
+
 // Ett penseltryck kring (x, z): h är höjderna som ritas (ändras), delta det sparade lagret (ändras lika mycket).
-// opts: { tool: raise | lower | smooth | flatten | noise, radius (m), strength (0..1), target (flatten: höjden),
-// seed }. Svar: de rader som ändrats ({ j0, j1 }), för att bara ladda upp dem.
+// opts: tool (raise | lower | smooth | flatten | noise | terrace | erode), radius (m), strength (0..1), hardness
+// (falloff), stamp (en mask ur stamps.js eller null) och angle (radianer, mönstrets vinkel), invert (vänder höj och
+// sänk), target (flatten: höjden), stepHeight (terrace: meter per steg) och seed. Svar: de rader som ändrats
+// ({ j0, j1 }), för att bara ladda upp dem.
 const noises = new Map();
-export function brushDab(h, delta, n, cell, half, x, z, { tool, radius, strength, target = 0, seed = 1 }) {
+export function brushDab(h, delta, n, cell, half, x, z, opts) {
+  const { radius, strength, hardness = 0.25, stamp = null, angle = 0, invert = false, target = 0, stepHeight = 4, seed = 1 } = opts;
+  let tool = opts.tool;
+  if (invert && (tool === 'raise' || tool === 'lower')) tool = tool === 'raise' ? 'lower' : 'raise';
+  if (tool === 'erode') return erodeDab(h, delta, n, cell, half, x, z, opts);
   const ci = (x + half) / cell, cj = (z + half) / cell, r = radius / cell;
   const i0 = Math.max(1, Math.floor(ci - r)), i1 = Math.min(n - 2, Math.ceil(ci + r)), j0 = Math.max(1, Math.floor(cj - r)), j1 = Math.min(n - 2, Math.ceil(cj + r));
   if (i0 > i1 || j0 > j1) return null;
   const rate = strength * Math.max(0.05, radius * 0.025); // höj och sänk: meter per tryck, större pensel lyfter mer
   if (!noises.has(seed)) noises.set(seed, createNoise(seed * 13 + 5));
-  const noise = noises.get(seed);
+  const noise = noises.get(seed), ca = Math.cos(angle), sa = Math.sin(angle);
   // Utjämningen läser grannarna före trycket, så att resultatet inte beror på i vilken ordning hörnen går
   const src = tool === 'smooth' ? h.slice((j0 - 1) * n, (j1 + 2) * n) : null, o = (j0 - 1) * n;
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-    const d = Math.hypot(i - ci, j - cj) / r;
+    const du = (i - ci) / r, dv = (j - cj) / r, d = Math.hypot(du, dv);
     if (d >= 1) continue;
-    const f = smoothstep(1, 0.25, d), k = j * n + i;
+    let f = falloff(d, hardness), m = 1;
+    if (stamp) m = stamp(du * ca + dv * sa, -du * sa + dv * ca); // mönstret i penselns vinkel
+    const k = j * n + i;
     let dh = 0;
-    if (tool === 'raise') dh = rate * f;
-    else if (tool === 'lower') dh = -rate * f;
-    else if (tool === 'smooth') {
-      const s = src, q = k - o;
-      const avg = (s[q - 1] + s[q + 1] + s[q - n] + s[q + n] + s[q] * 2 + (s[q - n - 1] + s[q - n + 1] + s[q + n - 1] + s[q + n + 1]) * 0.5) / 8;
-      dh = (avg - s[q]) * clamp(0, 1, strength * 1.5) * f;
-    } else if (tool === 'flatten') dh = (target - h[k]) * clamp(0, 1, strength * 0.6) * f;
-    else if (tool === 'noise') {
-      const xx = -half + i * cell, zz = -half + j * cell, l = Math.max(2, radius * 0.35);
-      dh = noise(xx / l, zz / l) * rate * 0.6 * f;
+    if (tool === 'raise' || tool === 'lower') dh = (tool === 'raise' ? 1 : -1) * rate * f * m; // en krater sänker mitten även med Raise
+    else {
+      f *= Math.max(0, m); // för de andra penslarna är mönstret en mask för styrkan
+      if (tool === 'smooth') {
+        const s = src, q = k - o;
+        const avg = (s[q - 1] + s[q + 1] + s[q - n] + s[q + n] + s[q] * 2 + (s[q - n - 1] + s[q - n + 1] + s[q + n - 1] + s[q + n + 1]) * 0.5) / 8;
+        dh = (avg - s[q]) * clamp(0, 1, strength * 1.5) * f;
+      } else if (tool === 'flatten') dh = (target - h[k]) * clamp(0, 1, strength * 0.6) * f;
+      else if (tool === 'noise') {
+        const xx = -half + i * cell, zz = -half + j * cell, l = Math.max(2, radius * 0.35);
+        dh = noise(xx / l, zz / l) * rate * 0.6 * f * (invert ? -1 : 1);
+      } else if (tool === 'terrace') {
+        // Trappsteg: platta avsatser stepHeight isär, med en kort slänt mellan dem
+        const q = h[k] / stepHeight, fl = Math.floor(q), tgt = (fl + smoothstep(0.62, 0.92, q - fl)) * stepHeight;
+        dh = (tgt - h[k]) * clamp(0, 1, strength * 0.5) * f;
+      }
     }
     h[k] += dh;
     delta[k] += dh;
@@ -115,9 +133,44 @@ export function brushDab(h, delta, n, cell, half, x, z, { tool, radius, strength
   return { j0, j1 };
 }
 
+// Erosion under penseln: droppar (som världens erosion i generate.js, Beyer 2015) som startar slumpvis inom penseln,
+// rinner nedför, river där de går fort och lägger av där de saktar in. Ger rännor och mjuka raskäglor där man drar.
+let erodeSeed = 1;
+function erodeDab(h, delta, n, cell, half, x, z, { radius, strength, hardness = 0.25 }) {
+  const ci = (x + half) / cell, cj = (z + half) / cell, r = radius / cell;
+  const i0 = Math.max(1, Math.floor(ci - r * 1.4)), i1 = Math.min(n - 3, Math.ceil(ci + r * 1.4)), j0 = Math.max(1, Math.floor(cj - r * 1.4)), j1 = Math.min(n - 3, Math.ceil(cj + r * 1.4));
+  if (i0 > i1 || j0 > j1) return null;
+  const rnd = (() => { let s = erodeSeed++ * 7919; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+  const drops = Math.round(10 + strength * 50 * Math.min(4, Math.max(0.5, r / 15)));
+  const at = (px, pz) => { const i = Math.floor(px), j = Math.floor(pz), fx = px - i, fz = pz - j, k = j * n + i; return { k, fx, fz, hh: h[k] * (1 - fx) * (1 - fz) + h[k + 1] * fx * (1 - fz) + h[k + n] * (1 - fx) * fz + h[k + n + 1] * fx * fz, gx: (h[k + 1] - h[k]) * (1 - fz) + (h[k + n + 1] - h[k + n]) * fz, gz: (h[k + n] - h[k]) * (1 - fx) + (h[k + n + 1] - h[k + 1]) * fx }; };
+  const add = (c, v) => { const w = [(1 - c.fx) * (1 - c.fz), c.fx * (1 - c.fz), (1 - c.fx) * c.fz, c.fx * c.fz], K = [c.k, c.k + 1, c.k + n, c.k + n + 1]; for (let q = 0; q < 4; q++) { h[K[q]] += v * w[q]; delta[K[q]] += v * w[q]; } };
+  for (let dIdx = 0; dIdx < drops; dIdx++) {
+    const a = rnd() * Math.PI * 2, rr = Math.sqrt(rnd()) * r;
+    let px = ci + Math.cos(a) * rr, pz = cj + Math.sin(a) * rr, dx = 0, dz = 0, speed = 1, water = 1, sed = 0;
+    for (let step = 0; step < 40; step++) {
+      if (px < i0 || px > i1 || pz < j0 || pz > j1) break;
+      const c = at(px, pz), f = falloff(Math.hypot(px - ci, pz - cj) / (r * 1.4), hardness);
+      dx = dx * 0.3 - c.gx * 0.7; dz = dz * 0.3 - c.gz * 0.7;
+      const l = Math.hypot(dx, dz);
+      if (l < 1e-6) break;
+      dx /= l; dz /= l;
+      const nx = px + dx, nz = pz + dz;
+      if (nx < i0 || nx > i1 || nz < j0 || nz > j1) break;
+      const dh = at(nx, nz).hh - c.hh, cap = Math.max(-dh, 0.01 * cell) * speed * water * 4;
+      if (sed > cap || dh > 0) { const dep = dh > 0 ? Math.min(dh, sed) : (sed - cap) * 0.3; sed -= dep; add(c, dep * f); }
+      else { const ero = Math.min((cap - sed) * 0.3 * strength, -dh); sed += ero; add(c, -ero * f); }
+      speed = Math.sqrt(Math.max(0.01, speed * speed - dh * 4 / cell)); water *= 0.97;
+      px = nx; pz = nz;
+    }
+  }
+  // Dropparna lämnar enstaka hack där de stannar; en lätt utjämning över penseln tar bort dem men behåller rännorna
+  brushDab(h, delta, n, cell, half, x, z, { tool: 'smooth', radius: radius * 1.2, strength: 0.35, hardness });
+  return { j0, j1: j1 + 1 };
+}
+
 // En ramp från A till B (punkter { x, z, y }): marken längs sträckan läggs i en jämn lutning mellan A:s och B:s höjd,
 // med mjuka kanter radius ut. Svar som brushDab.
-export function rampStroke(h, delta, n, cell, half, a, b, { radius, strength = 1 }) {
+export function rampStroke(h, delta, n, cell, half, a, b, { radius, strength = 1, hardness = 0.5 }) {
   const dx = b.x - a.x, dz = b.z - a.z, L2 = dx * dx + dz * dz;
   if (L2 < 1e-4) return null;
   const pad = radius / cell;
@@ -127,7 +180,7 @@ export function rampStroke(h, delta, n, cell, half, a, b, { radius, strength = 1
     const x = -half + i * cell, z = -half + j * cell, u = clamp(0, 1, ((x - a.x) * dx + (z - a.z) * dz) / L2);
     const d = Math.hypot(a.x + dx * u - x, a.z + dz * u - z) / radius;
     if (d >= 1) continue;
-    const k = j * n + i, target = a.y + (b.y - a.y) * smoothstep(0, 1, u), dh = (target - h[k]) * smoothstep(1, 0.5, d) * clamp(0, 1, strength);
+    const k = j * n + i, target = a.y + (b.y - a.y) * smoothstep(0, 1, u), dh = (target - h[k]) * falloff(d, hardness) * clamp(0, 1, strength);
     h[k] += dh;
     delta[k] += dh;
   }

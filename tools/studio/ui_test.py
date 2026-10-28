@@ -13,8 +13,10 @@ ordning; varje steg är ett av:
   {"click": "<text>", "in": "<css>"}           klicka på den knapp (eller det element) i in vars text innehåller text
   {"slider": "<etikett>", "value": v, "in": "<css>"}   sätt en spak (input range bredvid etiketten) och skicka input
   {"select": "<etikett>", "value": "<id>", "in": "<css>"} välj i en lista (select bredvid etiketten)
-  {"drag": [[x, y], [x, y], ...], "button": "left"}  musen trycks ned i första punkten, dras genom de andra och släpps
-                                               (bildpunkter i fönstret; riktiga pekarhändelser, som penseln läser)
+  {"drag": [[x, y], [x, y], ...] eller "<js>", "button": "left", "modifiers": ["ctrl"]}  musen trycks ned i första punkten, dras
+                                               genom de andra och släpps (bildpunkter i fönstret; riktiga pekarhändelser,
+                                               som penseln läser), med valfria tangenter nedhållna (alt, ctrl, meta, shift)
+  {"key": "]"}                                 ett tangenttryck (tecknet eller namnet: Enter, Escape …)
   {"prompt": "<svar>"}                         nästa prompt() eller confirm() besvaras så
   {"shot": "<namn>", "minLight": 40}           skärmdump av hela sidan → build/ui/<recept>_<namn>.png; med minLight ska
                                                mitten av bilden (3D-vyn) ha minst den ljusstyrkan (0–255), annars ok false
@@ -89,13 +91,14 @@ def close():
 def page_ws(timeout=60):
     t0 = time.time()
     while time.time() - t0 < timeout:
-        try:
-            with urllib.request.urlopen(f'http://127.0.0.1:{PORT}/json/list', timeout=2) as r:
-                pages = [p for p in json.load(r) if p.get('type') == 'page']
-            if pages:
-                return pages[0]['webSocketDebuggerUrl']
-        except OSError:
-            pass
+        for host in ('127.0.0.1', '[::1]'):  # Chrome lyssnar ibland bara på IPv6
+            try:
+                with urllib.request.urlopen(f'http://{host}:{PORT}/json/list', timeout=2) as r:
+                    pages = [p for p in json.load(r) if p.get('type') == 'page']
+                if pages:
+                    return pages[0]['webSocketDebuggerUrl']
+            except OSError:
+                pass
         time.sleep(0.5)
     raise RuntimeError('Chrome did not start (no debugging port)')
 
@@ -147,8 +150,11 @@ async def run(recipe):
             task = asyncio.ensure_future(reader())
             await send('Runtime.enable')
             await send('Page.enable')
+            stop = False
             for st in recipe.get('steps', []):
-                rec = {k: v for k, v in st.items() if k in ('wait', 'until', 'eval', 'expect', 'click', 'slider', 'select', 'drag', 'prompt', 'shot', 'label')}
+                if stop:
+                    break
+                rec = {k: v for k, v in st.items() if k in ('wait', 'until', 'eval', 'expect', 'click', 'slider', 'select', 'drag', 'key', 'prompt', 'shot', 'label')}
                 try:
                     if 'wait' in st:
                         await asyncio.sleep(st['wait'] / 1000)
@@ -156,7 +162,8 @@ async def run(recipe):
                         t0 = time.time()
                         while not await js(st['until']):
                             if time.time() - t0 > st.get('timeout', 60000) / 1000:
-                                raise RuntimeError('timed out')
+                                stop = True  # resten bygger på det här; att vänta ut varje steg tar bara tid
+                                raise RuntimeError('timed out (the remaining steps were skipped)')
                             await asyncio.sleep(0.25)
                         rec['ms'] = round((time.time() - t0) * 1000)
                     elif 'eval' in st:
@@ -173,15 +180,23 @@ async def run(recipe):
                         rec['value'] = await js(f"__ui.select({json.dumps(st['select'])}, {json.dumps(st['value'])}, {json.dumps(st.get('in', 'body'))})")
                     elif 'drag' in st:
                         pts, btn = st['drag'], st.get('button', 'left')
+                        if isinstance(pts, str):  # ett uttryck i sidan som ger punkterna (till exempel en plats i världen)
+                            pts = await js(pts)
+                            rec['points'] = pts
                         mask = {'left': 1, 'right': 2, 'middle': 4}[btn]
-                        await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': pts[0][0], 'y': pts[0][1]})
-                        await send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': pts[0][0], 'y': pts[0][1], 'button': btn, 'buttons': mask, 'clickCount': 1})
+                        mods = sum({'alt': 1, 'ctrl': 2, 'meta': 4, 'shift': 8}[m] for m in st.get('modifiers', []))
+                        await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': pts[0][0], 'y': pts[0][1], 'modifiers': mods})
+                        await send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': pts[0][0], 'y': pts[0][1], 'button': btn, 'buttons': mask, 'clickCount': 1, 'modifiers': mods})
                         for a, b in zip(pts, pts[1:]):
                             for k in range(1, 9):  # mellanpunkter, så att draget blir jämnt
                                 x, y = a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8
-                                await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': btn, 'buttons': mask})
+                                await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': btn, 'buttons': mask, 'modifiers': mods})
                                 await asyncio.sleep(0.03)
-                        await send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': pts[-1][0], 'y': pts[-1][1], 'button': btn, 'buttons': 0, 'clickCount': 1})
+                        await send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': pts[-1][0], 'y': pts[-1][1], 'button': btn, 'buttons': 0, 'clickCount': 1, 'modifiers': mods})
+                    elif 'key' in st:
+                        k = st['key']
+                        for t in ('keyDown', 'keyUp'):
+                            await send('Input.dispatchKeyEvent', {'type': t, 'key': k, **({'text': k} if len(k) == 1 and t == 'keyDown' else {})})
                     elif 'prompt' in st:
                         answer['text'] = st['prompt']
                     elif 'shot' in st:

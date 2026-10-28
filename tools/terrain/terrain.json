@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska. sculptTools är penslarna i Sculpt med sina egna förval (defaults), sculptParams spakarna i kortet Brush (tools: vilka penslar som har spaken; stamp: bara med ett mönster), sculptStamps penselmönstren och sculptLandforms landformerna som trycks ut med ett klick (shared/terrain/stamps.js; blend add eller max, base ground eller sea).",
   "camera": {
     "pos": [
       150,
@@ -47,6 +47,11 @@
       "id": "climate",
       "label": "Climate",
       "step": "biomes"
+    },
+    {
+      "id": "sculptbrush",
+      "label": "Brush",
+      "step": "sculpt"
     },
     {
       "id": "brush",
@@ -1097,32 +1102,335 @@
     {
       "id": "raise",
       "label": "Raise",
-      "help": "Lift the land under the brush; hold and drag"
+      "help": "Lift the land under the brush; hold and drag. Ctrl lowers instead",
+      "defaults": {
+        "size": 30,
+        "strength": 0.5,
+        "hardness": 0.25,
+        "spacing": 0.2
+      }
     },
     {
       "id": "lower",
       "label": "Lower",
-      "help": "Sink the land under the brush"
+      "help": "Sink the land under the brush. Ctrl raises instead",
+      "defaults": {
+        "size": 30,
+        "strength": 0.5,
+        "hardness": 0.25,
+        "spacing": 0.2
+      }
     },
     {
       "id": "smooth",
       "label": "Smooth",
-      "help": "Even out bumps and sharp edges"
+      "help": "Even out bumps and sharp edges (hold Shift with any brush to smooth)",
+      "defaults": {
+        "size": 25,
+        "strength": 0.5,
+        "hardness": 0.1,
+        "spacing": 0.15
+      }
     },
     {
       "id": "flatten",
       "label": "Flatten",
-      "help": "Level the land to the height where you pressed: a plateau for a village"
+      "help": "Level the land to the height where you pressed, or to a fixed height (Alt+click picks it): a plateau for a village",
+      "defaults": {
+        "size": 25,
+        "strength": 0.6,
+        "hardness": 0.5,
+        "spacing": 0.15
+      }
     },
     {
       "id": "ramp",
       "label": "Ramp",
-      "help": "Drag from one point to another: an even slope between their heights, as wide as the brush"
+      "help": "Drag from one point to another: an even slope between their heights, as wide as the brush",
+      "defaults": {
+        "size": 12,
+        "strength": 1,
+        "hardness": 0.5
+      }
     },
     {
       "id": "noise",
       "label": "Noise",
-      "help": "Rough up the land with small hills and hollows"
+      "help": "Rough up the land with small hills and hollows",
+      "defaults": {
+        "size": 30,
+        "strength": 0.4,
+        "hardness": 0.2,
+        "spacing": 0.25
+      }
+    },
+    {
+      "id": "terrace",
+      "label": "Terrace",
+      "help": "Step the land into flat ledges with short slopes between them, like old fields or cliff bands",
+      "defaults": {
+        "size": 40,
+        "strength": 0.6,
+        "hardness": 0.4,
+        "spacing": 0.2,
+        "stepHeight": 4
+      }
+    },
+    {
+      "id": "erode",
+      "label": "Erode",
+      "help": "Rain on the land under the brush: water carves gullies and leaves fans of soil where it slows",
+      "defaults": {
+        "size": 30,
+        "strength": 0.6,
+        "hardness": 0.2,
+        "spacing": 0.3
+      }
+    }
+  ],
+  "sculptParams": [
+    {
+      "key": "size",
+      "label": "Size",
+      "min": 1,
+      "max": 200,
+      "step": 1,
+      "default": 30,
+      "help": "The radius of the brush, in metres ([ and ] change it)"
+    },
+    {
+      "key": "strength",
+      "label": "Strength",
+      "min": 0.02,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "help": "How much each touch of the brush does"
+    },
+    {
+      "key": "hardness",
+      "label": "Hardness",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.25,
+      "help": "The falloff: soft (left) fades from the middle like a dome, hard (right) works fully almost to the edge"
+    },
+    {
+      "key": "spacing",
+      "label": "Spacing",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.2,
+      "help": "How far apart the touches are along a stroke, in parts of the brush: close gives an even stroke, wide a dotted one",
+      "tools": [
+        "raise",
+        "lower",
+        "smooth",
+        "flatten",
+        "noise",
+        "terrace",
+        "erode"
+      ]
+    },
+    {
+      "key": "rotation",
+      "label": "Rotation",
+      "min": -180,
+      "max": 180,
+      "step": 1,
+      "default": 0,
+      "help": "The angle of the pattern (degrees)",
+      "stamp": true
+    },
+    {
+      "key": "follow",
+      "label": "Follow stroke",
+      "type": "bool",
+      "default": false,
+      "help": "Turn the pattern with the direction you drag in",
+      "stamp": true
+    },
+    {
+      "key": "scatter",
+      "label": "Scatter",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0,
+      "help": "A random angle and size for each touch, so a pattern does not repeat",
+      "stamp": true
+    },
+    {
+      "key": "stepHeight",
+      "label": "Step height",
+      "min": 0.5,
+      "max": 30,
+      "step": 0.5,
+      "default": 4,
+      "help": "The height of each ledge (metres)",
+      "tools": [
+        "terrace"
+      ]
+    },
+    {
+      "key": "lock",
+      "label": "Fixed height",
+      "type": "bool",
+      "default": false,
+      "help": "Flatten to the height below instead of where you press (Alt+click on the land picks it)",
+      "tools": [
+        "flatten"
+      ]
+    },
+    {
+      "key": "height",
+      "label": "Height",
+      "min": -50,
+      "max": 400,
+      "step": 0.5,
+      "default": 10,
+      "help": "The height Flatten levels to, in metres",
+      "tools": [
+        "flatten"
+      ]
+    }
+  ],
+  "sculptStamps": [
+    {
+      "id": "round",
+      "label": "Round",
+      "help": "The plain brush: a soft dome"
+    },
+    {
+      "id": "mound",
+      "label": "Mound",
+      "help": "A rounded hill with an uneven surface"
+    },
+    {
+      "id": "crater",
+      "label": "Crater",
+      "help": "A sunken middle with a raised rim"
+    },
+    {
+      "id": "ridge",
+      "label": "Ridge",
+      "help": "A long ridge along the brush's angle"
+    },
+    {
+      "id": "mesa",
+      "label": "Mesa",
+      "help": "A flat top with steep edges"
+    },
+    {
+      "id": "terraces",
+      "label": "Terraces",
+      "help": "Three steps up to a flat top"
+    },
+    {
+      "id": "boulders",
+      "label": "Boulders",
+      "help": "A few round boulders of different sizes"
+    },
+    {
+      "id": "dunes",
+      "label": "Dunes",
+      "help": "Waves across the brush: a gentle side and a steep side"
+    },
+    {
+      "id": "gullies",
+      "label": "Gullies",
+      "help": "Parallel furrows along the brush, where rain has run"
+    },
+    {
+      "id": "cracks",
+      "label": "Cracks",
+      "help": "A net of narrow cracks"
+    }
+  ],
+  "sculptLandforms": [
+    {
+      "id": "mountain",
+      "label": "Mountain",
+      "help": "A whole mountain: a peak with ridges and ravines. Click once where it should stand",
+      "blend": "add",
+      "base": "ground",
+      "size": 150,
+      "height": 120
+    },
+    {
+      "id": "volcano",
+      "label": "Volcano",
+      "help": "A cone with a crater at the top and furrows down its sides",
+      "blend": "add",
+      "base": "ground",
+      "size": 180,
+      "height": 110
+    },
+    {
+      "id": "island",
+      "label": "Island",
+      "help": "An island rising out of the sea with hills and an uneven coast; click in the water",
+      "blend": "max",
+      "base": "sea",
+      "size": 120,
+      "height": 25
+    },
+    {
+      "id": "range",
+      "label": "Mountain range",
+      "help": "A row of peaks along the brush's angle",
+      "blend": "add",
+      "base": "ground",
+      "size": 220,
+      "height": 90
+    },
+    {
+      "id": "canyon",
+      "label": "Canyon",
+      "help": "A winding canyon with steep, stepped walls along the brush's angle",
+      "blend": "add",
+      "base": "ground",
+      "size": 160,
+      "height": 40,
+      "negative": true
+    }
+  ],
+  "landformParams": [
+    {
+      "key": "size",
+      "label": "Size",
+      "min": 20,
+      "max": 2000,
+      "step": 5,
+      "default": 150,
+      "help": "The radius of the landform, in metres"
+    },
+    {
+      "key": "height",
+      "label": "Height",
+      "min": 2,
+      "max": 400,
+      "step": 1,
+      "default": 100,
+      "help": "How high it rises (or how deep a canyon goes), in metres"
+    },
+    {
+      "key": "rotation",
+      "label": "Rotation",
+      "min": -180,
+      "max": 180,
+      "step": 1,
+      "default": 0,
+      "help": "The angle of the landform (degrees), for ranges and canyons"
+    },
+    {
+      "key": "vary",
+      "label": "New each click",
+      "type": "bool",
+      "default": true,
+      "help": "A new variant every time you click; off repeats the same one"
     }
   ]
 }

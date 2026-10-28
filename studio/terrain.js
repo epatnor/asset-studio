@@ -19,7 +19,8 @@ import { axis, buildField } from '../shared/terrain/field.js';
 import { worldGrid } from '../shared/terrain/generate.js';
 import { PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../shared/terrain/biomes.js';
 import { removeFromPaint } from '../shared/terrain/regions.js';
-import { brushDab, rampStroke, encodeDelta, decodeDelta, resampleDelta } from '../shared/terrain/sculpt.js';
+import { brushDab, rampStroke, encodeDelta, decodeDelta, resampleDelta, falloff } from '../shared/terrain/sculpt.js';
+import { createStamp, createLandform, placeLandform } from '../shared/terrain/stamps.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
@@ -121,6 +122,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sea: uniform(vals.seaLevel), seaOn: uniform(vals.sea ? 1 : 0), sand: uniform(vals.sandBand), snow: uniform(vals.snowline),
     cliff: uniform(Math.cos(vals.cliffAngle * DEG)), tone: uniform(vals.grassTone), top: uniform(40), low: uniform(-8),
     brush: uniform(new THREE.Vector3(0, 0, 30)), brushOn: uniform(0), // x, z, radie; 1 när penselns ring syns
+    brushInner: uniform(0), // radien där falloff börjar (hardness · radien); en svagare inre ring
   };
   const h = positionWorld.y, up = normalWorld.y, wet = attribute('wet', 'float');
   // Biomernas vikter (shared/terrain/biomes.js): bio0 = strand, äng, lövskog, barrskog; bio1 = myr, hed, berg, snö
@@ -150,7 +152,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // Penselns ring (steg Biomes): en ring på marken där penseln är
   const brushRing = Fn(() => {
     const d = length(positionWorld.xz.sub(U.brush.xy)), w = U.brush.z.mul(0.035).add(0.4);
-    return float(1).sub(smoothstep(0, w, abs(d.sub(U.brush.z)))).mul(U.brushOn);
+    const inner = float(1).sub(smoothstep(0, w, abs(d.sub(U.brushInner)))).mul(0.45).mul(smoothstep(0.4, 0.6, U.brushInner));
+    return max(float(1).sub(smoothstep(0, w, abs(d.sub(U.brush.z)))), inner).mul(U.brushOn);
   })();
   const shaded = new THREE.MeshStandardNodeMaterial({ roughness: 0.92 });
   shaded.colorNode = mix(water.groundColor(c.mul(0.92), water.uniforms.level), color('#ffffff'), brushRing.mul(0.85));
@@ -396,12 +399,32 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function markView() { for (const b of stage.children) b.classList.toggle('on', b.dataset.id === vals.view); }
 
   // --- Korten: landskapets spakar, sedan vädret (hör till vyn och sparas inte), sist Spara ---
+  // Skulpteringspenslarnas inställningar, en uppsättning per pensel och per landform (förval ur terrain.json), sparade
+  // i webbläsaren mellan besöken; de hör till verktyget, inte till världen
+  const SCULPT_KEY = 'maproom.sculpt.v1', defaultsOf = (qs) => Object.fromEntries(qs.map((q) => [q.key, q.default]));
+  let sculptSet = {};
+  try { sculptSet = JSON.parse(localStorage.getItem(SCULPT_KEY) ?? '{}') ?? {}; } catch { sculptSet = {}; }
+  const saveSculptSet = () => { try { localStorage.setItem(SCULPT_KEY, JSON.stringify(sculptSet)); } catch { /* privat läge: bara för stunden */ } };
+  function settingsFor(key) {
+    if (!sculptSet[key]) {
+      const L = key.startsWith('landform:') ? info.sculptLandforms.find((x) => x.id === key.slice(9)) : null;
+      sculptSet[key] = L ? { ...defaultsOf(info.landformParams), size: L.size, height: L.height, seed: 1 }
+        : { ...defaultsOf(info.sculptParams), stamp: 'round', ...(info.sculptTools.find((x) => x.id === key)?.defaults ?? {}) };
+    }
+    return sculptSet[key];
+  }
+  // Penslarna som tar ett mönster; nyckeln och inställningarna för det som är valt (sculptTool och landformId sätts i
+  // stegen nedan); kortet Brush byggs med korten men fylls i när ett verktyg väljs
+  const STAMPABLE = new Set(['raise', 'lower', 'smooth', 'flatten', 'noise', 'terrace']);
+  const activeKey = () => (sculptTool === 'landform' ? `landform:${landformId}` : sculptTool);
+  const S = () => settingsFor(activeKey() ?? 'raise');
+  let updateSculptCard = () => {};
   const cards = createCards({ el, side });
   const get = (k) => vals[k];
   const set = (k, v) => { vals[k] = v; };
   const COL = { shape: '#c0672e', detail: '#b88a5a', erosion: '#6a8fb0', water: '#3fa6a0', material: '#6aa84f', regions: '#d9a441', region: '#d9a441', climate: '#3f8f3a', brush: '#e0e0e0', sky: '#e0a030' };
   // Vilka kort som syns i vilket steg: World formar landet, Regions delar in det, Biomes klimatet; vädret och Spara i alla
-  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'], sculpt: ['brush', 'water', 'sky'] };
+  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'], sculpt: ['sculptbrush', 'water', 'sky'] };
   const cardOf = {};
   for (const g of info.groups) {
     if (g.id === 'view') continue;
@@ -418,6 +441,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       }));
     }
     if (g.id === 'region') regionCard(body);
+    if (g.id === 'sculptbrush') sculptCard(body);
   }
   const saveCard = cards.card('Save', '#4a90d9');
   const saveMsg = el('div', 'note');
@@ -475,8 +499,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
     if (step === 'sculpt') {
       headTitle.textContent = 'Sculpt';
-      headNote.textContent = 'Pick a brush and drag on the land with the left mouse button, or draw water: click points along a stream, river or bay and double-click to finish. The right button turns the view; Ctrl+Z undoes.';
+      headNote.textContent = 'Pick a brush and drag on the land with the left mouse button (Ctrl inverts, Shift smooths, [ and ] change the size), click once to place a landform, or draw water: click points along a stream, river or bay and double-click to finish. The right button turns the view; Ctrl+Z undoes.';
       sec('Brushes', info.sculptTools.map((x) => toolTile(x.id, x.label, x.help, `sculpt_${x.id}`)));
+      if (STAMPABLE.has(sculptTool)) sec(`Pattern for ${info.sculptTools.find((x) => x.id === sculptTool).label}`, info.sculptStamps.map((x) => stampTile(x)));
+      sec('Landforms', info.sculptLandforms.map((L) => landformTile(L)));
       sec('Water', Object.entries(info.channelKinds).map(([id, k]) => toolTile(id, k.label, k.help, `shape_${id}`)));
       const tools = el('div', 'rtools');
       const btn = (label, tip, fn, off = false) => { const b = el('button', null, label); b.title = tip; b.onclick = fn; b.disabled = off; tools.append(b); return b; };
@@ -584,6 +610,55 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     body.append(cards.choiceRow(themeQ, get, set, () => changedRegions()));
     for (const q of info.regionParams) body.append(cards.slider({ ...q, rebuild: true }, get, set, () => { mark(null); regenerate('biomes'); }));
   }
+  // Kortet Brush i Sculpt: den valda penselns (eller landformens) egna spakar; rader som inte hör till den döljs
+  function sculptCard(body) {
+    const get = (k) => S()[k];
+    const set = (k, v) => { S()[k] = v; saveSculptSet(); ringSize(); };
+    const rows = [];
+    for (const q of info.sculptParams) { const r = cards.rowFor(q)(q, get, set, () => updateSculptCard()); rows.push(['brush', q, r]); body.append(r); }
+    for (const q of info.landformParams) { const r = cards.rowFor(q)(q, get, set, () => updateSculptCard()); rows.push(['form', q, r]); body.append(r); }
+    const msg = el('div', 'note');
+    body.append(msg);
+    updateSculptCard = () => {
+      const tool = sculptTool, brush = STAMPABLE.has(tool) || tool === 'ramp' || tool === 'erode', st = brush || tool === 'landform' ? S() : null;
+      for (const [kind, q, r] of rows) {
+        r.hidden = kind === 'form' ? tool !== 'landform'
+          : !brush || (q.tools && !q.tools.includes(tool)) || (q.stamp && (!STAMPABLE.has(tool) || st.stamp === 'round')) || (q.key === 'height' && !st.lock);
+      }
+      msg.textContent = !tool ? 'Pick a brush, a landform or water in the drawer.' : info.channelKinds[tool] ? 'Water has no brush settings: click points along it and double-click to dig.' : '';
+      msg.hidden = !msg.textContent;
+      cards.sync();
+    };
+  }
+  // Ringens storlek efter den valda penseln (och den inre ringen för hardness)
+  function ringSize() {
+    if (!sculptTool || info.channelKinds[sculptTool]) return;
+    const st = S();
+    U.brush.value.z = st.size;
+    U.brushInner.value = sculptTool === 'landform' ? 0 : st.size * (st.hardness ?? 0.25);
+  }
+  const stamps = new Map();
+  const stampFor = (id) => { const k = `${id}:${vals.seed}`; if (!stamps.has(k)) stamps.set(k, createStamp(id, vals.seed)); return stamps.get(k); };
+  // Förhandsbilder av mönster och landformer som höjdkartor: gråskala från lägst (svart) till högst (vitt), som
+  // penseln trycker ut dem (mönstren med penselns falloff), i en hel fyrkant
+  const thumbs = new Map();
+  function thumb(key, fn, form) {
+    if (thumbs.has(key)) return thumbs.get(key);
+    const N = 56, c = document.createElement('canvas');
+    c.width = c.height = N;
+    const g = c.getContext('2d'), img = g.createImageData(N, N), v = new Float32Array(N * N);
+    let lo = Infinity, hi = -Infinity;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const u = (i / (N - 1)) * 2 - 1, w = (j / (N - 1)) * 2 - 1, d = Math.hypot(u, w);
+      const h = d < 1 ? (fn ? fn(u, w) : 1) * falloff(d, form ? 0.85 : 0.25) : 0; // landformerna med kanten de läggs på med
+      v[j * N + i] = h; lo = Math.min(lo, h); hi = Math.max(hi, h);
+    }
+    for (let k = 0; k < N * N; k++) { const q = Math.round((255 * (v[k] - lo)) / Math.max(1e-6, hi - lo)); img.data.set([q, q, q, 255], k * 4); }
+    g.putImageData(img, 0, 0);
+    const url = c.toDataURL();
+    thumbs.set(key, url);
+    return url;
+  }
   // Ett verktyg i Sculpt: en pensel eller en sorts vatten; klick igen släpper det, så att vänsterknappen roterar igen
   function toolTile(id, label, help, icon) {
     const f = el('button', `wprof${sculptTool === id ? ' on' : ''}`);
@@ -592,6 +667,24 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     f.append(el('b', null, label), el('span', 'wmeta', info.channelKinds[id] ? 'click points, double-click to finish' : 'drag on the land'));
     f.onclick = () => setTool(sculptTool === id ? null : id);
     return withIcon(el, f, 'maproom', icon, label);
+  }
+  // Ett mönster för den valda penseln
+  function stampTile(st) {
+    const f = el('button', `wprof${S().stamp === st.id ? ' on' : ''}`);
+    f.dataset.stamp = st.id;
+    f.title = st.help;
+    f.append(el('b', null, st.label));
+    f.onclick = () => { S().stamp = st.id; saveSculptSet(); renderDrawer(); updateSculptCard(); };
+    return withIcon(el, f, 'maproom', null, st.label, thumb(`stamp:${st.id}`, createStamp(st.id, 7), false));
+  }
+  // En landform: ett klick på marken trycker ut den, i den storlek och höjd som kortet säger
+  function landformTile(L) {
+    const f = el('button', `wprof${sculptTool === 'landform' && landformId === L.id ? ' on' : ''}`);
+    f.dataset.tool = `landform:${L.id}`;
+    f.title = L.help;
+    f.append(el('b', null, L.label), el('span', 'wmeta', 'click once on the land'));
+    f.onclick = () => { if (sculptTool === 'landform' && landformId === L.id) setTool(null); else { landformId = L.id; setTool('landform'); } };
+    return withIcon(el, f, 'maproom', null, L.label, thumb(`form:${L.id}`, createLandform(L.id, 3), true));
   }
   // Ångra: delta och kanalerna före varje drag eller linje (högst 12 steg)
   function pushUndo() {
@@ -624,7 +717,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // Penseln målar biomer i Biomes och regioner i Regions (brushIndex = biomens eller regionens nummer, −1 suddar);
   // placing: nästa vänsterklick på marken flyttar den valda regionens mittpunkt
   // sculptTool: penseln eller vattnet i Sculpt (raise … noise, stream, river, bay); drawing: linjens punkter i meter
-  let step = 'world', painting = false, brushIndex = null, placing = false, regionSel = 0, regionInfo = null, sculptTool = null, drawing = [];
+  let step = 'world', painting = false, brushIndex = null, placing = false, regionSel = 0, regionInfo = null, sculptTool = null, landformId = null, drawing = [];
   function setStep(s) {
     step = s;
     for (const [id, c] of Object.entries(cardOf)) c.hidden = !(IN_STEP[s] ?? IN_STEP.world).includes(id);
@@ -633,6 +726,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sculptTool = null;
     cancelLine();
     setBrush(null);
+    updateSculptCard();
     renderDrawer();
     apply();
     placeLabels();
@@ -646,7 +740,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     controls.mouseButtons = free ? { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE } : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     U.brushOn.value = 0;
     for (const b of body.querySelectorAll('.wprof[data-pick]')) b.classList.toggle('on', painting ? b.dataset.pick === String(i) : step === 'regions' && b.dataset.pick === String(regionSel));
-    for (const b of body.querySelectorAll('.wprof[data-tool]')) b.classList.toggle('on', b.dataset.tool === sculptTool);
+    for (const b of body.querySelectorAll('.wprof[data-tool]')) b.classList.toggle('on', b.dataset.tool === activeKey());
     note.textContent = hint();
   }
   // Ett verktyg i Sculpt (null släpper det); en halvritad linje släpps när man byter
@@ -654,12 +748,16 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sculptTool = step === 'sculpt' ? id : null;
     if (!info.channelKinds[sculptTool]) cancelLine();
     setBrush(null);
+    if (step === 'sculpt') renderDrawer(); // mönstren hör till penseln
+    ringSize();
+    updateSculptCard();
   }
   const pickName = (i) => (i < 0 ? 'erase' : step === 'regions' ? vals.regions[i]?.name : info.biomes[i].label.toLowerCase());
   const hint = () => (placing ? `Click on the land to move the centre of ${vals.regions[regionSel]?.name}`
     : painting ? `Painting ${pickName(brushIndex)}: left button paints, right button turns, scroll zooms`
       : info.channelKinds[sculptTool] ? `${info.channelKinds[sculptTool].label}: click points along it (${drawing.length} so far), double-click or Enter to dig, Esc to cancel`
-        : sculptTool ? `${info.sculptTools.find((x) => x.id === sculptTool)?.label}: drag on the land, right button turns, Ctrl+Z undoes`
+        : sculptTool === 'landform' ? `${info.sculptLandforms.find((x) => x.id === landformId)?.label}: click once where it should stand · [ ] size · Ctrl+Z undoes`
+          : sculptTool ? `${info.sculptTools.find((x) => x.id === sculptTool)?.label}: drag on the land · Ctrl inverts · Shift smooths · [ ] size${sculptTool === 'flatten' ? ' · Alt+click picks the height' : ''} · Ctrl+Z undoes`
           : 'Drag to orbit, scroll to zoom');
 
   // Var pekaren träffar marken: en stråle från kameran, stegvis mot höjdfältet och sedan halvering
@@ -700,7 +798,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }
   // --- Skulpteringen: penseltryck direkt på marken som syns (höjderna, hörnen och normalerna i de rader som ändrats),
   // och workern bygger om marken, regionerna och biomerna när man släpper ---
-  let sculptDown = false, lastDab = null, rampA = null, flattenY = 0;
+  let sculptDown = false, lastDab = null, rampA = null, flattenY = 0, strokeDir = 0;
   function ensureDelta() { if (!delta || deltaN !== field.n) { delta = new Float32Array(field.n * field.n); deltaN = field.n; } }
   function updateRows(r) {
     if (!r) return;
@@ -720,20 +818,48 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const p = groundAt(ev);
     U.brushOn.value = p ? 1 : 0;
     if (!p) return;
-    U.brush.value.set(p.x, p.z, vals.brush);
-    if (!sculptDown || sculptTool === 'ramp') return;
-    // Tryck med jämna mellanrum längs draget (en femtedel av penseln), så att snabba drag inte blir prickiga
-    const gap = Math.max(field.cell, vals.brush * 0.2), from = lastDab ?? p, steps = Math.max(1, Math.ceil(Math.hypot(p.x - from.x, p.z - from.z) / gap));
-    if (lastDab && steps === 1 && Math.hypot(p.x - from.x, p.z - from.z) < gap) return;
-    const { n, cell, heights: h } = field;
-    let rows = null;
+    // Shift jämnar ut med Smooths inställningar, vilken pensel som än är vald; Ctrl vänder höj och sänk
+    const smoothing = ev.shiftKey && STAMPABLE.has(sculptTool), tool = smoothing ? 'smooth' : sculptTool, st = smoothing ? settingsFor('smooth') : S();
+    U.brush.value.set(p.x, p.z, st.size);
+    U.brushInner.value = tool === 'landform' ? 0 : st.size * (st.hardness ?? 0.25);
+    if (!sculptDown || tool === 'ramp' || tool === 'landform') return;
+    // Tryck med jämna mellanrum längs draget (Spacing, i delar av penseln), så att snabba drag blir jämna
+    const gap = Math.max(field.cell * 0.5, st.size * (st.spacing ?? 0.2)), from = lastDab ?? p, len = Math.hypot(p.x - from.x, p.z - from.z);
+    if (lastDab && len < gap) return;
+    const steps = Math.max(1, Math.floor(len / gap)), dir = len > 1e-6 ? Math.atan2(p.z - from.z, p.x - from.x) : strokeDir;
+    strokeDir = dir;
+    const { n, cell, heights: h } = field, stamp = STAMPABLE.has(tool) && st.stamp !== 'round' ? stampFor(st.stamp) : null;
+    let rows = null, x = from.x, z = from.z;
     for (let s = lastDab ? 1 : 0; s <= steps; s++) {
-      const x = from.x + ((p.x - from.x) * s) / steps, z = from.z + ((p.z - from.z) * s) / steps;
-      const r = brushDab(h, delta, n, cell, half, x, z, { tool: sculptTool, radius: vals.brush, strength: vals.brushStrength, target: flattenY, seed: vals.seed });
+      x = from.x + Math.cos(dir) * gap * s; z = from.z + Math.sin(dir) * gap * s;
+      if (!lastDab) { x = p.x; z = p.z; }
+      let angle = (st.rotation ?? 0) * DEG + (st.follow ? dir : 0), radius = st.size;
+      if (st.scatter && stamp) { angle += (Math.random() * 2 - 1) * Math.PI * st.scatter; radius *= 1 + (Math.random() * 2 - 1) * 0.35 * st.scatter; }
+      const r = brushDab(h, delta, n, cell, half, x, z, {
+        tool, radius, strength: st.strength, hardness: st.hardness, stamp, angle, invert: ev.ctrlKey || ev.metaKey,
+        target: st.lock ? st.height : flattenY, stepHeight: st.stepHeight, seed: vals.seed,
+      });
       if (r) rows = rows ? { j0: Math.min(rows.j0, r.j0), j1: Math.max(rows.j1, r.j1) } : r;
+      if (!lastDab) break;
     }
-    lastDab = p;
+    lastDab = { x, z };
     updateRows(rows);
+  }
+  // En landform där man klickar: hela formen på en gång, med ny variant varje klick om New each click är på
+  function placeForm(p) {
+    const L = info.sculptLandforms.find((x) => x.id === landformId), st = S();
+    if (!L) return;
+    pushUndo();
+    ensureDelta();
+    if (st.vary) st.seed = Math.floor(Math.random() * 1e6);
+    saveSculptSet();
+    const base = L.base === 'sea' ? (vals.sea ? vals.seaLevel : 0) : bedAt(p.x, p.z);
+    updateRows(placeLandform(field.heights, delta, field.n, field.cell, half, p.x, p.z, createLandform(L.id, st.seed ?? 1), {
+      radius: st.size, height: st.height, depth: L.negative ? st.height : Math.max(10, -SEABED), angle: (st.rotation ?? 0) * DEG, blend: L.blend, base,
+    }));
+    mark(null);
+    renderDrawer();
+    regenerate('edit');
   }
   function sculptUp(ev) {
     if (!sculptDown) return;
@@ -741,7 +867,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     canvas.releasePointerCapture(ev.pointerId);
     if (sculptTool === 'ramp' && rampA) {
       const p = groundAt(ev);
-      if (p) updateRows(rampStroke(field.heights, delta, field.n, field.cell, half, rampA, { ...p, y: bedAt(p.x, p.z) }, { radius: vals.brush, strength: Math.max(0.5, vals.brushStrength) }));
+      const st = S();
+      if (p) updateRows(rampStroke(field.heights, delta, field.n, field.cell, half, rampA, { ...p, y: bedAt(p.x, p.z) }, { radius: st.size, strength: Math.max(0.5, st.strength), hardness: st.hardness }));
       rampA = null;
     }
     lastDab = null;
@@ -781,6 +908,12 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!running || step !== 'sculpt' || /input|select|textarea/i.test(ev.target?.tagName ?? '')) return;
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); undoLast(); }
     else if (ev.key === 'Enter' && drawing.length) finishLine();
+    else if ((ev.key === '[' || ev.key === ']') && sculptTool && !info.channelKinds[sculptTool]) {
+      // Penselns storlek, 15 % per tryck inom spakens gränser
+      const st = S(), q = (sculptTool === 'landform' ? info.landformParams : info.sculptParams).find((x) => x.key === 'size');
+      st.size = Math.round(Math.min(q.max, Math.max(q.min, st.size * (ev.key === ']' ? 1.15 : 1 / 1.15))));
+      saveSculptSet(); ringSize(); cards.sync();
+    }
     else if (ev.key === 'Escape') { if (drawing.length) { cancelLine(); renderDrawer(); note.textContent = hint(); } else setTool(null); }
   });
   canvas.addEventListener('pointerdown', (ev) => {
@@ -793,6 +926,13 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
         showLine();
         if (drawing.length === 1) renderDrawer();
         note.textContent = hint();
+        return;
+      }
+      if (sculptTool === 'landform') { placeForm(p); return; }
+      if (sculptTool === 'flatten' && ev.altKey) {
+        // Alt+klick: pipetten tar höjden där man klickar, och Flatten jämnar sedan mot den
+        Object.assign(S(), { lock: true, height: Math.round(bedAt(p.x, p.z) * 2) / 2 });
+        saveSculptSet(); updateSculptCard();
         return;
       }
       pushUndo(); // före lagret skapas, så att det första draget ångras tillbaka till en orörd värld
@@ -926,6 +1066,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     get step() { return step; }, get paint() { return paint; }, get weights() { return final; },
     get regionPaint() { return regionPaint; }, get regionInfo() { return regionInfo; }, get regionSel() { return regionSel; },
     get delta() { return delta; }, get channelInfo() { return channelInfo; }, get field() { return field; }, get sculptTool() { return sculptTool; }, setTool,
+    sculptSettings: () => S(),
+    // Var en punkt i världen hamnar i fönstret (för UI-testerna): [x, y] i bildpunkter
+    screenOf(x, z) { const v = new THREE.Vector3(x, bedAt(x, z), z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height]; },
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),
   };
 }
