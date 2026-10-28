@@ -1,0 +1,142 @@
+{
+  "_doc": "Byggsatsen (docs/building-kit.md): mått, konstruktionsfamiljer, moduler, sockets och byggnadsrecept. Modulens axlar: x längs väggen (0..width), y upp, z ut ur huset (yttersidan vid z = 0).",
+  "grid": 0.5,
+  "width": 2,
+  "storey": 3,
+  "families": {
+    "stone": {
+      "thickness": 0.5,
+      "seed": 11,
+      "course": [0.25, 0.36],
+      "courseTaper": 0.22,
+      "mortar": 0.022,
+      "mortarDepth": 0.032,
+      "stoneLen": [0.3, 0.74],
+      "endLen": [0.62, 0.74],
+      "minOverlap": 0.12,
+      "tooth": 0.25,
+      "quoin": 0.34,
+      "jumper": 0.1,
+      "depth": [0.2, 0.3],
+      "relief": [-0.006, 0.018],
+      "inset": 0.022,
+      "dome": 0.022,
+      "bevel": 0.03,
+      "chip": [0.3, 0.07],
+      "jitter": 0.005,
+      "colors": ["#968F84", "#8A857C", "#A0978A", "#7F7B74", "#938C80", "#86837C", "#9C907C"],
+      "dressed": "#ADA493",
+      "mortarColor": "#6A645B",
+      "tile": 0.45
+    },
+    "timber": {
+      "thickness": 0.3,
+      "post": 0.2,
+      "corner": 0.3,
+      "brace": 0.15,
+      "braceDepth": 0.14,
+      "rail": 0.16,
+      "sill": 0.24,
+      "plate": 0.2,
+      "recess": 0.035,
+      "warp": 0.012,
+      "twist": 0.012,
+      "wood": ["#E9C9AC", "#DDBB9C", "#F2D3B6"],
+      "endGrain": "#FFE3C4",
+      "plaster": "#FFF1DC",
+      "plasterTile": 2.2
+    },
+    "roof": {
+      "pitch": 55,
+      "run": 2,
+      "overhang": 0.55,
+      "verge": 0.333,
+      "rafter": [0.1, 0.16],
+      "rafterStep": 0.5,
+      "deck": 0.025,
+      "board": 0.2,
+      "tile": [0.333, 0.44, 0.045],
+      "exposure": 0.2,
+      "gap": 0.022,
+      "colors": ["#56648C", "#4E5C84", "#5E6C94", "#4A5878", "#596690", "#545E7C"],
+      "ridgeColor": "#4C5876",
+      "bargeboard": [0.05, 0.3],
+      "ridgeBeam": [0.2, 0.28]
+    },
+    "window": {
+      "frame": "#E6C6A6",
+      "glass": "#2E3E58",
+      "lit": "#FFB65A",
+      "litChance": 0.5,
+      "metal": "#3E3C42"
+    }
+  },
+  "openings": {
+    "window": { "width": 0.9, "sill": 0.95, "top": 2.15 },
+    "door": { "width": 1.0, "sill": 0, "top": 2.2 },
+    "timber_window": { "width": 0.8, "sill": 1.0, "top": 2.15 }
+  },
+  "modules": {
+    "stone_wall": { "label": "Stone wall", "family": "stone", "kind": "wall", "ends": ["open", "open"] },
+    "stone_corner": { "label": "Stone corner", "family": "stone", "kind": "corner" },
+    "stone_window": { "label": "Stone window", "family": "stone", "kind": "wall", "opening": "window", "ends": ["open", "open"] },
+    "stone_door": { "label": "Stone door", "family": "stone", "kind": "wall", "opening": "door", "ends": ["open", "open"] },
+    "timber_wall": { "label": "Timber-framed wall", "family": "timber", "kind": "wall", "ends": ["open", "open"] },
+    "timber_corner": { "label": "Timber corner post", "family": "timber", "kind": "corner" },
+    "timber_window": { "label": "Timber-framed window", "family": "timber", "kind": "wall", "opening": "timber_window", "ends": ["open", "open"] },
+    "timber_gable": { "label": "Timber gable (half)", "family": "timber", "kind": "gable", "side": "rise", "ends": ["open", "open"] },
+    "roof_slope": { "label": "Roof slope", "family": "roof", "kind": "slope", "ends": ["open", "open"] },
+    "roof_ridge": { "label": "Roof ridge", "family": "roof", "kind": "ridge", "ends": ["open", "open"] }
+  },
+  "sockets": {
+    "_doc": "Par som får mötas. Ändarna: open (rak fortsättning, tandad), corner (ytterhörn: väggens ände mot hörnmodulens arm), verge (gavelns takände, slutar fritt).",
+    "pairs": [
+      ["stone:open", "stone:open"],
+      ["stone:cornerA", "stone:armA"],
+      ["stone:cornerB", "stone:armB"],
+      ["timber:open", "timber:open"],
+      ["timber:cornerA", "timber:armA"],
+      ["timber:cornerB", "timber:armB"],
+      ["gable:open", "gable:open"],
+      ["roof:open", "roof:open"],
+      ["ridge:open", "ridge:open"],
+      ["top", "storey"],
+      ["top", "plate"],
+      ["top", "gable"],
+      ["ridge", "slope"]
+    ],
+    "terminal": ["ground", "end", "top", "roof:verge", "ridge:verge", "gable:corner"]
+  },
+  "catalog": [
+    { "module": "stone_wall", "seed": 1, "ends": ["end", "end"] },
+    { "module": "stone_corner" },
+    { "module": "stone_window", "seed": 2, "ends": ["end", "end"] },
+    { "module": "timber_wall", "seed": 1, "ends": ["open", "end"] },
+    { "module": "timber_window", "seed": 2, "ends": ["open", "end"] },
+    { "module": "roof_slope", "seed": 1, "ends": ["open", "open"] },
+    { "module": "roof_slope", "seed": 2, "ends": ["verge", "open"], "name": "roof_corner" },
+    { "module": "roof_ridge", "seed": 1, "ends": ["verge", "open"] }
+  ],
+  "rules": {
+    "_doc": "Öppningar i sten kräver öppna ändar: hörnkedjan (tjocklek + quoin) och valvet får inte plats i en 2 m modul bredvid ett hörn."
+  },
+  "assemblies": {
+    "cottage": {
+      "label": "Stone-and-timber house, 6 x 4 m",
+      "footprint": [3, 2],
+      "storeys": [
+        { "family": "stone", "front": ["stone_wall", "stone_door", "stone_wall"], "right": ["stone_wall", "stone_wall"], "back": ["stone_wall", "stone_window", "stone_wall"], "left": ["stone_wall", "stone_wall"] },
+        { "family": "timber", "front": ["timber_window", "timber_wall", "timber_window"], "right": ["timber_window", "timber_wall"], "back": ["timber_wall", "timber_window", "timber_wall"], "left": ["timber_wall", "timber_window"] }
+      ],
+      "roof": { "type": "gable", "ridge": "x" }
+    },
+    "corner_demo": {
+      "label": "Two stone walls meeting at a corner (placed by hand)",
+      "placements": [
+        { "module": "stone_corner", "pos": [0, 0, 0], "yaw": 0 },
+        { "module": "stone_wall", "pos": [0, 0, 0], "yaw": 0, "ends": ["corner", "end"], "seed": 2 },
+        { "module": "stone_wall", "pos": [0, 0, -2], "yaw": 270, "ends": ["end", "corner"], "seed": 3 }
+      ]
+    }
+  }
+}
