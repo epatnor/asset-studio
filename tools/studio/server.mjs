@@ -590,7 +590,7 @@ function recipeStore(area, { extra = {} } = {}) {
       const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith(EXT)).map((f) => readJson(`${SAVED}/${f}`)))).filter(Boolean) : [];
       return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
     },
-    // layers: lager som inte är spakar (Kartrummets målade biomer), som base64-text, högst 400 000 tecken totalt
+    // layers: lager som inte är spakar (Kartrummets målade biomer och regioner, skulpteringen), som base64-text, högst 8 miljoner tecken totalt
     async save({ name, settings, overwrite, from, layers, ...rest }) {
       name = String(name ?? '').trim().toLowerCase();
       if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
@@ -608,7 +608,7 @@ function recipeStore(area, { extra = {} } = {}) {
       if (existsSync(file) && !overwrite) return { exists: true };
       await mkdir(path.dirname(file), { recursive: true });
       const lay = Object.fromEntries(Object.entries(layers && typeof layers === 'object' ? layers : {}).filter(([k, v]) => /^\w{1,40}$/.test(k) && typeof v === 'string' && v && /^[A-Za-z0-9+/=]*$/.test(v)));
-      if (Object.values(lay).reduce((n, v) => n + v.length, 0) > 400000) return { error: 'the layers are too large' };
+      if (Object.values(lay).reduce((n, v) => n + v.length, 0) > 8000000) return { error: 'the layers are too large' };
       const more = Object.fromEntries(Object.entries(extra).map(([k, fn]) => [k, fn(rest[k], X)]).filter(([, v]) => v != null));
       const entry = { name, settings: clean, ...more, ...(Object.keys(lay).length ? { layers: lay } : {}), ...fromOf(from), saved: new Date().toISOString() };
       await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
@@ -630,7 +630,15 @@ function cleanRegions(list, X) {
     return out;
   });
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions } }); // Kartrummet: docs/terrain.md
+// Kartrummets grävda vatten (steget Sculpt): högst 32 linjer med 2–64 punkter (andelar av världen), av en sort i channelKinds
+function cleanChannels(list, X) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const num = (v) => (Number.isFinite(Number(v)) ? Math.min(0.5, Math.max(-0.5, Number(v))) : 0);
+  const out = list.slice(0, 32).filter((c) => X.channelKinds?.[c?.kind] && Array.isArray(c.points) && c.points.length >= 2)
+    .map((c) => ({ kind: c.kind, points: c.points.slice(0, 64).map((p) => [num(p?.[0]), num(p?.[1])]) }));
+  return out.length ? out : null;
+}
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();

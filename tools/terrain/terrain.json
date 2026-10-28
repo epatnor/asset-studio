@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
   "camera": {
     "pos": [
       150,
@@ -428,7 +428,7 @@
       "max": 200,
       "step": 1,
       "default": 30,
-      "help": "The radius of the brush, in metres (biomes and regions)"
+      "help": "The radius of the brush, in metres (sculpting, regions and biomes)"
     },
     {
       "key": "brushStrength",
@@ -439,7 +439,7 @@
       "max": 1,
       "step": 0.01,
       "default": 0.35,
-      "help": "How much each stroke paints over what the rules chose"
+      "help": "How strong each stroke is: how much it raises, smooths or paints"
     },
     {
       "key": "view",
@@ -1041,6 +1041,88 @@
       "step": 0.01,
       "default": 0,
       "help": "The plants' colour: dry and golden (left) or lush and green (right)"
+    }
+  ],
+  "channelKinds": {
+    "stream": {
+      "label": "Stream",
+      "help": "A small winding stream: click points from the spring towards the sea, double-click to finish. Its surface only runs downhill",
+      "width": [
+        0.9,
+        1.8
+      ],
+      "depth": [
+        0.22,
+        0.2
+      ],
+      "drop": 0.32,
+      "bank": 0.8,
+      "levee": 0.3,
+      "water": "forest_creek"
+    },
+    "river": {
+      "label": "River",
+      "help": "A wide river with low banks: click points along its course, double-click to finish",
+      "width": [
+        3,
+        7
+      ],
+      "depth": [
+        0.5,
+        0.22
+      ],
+      "drop": 0.6,
+      "bank": 2.5,
+      "levee": 0.4,
+      "water": "mountain_stream"
+    },
+    "bay": {
+      "label": "Bay",
+      "help": "An inlet from the sea: click from the open water into the land, double-click to finish. It is widest at the sea and fills with sea water",
+      "width": [
+        45,
+        10
+      ],
+      "depth": [
+        1.5,
+        0.16
+      ],
+      "drop": 0,
+      "bank": 8,
+      "levee": 0,
+      "sea": true
+    }
+  },
+  "sculptTools": [
+    {
+      "id": "raise",
+      "label": "Raise",
+      "help": "Lift the land under the brush; hold and drag"
+    },
+    {
+      "id": "lower",
+      "label": "Lower",
+      "help": "Sink the land under the brush"
+    },
+    {
+      "id": "smooth",
+      "label": "Smooth",
+      "help": "Even out bumps and sharp edges"
+    },
+    {
+      "id": "flatten",
+      "label": "Flatten",
+      "help": "Level the land to the height where you pressed: a plateau for a village"
+    },
+    {
+      "id": "ramp",
+      "label": "Ramp",
+      "help": "Drag from one point to another: an even slope between their heights, as wide as the brush"
+    },
+    {
+      "id": "noise",
+      "label": "Noise",
+      "help": "Rough up the land with small hills and hollows"
     }
   ]
 }

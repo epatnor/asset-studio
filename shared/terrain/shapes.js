@@ -79,24 +79,28 @@ export function splineIndex(smp, reach, cell = 2) {
 //   bank: hur rund övergången till marken är (m); drop: hur långt under marken vattnet ligger (m)
 //   levee: minsta höjd över vattnet för marken närmast fåran (m), så att vattnet aldrig rinner ut åt sidan där marken
 //   runt om sjunker; lyftet tonar bort mellan 2 och 6 bredder från mitten
+//   level: en fast vattennivå längs hela fåran (en vik i havets nivå) i stället för markens nivå minus drop
+//   sea: havets nivå; ytan stannar där, och där fåran ligger i havet lyfts inga vallar (de blev väggar ur havsbottnen)
 // Profilen över fåran är en parabel som fortsätter rakt ut (samma lutning i kanten), så att botten, vattenlinjen och
 // slänten hänger ihop utan veck: höjden = nivå − djup + djup · g(d / w), g(k) = k² inne i fåran och 2k − 1 utanför.
-export function createChannel({ path, base, step = 0.4, depth = (w) => 0.22 + 0.2 * w, drop = 0.32, bank = 0.7, levee = 0.3 }) {
+export function createChannel({ path, base, step = 0.4, depth = (w) => 0.22 + 0.2 * w, drop = 0.32, bank = 0.7, levee = 0.3, level, sea }) {
   const smp = sampleSpline(path, step);
   let lvl = Infinity;
   for (const p of smp) {
     lvl = Math.min(lvl, base(p.x, p.z) - drop); // ytan sluttar nedströms och stiger aldrig
-    p.level = lvl;
+    p.level = level ?? lvl;
+    if (sea != null) p.level = Math.max(p.level, sea);
+    p.lift = sea != null && p.level <= sea + 0.01 ? 0 : 1;
     p.depth = depth(p.w);
   }
   const maxW = Math.max(...smp.map((p) => p.w));
   const reach = maxW * 6 + 8; // bortom detta ligger fårans slänt alltid över marken
-  const query = splineIndex(smp, reach);
+  const query = splineIndex(smp, reach, Math.max(2, reach / 6)); // facken växer med räckvidden (en bred vik har 280 m)
   const profile = (q) => { const k = q.d / q.w; return q.level - q.depth + q.depth * (k < 1 ? k * k : 2 * k - 1); };
   const bedAt = (x, z) => {
     const q = query(x, z);
     if (!q) return base(x, z);
-    const b = base(x, z), lift = 1 - smoothstep(q.w * 2, q.w * 6, q.d);
+    const b = base(x, z), lift = (1 - smoothstep(q.w * 2, q.w * 6, q.d)) * (q.lift ?? 1) * (sea == null ? 1 : smoothstep(sea - 0.6, sea + 0.2, b)); // havsbotten lyfts aldrig
     return smin(b + (smax(b, q.level + levee, levee) - b) * lift, profile(q), bank);
   };
   return { smp, query, bedAt, profile, reach };

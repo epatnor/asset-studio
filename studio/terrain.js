@@ -1,7 +1,8 @@
-// Kartrummet, stegen World, Regions och Biomes (docs/terrain.md): världen ur ett recept, oftast en ö i havet, 256 m–4 km
+// Kartrummet, stegen World, Regions, Biomes och Sculpt (docs/terrain.md): världen ur ett recept, oftast en ö i havet, 256 m–4 km
 // i fyrkant, regionerna (zoner med eget klimat, tema och färgton) och biomerna på den. Höjdfältet, regionerna och
 // biomerna räknas i en worker (shared/terrain/worker.js: generate.js, field.js, regions.js och biomes.js), marken
-// läggs i lager efter biomerna och tonas efter regionen (med klippor i branter och rännor där
+// läggs i lager efter biomerna och tonas efter regionen, och det formade (penslar, bäckar, åar och vikar ur
+// shared/terrain/sculpt.js) ligger ovanpå den genererade marken (med klippor i branter och rännor där
 // vattnet runnit), biomerna kan målas med pensel (ett eget lager i receptet), och havet är vattenmodulen (shared/effects/water.js) med vädret ur Väder-fliken. Platsen står som ett block på
 // kartbordet, med jordlager på sidorna. Spakarna och de färdiga landskapen är data i tools/terrain/terrain.json;
 // sparade landskap i assets/terrain/. Egen renderare (WebGPU, WebGL2 som reserv). Texten i appen är på engelska.
@@ -18,6 +19,7 @@ import { axis, buildField } from '../shared/terrain/field.js';
 import { worldGrid } from '../shared/terrain/generate.js';
 import { PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../shared/terrain/biomes.js';
 import { removeFromPaint } from '../shared/terrain/regions.js';
+import { brushDab, rampStroke, encodeDelta, decodeDelta, resampleDelta } from '../shared/terrain/sculpt.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
@@ -39,6 +41,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const firstPreset = Object.keys(info.presets)[0];
   const vals = { ...defaults, ...stripLabel(info.presets[firstPreset] ?? {}) };
   vals.regions = firstRegions(vals.regions);
+  vals.channels = structuredClone(vals.channels ?? []); // grävt vatten (steget Sculpt): [{ kind, points: [[u, v], ...] }]
   let current = firstPreset;
   // Världens storlek (rutnätet och havsbottnen följer den: worldGrid i shared/terrain/generate.js)
   const sizeOf = () => Number(vals.worldSize) || 1024;
@@ -63,6 +66,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   controls.maxPolarAngle = Math.PI * 0.48;
   controls.minDistance = 4;
   controls.maxDistance = 900;
+  let running = false; // ritas fliken (show/hide); tangenterna i Sculpt gäller bara då
 
   // --- Atmosfären (shared/effects/weather.js), med solen långt bort så att skuggorna räcker över hela platsen ---
   const atm = createAtmosphere({ scene, shadowSize: 4096, shadowRange: half * 1.25, lightDistance: half * 2.2 });
@@ -87,6 +91,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
 
   // --- Havet: vattenmodulen med en havstyp ur Vatten-fliken; botten utanför platsen ligger djupt ---
   const waterVals = { ...Object.fromEntries(wa.params.map((q) => [q.key, q.default])), ...stripLabel(wa.presets.tropical_lagoon ?? {}) };
+  const riverVals = { ...Object.fromEntries(wa.params.map((q) => [q.key, q.default])), ...stripLabel(wa.presets[info.channelKinds.stream?.water] ?? {}) }; // bäckar och åar
   let field = null; // senaste marken: { n, cell, heights }
   let SEABED = worldGrid(sizeOf()).seaFloor;
   const bedAt = (x, z) => {
@@ -207,16 +212,23 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   let auto = null, final = null, paint = new Uint8Array(PAINT_SIZE * PAINT_SIZE * 2);
   // Regionernas målade lager (samma form som biomernas; blandas i workern, eftersom klimatet och biomerna följer det)
   let regionPaint = new Uint8Array(PAINT_SIZE * PAINT_SIZE * 2);
-  const recipe = () => ({
+  // Skulpteringen: penslarnas höjdskillnad per hörn (delta, meter, deltaN × deltaN, skapas vid första draget) och
+  // ångra-stacken (delta och kanalerna före varje drag)
+  let delta = null, deltaN = 0, undoStack = [], channelInfo = [];
+  const recipe = (kind) => ({
     ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])), ...worldGrid(sizeOf()),
     regions: vals.regions, regionThemes: info.regionThemes, regionColors: info.regionColors, regionPaint,
+    // det formade behövs bara när marken byggs (biomerna räknas på workerns senaste terräng)
+    ...(kind === 'biomes' ? {} : { sculpt: delta, sculptN: deltaN, channels: vals.channels, channelKinds: info.channelKinds }),
   });
-  // kind = 'world' (bygg om terrängen och biomerna) eller 'biomes' (bara biomerna, på samma terräng)
+  // kind = 'world' (generera världen och lägg på det formade), 'edit' (bara det formade, på samma genererade värld)
+  // eller 'biomes' (bara regionerna och biomerna, på samma terräng); väntar flera gäller den största
+  const RANK = { biomes: 1, edit: 2, world: 3 };
   function request(kind = 'world') {
-    if (busy) { dirty = dirty === 'world' || kind === 'world' ? 'world' : 'biomes'; return; }
+    if (busy) { dirty = !dirty || RANK[kind] > RANK[dirty] ? kind : dirty; return; }
     busy = true;
-    note.textContent = kind === 'world' ? 'Building the world…' : 'Placing the regions and biomes…';
-    worker.postMessage({ id: ++sent, recipe: recipe(), only: kind === 'biomes' ? 'biomes' : undefined });
+    note.textContent = kind === 'world' ? 'Building the world…' : kind === 'edit' ? 'Shaping the land…' : 'Placing the regions and biomes…';
+    worker.postMessage({ id: ++sent, recipe: recipe(kind), only: kind === 'world' ? undefined : kind });
   }
   // Vikterna till marken: auto och det målade lagret blandas och delas på två attribut (bio0 och bio1, 4 × 8 bitar)
   function applyBiomes() {
@@ -270,6 +282,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     ground.geometry.dispose();
     ground.geometry = g;
     field = { n: d.n, cell: d.cell, heights: d.heights };
+    if (delta && deltaN !== d.n) { delta = resampleDelta(delta, deltaN, d.n); deltaN = d.n; } // ny världsstorlek
+    channelInfo = d.channels ?? [];
+    buildChannelWater();
     auto = d.biomes;
     applyBiomes();
     applyRegions(d);
@@ -280,7 +295,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sides.geometry.dispose();
     sides.geometry = sideGeometry(field, Math.min(lo, SEABED) - 4);
     rebuildWater();
-    stats = { ms: d.ms, vertices: d.positions.length / 3, triangles: d.index.length / 3, land: Math.round((100 * land) / d.heights.length), top: Math.round(hi), biomeMs: d.biomeMs, coverage: d.coverage };
+    stats = { ms: d.ms || stats.ms, editMs: d.editMs, vertices: d.positions.length / 3, triangles: d.index.length / 3, land: Math.round((100 * land) / d.heights.length), top: Math.round(hi), biomeMs: d.biomeMs, coverage: d.coverage };
     showStats();
     note.textContent = hint();
     const w = waiters; waiters = [];
@@ -303,6 +318,35 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       shownSize = size;
     }
   }
+  // Bäckarnas och åarnas yta: ett band längs varje fåra i vattnets nivå (sluttar nedströms), med strömmen längs
+  // fåran; vikarna fylls av havet. Kanten ligger under marken (bankarna), så bandet syns bara i fåran.
+  let riverWater = null;
+  function buildChannelWater() {
+    const pos = [], idx = [], flow = [], sea = vals.sea ? vals.seaLevel : -Infinity;
+    for (const c of channelInfo) {
+      if (c.sea) continue;
+      let prev = -1;
+      for (const p of c.smp) {
+        if (p.level <= sea + 0.03) { prev = -1; continue; } // ute i havet: havets yta tar över
+        const v = pos.length / 3, r = p.w * 1.35, sp = (1.1 / p.w) ** 0.9;
+        pos.push(p.x + p.tz * r, p.level, p.z - p.tx * r, p.x - p.tz * r, p.level, p.z + p.tx * r);
+        flow.push(p.tx * sp * 0.4, p.tz * sp * 0.4, p.tx * sp * 0.4, p.tz * sp * 0.4); // långsammare vid kanterna
+        if (prev >= 0) idx.push(prev, prev + 1, v, prev + 1, v + 1, v);
+        prev = v;
+      }
+    }
+    if (!pos.length) { if (riverWater) riverWater.mesh.visible = false; return; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    bedAndFlow(g, bedAt, (x, z, i) => [flow[i * 2], flow[i * 2 + 1]]);
+    if (!riverWater) {
+      riverWater = createWater({ geometry: g, level: vals.seaLevel, sky });
+      scene.add(riverWater.mesh);
+      apply();
+    } else { riverWater.mesh.geometry.dispose(); riverWater.mesh.geometry = g; }
+    riverWater.mesh.visible = true;
+  }
   function rebuildWater() {
     water.mesh.geometry.dispose();
     water.mesh.geometry = waterGeometry(vals.seaLevel);
@@ -323,6 +367,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const S = sky.uniforms;
     water.set(waterVals, { dir: atm.keyDir, color: atm.key.color, strength: 1, zenith: S.zenith.value, horizon: S.horizon.value }, { light: atm.key.intensity, ambient: atm.hemi.intensity });
     water.uniforms.rain.value = atm.rain;
+    if (riverWater) {
+      riverWater.set({ ...riverVals, mirror: false }, { dir: atm.keyDir, color: atm.key.color, strength: 1, zenith: S.zenith.value, horizon: S.horizon.value }, { light: atm.key.intensity, ambient: atm.hemi.intensity });
+      riverWater.uniforms.rain.value = atm.rain;
+    }
     U.sea.value = vals.seaLevel; U.seaOn.value = vals.sea ? 1 : 0; U.sand.value = vals.sandBand; U.snow.value = vals.snowline;
     U.cliff.value = Math.cos(vals.cliffAngle * DEG); U.tone.value = vals.grassTone;
     ground.material = MATS[vals.view] ?? shaded;
@@ -353,7 +401,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const set = (k, v) => { vals[k] = v; };
   const COL = { shape: '#c0672e', detail: '#b88a5a', erosion: '#6a8fb0', water: '#3fa6a0', material: '#6aa84f', regions: '#d9a441', region: '#d9a441', climate: '#3f8f3a', brush: '#e0e0e0', sky: '#e0a030' };
   // Vilka kort som syns i vilket steg: World formar landet, Regions delar in det, Biomes klimatet; vädret och Spara i alla
-  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'] };
+  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'], sculpt: ['brush', 'water', 'sky'] };
   const cardOf = {};
   for (const g of info.groups) {
     if (g.id === 'view') continue;
@@ -380,9 +428,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!name) return;
     const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
     // De målade lagren (biomer och regioner) och regionerna följer med receptet
-    const layers = { biomePaint: encodePaint(paint) ?? '', regionPaint: encodePaint(regionPaint) ?? '' }, regions = vals.regions;
-    let r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions });
-    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions, overwrite: true });
+    const layers = { biomePaint: encodePaint(paint) ?? '', regionPaint: encodePaint(regionPaint) ?? '', sculpt: encodeDelta(delta, deltaN) ?? '' }, regions = vals.regions, channels = vals.channels;
+    let r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions, channels });
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions, channels, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
     if (!r.entry) return;
     info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
@@ -413,6 +461,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     regionSel = 0;
     paint = decodePaint(layers?.biomePaint);
     regionPaint = decodePaint(layers?.regionPaint);
+    vals.channels = structuredClone(v.channels ?? []);
+    const sc = decodeDelta(layers?.sculpt);
+    delta = sc?.delta ?? null; deltaN = sc?.n ?? 0;
+    undoStack = [];
     mark(id);
     cards.sync();
     apply();
@@ -421,6 +473,36 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
+    if (step === 'sculpt') {
+      headTitle.textContent = 'Sculpt';
+      headNote.textContent = 'Pick a brush and drag on the land with the left mouse button, or draw water: click points along a stream, river or bay and double-click to finish. The right button turns the view; Ctrl+Z undoes.';
+      sec('Brushes', info.sculptTools.map((x) => toolTile(x.id, x.label, x.help, `sculpt_${x.id}`)));
+      sec('Water', Object.entries(info.channelKinds).map(([id, k]) => toolTile(id, k.label, k.help, `shape_${id}`)));
+      const tools = el('div', 'rtools');
+      const btn = (label, tip, fn, off = false) => { const b = el('button', null, label); b.title = tip; b.onclick = fn; b.disabled = off; tools.append(b); return b; };
+      btn('Undo', 'Undo the last stroke or line (Ctrl+Z)', () => undoLast(), !undoStack.length);
+      if (drawing.length) btn('Finish line', 'Dig the line you are drawing (or double-click, or Enter)', () => finishLine());
+      btn('Clear sculpting', 'Remove all brush strokes and dug water, back to the generated world', () => {
+        if (!confirm('Remove all sculpting and dug water from this world?')) return;
+        pushUndo();
+        delta = null; deltaN = 0; vals.channels = [];
+        mark(null); renderDrawer(); regenerate('edit');
+      }, !delta && !vals.channels.length);
+      body.append(tools);
+      if (vals.channels.length) {
+        const list = el('div', 'rtools');
+        vals.channels.forEach((c, i) => {
+          const b = el('button', null, `✕ ${info.channelKinds[c.kind]?.label ?? c.kind} ${i + 1}`);
+          b.title = 'Fill this line in again';
+          b.onclick = () => { pushUndo(); vals.channels.splice(i, 1); mark(null); renderDrawer(); regenerate('edit'); };
+          list.append(b);
+        });
+        const g = el('section', 'libgroup');
+        g.append(el('h3', null, 'Dug water'), list);
+        body.append(g);
+      }
+      return;
+    }
     if (step === 'regions') {
       headTitle.textContent = 'Regions';
       headNote.textContent = 'Regions are the zones of the world, each with its own climate, theme and colour. Pick one to edit it in the Region card and paint its borders with the left mouse button.';
@@ -459,7 +541,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     headTitle.textContent = 'Worlds';
     headNote.textContent = 'Click a world to start from it. Save your own in the Save card.';
     sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p, id)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions }, x.from, x.layers)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions, channels: x.channels }, x.from, x.layers)));
   }
   // En region i lådan: väljer den för kortet och penseln (Erase suddar); klick igen släpper penseln
   function regionTile(r, i) {
@@ -502,6 +584,28 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     body.append(cards.choiceRow(themeQ, get, set, () => changedRegions()));
     for (const q of info.regionParams) body.append(cards.slider({ ...q, rebuild: true }, get, set, () => { mark(null); regenerate('biomes'); }));
   }
+  // Ett verktyg i Sculpt: en pensel eller en sorts vatten; klick igen släpper det, så att vänsterknappen roterar igen
+  function toolTile(id, label, help, icon) {
+    const f = el('button', `wprof${sculptTool === id ? ' on' : ''}`);
+    f.dataset.tool = id;
+    f.title = help;
+    f.append(el('b', null, label), el('span', 'wmeta', info.channelKinds[id] ? 'click points, double-click to finish' : 'drag on the land'));
+    f.onclick = () => setTool(sculptTool === id ? null : id);
+    return withIcon(el, f, 'maproom', icon, label);
+  }
+  // Ångra: delta och kanalerna före varje drag eller linje (högst 12 steg)
+  function pushUndo() {
+    undoStack.push({ delta: delta?.slice() ?? null, n: deltaN, channels: structuredClone(vals.channels) });
+    if (undoStack.length > 12) undoStack.shift();
+  }
+  function undoLast() {
+    const u = undoStack.pop();
+    if (!u) return;
+    delta = u.delta; deltaN = u.n; vals.channels = u.channels;
+    mark(null);
+    renderDrawer();
+    regenerate('edit');
+  }
   // En biom i lådan: väljer penseln (Erase suddar); klick igen släpper penseln, så att vänsterknappen roterar igen
   function biomeTile(b, i) {
     const f = el('button', `wprof${brushIndex === i && painting ? ' on' : ''}`);
@@ -519,12 +623,15 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // --- Stegen: World formar landet, Regions delar in det, Biomes målar naturen på det; samma värld och scen ---
   // Penseln målar biomer i Biomes och regioner i Regions (brushIndex = biomens eller regionens nummer, −1 suddar);
   // placing: nästa vänsterklick på marken flyttar den valda regionens mittpunkt
-  let step = 'world', painting = false, brushIndex = null, placing = false, regionSel = 0, regionInfo = null;
+  // sculptTool: penseln eller vattnet i Sculpt (raise … noise, stream, river, bay); drawing: linjens punkter i meter
+  let step = 'world', painting = false, brushIndex = null, placing = false, regionSel = 0, regionInfo = null, sculptTool = null, drawing = [];
   function setStep(s) {
     step = s;
     for (const [id, c] of Object.entries(cardOf)) c.hidden = !(IN_STEP[s] ?? IN_STEP.world).includes(id);
     vals.view = s === 'biomes' || s === 'regions' ? s : 'shaded';
     placing = false;
+    sculptTool = null;
+    cancelLine();
     setBrush(null);
     renderDrawer();
     apply();
@@ -535,14 +642,25 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function setBrush(i) {
     painting = i !== null && (step === 'biomes' || step === 'regions');
     brushIndex = painting ? i : null;
-    const free = painting || placing;
+    const free = painting || placing || !!sculptTool;
     controls.mouseButtons = free ? { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE } : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     U.brushOn.value = 0;
     for (const b of body.querySelectorAll('.wprof[data-pick]')) b.classList.toggle('on', painting ? b.dataset.pick === String(i) : step === 'regions' && b.dataset.pick === String(regionSel));
+    for (const b of body.querySelectorAll('.wprof[data-tool]')) b.classList.toggle('on', b.dataset.tool === sculptTool);
     note.textContent = hint();
   }
+  // Ett verktyg i Sculpt (null släpper det); en halvritad linje släpps när man byter
+  function setTool(id) {
+    sculptTool = step === 'sculpt' ? id : null;
+    if (!info.channelKinds[sculptTool]) cancelLine();
+    setBrush(null);
+  }
   const pickName = (i) => (i < 0 ? 'erase' : step === 'regions' ? vals.regions[i]?.name : info.biomes[i].label.toLowerCase());
-  const hint = () => (placing ? `Click on the land to move the centre of ${vals.regions[regionSel]?.name}` : painting ? `Painting ${pickName(brushIndex)}: left button paints, right button turns, scroll zooms` : 'Drag to orbit, scroll to zoom');
+  const hint = () => (placing ? `Click on the land to move the centre of ${vals.regions[regionSel]?.name}`
+    : painting ? `Painting ${pickName(brushIndex)}: left button paints, right button turns, scroll zooms`
+      : info.channelKinds[sculptTool] ? `${info.channelKinds[sculptTool].label}: click points along it (${drawing.length} so far), double-click or Enter to dig, Esc to cancel`
+        : sculptTool ? `${info.sculptTools.find((x) => x.id === sculptTool)?.label}: drag on the land, right button turns, Ctrl+Z undoes`
+          : 'Drag to orbit, scroll to zoom');
 
   // Var pekaren träffar marken: en stråle från kameran, stegvis mot höjdfältet och sedan halvering
   const ndc = new THREE.Vector2(), rc = new THREE.Raycaster();
@@ -580,7 +698,113 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; if (regions) request('biomes'); else applyBiomes(); }); }
     mark(null);
   }
+  // --- Skulpteringen: penseltryck direkt på marken som syns (höjderna, hörnen och normalerna i de rader som ändrats),
+  // och workern bygger om marken, regionerna och biomerna när man släpper ---
+  let sculptDown = false, lastDab = null, rampA = null, flattenY = 0;
+  function ensureDelta() { if (!delta || deltaN !== field.n) { delta = new Float32Array(field.n * field.n); deltaN = field.n; } }
+  function updateRows(r) {
+    if (!r) return;
+    const { n, cell, heights: h } = field, g = ground.geometry, P = g.getAttribute('position'), N = g.getAttribute('normal');
+    const j0 = Math.max(0, r.j0 - 1), j1 = Math.min(n - 1, r.j1 + 1);
+    for (let j = j0; j <= j1; j++) for (let i = 0; i < n; i++) {
+      const k = j * n + i;
+      P.array[k * 3 + 1] = h[k];
+      const hx = (h[k + (i < n - 1 ? 1 : 0)] - h[k - (i > 0 ? 1 : 0)]) / (cell * ((i > 0) + (i < n - 1)));
+      const hz = (h[k + (j < n - 1 ? n : 0)] - h[k - (j > 0 ? n : 0)]) / (cell * ((j > 0) + (j < n - 1)));
+      const l = Math.hypot(hx, 1, hz);
+      N.array[k * 3] = -hx / l; N.array[k * 3 + 1] = 1 / l; N.array[k * 3 + 2] = -hz / l;
+    }
+    for (const a of [P, N]) { a.addUpdateRange(j0 * n * 3, (j1 - j0 + 1) * n * 3); a.needsUpdate = true; }
+  }
+  function sculptAt(ev) {
+    const p = groundAt(ev);
+    U.brushOn.value = p ? 1 : 0;
+    if (!p) return;
+    U.brush.value.set(p.x, p.z, vals.brush);
+    if (!sculptDown || sculptTool === 'ramp') return;
+    // Tryck med jämna mellanrum längs draget (en femtedel av penseln), så att snabba drag inte blir prickiga
+    const gap = Math.max(field.cell, vals.brush * 0.2), from = lastDab ?? p, steps = Math.max(1, Math.ceil(Math.hypot(p.x - from.x, p.z - from.z) / gap));
+    if (lastDab && steps === 1 && Math.hypot(p.x - from.x, p.z - from.z) < gap) return;
+    const { n, cell, heights: h } = field;
+    let rows = null;
+    for (let s = lastDab ? 1 : 0; s <= steps; s++) {
+      const x = from.x + ((p.x - from.x) * s) / steps, z = from.z + ((p.z - from.z) * s) / steps;
+      const r = brushDab(h, delta, n, cell, half, x, z, { tool: sculptTool, radius: vals.brush, strength: vals.brushStrength, target: flattenY, seed: vals.seed });
+      if (r) rows = rows ? { j0: Math.min(rows.j0, r.j0), j1: Math.max(rows.j1, r.j1) } : r;
+    }
+    lastDab = p;
+    updateRows(rows);
+  }
+  function sculptUp(ev) {
+    if (!sculptDown) return;
+    sculptDown = false;
+    canvas.releasePointerCapture(ev.pointerId);
+    if (sculptTool === 'ramp' && rampA) {
+      const p = groundAt(ev);
+      if (p) updateRows(rampStroke(field.heights, delta, field.n, field.cell, half, rampA, { ...p, y: bedAt(p.x, p.z) }, { radius: vals.brush, strength: Math.max(0.5, vals.brushStrength) }));
+      rampA = null;
+    }
+    lastDab = null;
+    mark(null);
+    renderDrawer();
+    regenerate('edit');
+  }
+  // Linjen som ritas (bäck, å eller vik): en tråd på marken genom punkterna, tills den grävs
+  const lineGeo = new THREE.BufferGeometry(), lineMat = new THREE.LineBasicNodeMaterial({ color: '#ffffff', depthTest: false, transparent: true });
+  const lineMesh = new THREE.Line(lineGeo, lineMat);
+  lineMesh.renderOrder = 10;
+  lineMesh.frustumCulled = false;
+  scene.add(lineMesh);
+  function showLine() {
+    const pts = [];
+    for (let k = 0; k < drawing.length; k++) {
+      const a = drawing[k], b = drawing[k + 1] ?? a, m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, field?.cell ?? 1)));
+      for (let s = 0; s < (k + 1 < drawing.length ? m : 1); s++) { const x = a[0] + ((b[0] - a[0]) * s) / m, z = a[1] + ((b[1] - a[1]) * s) / m; pts.push(x, bedAt(x, z) + 0.6, z); }
+    }
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    lineMesh.visible = pts.length > 3;
+  }
+  function cancelLine() { drawing = []; if (lineMesh) showLine(); }
+  function finishLine() {
+    if (drawing.length >= 2 && info.channelKinds[sculptTool]) {
+      pushUndo();
+      vals.channels.push({ kind: sculptTool, points: drawing.map(([x, z]) => [x / sizeOf(), z / sizeOf()]) });
+      mark(null);
+      regenerate('edit');
+    }
+    cancelLine();
+    renderDrawer();
+    note.textContent = hint();
+  }
+  canvas.addEventListener('dblclick', () => { if (info.channelKinds[sculptTool]) finishLine(); });
+  addEventListener('keydown', (ev) => {
+    if (!running || step !== 'sculpt' || /input|select|textarea/i.test(ev.target?.tagName ?? '')) return;
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); undoLast(); }
+    else if (ev.key === 'Enter' && drawing.length) finishLine();
+    else if (ev.key === 'Escape') { if (drawing.length) { cancelLine(); renderDrawer(); note.textContent = hint(); } else setTool(null); }
+  });
   canvas.addEventListener('pointerdown', (ev) => {
+    if (sculptTool && ev.button === 0 && field) {
+      const p = groundAt(ev);
+      if (!p) return;
+      if (info.channelKinds[sculptTool]) {
+        const last = drawing.at(-1);
+        if (!last || Math.hypot(p.x - last[0], p.z - last[1]) > Math.max(1, field.cell * 2)) drawing.push([p.x, p.z]); // dubbelklicket lägger inte till en punkt till
+        showLine();
+        if (drawing.length === 1) renderDrawer();
+        note.textContent = hint();
+        return;
+      }
+      pushUndo(); // före lagret skapas, så att det första draget ångras tillbaka till en orörd värld
+      ensureDelta();
+      sculptDown = true;
+      canvas.setPointerCapture(ev.pointerId);
+      flattenY = bedAt(p.x, p.z);
+      if (sculptTool === 'ramp') rampA = { ...p, y: flattenY };
+      lastDab = null;
+      sculptAt(ev);
+      return;
+    }
     if (placing && ev.button === 0) {
       const p = groundAt(ev);
       if (!p) return;
@@ -593,8 +817,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!painting || ev.button !== 0) return;
     down = true; canvas.setPointerCapture(ev.pointerId); strokeAt(ev);
   });
-  canvas.addEventListener('pointermove', (ev) => { if (painting) strokeAt(ev); });
-  canvas.addEventListener('pointerup', (ev) => { if (!down) return; down = false; canvas.releasePointerCapture(ev.pointerId); });
+  canvas.addEventListener('pointermove', (ev) => { if (painting) strokeAt(ev); else if (sculptTool && !info.channelKinds[sculptTool]) sculptAt(ev); });
+  canvas.addEventListener('pointerup', (ev) => { sculptUp(ev); if (!down) return; down = false; canvas.releasePointerCapture(ev.pointerId); });
   canvas.addEventListener('pointerleave', () => { if (!down) U.brushOn.value = 0; });
   renderDrawer();
   cards.sync();
@@ -638,7 +862,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const block = (b, title, text) => { b.replaceChildren(el('b', null, title), el('div', 'vals', text)); };
   const clock = (hh) => `${String(Math.floor(hh)).padStart(2, '0')}:${String(Math.round((hh % 1) * 60) % 60).padStart(2, '0')}`;
   function showStats() {
-    block(fLand, 'World', `${sizeLabel[vals.worldSize] ?? vals.worldSize} square · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms`);
+    const shaped = delta || vals.channels.length ? ` · shaped${vals.channels.length ? `, ${vals.channels.length} dug` : ''} (${stats.editMs ?? 0} ms)` : '';
+    block(fLand, 'World', `${sizeLabel[vals.worldSize] ?? vals.worldSize} square · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms${shaped}`);
     const top = Object.entries(stats.coverage ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4); // andelar av landet
     block(fBiomes, 'Biomes', `${top.map(([id, v]) => `${info.biomes.find((x) => x.id === id)?.label ?? id} ${v} %`).join(' · ')} · ${stats.biomeMs} ms`);
     block(fRegions, 'Regions', vals.regions.map((r, i) => `${r.name} ${regionInfo?.coverage?.[i] ?? 0} %`).join(' · '));
@@ -649,13 +874,14 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   await regenerate();
 
   // --- Rendering ---
-  let running = false, last = performance.now(), frames = 0, fpsT = last, fps = 0, time = 0;
+  let last = performance.now(), frames = 0, fpsT = last, fps = 0, time = 0;
   function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
   addEventListener('resize', () => { if (running) resize(); });
   const gate = frameGate();
   function tick(dt) {
     time += dt;
     water.update(time);
+    riverWater?.update(time);
     controls.update();
     moveLabels();
     atm.update(dt, time, camera);
@@ -699,6 +925,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     scene, camera, controls, renderer, vals, apply, regenerate, atm, water, setStep, setBrush,
     get step() { return step; }, get paint() { return paint; }, get weights() { return final; },
     get regionPaint() { return regionPaint; }, get regionInfo() { return regionInfo; }, get regionSel() { return regionSel; },
+    get delta() { return delta; }, get channelInfo() { return channelInfo; }, get field() { return field; }, get sculptTool() { return sculptTool; }, setTool,
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),
   };
 }

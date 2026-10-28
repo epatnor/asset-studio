@@ -13,6 +13,7 @@ import { createChannel } from '../../shared/terrain/shapes.js';
 import { generateTerrain, worldGrid } from '../../shared/terrain/generate.js';
 import { computeBiomes } from '../../shared/terrain/biomes.js';
 import { regionField } from '../../shared/terrain/regions.js';
+import { applyEdits, brushDab, rampStroke, encodeDelta, decodeDelta } from '../../shared/terrain/sculpt.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -148,7 +149,50 @@ async function landscapes() {
   return { ok, landscapes: out };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'landscapes') {
+// Steget Sculpt på Green isle: penslar (höj, jämna ut, ramp), en å och en bäck från toppen och en vik från havet.
+// Lagret ska överleva texten (fel under 6 mm), ytan i bäck och å får aldrig stiga nedströms, botten ska ligga under
+// vattnet, viken under havet, inga NaN eller spetsar, och kanalerna får inte bygga väggar ur havsbottnen.
+async function sculptScene() {
+  const T = JSON.parse(await readFile(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
+  const R = { ...Object.fromEntries(T.params.map((q) => [q.key, q.default])), ...T.presets.island, channelKinds: T.channelKinds };
+  const t = generateTerrain({ ...R, ...worldGrid(Number(R.worldSize)) }), { n, cell, half, size } = t;
+  let top = 0;
+  for (let k = 0; k < n * n; k++) if (t.heights[k] > t.heights[top]) top = k;
+  const bx = -half + (top % n) * cell, bz = -half + Math.floor(top / n) * cell;
+  const h = t.heights.slice(), delta = new Float32Array(n * n);
+  for (let s = 0; s < 20; s++) brushDab(h, delta, n, cell, half, bx - 100, bz, { tool: 'raise', radius: 30, strength: 0.5 });
+  for (let s = 0; s < 5; s++) brushDab(h, delta, n, cell, half, bx - 100, bz, { tool: 'smooth', radius: 30, strength: 0.5 });
+  rampStroke(h, delta, n, cell, half, { x: bx + 50, z: bz, y: 30 }, { x: bx + 150, z: bz, y: 10 }, { radius: 12 });
+  const text = encodeDelta(delta, n), back = decodeDelta(text);
+  let err = 0;
+  for (let k = 0; k < n * n; k++) err = Math.max(err, Math.abs(back.delta[k] - delta[k]));
+  const u = (x) => x / size;
+  const channels = [
+    { kind: 'river', points: [[u(bx), u(bz)], [u(bx - 150), u(bz + 60)], [u(bx - 300), u(bz + 20)], [-0.49, u(bz)]] },
+    { kind: 'stream', points: [[u(bx + 20), u(bz - 30)], [u(bx + 120), u(bz - 120)], [u(bx + 250), u(bz - 160)]] },
+    { kind: 'bay', points: [[0, 0.49], [0.02, 0.3], [0, 0.2]] },
+  ];
+  const e = applyEdits(t, { ...R, sculpt: back.delta, sculptN: back.n, channels });
+  const out = { encoded_chars: text.length, roundtrip_err_m: r2(err), edit_ms: e.editMs, nan: e.heights.some((v) => !Number.isFinite(v)), spikes: spikes(e.heights, n), channels: {} };
+  let ok = err <= 0.006 && !out.nan && out.spikes <= LIMITS.landscape_spikes;
+  for (const c of e.channels) {
+    let rises = 0, dry = 0;
+    for (let i = 1; i < c.smp.length; i++) if (c.smp[i].level > c.smp[i - 1].level + 1e-6) rises++;
+    for (const p of c.smp) if (e.heightAt(p.x, p.z) > p.level - 0.05) dry++; // botten i mitten ska ligga under ytan
+    out.channels[c.kind] = { samples: c.smp.length, level_rises: rises, dry_centre: dry, level_from: r2(c.smp[0].level), level_to: r2(c.smp.at(-1).level) };
+    ok &&= rises === 0 && dry <= c.smp.length * 0.02;
+  }
+  const mouth = e.heightAt(0.01 * size, 0.3 * size);
+  let raised = 0;
+  for (let k = 0; k < n * n; k++) if (t.heights[k] < -0.05 && e.heights[k] > t.heights[k] + 0.05) raised++;
+  Object.assign(out, { bay_bed_m: r2(mouth), seabed_raised_corners: raised });
+  ok &&= mouth < -2 && raised <= 50;
+  return { ok, scene: 'sculpt', ...out };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'sculpt') {
+  console.log(JSON.stringify(await sculptScene()));
+} else if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'landscapes') {
   const r = await landscapes();
   console.log(JSON.stringify({ ...r, limits: { spikes: LIMITS.landscape_spikes, edge: 'under the sea by 1 m' } }));
 } else if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -673,9 +673,14 @@ biomeBtn.dataset.dept = 'maproom';
 biomeBtn.dataset.step = 'biomes';
 biomeBtn.title = 'The Map Room, step 3: biomes from the geography (height, slope, wetness, tree line, distance to the sea), and painted by hand';
 $('kinds').append(biomeBtn);
+// Sculpt (steg 4): penslar och grävt vatten (bäckar, åar och vikar) ovanpå den genererade världen
+const sculptBtn = el('button', null, 'Sculpt');
+sculptBtn.dataset.dept = 'maproom';
+sculptBtn.dataset.step = 'sculpt';
+sculptBtn.title = 'The Map Room, step 4: shape the world by hand with brushes, and dig streams, rivers and bays';
+$('kinds').append(sculptBtn);
 let terrainStep = 'world';
 for (const [label, tip] of [
-  ['Sculpt', 'step 4: shape the world by hand, and dig streams, rivers and bays'],
   ['Paint', 'step 5: paint the ground layers, by rules and with a brush'],
   ['Populate', 'step 6: fill the world with trees, plants and rocks by geography, biome and ground'],
   ['Explore', 'step 7: walk or fly through the world, fine-tune it and place houses and key objects'],
@@ -921,6 +926,7 @@ waterBtn.onclick = async () => {
 // Ett steg i Kartrummet: samma flik (studio/terrain.js), ett annat steg
 landBtn.onclick = () => openTerrain('world');
 regionBtn.onclick = () => openTerrain('regions');
+sculptBtn.onclick = () => openTerrain('sculpt');
 biomeBtn.onclick = () => openTerrain('biomes');
 async function openTerrain(stepId) {
   terrainStep = stepId;
@@ -1088,7 +1094,7 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet(-biomes), #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet(-regions, -biomes, -sculpt), #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
 else if (location.hash === '#vind') windBtn.onclick();
@@ -1097,5 +1103,6 @@ else if (location.hash === '#vatten') waterBtn.onclick();
 else if (location.hash === '#kartrummet') landBtn.onclick();
 else if (location.hash === '#kartrummet-biomes') biomeBtn.onclick();
 else if (location.hash === '#kartrummet-regions') regionBtn.onclick();
+else if (location.hash === '#kartrummet-sculpt') sculptBtn.onclick();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();

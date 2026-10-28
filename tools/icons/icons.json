@@ -749,6 +749,25 @@
         },
         null
       ]
+    },
+    "maproom_water": {
+      "cols": 2,
+      "rows": 2,
+      "aspect": "1:1",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/shape_stream",
+          "prompt": "a small winding stream cutting through green grass, seen from above at an angle, with a few stones"
+        },
+        {
+          "id": "maproom/shape_bay",
+          "prompt": "a sheltered sea bay cutting into a green coastline, turquoise water, seen from above"
+        },
+        null,
+        null
+      ]
     }
   }
 }
