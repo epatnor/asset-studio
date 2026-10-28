@@ -131,4 +131,4 @@ Varje generator ska uppfylla detta innan den räknas som klar:
 | Verktyg | Följer guiden | Saknas |
 |---|---|---|
 | `create_tree` | Till stor del (v2) | Tydligare skuggkontrast, translucens och vind (i klienten), LOD för grenar. Se roadmapen. |
-| `generate_texture` | Ja (via `style.json`) | Normal- och roughness-kartor. `tile` blandar med en förskjuten kopia, vilket ger genomskinliga "spökformer" på oregelbundna mönster (kullersten); fungerar bra på bark och fibrösa ytor. Behöver en bättre sömlös metod (t.ex. sömlös generering i ComfyUI eller graph-cut-sömmar). |
+| `generate_texture` | Ja (via `style.json`) | Normal- och roughness-kartor. Nya material görs med `krea_tex.py` (sömlöst redan i genereringen, [texture-krea.md](texture-krea.md)); `tile` klipper sömmarna med graph-cut i stället för att tona. |

@@ -1,0 +1,621 @@
+{
+ "_doc": "Material för krea_tex.py (docs/texture-krea.md): prompt beskriver bara materialet; vy (surface uppifrån, facade rakt framifrån, tile för bark och sten), husets stil och sömlös-instruktioner läggs till. targets: vilka filer i assets/ en vald variant ersätter (color, normal, height, ao, rough, orm). base + denoise: en sömlös layoutbild som Krea målar över (struktur som måste stämma, t.ex. murverkets skift). flatten: hur mycket stora ljusfläckar jämnas ut (0..1). normal: normalkartans styrka.",
+ "_views": {
+  "tile": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background",
+  "common": "uniform density across the whole image, no vignette, no focal point, no text"
+ },
+ "materials": {
+  "planks": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "weathered wooden floor planks running vertically, warm brown wood with soft grain, a few knots, slightly darker gaps between boards",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_planks.png",
+    "normal": "assets/textures/surface_planks_normal.png"
+   }
+  },
+  "dirt": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "bare forest ground soil, warm brown earth with a few tiny pebbles and soft darker patches",
+   "normal": 0.8,
+   "targets": {
+    "color": "assets/textures/surface_dirt.png",
+    "normal": "assets/textures/surface_dirt_normal.png"
+   }
+  },
+  "grass": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "short lush lawn seen from directly above, a dense carpet of grass blade tips and small clumps in fresh greens with lighter yellow-green tips, no individual tall blades",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/surface_grass.png",
+    "normal": "assets/textures/surface_grass_normal.png"
+   }
+  },
+  "meadow": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "wild meadow ground seen from directly above, dense green grass carpet with scattered tiny yellow and white flower heads seen face-on as small round dots, and clover leaves",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/surface_meadow.png",
+    "normal": "assets/textures/surface_meadow_normal.png"
+   }
+  },
+  "path": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "trodden forest footpath of packed light brown earth with small embedded pebbles and a few dry leaves",
+   "normal": 0.8,
+   "targets": {
+    "color": "assets/textures/surface_path.png",
+    "normal": "assets/textures/surface_path_normal.png"
+   }
+  },
+  "road": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "old cobblestone road of rounded light grey stones tightly packed, soft warm dust between the stones",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/surface_road.png",
+    "normal": "assets/textures/surface_road_normal.png"
+   }
+  },
+  "cliff": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "stylized cliff rock face with large flat planes and soft fractures, light grey stone with cool blue-grey shadows",
+   "normal": 1.6,
+   "targets": {
+    "color": "assets/textures/surface_cliff.png",
+    "normal": "assets/textures/surface_cliff_normal.png"
+   }
+  },
+  "stone": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "large smooth rounded grey flagstones and rock surface with soft cracks, light grey with subtle warm tint",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_stone.png",
+    "normal": "assets/textures/surface_stone_normal.png"
+   }
+  },
+  "gravel": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "loose gravel of small rounded grey and beige pebbles seen from above",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_gravel.png",
+    "normal": "assets/textures/surface_gravel_normal.png"
+   }
+  },
+  "riverbed": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "shallow riverbed of smooth rounded pebbles in soft blue-grey, beige and brown, wet sheen",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_riverbed.png",
+    "normal": "assets/textures/surface_riverbed_normal.png"
+   }
+  },
+  "mud": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "soft wet dark brown mud with gentle ripples and a few puddle highlights",
+   "normal": 0.9,
+   "targets": {
+    "color": "assets/textures/surface_mud.png",
+    "normal": "assets/textures/surface_mud_normal.png"
+   }
+  },
+  "sand": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "fine warm beach sand with gentle wind ripples and a few tiny shell fragments",
+   "normal": 0.7,
+   "targets": {
+    "color": "assets/textures/surface_sand.png",
+    "normal": "assets/textures/surface_sand_normal.png"
+   }
+  },
+  "forestfloor": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "forest floor seen from directly above, flat mix of moss patches, pine needles, small twigs and fallen leaves lying flat on dark earth",
+   "normal": 0.8,
+   "targets": {
+    "color": "assets/textures/surface_forestfloor.png",
+    "normal": "assets/textures/surface_forestfloor_normal.png"
+   }
+  },
+  "snow": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "fresh soft snow surface with gentle drifts and faint blue shadows",
+   "normal": 0.5,
+   "targets": {
+    "color": "assets/textures/surface_snow.png",
+    "normal": "assets/textures/surface_snow_normal.png"
+   }
+  },
+  "pondbed": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "murky pond bottom seen from above, fine dark gravel and silt with a few sunken brown leaves, small twigs and tiny green algae patches",
+   "normal": 1.0,
+   "targets": {
+    "color": "assets/textures/surface_pondbed.png",
+    "normal": "assets/textures/surface_pondbed_normal.png"
+   }
+  },
+  "cobblestone": {
+   "group": "ground",
+   "view": "surface",
+   "prompt": "old cobblestone pavement of rounded light grey and warm beige stones tightly packed, soft dust in the joints",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/cobblestone.png"
+   }
+  },
+  "ground_lawn": {
+   "group": "grassground",
+   "view": "surface",
+   "prompt": "short dense lawn grass carpet in fresh greens with small darker soil gaps",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/ground_lawn.png"
+   }
+  },
+  "ground_lush": {
+   "group": "grassground",
+   "view": "surface",
+   "prompt": "lush deep green grass carpet with rich dark soil showing between dense tufts",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/ground_lush.png"
+   }
+  },
+  "ground_meadow": {
+   "group": "grassground",
+   "view": "surface",
+   "prompt": "meadow grass carpet with clover leaves and scattered tiny white and yellow flower dots",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/ground_meadow.png"
+   }
+  },
+  "ground_pampas": {
+   "group": "grassground",
+   "view": "surface",
+   "prompt": "dry pale golden grass carpet over light sandy soil, soft straw tones",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/ground_pampas.png"
+   }
+  },
+  "ground_steppe": {
+   "group": "grassground",
+   "view": "surface",
+   "prompt": "dry yellow-green steppe grass in sparse tufts with patches of dusty light brown soil",
+   "normal": 0.6,
+   "targets": {
+    "color": "assets/textures/ground_steppe.png"
+   }
+  },
+  "bark_oak": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "oak tree bark with deep vertical furrows and thick rugged ridges, warm gray-brown with faint moss-green hints in the cracks, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_oak_stylized.png",
+    "normal": "assets/textures/bark_oak_stylized_normal.png",
+    "height": "assets/textures/bark_oak_stylized_height.png",
+    "ao": "assets/textures/bark_oak_stylized_ao.png",
+    "rough": "assets/textures/bark_oak_stylized_rough.png",
+    "orm": "assets/textures/bark_oak_stylized_orm.png"
+   }
+  },
+  "bark_birch": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "white birch bark, creamy white with short horizontal dark gray lenticel dashes and a few black diamond-shaped scars, soft peeling bands, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_birch_stylized.png",
+    "normal": "assets/textures/bark_birch_stylized_normal.png",
+    "height": "assets/textures/bark_birch_stylized_height.png",
+    "ao": "assets/textures/bark_birch_stylized_ao.png",
+    "rough": "assets/textures/bark_birch_stylized_rough.png",
+    "orm": "assets/textures/bark_birch_stylized_orm.png"
+   }
+  },
+  "bark_pine": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "scots pine bark of large flat muted orange-brown and gray plates separated by dark cracks, plates stacked vertically, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_pine_stylized.png",
+    "normal": "assets/textures/bark_pine_stylized_normal.png",
+    "height": "assets/textures/bark_pine_stylized_height.png",
+    "ao": "assets/textures/bark_pine_stylized_ao.png",
+    "rough": "assets/textures/bark_pine_stylized_rough.png",
+    "orm": "assets/textures/bark_pine_stylized_orm.png"
+   }
+  },
+  "bark_spruce": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "spruce bark, gray-brown with small rounded flaky scales, fine and even, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_spruce_stylized.png",
+    "normal": "assets/textures/bark_spruce_stylized_normal.png",
+    "height": "assets/textures/bark_spruce_stylized_height.png",
+    "ao": "assets/textures/bark_spruce_stylized_ao.png",
+    "rough": "assets/textures/bark_spruce_stylized_rough.png",
+    "orm": "assets/textures/bark_spruce_stylized_orm.png"
+   }
+  },
+  "bark_cherry": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "cherry tree bark, smooth reddish-brown with horizontal lenticel bands, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_cherry_stylized.png",
+    "normal": "assets/textures/bark_cherry_stylized_normal.png",
+    "height": "assets/textures/bark_cherry_stylized_height.png",
+    "ao": "assets/textures/bark_cherry_stylized_ao.png",
+    "rough": "assets/textures/bark_cherry_stylized_rough.png",
+    "orm": "assets/textures/bark_cherry_stylized_orm.png"
+   }
+  },
+  "bark_smooth": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "smooth beech bark, soft neutral gray with a faint cool tint and gentle mottled lighter patches, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_smooth_stylized.png",
+    "normal": "assets/textures/bark_smooth_stylized_normal.png",
+    "height": "assets/textures/bark_smooth_stylized_height.png",
+    "ao": "assets/textures/bark_smooth_stylized_ao.png",
+    "rough": "assets/textures/bark_smooth_stylized_rough.png",
+    "orm": "assets/textures/bark_smooth_stylized_orm.png"
+   }
+  },
+  "bark_furrowed": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "deeply furrowed bark with long vertical interlacing ridges, dark brown-gray, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_furrowed_stylized.png",
+    "normal": "assets/textures/bark_furrowed_stylized_normal.png",
+    "height": "assets/textures/bark_furrowed_stylized_height.png",
+    "ao": "assets/textures/bark_furrowed_stylized_ao.png",
+    "rough": "assets/textures/bark_furrowed_stylized_rough.png",
+    "orm": "assets/textures/bark_furrowed_stylized_orm.png"
+   }
+  },
+  "bark_weathered": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "old weathered gray bark, silvery tones with long vertical cracks and small pale lichen patches, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_weathered_stylized.png",
+    "normal": "assets/textures/bark_weathered_stylized_normal.png",
+    "height": "assets/textures/bark_weathered_stylized_height.png",
+    "ao": "assets/textures/bark_weathered_stylized_ao.png",
+    "rough": "assets/textures/bark_weathered_stylized_rough.png",
+    "orm": "assets/textures/bark_weathered_stylized_orm.png"
+   }
+  },
+  "bark_generic": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "tree bark with soft vertical ridges and furrows, warm medium brown, bark grain running vertically",
+   "normal": 1.4,
+   "targets": {
+    "color": "assets/textures/bark_stylized.png",
+    "normal": "assets/textures/bark_stylized_normal.png",
+    "height": "assets/textures/bark_stylized_height.png"
+   }
+  },
+  "bark_mossy": {
+   "group": "bark",
+   "view": "tile",
+   "prompt": "tree bark with a soft velvety carpet of moss filling the furrows, muted brown bark ridges running vertically, moss in small fuzzy patches, no leaves",
+   "normal": 1.3,
+   "targets": {
+    "color": "assets/textures/bark_mossy.png",
+    "normal": "assets/textures/bark_mossy_normal.png",
+    "height": "assets/textures/bark_mossy_height.png"
+   }
+  },
+  "rock": {
+   "group": "rock",
+   "view": "tile",
+   "prompt": "natural boulder rock surface with large flat faceted planes, soft chipped edges and a few thin cracks, light warm gray stone with cool blue-gray tints, one continuous rock, no tiles, no paving, no mortar joints",
+   "normal": 1.6,
+   "targets": {
+    "color": "assets/textures/rock_stylized.png",
+    "normal": "assets/textures/rock_stylized_normal.png",
+    "height": "assets/textures/rock_stylized_height.png"
+   }
+  },
+  "stone_painted": {
+   "group": "rock",
+   "view": "tile",
+   "prompt": "smooth weathered boulder stone surface, soft gray with faint warm and green tints and gentle chips",
+   "normal": 1.3,
+   "targets": {
+    "color": "assets/textures/stone_painted.png"
+   }
+  },
+  "moss": {
+   "group": "rock",
+   "view": "surface",
+   "prompt": "dense soft moss carpet of small rounded clumps in fresh and olive greens",
+   "normal": 1.0,
+   "targets": {
+    "color": "assets/textures/moss_stylized.png"
+   }
+  },
+  "moss_painted": {
+   "group": "rock",
+   "view": "surface",
+   "prompt": "soft cushion moss carpet in fresh and olive greens with a few darker hollows and small lighter tips",
+   "normal": 1.0,
+   "targets": {
+    "color": "assets/textures/moss_painted.png"
+   }
+  },
+  "kit_masonry": {
+   "group": "kit",
+   "view": "facade",
+   "size": [
+    1024,
+    512
+   ],
+   "base": "build/krea/_bases/kit_masonry.png",
+   "denoise": 0.5,
+   "flatten": 0.4,
+   "prompt": "rough-cut fieldstone masonry wall in irregular horizontal courses with recessed light mortar joints, warm gray stones with subtle beige and blue tints",
+   "normal": 1.5,
+   "targets": {
+    "color": "assets/textures/kit_masonry.png",
+    "normal": "assets/textures/kit_masonry_normal.png",
+    "height": "assets/textures/kit_masonry_height.png"
+   }
+  },
+  "kit_slate": {
+   "group": "kit",
+   "view": "facade",
+   "size": [
+    1024,
+    1024
+   ],
+   "base": "build/krea/_bases/kit_slate.png",
+   "denoise": 0.65,
+   "flatten": 0.4,
+   "prompt": "rows of overlapping rounded slate roof shingles in straight horizontal rows, cool blue-gray",
+   "normal": 1.5,
+   "targets": {
+    "color": "assets/textures/kit_slate.png",
+    "normal": "assets/textures/kit_slate_normal.png",
+    "height": "assets/textures/kit_slate_height.png"
+   }
+  },
+  "bld_fantasy_base": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "chunky rounded fieldstones in thick light mortar, cool gray-blue stone, irregular sizes",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_fantasy_base.png",
+    "normal": "assets/textures/surface_bld_fantasy_base_normal.png"
+   }
+  },
+  "bld_fantasy_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "smooth cream white plaster wall with soft uneven painted patches",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_fantasy_wall.png",
+    "normal": "assets/textures/surface_bld_fantasy_wall_normal.png"
+   }
+  },
+  "bld_fantasy_roof": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "rows of overlapping rounded slate roof shingles, slightly uneven, cool blue-gray",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_fantasy_roof.png",
+    "normal": "assets/textures/surface_bld_fantasy_roof_normal.png"
+   }
+  },
+  "bld_fantasy_trim": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "dark brown timber beam with long straight wood grain running horizontally",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_fantasy_trim.png",
+    "normal": "assets/textures/surface_bld_fantasy_trim_normal.png"
+   }
+  },
+  "bld_rpg_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "horizontal weathered wooden log planks with dark gaps, warm brown",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_rpg_wall.png",
+    "normal": "assets/textures/surface_bld_rpg_wall_normal.png"
+   }
+  },
+  "bld_rpg_roof": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "thick golden straw thatch roof, bundled straw strands running downward",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_rpg_roof.png",
+    "normal": "assets/textures/surface_bld_rpg_roof_normal.png"
+   }
+  },
+  "bld_steampunk_base": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "large dark sooty granite blocks in even courses",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_steampunk_base.png",
+    "normal": "assets/textures/surface_bld_steampunk_base_normal.png"
+   }
+  },
+  "bld_steampunk_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "red-brown brick wall in running bond with light mortar",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_steampunk_wall.png",
+    "normal": "assets/textures/surface_bld_steampunk_wall_normal.png"
+   }
+  },
+  "bld_steampunk_roof": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "riveted copper roof panels with soft green patina streaks",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_steampunk_roof.png",
+    "normal": "assets/textures/surface_bld_steampunk_roof_normal.png"
+   }
+  },
+  "bld_steampunk_trim": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "polished brass metal band with round rivets",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_steampunk_trim.png",
+    "normal": "assets/textures/surface_bld_steampunk_trim_normal.png"
+   }
+  },
+  "bld_modern_base": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "smooth light gray poured concrete with faint form lines",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_modern_base.png",
+    "normal": "assets/textures/surface_bld_modern_base_normal.png"
+   }
+  },
+  "bld_modern_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "horizontal painted wooden siding boards, clean and even",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_modern_wall.png",
+    "normal": "assets/textures/surface_bld_modern_wall_normal.png"
+   }
+  },
+  "bld_modern_roof": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "rows of dark gray concrete roof tiles",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_modern_roof.png",
+    "normal": "assets/textures/surface_bld_modern_roof_normal.png"
+   }
+  },
+  "bld_modern_trim": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "smooth white painted wood board, faint grain",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_modern_trim.png",
+    "normal": "assets/textures/surface_bld_modern_trim_normal.png"
+   }
+  },
+  "bld_future_base": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "smooth light gray composite panels with thin dark seams",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_future_base.png",
+    "normal": "assets/textures/surface_bld_future_base_normal.png"
+   }
+  },
+  "bld_future_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "clean white ceramic composite panels with thin panel lines",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_future_wall.png",
+    "normal": "assets/textures/surface_bld_future_wall_normal.png"
+   }
+  },
+  "bld_future_trim": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "brushed pale silver metal, soft horizontal brushing",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_future_trim.png",
+    "normal": "assets/textures/surface_bld_future_trim_normal.png"
+   }
+  },
+  "bld_cyber_base": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "stained dark gray concrete with rust drips and grime",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_cyber_base.png",
+    "normal": "assets/textures/surface_bld_cyber_base_normal.png"
+   }
+  },
+  "bld_cyber_wall": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "grimy dark concrete wall with bolted metal panels and streaks",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_cyber_wall.png",
+    "normal": "assets/textures/surface_bld_cyber_wall_normal.png"
+   }
+  },
+  "bld_cyber_trim": {
+   "group": "building",
+   "view": "facade",
+   "prompt": "dark gunmetal metal plate with scratches and bolts",
+   "normal": 1.2,
+   "targets": {
+    "color": "assets/textures/surface_bld_cyber_trim.png",
+    "normal": "assets/textures/surface_bld_cyber_trim_normal.png"
+   }
+  }
+ }
+}

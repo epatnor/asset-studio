@@ -62,6 +62,11 @@
           "normal": "assets/textures/hd/bark_stylized_hd_normal.png",
           "height": "assets/textures/hd/bark_stylized_hd_height.png"
         }
+      },
+      "krea": {
+        "material": "bark_generic",
+        "variant": 1,
+        "seed": 20268948
       }
     },
     {
@@ -117,6 +122,11 @@
         "files": {
           "color": "assets/textures/hd/moss_stylized_hd.png"
         }
+      },
+      "krea": {
+        "material": "moss",
+        "variant": 0,
+        "seed": 20261029
       }
     },
     {
@@ -225,6 +235,11 @@
           "rough": "assets/textures/hd/bark_oak_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_oak_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_oak",
+        "variant": 0,
+        "seed": 1000
       }
     },
     {
@@ -264,6 +279,11 @@
           "rough": "assets/textures/hd/bark_cherry_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_cherry_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_cherry",
+        "variant": 0,
+        "seed": 20261029
       }
     },
     {
@@ -342,6 +362,11 @@
           "rough": "assets/textures/hd/bark_furrowed_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_furrowed_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_furrowed",
+        "variant": 0,
+        "seed": 20261029
       }
     },
     {
@@ -381,6 +406,11 @@
           "rough": "assets/textures/hd/bark_spruce_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_spruce_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_spruce",
+        "variant": 1,
+        "seed": 20268948
       }
     },
     {
@@ -420,6 +450,11 @@
           "rough": "assets/textures/hd/bark_weathered_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_weathered_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_weathered",
+        "variant": 1,
+        "seed": 20268948
       }
     },
     {
@@ -459,6 +494,11 @@
           "rough": "assets/textures/hd/bark_birch_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_birch_stylized_hd_ao.png"
         }
+      },
+      "krea": {
+        "material": "bark_birch",
+        "variant": 1,
+        "seed": 20268948
       }
     }
   ]

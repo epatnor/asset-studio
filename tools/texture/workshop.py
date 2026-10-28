@@ -472,7 +472,9 @@ def src_krea(n, p, rng, ctx):
     style = STYLE["prompt"]
     prompt = ", ".join(x for x in [p.get("prompt", ""), style["house_style"] if p.get("style", True) else "", style["kinds"]["tile"]] if x)
     base = p.get("base") or ""
-    key = {"prompt": prompt, "seed": int(p.get("seed", 1)), "base": base and ctx.key_of(base, 1024), "denoise": p.get("denoise", 0.6) if base else None}
+    seamless = p.get("seamless", True)
+    key = {"prompt": prompt, "seed": int(p.get("seed", 1)), "base": base and ctx.key_of(base, 1024), "denoise": p.get("denoise", 0.6) if base else None,
+           "seamless": seamless or None}
     h = hashlib.sha1(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
     out = CACHE / "krea" / f"{h}.png"
     if not out.exists():
@@ -480,6 +482,8 @@ def src_krea(n, p, rng, ctx):
             raise RuntimeError("ComfyUI is not running (127.0.0.1:8188). Start it and try again.")
         out.parent.mkdir(parents=True, exist_ok=True)
         cmd = [sys.executable, "-I", str(ROOT / "tools/texture/krea2.py"), prompt, "1024", "1024", str(out), str(int(p.get("seed", 1)))]
+        if seamless:
+            cmd.append("--seamless")
         if base:
             t = ctx.get(base, 1024)
             bp = CACHE / "krea" / f"{h}_base.png"
@@ -489,10 +493,7 @@ def src_krea(n, p, rng, ctx):
         if r.returncode or not out.exists():
             raise RuntimeError("Krea failed: " + (r.stderr or r.stdout).strip()[-300:])
     img = np.asarray(Image.open(out).convert("RGB"), np.float32) / 255
-    if p.get("seamless", True):
-        # Med en sömlös bas är Krea redan nästan sömlös och formerna ligger kvar där formen har dem: skarven jämnas då
-        # ut på plats, så att reliefen från formen fortfarande passar
-        img = seam_even(img, 0.06) if base else tile_blend(img, 0.25)
+    # Sömlös: genereringen rullar latenten mellan stegen (krea2.py --seamless), så ingen toning behövs efteråt
     img = resize_wrap(img, n)
     h = wrap_blur(lum(img), n / 512)
     relief = p.get("relief", "form")
@@ -559,31 +560,6 @@ def src_cracks(n, p, rng):
     return np.clip(col, 0, 1), h
 
 
-def seam_even(img, width):
-    # Fördelar skillnaden över skarven på en smal kant på båda sidor (utjämnad längs kanten, så att inga streck blir
-    # kvar). Formerna flyttas inte, till skillnad från tile_blend.
-    n = img.shape[0]
-    w = max(2, int(n * width))
-    ramp = (1 - np.arange(w) / w)[:, None] * 0.5
-    out = img.copy()
-    for axis in (1, 0):
-        a, b = np.take(out, 0, axis=axis), np.take(out, -1, axis=axis)
-        d = a - b
-        f = np.exp(-0.5 * (np.fft.fftfreq(n) * 2 * np.pi * n / 64) ** 2)[:, None]
-        d = np.real(np.fft.ifft(np.fft.fft(d, axis=0) * f, axis=0))
-        for k in range(w):
-            sl0 = [slice(None)] * 3; sl0[axis] = k
-            sl1 = [slice(None)] * 3; sl1[axis] = n - 1 - k
-            out[tuple(sl0)] -= d * ramp[k]
-            out[tuple(sl1)] += d * ramp[k]
-    return np.clip(out, 0, 1)
-
-
-SOURCES = {"noise": src_noise, "bark": src_bark, "stone": src_stone, "bricks": src_bricks, "planks": src_planks, "ripples": src_ripples, "cracks": src_cracks,
-           "shingles": src_shingles, "splat": src_splat, "gradient": src_gradient, "image": src_image}
-
-
-# --- Ingredienser: namngivna under-texturer, cachade var för sig ---
 def tex_files(obj, acc):
     # Texturfiler som ett recept läser (för cachenyckeln: ändras filen ska cachen inte gälla)
     if isinstance(obj, dict):

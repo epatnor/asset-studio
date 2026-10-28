@@ -4,6 +4,7 @@ utan att bilden kopieras. Referensen är ett mätmål, inte den färdiga texture
 
   python3 -I tools/texture/reference_analysis.py '{"ref": "jolcham_oak_bark_01", "ours": "bark_oak_stylized"}'
   python3 -I tools/texture/reference_analysis.py '{"all": true}'     alla par i material-references/wanted.json
+  python3 -I tools/texture/reference_analysis.py '{"pairs": [{"ref": "pine_bark", "ours": "build/krea/bark_pine/v0.png", "meters": 1}]}' 
   python3 -I tools/texture/reference_analysis.py '{"all": true, "sheet": "build/refs/sheet.png"}'   + jämförelseark
 
 Mått (samma för referens och vårt material):
@@ -150,8 +151,13 @@ def analyse(color_path, height_path, meters):
     }
 
 
-def ours_paths(name):
-    # Ett sparat material (assets/textures) eller ett färdigt recept i verkstaden (renderas till build/refs/)
+def ours_paths(name, meters=None):
+    # Ett sparat material (assets/textures), en bildfil (t.ex. en Krea-kandidat i build/krea/, med meters i paret)
+    # eller ett färdigt recept i verkstaden (renderas till build/refs/)
+    if name.endswith(".png"):
+        c = ROOT / name
+        h = c.with_name(f"{c.stem}_height.png")
+        return c, h if h.exists() else None, meters or 1.0
     cat = json.loads((TEX / "catalog.json").read_text())
     row = next((r for r in cat["textures"] if r["name"] == name), None)
     if row:
@@ -191,7 +197,7 @@ def sheet(pairs, out):
     for i, p in enumerate(pairs):
         ref_m = json.loads((REF / "manifests" / f"{p['ref']}.json").read_text())
         a = Image.open(ROOT / ref_m["maps"]["color"]["file"]).convert("RGB")
-        c, _, meters = ours_paths(p["ours"])
+        c, _, meters = ours_paths(p["ours"], p.get("meters"))
         # Samma fysiska yta: 1 m × 1 m ur båda
         def crop(im, m):
             k = min(1.0, 1.0 / m)
@@ -209,14 +215,15 @@ def sheet(pairs, out):
 def main():
     req = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {"all": True}
     wanted = json.loads((REF / "wanted.json").read_text())
-    pairs = [{"ref": r, "ours": o} for r, o in wanted["for"].items()] if req.get("all") else [{"ref": req["ref"], "ours": req["ours"]}]
+    pairs = [{"ref": r, "ours": o} for r, o in wanted["for"].items()] if req.get("all") else \
+        req.get("pairs") or [{"ref": req["ref"], "ours": req["ours"], "meters": req.get("meters")}]
     out = []
     for p in pairs:
         m = json.loads((REF / "manifests" / f"{p['ref']}.json").read_text())
         ref = analyse(ROOT / m["maps"]["color"]["file"], ROOT / m["maps"]["height"]["file"] if "height" in m["maps"] else None,
                       m["physicalWidthMeters"] or 1.0)
         row = {"ref": p["ref"], "ours": p["ours"], "ref_metrics": ref}
-        c, h, meters = ours_paths(p["ours"])
+        c, h, meters = ours_paths(p["ours"], p.get("meters"))
         if c and c.exists():
             ours = analyse(c, h, meters)
             row["ours_metrics"] = ours

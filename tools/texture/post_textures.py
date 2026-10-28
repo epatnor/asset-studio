@@ -1,6 +1,7 @@
 """Efterbehandling av genererade texturer.
 
-  tile   <in.png> <out.png>   gör en textur sömlös (för bark, mark, sten ...)
+  tile   <in.png> <out.png> [cut|fade]   gör en textur sömlös: cut (standard) klistrar bildens egna bitar över
+                              sömmarna med snitt där de redan är lika; fade tonar mot en förskjuten kopia
   cutout <in.png> <out.png>   ger en sprite på vit bakgrund alfakanal och beskär
                               så att foten/stjälken hamnar i nederkant (UV v=0)
   matte  <in.png> <out.png> [maxbredd]   alfakanal ur vit bakgrund, tätt beskuren men med bildens proportioner
@@ -19,8 +20,87 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 
-def tile(src, dst):
-    # Blanda med en halvt förskjuten kopia så att kanterna möts vid upprepning
+def _cut_path(cost):
+    # Billigaste sammanhängande väg uppifrån och ned genom kostnaden (rader × kolumner), ett steg åt sidan per rad
+    h, w = cost.shape
+    acc = cost.copy()
+    back = np.zeros((h, w), np.int8)
+    for y in range(1, h):
+        prev = acc[y - 1]
+        opts = np.stack([np.r_[np.inf, prev[:-1]], prev, np.r_[prev[1:], np.inf]])
+        k = opts.argmin(0)
+        acc[y] += opts[k, np.arange(w)]
+        back[y] = k - 1
+    path = np.zeros(h, int)
+    path[-1] = int(acc[-1].argmin())
+    for y in range(h - 1, 0, -1):
+        path[y - 1] = path[y] + back[y, path[y]]
+    return path
+
+
+def _side(cur, new, x0, o, rows, keep_left, wrap):
+    # Mask (1 = new) för en zon x0..x0+o: snittet går där cur och new är mest lika. Med wrap rullas zonen ett
+    # halvt varv innan vägen söks, så att vägens början och slut (som inte möts) hamnar mitt i bilden,
+    # där nästa lager täcker dem, och inte vid bildkanten
+    h = cur.shape[0]
+    cost = ((cur[:, x0:x0 + o] - new[:, x0:x0 + o]) ** 2).sum(-1)[rows]
+    sh = h // 2 if wrap else 0
+    path = np.roll(_cut_path(np.roll(cost, -sh, axis=0)), sh)
+    xs = np.arange(o)[None, :]
+    m = (xs >= path[:, None]) if keep_left else (xs <= path[:, None])
+    return m
+
+
+def _paste(cur, new, x0, x1, y0, y1, o, wrap):
+    # Klistrar in new över kolumnerna x0..x1 (raderna y0..y1) med snitt på vänster och höger sida
+    h, w, _ = cur.shape
+    rows = slice(y0, y1)
+    mask = np.zeros((h, w), np.float32)
+    mask[rows, x0 + o:x1 - o] = 1
+    mask[rows, x0:x0 + o] = _side(cur, new, x0, o, rows, True, wrap)
+    mask[rows, x1 - o:x1] = _side(cur, new, x1 - o, o, rows, False, wrap)
+    return mask
+
+
+def tile_cut(a, band=0.12, overlap=0.6):
+    """Sömlös utan toning: bildens egna bitar klistras över sömmarna med snitt där bitarna redan är lika
+    (graph-cut-sömmar som i image quilting). Inga spökformer som vid toning; formerna klipps, inte blandas.
+
+    1. Förskjut ett halvt varv: sömmarna blir ett kors i mitten och kanterna blir originalets inre (sömlösa).
+    2. Lodrät remsa ur bilden förskjuten bara i höjdled (den är hel i sidled, med sin egen söm på mittraden).
+    3. Vågrät remsa ur bilden förskjuten bara i sidled; den täcker den lodräta remsans söm.
+    4. Mittruta ur originalet (helt utan sömmar) över korsningen; den täcker den vågräta remsans söm.
+    Varje lager klistras med snitt i en överlappszon, och bara en pixels mjuk övergång längs snittet."""
+    a = a.astype(np.float32)
+    h, w, _ = a.shape
+    cy, cx = h // 2, w // 2
+    bx, by = int(w * band), int(h * band)
+    ox, oy = max(4, int(bx * overlap)), max(4, int(by * overlap))
+    cur = np.roll(a, (cy, cx), axis=(0, 1))
+    feather = lambda m: np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.8)), np.float32)[..., None] / 255
+    # 2. Lodrät remsa
+    v = np.roll(a, cy, axis=0)
+    m = _paste(cur, v, cx - bx, cx + bx, 0, h, ox, True)
+    cur = cur * (1 - feather(m)) + v * feather(m)
+    # 3. Vågrät remsa (samma sak transponerad)
+    hz = np.roll(a, cx, axis=1)
+    m = _paste(cur.transpose(1, 0, 2), hz.transpose(1, 0, 2), cy - by, cy + by, 0, w, oy, True).T
+    cur = cur * (1 - feather(m)) + hz * feather(m)
+    # 4. Mittruta: lodräta snitt över rutans höjd och vågräta över dess bredd; rutan är där båda säger ja
+    y0, y1, x0, x1 = cy - by - oy, cy + by + oy, cx - bx, cx + bx
+    m1 = _paste(cur, a, x0, x1, y0, y1, ox, False)
+    m2 = _paste(cur.transpose(1, 0, 2), a.transpose(1, 0, 2), y0, y1, x0, x1, oy, False).T
+    m = m1 * m2
+    cur = cur * (1 - feather(m)) + a * feather(m)
+    return cur
+
+
+def tile(src, dst, method="cut"):
+    if method == "cut":
+        im = Image.open(src).convert("RGB")
+        Image.fromarray(np.clip(tile_cut(np.asarray(im)), 0, 255).astype(np.uint8)).save(dst)
+        return {"out": dst, "size": list(im.size), "method": "cut"}
+    # "fade": blanda med en halvt förskjuten kopia (ger spökformer på oregelbundna mönster som kullersten)
     a = np.asarray(Image.open(src).convert("RGB")).astype(np.float32)
     h, w, _ = a.shape
     s = np.roll(a, (h // 2, w // 2), axis=(0, 1))
@@ -161,6 +241,8 @@ if __name__ == "__main__":
         print(json.dumps(soften(*args)))
     elif cmd == "matte":
         print(json.dumps(matte(*args)))
+    elif cmd == "tile":
+        print(json.dumps(tile(*args)))
     elif cmd == "thumbs":
         print(json.dumps(thumbs(*args)))
     else:

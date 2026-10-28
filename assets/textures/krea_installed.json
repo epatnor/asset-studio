@@ -1,0 +1,126 @@
+{
+ "bark_oak": {
+  "variant": 0,
+  "seed": 1000,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, oak tree bark with deep vertical furrows and thick rugged ridges, warm gray-brown with faint moss-green hints in the cracks, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_oak_stylized.png",
+   "normal": "assets/textures/bark_oak_stylized_normal.png",
+   "height": "assets/textures/bark_oak_stylized_height.png",
+   "ao": "assets/textures/bark_oak_stylized_ao.png",
+   "rough": "assets/textures/bark_oak_stylized_rough.png",
+   "orm": "assets/textures/bark_oak_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_birch": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, white birch bark, creamy white with short horizontal dark gray lenticel dashes and a few black diamond-shaped scars, soft peeling bands, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_birch_stylized.png",
+   "normal": "assets/textures/bark_birch_stylized_normal.png",
+   "height": "assets/textures/bark_birch_stylized_height.png",
+   "ao": "assets/textures/bark_birch_stylized_ao.png",
+   "rough": "assets/textures/bark_birch_stylized_rough.png",
+   "orm": "assets/textures/bark_birch_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_spruce": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, spruce bark, gray-brown with small rounded flaky scales, fine and even, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_spruce_stylized.png",
+   "normal": "assets/textures/bark_spruce_stylized_normal.png",
+   "height": "assets/textures/bark_spruce_stylized_height.png",
+   "ao": "assets/textures/bark_spruce_stylized_ao.png",
+   "rough": "assets/textures/bark_spruce_stylized_rough.png",
+   "orm": "assets/textures/bark_spruce_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_cherry": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, cherry tree bark, smooth reddish-brown with horizontal lenticel bands, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_cherry_stylized.png",
+   "normal": "assets/textures/bark_cherry_stylized_normal.png",
+   "height": "assets/textures/bark_cherry_stylized_height.png",
+   "ao": "assets/textures/bark_cherry_stylized_ao.png",
+   "rough": "assets/textures/bark_cherry_stylized_rough.png",
+   "orm": "assets/textures/bark_cherry_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_furrowed": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, deeply furrowed bark with long vertical interlacing ridges, dark brown-gray, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_furrowed_stylized.png",
+   "normal": "assets/textures/bark_furrowed_stylized_normal.png",
+   "height": "assets/textures/bark_furrowed_stylized_height.png",
+   "ao": "assets/textures/bark_furrowed_stylized_ao.png",
+   "rough": "assets/textures/bark_furrowed_stylized_rough.png",
+   "orm": "assets/textures/bark_furrowed_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_weathered": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, old weathered gray bark, silvery tones with long vertical cracks and small pale lichen patches, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_weathered_stylized.png",
+   "normal": "assets/textures/bark_weathered_stylized_normal.png",
+   "height": "assets/textures/bark_weathered_stylized_height.png",
+   "ao": "assets/textures/bark_weathered_stylized_ao.png",
+   "rough": "assets/textures/bark_weathered_stylized_rough.png",
+   "orm": "assets/textures/bark_weathered_stylized_orm.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "bark_generic": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, tree bark with soft vertical ridges and furrows, warm medium brown, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_stylized.png",
+   "normal": "assets/textures/bark_stylized_normal.png",
+   "height": "assets/textures/bark_stylized_height.png"
+  },
+  "installed": "2026-10-29 00:37"
+ },
+ "stone_painted": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, smooth weathered boulder stone surface, soft gray with faint warm and green tints and gentle chips, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/stone_painted.png"
+  },
+  "installed": "2026-10-29 00:54"
+ },
+ "moss": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dense soft moss carpet of small rounded clumps in fresh and olive greens, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/moss_stylized.png"
+  },
+  "installed": "2026-10-29 00:54"
+ },
+ "kit_slate": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, rows of overlapping rounded slate roof shingles in straight horizontal rows, cool blue-gray, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/kit_slate.png",
+   "normal": "assets/textures/kit_slate_normal.png",
+   "height": "assets/textures/kit_slate_height.png"
+  },
+  "installed": "2026-10-29 00:54"
+ }
+}
