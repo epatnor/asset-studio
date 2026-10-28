@@ -142,7 +142,7 @@ export function createElements(ctx) {
     }
     // böjen går ut ur väggens plan, så att en skev stolpe aldrig tränger in i grannmodulen
     const bend = o.warp ? mul(ez, o.warp) : null;
-    return hexa(part, C, { bevel: o.bevel ?? Math.min(w, d) * 0.12, grain: ex, bend, sub: [Math.min(3, Math.floor(L / 0.8)), 0, 0], ...o, tile: o.tile ?? 1.6 });
+    return hexa(part, C, { bevel: o.bevel ?? Math.min(w, d) * 0.12, grain: ex, bend, sub: [o.warp ? 1 : 0, 0, 0], ...o, tile: o.tile ?? 1.6 });
   }
 
   // Konvex platta (polygon i xy, z0..z1), t.ex. putsen i en gavel. Platt skuggad

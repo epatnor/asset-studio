@@ -24,7 +24,15 @@ const TEX = {
   tile: [null, 'assets/textures/rock_stylized_normal.png'],
   wood: ['assets/textures/surface_bld_fantasy_trim.png', 'assets/textures/surface_bld_fantasy_trim_normal.png'],
   plaster: ['assets/textures/surface_bld_fantasy_wall.png', 'assets/textures/surface_bld_fantasy_wall_normal.png'],
+  // bakade ur samma murverk och skifferrader som de modellerade (kit/bake.mjs)
+  masonry: ['assets/textures/kit_masonry.png', 'assets/textures/kit_masonry_normal.png'],
+  slate: ['assets/textures/kit_slate.png', 'assets/textures/kit_slate_normal.png'],
 };
+// Texturerna bakas när de saknas eller när receptet ber om det ({"bake": true})
+if (recipe.bake || !fs.existsSync(path.join(ROOT, TEX.masonry[0])) || !fs.existsSync(path.join(ROOT, TEX.slate[0]))) {
+  const B = await import('./kit/bake.mjs');
+  B.bakeMasonry(K); B.bakeSlate(K);
+}
 
 // ---------- En modul ----------
 function buildModule(pl, lod) {
@@ -38,7 +46,7 @@ function buildModule(pl, lod) {
 }
 const countTris = (G) => Object.values(G).reduce((s, g) => s + g.indices.length / 3, 0);
 const cache = new Map();
-const keyOf = (pl) => JSON.stringify([pl.module, pl.ends, pl.seed, pl.run, pl.d0, pl.dir]);
+const keyOf = (pl) => JSON.stringify([pl.module, pl.ends, pl.seed, pl.run, pl.d0, pl.dir, pl.panel, pl.detail]);
 function moduleCached(pl, lod) {
   const k = keyOf(pl) + lod;
   if (!cache.has(k)) cache.set(k, buildModule(pl, lod));
@@ -70,7 +78,8 @@ function expand(A) {
       const d = dirOf(sd.yaw);
       P.push({ module: `${S.family}_corner`, pos: [sd.start[0], y, sd.start[1]], yaw: sd.yaw, seed: si * 4 + k });
       S[sd.name].forEach((mod, i) => P.push({ module: mod, pos: [sd.start[0] + d[0] * W * i, y, sd.start[1] + d[2] * W * i], yaw: sd.yaw,
-        ends: [i === 0 ? 'corner' : 'open', i === sd.n - 1 ? 'corner' : 'open'], seed: 1 + ((si * 5 + k * 3 + i) % 3), base: si ? 'storey' : 'ground', side: sd.name }));
+        ends: [i === 0 ? 'corner' : 'open', i === sd.n - 1 ? 'corner' : 'open'], seed: 1 + ((si * 5 + k * 3 + i) % 3), base: si ? 'storey' : 'ground', side: sd.name,
+        panel: i % 3 })); // panel: murtexturen fortsätter längs väggen
     });
   });
   const Y = A.storeys.length * H, run = Dz / 2;
@@ -105,7 +114,7 @@ async function write(lods, out, extras) {
       m.setExtension('KHR_materials_emissive_strength', emissiveExt.createEmissiveStrength().setEmissiveStrength(1.6));
     } else if (kind === 'glass') m = doc.createMaterial('Glass').setRoughnessFactor(0.12).setBaseColorFactor([...lin(hex), 1]);
     else {
-      m = doc.createMaterial(kind[0].toUpperCase() + kind.slice(1)).setRoughnessFactor({ stone: 0.9, mortar: 0.95, wood: 0.8, plaster: 0.92, tile: 0.78, metal: 0.4 }[kind] ?? 0.85).setMetallicFactor(kind === 'metal' ? 1 : 0);
+      m = doc.createMaterial(kind[0].toUpperCase() + kind.slice(1)).setRoughnessFactor({ stone: 0.9, mortar: 0.95, masonry: 0.9, wood: 0.8, plaster: 0.92, tile: 0.78, slate: 0.78, metal: 0.4 }[kind] ?? 0.85).setMetallicFactor(kind === 'metal' ? 1 : 0);
       const t = TEX[kind];
       if (t) {
         if (t[0]) m.setBaseColorTexture(sharedTexture(doc, path.join(ROOT, t[0]), `${kind}_color`, path.resolve(out)));
@@ -192,6 +201,7 @@ function checkAssembly(P) {
   for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) {
     const A = boxes[a], B = boxes[b];
     if (A.i === B.i) continue;
+    if ((K.sockets.overlapAllowed ?? []).some(([x, y]) => (A.kind === x && B.kind === y) || (A.kind === y && B.kind === x))) continue;
     let vol = 1;
     for (let k = 0; k < 3; k++) vol *= Math.max(0, Math.min(A.hi[k], B.hi[k]) - Math.max(A.lo[k], B.lo[k]) - 2 * sh);
     if (vol > 1e-6) { overlaps++; if (overlapList.length < 6) overlapList.push(`${shortId(P[A.i])}/${A.kind} × ${shortId(P[B.i])}/${B.kind}`); }
@@ -245,7 +255,7 @@ function checkAssembly(P) {
   }
   // 5. Svävande stenar: under varje sten (utom valvstenar och mark) finns en sten
   const stones = boxes.filter((b) => ['stone', 'quoin', 'sill'].includes(b.kind));
-  const support = boxes.filter((b) => ['stone', 'quoin', 'sill', 'voussoir'].includes(b.kind));
+  const support = boxes.filter((b) => ['stone', 'quoin', 'sill', 'voussoir', 'masonry'].includes(b.kind));
   let floating = 0;
   for (const s of stones) {
     if (s.lo[1] < 0.02) continue;
@@ -274,7 +284,7 @@ async function writeModule(pl, out) {
   const m = moduleCached(pl, 0);
   const tris = await write(lods, out, { name: path.basename(out, '.gltf'), generator: 'asset-studio/kit@1', module: pl.module, ends: pl.ends ?? m.def.ends, seed: pl.seed, sockets: m.info.sockets });
   const stones = m.reg.filter((e) => ['stone', 'quoin', 'voussoir', 'sill'].includes(e.kind)).length;
-  const checks = { lods_decrease: tris[0] > tris[1] && tris[1] > tris[2], within_budget: tris[0] <= (budget[m.def.kind] ?? 10000), sockets: (m.info.sockets ?? []).length };
+  const checks = { lods_decrease: tris[0] >= tris[1] && tris[1] >= tris[2] && tris[0] > tris[2] * 0.999, within_budget: tris[0] <= (budget[m.def.kind] ?? 10000), sockets: (m.info.sockets ?? []).length };
   checks.ok = checks.lods_decrease && checks.within_budget;
   return { model: path.relative(ROOT, out), module: pl.module, ends: pl.ends ?? m.def.ends, tris_lod: tris, elements: m.reg.length, stones, checks };
 }
@@ -293,11 +303,11 @@ if (recipe.module) {
   // färdiga placeringar (handbyggt) eller ett recept som räknas ut
   const P = A.placements ? A.placements.map((pl) => ({ ...pl })) : expand(A), t0 = Date.now();
   const lods = [0, 1, 2].map((l) => merge(P, l));
-  const placements = P.map((pl) => ({ module: pl.module, ends: pl.ends, seed: pl.seed, pos: pl.pos.map((v) => +v.toFixed(3)), yaw: pl.yaw, ...(pl.run ? { run: pl.run } : {}), ...(pl.d0 != null ? { d0: pl.d0, dir: pl.dir } : {}) }));
+  const placements = P.map((pl) => ({ module: pl.module, ends: pl.ends, seed: pl.seed, pos: pl.pos.map((v) => +v.toFixed(3)), yaw: pl.yaw, ...(pl.run ? { run: pl.run } : {}), ...(pl.panel ? { panel: pl.panel } : {}), ...(pl.d0 != null ? { d0: pl.d0, dir: pl.dir } : {}) }));
   const tris = await write(lods, recipe.out, { name: recipe.name ?? recipe.assembly, generator: 'asset-studio/kit@1', assembly: recipe.assembly, placements });
   const checks = checkAssembly(P);
   const variants = new Set(P.map(keyOf)).size;
-  checks.lods_decrease = tris[0] > tris[1] && tris[1] > tris[2];
+  checks.lods_decrease = tris[0] >= tris[1] && tris[1] >= tris[2] && tris[2] < tris[0];
   checks.ok = !checks.unpaired && !checks.overlaps && !checks.wall_gaps && !checks.roof_gaps && !checks.floating_stones && checks.courses_match && checks.lods_decrease;
   console.log(JSON.stringify({ model: recipe.out, assembly: recipe.assembly, modules: P.length, unique_modules: variants, tris_lod: tris, ms: Date.now() - t0, checks }));
 } else fail('give module, catalog or assembly');

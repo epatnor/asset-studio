@@ -127,3 +127,27 @@ Genereringen får ta tid, men visningen ska vara billig:
 - Utkragning med konsoler.
 - Takkupor och korsande tak via taklösaren.
 - Moduler i Smedjan och i Explore.
+
+## Lättare moduler med bakad relief (2026-10-28, efter Patriks förslag)
+
+En vanlig mur behöver inte varje sten som geometri. Bara det som sticker ut och ger siluetten modelleras.
+
+- **Bakningen** (`kit/bake.mjs`):
+  - Samma skift och fogregler som de modellerade stenarna ritas som en höjdkarta, en panel på 6 × 3 m. Ur den räknas färg (målad per sten, ljusare upptill, slitna kanter, skugga i fogarna), normalkarta och höjdkarta: `assets/textures/kit_masonry*.png`.
+  - Skiffern bakas likadant: rader i sågtandsprofil med rundade nederkanter, 2 × 2 m, `kit_slate*.png`.
+  - Texturerna går runt, så att moduler i rad fortsätter mönstret. Varje vägg får `panel` 0–2 efter sitt läge, och då fortsätter murverket i 6 m längs väggen.
+  - Bakningen körs när texturerna saknas, eller med `{"bake": true}`.
+- **Stenmuren** (`wallMode: relief`, standard): en platta med murtexturen. Geometri är bara smygens tuktade stenar, valvet, fönsterbänken, dörren och fria ändar. Hörnmodulen med sin hörnkedja är kvar, och den sticker ut lite mer mot plattan. `detail: "modeled"` ger varje sten som geometri, för närbilder.
+- **Taket** (`mode: relief`): en platta med skiffertexturen. Raden vid takfoten består av egna pannor (siluetten), plattans framkant blir nästa rads kant, och brädorna finns bara där de syns underifrån. Nocken, vindskivan och spiran är som förut.
+- **Resultat:**
+
+  | | Huset på 6 × 4 m (LOD0) | En vanlig mur | Ett takfall |
+  |---|---|---|---|
+  | Före | 110 000 trianglar | 7 300 | 3 800 |
+  | Efter | 49 000 trianglar | cirka 40 | 1 500 |
+
+  Bilden ser nästan likadan ut. Det som är kvar är mest korsvirket (cirka 1 800–3 200 per modul) och fönstrens omfattning.
+- **Kontrollerna:** alla är gröna. Hörnkedjans armar får ligga utanpå murplattan (`overlapAllowed`), och plattan räknas som underlag för stenarna ovanpå.
+- **Nästa steg:**
+  - Korsvirket som platta med bakade bjälkar där de inte sticker ut. Bara syll, hammarband och hörnstolpar blir geometri.
+  - Parallax eller förskjutning med höjdkartan i klienten.

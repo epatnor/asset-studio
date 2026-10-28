@@ -27,7 +27,10 @@
       "colors": ["#968F84", "#8A857C", "#A0978A", "#7F7B74", "#938C80", "#86837C", "#9C907C"],
       "dressed": "#ADA493",
       "mortarColor": "#6A645B",
-      "tile": 0.45
+      "tile": 0.45,
+      "wallMode": "relief",
+      "bake": { "period": 6, "size": [1024, 512] },
+      "project": 0.018
     },
     "timber": {
       "thickness": 0.3,
@@ -61,7 +64,9 @@
       "colors": ["#56648C", "#4E5C84", "#5E6C94", "#4A5878", "#596690", "#545E7C"],
       "ridgeColor": "#4C5876",
       "bargeboard": [0.05, 0.3],
-      "ridgeBeam": [0.2, 0.28]
+      "ridgeBeam": [0.2, 0.28],
+      "mode": "relief",
+      "bake": { "rows": 10, "size": [512] }
     },
     "window": {
       "frame": "#E6C6A6",
@@ -105,7 +110,9 @@
       ["top", "gable"],
       ["ridge", "slope"]
     ],
-    "terminal": ["ground", "end", "top", "roof:verge", "ridge:verge", "gable:corner"]
+    "terminal": ["ground", "end", "top", "roof:verge", "ridge:verge", "gable:corner"],
+    "overlapAllowed": [["masonry", "quoin"]],
+    "_overlapAllowed": "Hörnkedjans armar ligger utanpå murplattan med bakad relief (de täcker texturen bakom sig)."
   },
   "catalog": [
     { "module": "stone_wall", "seed": 1, "ends": ["end", "end"] },

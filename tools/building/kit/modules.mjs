@@ -47,13 +47,14 @@ function stone(E, F, ctx, key, c) {
   const col = dressed ? shade(lin(F.dressed), 0.95 + 0.08 * r(`${key}b`)) : shade(lin(pickC(r, `${key}c`, F.colors)), 0.9 + 0.16 * r(`${key}b`));
   const chip = !dressed && r(`${key}ch`) < F.chip[0] ? [4 + Math.floor(r(`${key}cw`) * 4), F.chip[1]] : null;
   const dome = c.domes ?? [[2, 1, (dressed ? 0.35 : 0.5 + r(`${key}dm`)) * F.dome]];
-  E.hexa('stone', C, { bevel: dressed ? F.bevel * 0.8 : F.bevel, chip, sub: [1, 1, c.domes ? 1 : 0], dome, skip: c.full || c.keepBack ? [] : ['-z'],
+  // tuktade stenar är plana: ingen välvning, inga extra delningar
+  E.hexa('stone', C, { bevel: dressed ? F.bevel * 0.8 : F.bevel, chip, sub: dressed ? [0, 0, 0] : [1, 1, c.domes ? 1 : 0], dome: dressed ? [] : dome, skip: c.full || c.keepBack ? [] : ['-z'],
     color: col, jitter: dressed ? F.jitter * 0.4 : F.jitter, seed: ctx.seedN + ctx.n++, tile: F.tile, kind: c.kind ?? 'stone', exact: true, edgeLight: 1.18, grad: 0.12 });
 }
 
 // Lägg en skifts sträcka [a, b] med stenar. Fogarna hålls minst minOverlap från fogarna i skiftet under.
 // first/last: krav på första och sista stenen (längd, tuktad, fri ände)
-function fillRun(F, r, key, a, b, below, first, last) {
+export function fillRun(F, r, key, a, b, below, first, last) {
   const minL = F.stoneLen[0] * 0.75, out = [];
   const ok = (x) => below.every((j) => Math.abs(j - x) >= F.minOverlap);
   let lf = first?.len ?? null, ll = last?.len ?? null;
@@ -90,8 +91,65 @@ function fillRun(F, r, key, a, b, below, first, last) {
   return out;
 }
 
-// Stenmur (även med fönster eller dörr) i en våning. spec: { ends: [l, r], opening, seed }
+// Stenmur som platta med bakad relief (bake.mjs): bara det som sticker ut är geometri: smygens stenar, valvet,
+// fönsterbänken och fria ändar. Texturen går runt var 6:e meter; panel (0..2) väljer vilken del av den modulen
+// visar, så att moduler i rad fortsätter mönstret
+function stoneWallRelief(E, K, spec) {
+  const F = K.families.stone, W = K.width, H = K.storey, t = F.thickness, P = F.bake.period, pj = F.project;
+  const r = makeRand(spec.seed ?? 1), ctx = { r, n: 0, seedN: (spec.seed ?? 1) * 7919 };
+  const C = courses(F, H), [le, re] = spec.ends ?? ['open', 'open'], panel = spec.panel ?? 0;
+  const xL = le === 'corner' ? t : 0, xR = re === 'corner' ? W - t : W, zf = -0.004;
+  const op = spec.opening ? { ...K.openings[spec.opening], kind: spec.opening } : null;
+  const O = op && { ...openingCourses(C, op), x0: W / 2 - op.width / 2, x1: W / 2 + op.width / 2, e: 0.17, kind: op.kind };
+  // plattan: framsidan med murtexturen, resten fogbruk. Med en öppning blir den fyra bitar runt hålet
+  const pieces = O ? [[xL, 0, O.x0, H], [O.x1, 0, xR, H], [O.x0, 0, O.x1, O.y0], [O.x0, O.y1, O.x1, H]] : [[xL, 0, xR, H]];
+  const uv = (x, y) => [(x + W * panel) / P, (H - y) / H];
+  for (const [x0, y0, x1, y1] of pieces) {
+    if (x1 - x0 < 1e-6 || y1 - y0 < 1e-6) continue;
+    const ya = y0 === 0 ? -0.06 : y0;
+    E.hexa('mortar', aabbCorners([x0, ya, -t], [x1, y1, zf]), { bevel: 0, skip: ['+z'], color: lin(F.mortarColor), tile: 1.5, kind: 'masonry', exact: true });
+    E.quad('masonry', [[x0, ya, zf], [x1, ya, zf], [x1, y1, zf], [x0, y1, zf]], [0, 0, 1], [uv(x0, ya), uv(x1, ya), uv(x1, y1), uv(x0, y1)], [1, 1, 1]);
+  }
+  // tuktade stenar vid smygen och vid fria ändar: lång och kort växelvis, genom hela muren, lite utstickande
+  const dressedColumn = (edge, dir, k0, k1, key) => {
+    for (let k = k0; k < k1; k++) {
+      const [y0, y1] = C[k], L = k % 2 ? 0.44 : 0.3;
+      const [x0, x1] = dir > 0 ? [edge, edge + L] : [edge - L, edge];
+      stone(E, F, ctx, `${key}${k}`, { x0, x1, y0, y1, t, ground: k === 0, dressed: true, full: true, project: pj, flush: { [dir > 0 ? 0 : 1]: true } });
+    }
+  };
+  if (le === 'end') dressedColumn(0, 1, 0, C.length, 'eL');
+  if (re === 'end') dressedColumn(W, -1, 0, C.length, 'eR');
+  if (O) {
+    const { x0, x1, ks, kt, e } = O;
+    dressedColumn(x0, -1, ks, kt, 'jL'); dressedColumn(x1, 1, ks, kt, 'jR');
+    if (ks > 0) stone(E, F, ctx, 'sill', { x0: x0 - 0.1, x1: x1 + 0.1, y0: C[ks - 1][0], y1: C[ks - 1][1], dressed: true, project: 0.07, t, keepBack: true, kind: 'sill' });
+    const n = 5, [ay0, ay1] = C[kt];
+    for (let i = 0; i < n; i++) {
+      const b0 = x0 + ((x1 - x0) * i) / n, b1 = x0 + ((x1 - x0) * (i + 1)) / n, t0 = x0 - e + ((x1 - x0 + 2 * e) * i) / n, t1 = x0 - e + ((x1 - x0 + 2 * e) * (i + 1)) / n;
+      stone(E, F, ctx, `v${i}`, { x0: b0, x1: b1, x0t: t0, x1t: t1, y0: ay0, y1: ay1, dressed: true, project: i === (n - 1) / 2 ? pj + 0.025 : pj, t, full: true, kind: 'voussoir' });
+    }
+    if (O.kind === 'door') {
+      doorLeaf(E, K, x0, x1, O.y1, -0.21, r);
+      stone(E, F, ctx, 'step', { x0: x0 - 0.12, x1: x1 + 0.12, y0: -0.08, y1: 0.08, dressed: true, project: 0.3, t: 0.4, keepBack: true, flush: { 2: true }, kind: 'step' });
+    } else windowFrame(E, K, x0, x1, O.y0, O.y1, -0.21, r);
+  }
+  const sock = (k) => (k === 'open' ? 'stone:open' : k === 'corner' ? null : 'end');
+  return {
+    sockets: [
+      { type: le === 'corner' ? 'stone:cornerA' : sock(le), pos: [0, 0, 0], dir: [-1, 0, 0] },
+      { type: re === 'corner' ? 'stone:cornerB' : sock(re), pos: [W, 0, 0], dir: [1, 0, 0] },
+      { type: 'top', pos: [W / 2, H, 0], dir: [0, 1, 0] },
+      { type: spec.base ?? 'ground', pos: [W / 2, 0, 0], dir: [0, -1, 0] },
+    ],
+    courses: C, opening: O && { x0: O.x0, x1: O.x1, y0: O.y0, y1: O.y1 },
+  };
+}
+
+// Stenmur (även med fönster eller dörr) i en våning. spec: { ends: [l, r], opening, seed, detail }
+// detail: relief (platta med bakad textur, standard) eller modeled (varje sten som geometri, för närbilder)
 export function stoneWall(E, K, spec) {
+  if ((spec.detail ?? K.families.stone.wallMode) === 'relief') return stoneWallRelief(E, K, spec);
   const F = K.families.stone, W = K.width, H = K.storey, t = F.thickness, T = F.tooth, q = F.quoin;
   const r = makeRand(spec.seed ?? 1), ctx = { r, n: 0, seedN: (spec.seed ?? 1) * 7919 };
   const C = courses(F, H), [le, re] = spec.ends ?? ['open', 'open'];
@@ -199,16 +257,19 @@ export function stoneCorner(E, K, spec) {
   const r = makeRand(spec.seed ?? 1), ctx = { r, n: 0, seedN: 104729 };
   const C = courses(F, H);
   C.forEach(([y0, y1], k) => {
-    const lo = k % 2 ? [-0.006, k === 0 ? -0.06 : y0 + m, -t] : [-0.006, k === 0 ? -0.06 : y0 + m, -t - q + m];
-    const hi = k % 2 ? [t + q - m, y1 - m, 0.006] : [t, y1 - m, 0.006];
+    // mot en platta med bakad relief sticker hörnkedjan ut lite mer, så att den läses som tuktad sten
+    const out = F.wallMode === 'relief' ? F.project : 0.006;
+    const lo = k % 2 ? [-out, k === 0 ? -0.06 : y0 + m, -t] : [-out, k === 0 ? -0.06 : y0 + m, -t - q + m];
+    const hi = k % 2 ? [t + q - m, y1 - m, out] : [t, y1 - m, out];
     const Cc = aabbCorners(lo, hi);
     // lite ojämnt: hörnen jitteras inåt, inte utåt
     for (let i = 0; i < 8; i++) { Cc[i][0] += (i & 1 ? -1 : 0) * 0.004 * r(`q${k}${i}`); Cc[i][2] += (i & 4 ? 0 : 1) * 0.004 * r(`qz${k}${i}`); }
-    E.hexa('stone', Cc, { bevel: F.bevel * 0.9, sub: [1, 1, 1], dome: [[2, 1, F.dome * 0.45], [0, -1, F.dome * 0.45]], color: shade(lin(F.dressed), 0.95 + 0.07 * r(`qc${k}`)),
+    E.hexa('stone', Cc, { bevel: F.bevel * 0.9, sub: [0, 0, 0], dome: [], color: shade(lin(F.dressed), 0.95 + 0.07 * r(`qc${k}`)),
       jitter: F.jitter * 0.4, seed: 5000 + k, tile: F.tile, kind: 'quoin', exact: true, edgeLight: 1.18, grad: 0.1 });
     // fogbruket bakom fogarna, lika långt in från båda ytorna
     const md = F.mortarDepth;
-    E.hexa('mortar', aabbCorners([md, k === 0 ? -0.06 : y0, k % 2 ? -t : -t - q], [k % 2 ? t + q : t, y1, -md]), { bevel: 0, color: lin(F.mortarColor), tile: 1.5, kind: 'core', exact: true });
+    const arm = F.wallMode === 'relief' ? 0 : q; // mot en reliefplatta ligger armarna utanpå plattan, fogbruket bara i hörnrutan
+    E.hexa('mortar', aabbCorners([md, k === 0 ? -0.06 : y0, k % 2 ? -t : -t - arm], [k % 2 ? t + arm : t, y1, -md]), { bevel: 0, color: lin(F.mortarColor), tile: 1.5, kind: 'core', exact: true });
   });
   return {
     sockets: [
@@ -396,8 +457,10 @@ export function roofSlope(E, K, spec) {
   for (let x = 0.25; x < W; x += Rf.rafterStep) rafter(x, `r${x}`);
   if (le === 'verge') rafter(-vg + 0.12, 'rvL');
   if (re === 'verge') rafter(W + vg - 0.12, 'rvR');
-  // brädor (råspont) tvärs över sparrarna; syns underifrån vid takfoten
-  const sTop = R.sOf(-run + 0.04), bdW = Rf.board;
+  // relief: takfallet är en platta med bakad skiffer (bake.mjs); bara raden vid takfoten är egna pannor
+  const relief = (spec.detail ?? Rf.mode) === 'relief';
+  // brädor (råspont) tvärs över sparrarna; syns underifrån vid takfoten (med relief bara där)
+  const sTop = relief ? R.sOf(-0.35) : R.sOf(-run + 0.04), bdW = Rf.board;
   for (let s = 0, i = 0; s < sTop - 1e-6; s += bdW, i++) {
     const s1 = Math.min(sTop, s + bdW - 0.006), C = [];
     for (let k = 0; k < 8; k++) C.push(R.at(k & 1 ? xb : xa, k & 4 ? s1 : s, k & 2 ? 0 : -Rf.deck));
@@ -408,7 +471,7 @@ export function roofSlope(E, K, spec) {
   const tiles = [];
   for (let row = 0; ; row++) {
     const s0 = -0.05 + row * ex;
-    if (s0 > sEnd - 0.1) break;
+    if (s0 > sEnd - 0.1 || (relief && row > 0)) break;
     const len = Math.min(tl, sEnd - s0);
     const centers = [];
     const odd = row % 2;
@@ -427,6 +490,15 @@ export function roofSlope(E, K, spec) {
       E.hexa('tile', C, { bevel: 0, color: col, skip: ['-y', '+z'], tile: 0.5, kind: 'tile', grad: -0.22, gradAxis: 2 });
       tiles.push(C);
     }
+  }
+  if (relief) {
+    // plattan börjar vid andra radens nederkant; dess framkant blir den radens kant
+    const s1 = ex - 0.05, top = tt * 1.6, Hm = Rf.bake.rows * ex, C = [];
+    for (let k = 0; k < 8; k++) C.push(R.at(k & 1 ? xb : xa, k & 4 ? sEnd : s1, k & 2 ? top : 0));
+    E.hexa('tile', C, { bevel: 0, skip: ['+y', '-y'], color: shade(lin(Rf.ridgeColor), 0.8), tile: 0.5, kind: 'slab' });
+    const uv = (x, sv) => [x / W, 1 - (sv - s1) / Hm];
+    E.quad('slate', [C[2], C[3], C[7], C[6]], R.n, [uv(xa, s1), uv(xb, s1), uv(xb, sEnd), uv(xa, sEnd)], [1, 1, 1]);
+    tiles.push(C);
   }
   // gavelns ände: vindskiva under pannornas kant, med en droppe (svarvad hängande knopp) vid takfoten
   for (const [side, on] of [[-1, le === 'verge'], [1, re === 'verge']]) {
@@ -475,7 +547,7 @@ export function roofRidge(E, K, spec) {
     const C = [];
     for (let k = 0; k < 8; k++) {
       const end = k & 1, top = (k >> 1) & 1, side = k & 4 ? 1 : -1, bell = end ? 1 : 1.07;
-      const z = side * (top ? 0.1 : 0.18) * bell, y = top ? yA + 0.1 * bell : yT(0.18) - 0.03;
+      const z = side * (top ? 0.1 : 0.18) * bell, y = top ? yA + 0.1 * bell : yT(0.18) - 0.06;
       C.push([end ? Math.min(x0 + cap, xb - 0.1) : Math.max(x0, le === 'verge' ? -vg - 0.03 : x0), y, z]);
     }
     E.hexa('tile', C, { bevel: 0.012, sub: [0, 0, 2], dome: [[1, 1, 0.045]], skip: ['-y'], color: shade(ccol, 0.9 + 0.15 * r(`cap${x0}`)), tile: 0.9, kind: 'cap' });
