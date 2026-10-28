@@ -1,8 +1,9 @@
-// Kartrummet, stegen World, Regions, Biomes och Sculpt (docs/terrain.md): världen ur ett recept, oftast en ö i havet, 256 m–4 km
+// Kartrummet, stegen World, Regions, Biomes, Sculpt och Paint (docs/terrain.md): världen ur ett recept, oftast en ö i havet, 256 m–4 km
 // i fyrkant, regionerna (zoner med eget klimat, tema och färgton) och biomerna på den. Höjdfältet, regionerna och
 // biomerna räknas i en worker (shared/terrain/worker.js: generate.js, field.js, regions.js och biomes.js), marken
 // läggs i lager efter biomerna och tonas efter regionen, och det formade (penslar, bäckar, åar och vikar ur
-// shared/terrain/sculpt.js) ligger ovanpå den genererade marken (med klippor i branter och rännor där
+// shared/terrain/sculpt.js) ligger ovanpå den genererade marken, och målade marklager (shared/terrain/paint.js) ovanpå
+// biomernas mark, i procent (med klippor i branter och rännor där
 // vattnet runnit), biomerna kan målas med pensel (ett eget lager i receptet), och havet är vattenmodulen (shared/effects/water.js) med vädret ur Väder-fliken. Platsen står som ett block på
 // kartbordet, med jordlager på sidorna. Spakarna och de färdiga landskapen är data i tools/terrain/terrain.json;
 // sparade landskap i assets/terrain/. Egen renderare (WebGPU, WebGL2 som reserv). Texten i appen är på engelska.
@@ -21,6 +22,7 @@ import { PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../
 import { removeFromPaint } from '../shared/terrain/regions.js';
 import { brushDab, rampStroke, encodeDelta, decodeDelta, resampleDelta, falloff } from '../shared/terrain/sculpt.js';
 import { createStamp, createLandform, placeLandform } from '../shared/terrain/stamps.js';
+import { SLOTS, paintDab, coverage as paintCoverage, resampleWeights, encodeWeights, decodeWeights } from '../shared/terrain/paint.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
@@ -43,6 +45,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const vals = { ...defaults, ...stripLabel(info.presets[firstPreset] ?? {}) };
   vals.regions = firstRegions(vals.regions);
   vals.channels = structuredClone(vals.channels ?? []); // grävt vatten (steget Sculpt): [{ kind, points: [[u, v], ...] }]
+  // målade marklager (steget Paint): SLOTS platser med { texture, metres } eller null, i samma ordning som vikterna
+  const slotsOf = (list) => Array.from({ length: SLOTS }, (_, i) => (Array.isArray(list) && list[i] ? { ...list[i] } : null));
+  vals.paintLayers = slotsOf(vals.paintLayers);
   let current = firstPreset;
   // Världens storlek (rutnätet och havsbottnen följer den: worldGrid i shared/terrain/generate.js)
   const sizeOf = () => Number(vals.worldSize) || 1024;
@@ -155,9 +160,32 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const inner = float(1).sub(smoothstep(0, w, abs(d.sub(U.brushInner)))).mul(0.45).mul(smoothstep(0.4, 0.6, U.brushInner));
     return max(float(1).sub(smoothstep(0, w, abs(d.sub(U.brush.z)))), inner).mul(U.brushOn);
   })();
-  const shaded = new THREE.MeshStandardNodeMaterial({ roughness: 0.92 });
-  shaded.colorNode = mix(water.groundColor(c.mul(0.92), water.uniforms.level), color('#ffffff'), brushRing.mul(0.85));
-  shaded.roughnessNode = water.groundRoughness(float(0.92), water.uniforms.level);
+  // Den skuggade marken: biomernas mark och ovanpå den de målade lagren i procent (paint0 och paint1, åtta vikter per
+  // hörn; det som blir över är biomernas mark). Byggs om när ett lager får en ny textur, eftersom texturerna är en del
+  // av skuggningen
+  const pw = [attribute('paint0', 'vec4'), attribute('paint1', 'vec4')];
+  function buildShaded() {
+    const w = [pw[0].x, pw[0].y, pw[0].z, pw[0].w, pw[1].x, pw[1].y, pw[1].z, pw[1].w];
+    let col = c, sum = null, add = null;
+    vals.paintLayers.forEach((L, i) => {
+      if (!L) return;
+      const t = tex(L.texture, L.metres).mul(w[i]);
+      add = add ? add.add(t) : t;
+      sum = sum ? sum.add(w[i]) : w[i];
+    });
+    if (add) col = c.mul(float(1).sub(sum.min(1))).add(add);
+    const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.92 });
+    m.colorNode = mix(water.groundColor(col.mul(0.92), water.uniforms.level), color('#ffffff'), brushRing.mul(0.85));
+    m.roughnessNode = water.groundRoughness(float(0.92), water.uniforms.level);
+    return m;
+  }
+  let shaded = buildShaded();
+  function rebuildShaded() {
+    const old = shaded;
+    shaded = MATS.shaded = buildShaded();
+    if (ground.material === old) ground.material = shaded;
+    old.dispose();
+  }
   // Felsökningsvyerna
   const debug = (node) => { const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.9 }); m.colorNode = node; m.fog = false; return m; }; // utan dis, så att kartan syns klart
   const t = h.sub(U.low).div(max(U.top.sub(U.low), 1)).clamp(0, 1);
@@ -218,6 +246,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // Skulpteringen: penslarnas höjdskillnad per hörn (delta, meter, deltaN × deltaN, skapas vid första draget) och
   // ångra-stacken (delta och kanalerna före varje drag)
   let delta = null, deltaN = 0, undoStack = [], channelInfo = [];
+  // Målningen: vikterna per hörn och lager (groundW, groundN · groundN · SLOTS), andelarna och ångra-stacken för den
+  let groundW = null, groundN = 0, paintUndo = [], paintCov = [];
   const recipe = (kind) => ({
     ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])), ...worldGrid(sizeOf()),
     regions: vals.regions, regionThemes: info.regionThemes, regionColors: info.regionColors, regionPaint,
@@ -252,6 +282,22 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       B[p4] = final[o + 4]; B[p4 + 1] = final[o + 5]; B[p4 + 2] = final[o + 6]; B[p4 + 3] = final[o + 7];
     }
     a0.needsUpdate = a1.needsUpdate = true;
+  }
+  // De målade lagrens vikter till marken (paint0 och paint1, 8 bitar var); rows: bara de rader som ändrats
+  function applyGroundPaint(rows = null) {
+    if (!field) return;
+    const n = field.n, g = ground.geometry;
+    if (!groundW || groundN !== n) { groundW = groundW ? resampleWeights(groundW, groundN, n) : new Uint8Array(n * n * SLOTS); groundN = n; rows = null; }
+    let a0 = g.getAttribute('paint0'), a1 = g.getAttribute('paint1');
+    if (!a0 || a0.count !== n * n) {
+      a0 = new THREE.BufferAttribute(new Uint8Array(n * n * 4), 4, true);
+      a1 = new THREE.BufferAttribute(new Uint8Array(n * n * 4), 4, true);
+      g.setAttribute('paint0', a0); g.setAttribute('paint1', a1);
+      rows = null;
+    }
+    const j0 = rows ? Math.max(0, rows.j0) : 0, j1 = rows ? Math.min(n - 1, rows.j1) : n - 1, A = a0.array, B = a1.array;
+    for (let k = j0 * n; k < (j1 + 1) * n; k++) for (let q = 0; q < 4; q++) { A[k * 4 + q] = groundW[k * SLOTS + q]; B[k * 4 + q] = groundW[k * SLOTS + 4 + q]; }
+    for (const a of [a0, a1]) { if (rows) a.addUpdateRange(j0 * n * 4, (j1 - j0 + 1) * n * 4); a.needsUpdate = true; }
   }
   // Regionernas kartfärg och färgton per hörn, ur workern
   function applyRegions(d) {
@@ -291,6 +337,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     auto = d.biomes;
     applyBiomes();
     applyRegions(d);
+    applyGroundPaint();
+    paintCov = paintCoverage(groundW, groundN);
     resize3d(d.size);
     let lo = Infinity, hi = -Infinity, land = 0;
     for (const v of d.heights) { lo = Math.min(lo, v); hi = Math.max(hi, v); if (!vals.sea || v > vals.seaLevel) land++; }
@@ -376,7 +424,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     }
     U.sea.value = vals.seaLevel; U.seaOn.value = vals.sea ? 1 : 0; U.sand.value = vals.sandBand; U.snow.value = vals.snowline;
     U.cliff.value = Math.cos(vals.cliffAngle * DEG); U.tone.value = vals.grassTone;
-    ground.material = MATS[vals.view] ?? shaded;
+    ground.material = MATS[vals.view] ?? MATS.shaded;
     markView();
   }
 
@@ -409,22 +457,23 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!sculptSet[key]) {
       const L = key.startsWith('landform:') ? info.sculptLandforms.find((x) => x.id === key.slice(9)) : null;
       sculptSet[key] = L ? { ...defaultsOf(info.landformParams), size: L.size, height: L.height, seed: 1 }
-        : { ...defaultsOf(info.sculptParams), stamp: 'round', ...(info.sculptTools.find((x) => x.id === key)?.defaults ?? {}) };
+        : key === 'paint' ? { ...defaultsOf(info.paintParams), stamp: 'round' }
+          : { ...defaultsOf(info.sculptParams), stamp: 'round', ...(info.sculptTools.find((x) => x.id === key)?.defaults ?? {}) };
     }
     return sculptSet[key];
   }
   // Penslarna som tar ett mönster; nyckeln och inställningarna för det som är valt (sculptTool och landformId sätts i
   // stegen nedan); kortet Brush byggs med korten men fylls i när ett verktyg väljs
   const STAMPABLE = new Set(['raise', 'lower', 'smooth', 'flatten', 'noise', 'terrace']);
-  const activeKey = () => (sculptTool === 'landform' ? `landform:${landformId}` : sculptTool);
+  const activeKey = () => (step === 'paint' ? 'paint' : sculptTool === 'landform' ? `landform:${landformId}` : sculptTool);
   const S = () => settingsFor(activeKey() ?? 'raise');
-  let updateSculptCard = () => {};
+  let updateSculptCard = () => {}, updatePaintCard = () => {};
   const cards = createCards({ el, side });
   const get = (k) => vals[k];
   const set = (k, v) => { vals[k] = v; };
   const COL = { shape: '#c0672e', detail: '#b88a5a', erosion: '#6a8fb0', water: '#3fa6a0', material: '#6aa84f', regions: '#d9a441', region: '#d9a441', climate: '#3f8f3a', brush: '#e0e0e0', sky: '#e0a030' };
   // Vilka kort som syns i vilket steg: World formar landet, Regions delar in det, Biomes klimatet; vädret och Spara i alla
-  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'], sculpt: ['sculptbrush', 'water', 'sky'] };
+  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], regions: ['regions', 'region', 'brush', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'], sculpt: ['sculptbrush', 'water', 'sky'], paint: ['paintbrush', 'sky'] };
   const cardOf = {};
   for (const g of info.groups) {
     if (g.id === 'view') continue;
@@ -442,6 +491,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     }
     if (g.id === 'region') regionCard(body);
     if (g.id === 'sculptbrush') sculptCard(body);
+    if (g.id === 'paintbrush') paintCard(body);
   }
   const saveCard = cards.card('Save', '#4a90d9');
   const saveMsg = el('div', 'note');
@@ -452,9 +502,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!name) return;
     const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
     // De målade lagren (biomer och regioner) och regionerna följer med receptet
-    const layers = { biomePaint: encodePaint(paint) ?? '', regionPaint: encodePaint(regionPaint) ?? '', sculpt: encodeDelta(delta, deltaN) ?? '' }, regions = vals.regions, channels = vals.channels;
-    let r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions, channels });
-    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, regions, channels, overwrite: true });
+    const layers = { biomePaint: encodePaint(paint) ?? '', regionPaint: encodePaint(regionPaint) ?? '', sculpt: encodeDelta(delta, deltaN) ?? '', groundPaint: encodeWeights(groundW, groundN) ?? '' };
+    const extra = { regions: vals.regions, channels: vals.channels, paintLayers: vals.paintLayers };
+    let r = await api('/api/terrain/save', { name, settings: vals, from, layers, ...extra });
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, ...extra, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
     if (!r.entry) return;
     info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
@@ -489,6 +540,11 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const sc = decodeDelta(layers?.sculpt);
     delta = sc?.delta ?? null; deltaN = sc?.n ?? 0;
     undoStack = [];
+    vals.paintLayers = slotsOf(v.paintLayers);
+    const gp = decodeWeights(layers?.groundPaint);
+    groundW = gp?.weights ?? null; groundN = gp?.n ?? 0;
+    paintUndo = [];
+    rebuildShaded();
     mark(id);
     cards.sync();
     apply();
@@ -497,6 +553,48 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
+    if (step === 'paint') {
+      headTitle.textContent = 'Paint';
+      headNote.textContent = 'Pick a ground texture and paint it on the land with the left mouse button: it lies over what is there by the brush strength, and the biomes fill the rest. Each biome offers its own textures; All shows every one. Ctrl erases, [ and ] change the size, Ctrl+Z undoes.';
+      const tabs = [...info.biomes.map((b) => [b.id, b.label]), ['paths', 'Paths'], ['all', 'All']];
+      const chips = el('div', 'rtools');
+      for (const [id, label] of tabs) {
+        const b = el('button', paletteTab === id ? 'on' : null, label);
+        b.dataset.palette = id;
+        b.onclick = () => { paletteTab = id; renderDrawer(); };
+        chips.append(b);
+      }
+      body.append(chips);
+      const ids = paletteTab === 'all' ? info.groundTextures.map((t) => t.id) : info.biomeTextures[paletteTab] ?? [];
+      sec(`Textures · ${tabs.find((x) => x[0] === paletteTab)?.[1] ?? ''}`, [...ids.map((id) => textureTile(id)), textureTile('erase')]);
+      sec('Pattern', info.sculptStamps.map((x) => stampTile(x)));
+      const used = vals.paintLayers.map((L, i) => [L, i]).filter(([L]) => L);
+      if (used.length) {
+        const list = el('div', 'rtools');
+        for (const [L, i] of used) {
+          const b = el('button', null, `✕ ${info.groundTextures.find((t) => t.id === L.texture)?.label ?? L.texture} ${paintCov[i] ?? 0} %`);
+          b.title = 'Remove this layer: its ground goes back to the biomes';
+          b.onclick = () => {
+            pushPaintUndo();
+            for (let k = i; k < groundW.length; k += SLOTS) groundW[k] = 0;
+            vals.paintLayers[i] = null;
+            rebuildShaded(); applyGroundPaint(); paintCov = paintCoverage(groundW, groundN);
+            mark(null); renderDrawer();
+          };
+          list.append(b);
+        }
+        const g = el('section', 'libgroup');
+        g.append(el('h3', null, `Painted in this world (${used.length} of ${SLOTS})`), list);
+        body.append(g);
+      }
+      const tools = el('div', 'rtools'), undo = el('button', null, 'Undo');
+      undo.title = 'Undo the last stroke (Ctrl+Z)';
+      undo.disabled = !paintUndo.length;
+      undo.onclick = () => undoPaint();
+      tools.append(undo);
+      body.append(tools);
+      return;
+    }
     if (step === 'sculpt') {
       headTitle.textContent = 'Sculpt';
       headNote.textContent = 'Pick a brush and drag on the land with the left mouse button (Ctrl inverts, Shift smooths, [ and ] change the size), click once to place a landform, or draw water: click points along a stream, river or bay and double-click to finish. The right button turns the view; Ctrl+Z undoes.';
@@ -567,7 +665,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     headTitle.textContent = 'Worlds';
     headNote.textContent = 'Click a world to start from it. Save your own in the Save card.';
     sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p, id)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions, channels: x.channels }, x.from, x.layers)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions, channels: x.channels, paintLayers: x.paintLayers }, x.from, x.layers)));
   }
   // En region i lådan: väljer den för kortet och penseln (Erase suddar); klick igen släpper penseln
   function regionTile(r, i) {
@@ -632,10 +730,17 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }
   // Ringens storlek efter den valda penseln (och den inre ringen för hardness)
   function ringSize() {
-    if (!sculptTool || info.channelKinds[sculptTool]) return;
+    if (step === 'paint' ? !paintChoice : !sculptTool || info.channelKinds[sculptTool]) return;
     const st = S();
     U.brush.value.z = st.size;
-    U.brushInner.value = sculptTool === 'landform' ? 0 : st.size * (st.hardness ?? 0.25);
+    U.brushInner.value = sculptTool === 'landform' && step !== 'paint' ? 0 : st.size * (st.hardness ?? 0.25);
+  }
+  // Kortet Paint brush: penselns spakar; mönstrets rader bara med ett mönster
+  function paintCard(body) {
+    const get = (k) => settingsFor('paint')[k];
+    const set = (k, v) => { settingsFor('paint')[k] = v; saveSculptSet(); ringSize(); };
+    const rows = info.paintParams.map((q) => { const r = cards.rowFor(q)(q, get, set, () => updatePaintCard()); body.append(r); return [q, r]; });
+    updatePaintCard = () => { const st = settingsFor('paint'); for (const [q, r] of rows) r.hidden = !!q.stamp && st.stamp === 'round'; cards.sync(); };
   }
   const stamps = new Map();
   const stampFor = (id) => { const k = `${id}:${vals.seed}`; if (!stamps.has(k)) stamps.set(k, createStamp(id, vals.seed)); return stamps.get(k); };
@@ -659,6 +764,41 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     thumbs.set(key, url);
     return url;
   }
+  // En marktextur i Paint (eller Erase); klick igen släpper penseln, så att vänsterknappen roterar igen
+  function textureTile(id) {
+    const T = info.groundTextures.find((t) => t.id === id), erase = id === 'erase', label = erase ? 'Erase' : T?.label ?? id;
+    const f = el('button', `wprof${paintChoice === id ? ' on' : ''}`);
+    f.dataset.paint = id;
+    f.title = erase ? 'Wipe the painting, so the biomes decide again' : `${label}: one tile is ${T?.metres ?? 3} m`;
+    f.append(el('b', null, label), el('span', 'wmeta', erase ? 'back to the biomes' : vals.paintLayers.some((L) => L?.texture === id) ? 'painted in this world' : `${T?.metres ?? 3} m tiles`));
+    f.onclick = () => { paintChoice = paintChoice === id ? null : id; setBrush(null); ringSize(); };
+    return withIcon(el, f, 'maproom', erase ? 'biome_erase' : null, label, erase ? undefined : `/assets/textures/${id}.png`);
+  }
+  // Ångra i Paint: vikterna och lagren före varje drag (högst 6 steg; en värld på 1 km har 8 MB vikter)
+  function pushPaintUndo() {
+    if (!groundW) return;
+    paintUndo.push({ W: groundW.slice(), n: groundN, layers: structuredClone(vals.paintLayers) });
+    if (paintUndo.length > 6) paintUndo.shift();
+  }
+  function undoPaint() {
+    const u = paintUndo.pop();
+    if (!u) return;
+    groundW = u.W; groundN = u.n; vals.paintLayers = u.layers;
+    rebuildShaded(); applyGroundPaint(); paintCov = paintCoverage(groundW, groundN);
+    mark(null); renderDrawer();
+  }
+  // Ett lager för texturen: det den redan har, en tom plats eller en som inte längre syns; −1 när alla åtta används
+  function slotFor(id) {
+    let i = vals.paintLayers.findIndex((L) => L?.texture === id);
+    if (i >= 0) return i;
+    i = vals.paintLayers.findIndex((L) => !L);
+    if (i < 0) i = paintCoverage(groundW, groundN).findIndex((v) => v === 0);
+    if (i < 0) return -1;
+    for (let k = i; k < groundW.length; k += SLOTS) groundW[k] = 0;
+    vals.paintLayers[i] = { texture: id, metres: info.groundTextures.find((t) => t.id === id)?.metres ?? 3 };
+    rebuildShaded();
+    return i;
+  }
   // Ett verktyg i Sculpt: en pensel eller en sorts vatten; klick igen släpper det, så att vänsterknappen roterar igen
   function toolTile(id, label, help, icon) {
     const f = el('button', `wprof${sculptTool === id ? ' on' : ''}`);
@@ -674,7 +814,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     f.dataset.stamp = st.id;
     f.title = st.help;
     f.append(el('b', null, st.label));
-    f.onclick = () => { S().stamp = st.id; saveSculptSet(); renderDrawer(); updateSculptCard(); };
+    f.onclick = () => { S().stamp = st.id; saveSculptSet(); renderDrawer(); updateSculptCard(); updatePaintCard(); };
     return withIcon(el, f, 'maproom', null, st.label, thumb(`stamp:${st.id}`, createStamp(st.id, 7), false));
   }
   // En landform: ett klick på marken trycker ut den, i den storlek och höjd som kortet säger
@@ -717,16 +857,22 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // Penseln målar biomer i Biomes och regioner i Regions (brushIndex = biomens eller regionens nummer, −1 suddar);
   // placing: nästa vänsterklick på marken flyttar den valda regionens mittpunkt
   // sculptTool: penseln eller vattnet i Sculpt (raise … noise, stream, river, bay); drawing: linjens punkter i meter
+  // paintChoice: marktexturen som målas i Paint (eller 'erase'); paletteTab: vilken biom (eller paths, all) lådan visar
   let step = 'world', painting = false, brushIndex = null, placing = false, regionSel = 0, regionInfo = null, sculptTool = null, landformId = null, drawing = [];
+  let paintChoice = null, paletteTab = null;
   function setStep(s) {
     step = s;
     for (const [id, c] of Object.entries(cardOf)) c.hidden = !(IN_STEP[s] ?? IN_STEP.world).includes(id);
     vals.view = s === 'biomes' || s === 'regions' ? s : 'shaded';
     placing = false;
     sculptTool = null;
+    paintChoice = null;
+    // Paint börjar i utbudet för den biom som täcker mest av landet
+    if (s === 'paint' && !paletteTab) paletteTab = Object.entries(stats.coverage ?? {}).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'meadow';
     cancelLine();
     setBrush(null);
     updateSculptCard();
+    updatePaintCard();
     renderDrawer();
     apply();
     placeLabels();
@@ -736,11 +882,12 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function setBrush(i) {
     painting = i !== null && (step === 'biomes' || step === 'regions');
     brushIndex = painting ? i : null;
-    const free = painting || placing || !!sculptTool;
+    const free = painting || placing || !!sculptTool || (step === 'paint' && !!paintChoice);
     controls.mouseButtons = free ? { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE } : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     U.brushOn.value = 0;
     for (const b of body.querySelectorAll('.wprof[data-pick]')) b.classList.toggle('on', painting ? b.dataset.pick === String(i) : step === 'regions' && b.dataset.pick === String(regionSel));
     for (const b of body.querySelectorAll('.wprof[data-tool]')) b.classList.toggle('on', b.dataset.tool === activeKey());
+    for (const b of body.querySelectorAll('.wprof[data-paint]')) b.classList.toggle('on', b.dataset.paint === paintChoice);
     note.textContent = hint();
   }
   // Ett verktyg i Sculpt (null släpper det); en halvritad linje släpps när man byter
@@ -753,7 +900,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     updateSculptCard();
   }
   const pickName = (i) => (i < 0 ? 'erase' : step === 'regions' ? vals.regions[i]?.name : info.biomes[i].label.toLowerCase());
-  const hint = () => (placing ? `Click on the land to move the centre of ${vals.regions[regionSel]?.name}`
+  const hint = () => (step === 'paint' && paintChoice ? `${paintChoice === 'erase' ? 'Erasing' : `Painting ${info.groundTextures.find((t) => t.id === paintChoice)?.label.toLowerCase()}`}: left button paints over what is there · Ctrl erases · [ ] size · Ctrl+Z undoes`
+    : placing ? `Click on the land to move the centre of ${vals.regions[regionSel]?.name}`
     : painting ? `Painting ${pickName(brushIndex)}: left button paints, right button turns, scroll zooms`
       : info.channelKinds[sculptTool] ? `${info.channelKinds[sculptTool].label}: click points along it (${drawing.length} so far), double-click or Enter to dig, Esc to cancel`
         : sculptTool === 'landform' ? `${info.sculptLandforms.find((x) => x.id === landformId)?.label}: click once where it should stand · [ ] size · Ctrl+Z undoes`
@@ -905,8 +1053,14 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }
   canvas.addEventListener('dblclick', () => { if (info.channelKinds[sculptTool]) finishLine(); });
   addEventListener('keydown', (ev) => {
-    if (!running || step !== 'sculpt' || /input|select|textarea/i.test(ev.target?.tagName ?? '')) return;
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); undoLast(); }
+    if (!running || (step !== 'sculpt' && step !== 'paint') || /input|select|textarea/i.test(ev.target?.tagName ?? '')) return;
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z') { ev.preventDefault(); if (step === 'paint') undoPaint(); else undoLast(); }
+    else if ((ev.key === '[' || ev.key === ']') && step === 'paint' && paintChoice) {
+      const st = settingsFor('paint'), q = info.paintParams.find((x) => x.key === 'size');
+      st.size = Math.round(Math.min(q.max, Math.max(q.min, st.size * (ev.key === ']' ? 1.15 : 1 / 1.15))));
+      saveSculptSet(); ringSize(); cards.sync();
+    }
+    else if (ev.key === 'Escape' && step === 'paint') { paintChoice = null; setBrush(null); }
     else if (ev.key === 'Enter' && drawing.length) finishLine();
     else if ((ev.key === '[' || ev.key === ']') && sculptTool && !info.channelKinds[sculptTool]) {
       // Penselns storlek, 15 % per tryck inom spakens gränser
@@ -916,7 +1070,44 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     }
     else if (ev.key === 'Escape') { if (drawing.length) { cancelLine(); renderDrawer(); note.textContent = hint(); } else setTool(null); }
   });
+  // --- Målningen: penseltryck i vikterna, som syns direkt (bara de rader som ändrats laddas upp) ---
+  let paintDown = false, paintSlot = -1, paintLast = null;
+  function paintAt(ev) {
+    const p = groundAt(ev);
+    U.brushOn.value = p ? 1 : 0;
+    if (!p) return;
+    const st = settingsFor('paint');
+    U.brush.value.set(p.x, p.z, st.size);
+    U.brushInner.value = st.size * (st.hardness ?? 0.25);
+    if (!paintDown) return;
+    const gap = Math.max(field.cell * 0.5, st.size * (st.spacing ?? 0.2)), from = paintLast ?? p, len = Math.hypot(p.x - from.x, p.z - from.z);
+    if (paintLast && len < gap) return;
+    const steps = Math.max(1, Math.floor(len / gap)), dir = len > 1e-6 ? Math.atan2(p.z - from.z, p.x - from.x) : strokeDir;
+    strokeDir = dir;
+    const stamp = st.stamp !== 'round' ? stampFor(st.stamp) : null, slot = ev.ctrlKey || ev.metaKey ? -1 : paintSlot;
+    let rows = null, x = p.x, z = p.z;
+    for (let s = paintLast ? 1 : 0; s <= steps; s++) {
+      if (paintLast) { x = from.x + Math.cos(dir) * gap * s; z = from.z + Math.sin(dir) * gap * s; }
+      let angle = (st.rotation ?? 0) * DEG + (st.follow ? dir : 0), radius = st.size;
+      if (st.scatter && stamp) { angle += (Math.random() * 2 - 1) * Math.PI * st.scatter; radius *= 1 + (Math.random() * 2 - 1) * 0.35 * st.scatter; }
+      const r = paintDab(groundW, field.n, field.cell, half, x, z, { slot, radius, strength: st.strength, hardness: st.hardness, stamp, angle, slope: [st.slopeMin ?? 0, st.slopeMax ?? 90], heights: field.heights });
+      if (r) rows = rows ? { j0: Math.min(rows.j0, r.j0), j1: Math.max(rows.j1, r.j1) } : r;
+      if (!paintLast) break;
+    }
+    paintLast = { x, z };
+    applyGroundPaint(rows);
+  }
   canvas.addEventListener('pointerdown', (ev) => {
+    if (step === 'paint' && paintChoice && ev.button === 0 && field) {
+      if (!groundAt(ev)) return;
+      pushPaintUndo();
+      paintSlot = paintChoice === 'erase' ? -1 : slotFor(paintChoice);
+      if (paintSlot < 0 && paintChoice !== 'erase') { paintUndo.pop(); note.textContent = `All ${SLOTS} layers are in use: remove one under Painted in this world`; return; }
+      paintDown = true; paintLast = null;
+      canvas.setPointerCapture(ev.pointerId);
+      paintAt(ev);
+      return;
+    }
     if (sculptTool && ev.button === 0 && field) {
       const p = groundAt(ev);
       if (!p) return;
@@ -957,8 +1148,21 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (!painting || ev.button !== 0) return;
     down = true; canvas.setPointerCapture(ev.pointerId); strokeAt(ev);
   });
-  canvas.addEventListener('pointermove', (ev) => { if (painting) strokeAt(ev); else if (sculptTool && !info.channelKinds[sculptTool]) sculptAt(ev); });
-  canvas.addEventListener('pointerup', (ev) => { sculptUp(ev); if (!down) return; down = false; canvas.releasePointerCapture(ev.pointerId); });
+  canvas.addEventListener('pointermove', (ev) => { if (painting) strokeAt(ev); else if (step === 'paint' && paintChoice) paintAt(ev); else if (sculptTool && !info.channelKinds[sculptTool]) sculptAt(ev); });
+  canvas.addEventListener('pointerup', (ev) => {
+    if (paintDown) {
+      paintDown = false;
+      canvas.releasePointerCapture(ev.pointerId);
+      paintCov = paintCoverage(groundW, groundN);
+      mark(null);
+      renderDrawer();
+      showStats();
+      return;
+    }
+    sculptUp(ev);
+    if (!down) return;
+    down = false; canvas.releasePointerCapture(ev.pointerId);
+  });
   canvas.addEventListener('pointerleave', () => { if (!down) U.brushOn.value = 0; });
   renderDrawer();
   cards.sync();
@@ -1002,7 +1206,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const block = (b, title, text) => { b.replaceChildren(el('b', null, title), el('div', 'vals', text)); };
   const clock = (hh) => `${String(Math.floor(hh)).padStart(2, '0')}:${String(Math.round((hh % 1) * 60) % 60).padStart(2, '0')}`;
   function showStats() {
-    const shaped = delta || vals.channels.length ? ` · shaped${vals.channels.length ? `, ${vals.channels.length} dug` : ''} (${stats.editMs ?? 0} ms)` : '';
+    const nPaint = vals.paintLayers.filter(Boolean).length;
+    const shaped = (delta || vals.channels.length ? ` · shaped${vals.channels.length ? `, ${vals.channels.length} dug` : ''} (${stats.editMs ?? 0} ms)` : '') + (nPaint ? ` · ${nPaint} painted` : '');
     block(fLand, 'World', `${sizeLabel[vals.worldSize] ?? vals.worldSize} square · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms${shaped}`);
     const top = Object.entries(stats.coverage ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4); // andelar av landet
     block(fBiomes, 'Biomes', `${top.map(([id, v]) => `${info.biomes.find((x) => x.id === id)?.label ?? id} ${v} %`).join(' · ')} · ${stats.biomeMs} ms`);
@@ -1067,6 +1272,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     get regionPaint() { return regionPaint; }, get regionInfo() { return regionInfo; }, get regionSel() { return regionSel; },
     get delta() { return delta; }, get channelInfo() { return channelInfo; }, get field() { return field; }, get sculptTool() { return sculptTool; }, setTool,
     sculptSettings: () => S(),
+    get groundW() { return groundW; }, get paintCov() { return paintCov; }, get paintChoice() { return paintChoice; },
     // Var en punkt i världen hamnar i fönstret (för UI-testerna): [x, y] i bildpunkter
     screenOf(x, z) { const v = new THREE.Vector3(x, bedAt(x, z), z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height]; },
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),

@@ -638,7 +638,14 @@ function cleanChannels(list, X) {
     .map((c) => ({ kind: c.kind, points: c.points.slice(0, 64).map((p) => [num(p?.[0]), num(p?.[1])]) }));
   return out.length ? out : null;
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels } }); // Kartrummet: docs/terrain.md
+// Kartrummets målade marklager (steget Paint): högst 8 platser, var och en en marktextur ur groundTextures (eller tom),
+// i samma ordning som vikterna i layers.groundPaint
+function cleanPaintLayers(list, X) {
+  if (!Array.isArray(list) || !list.some(Boolean)) return null;
+  const known = new Map((X.groundTextures ?? []).map((t) => [t.id, t]));
+  return list.slice(0, 8).map((p) => (p && known.has(p.texture) ? { texture: p.texture, metres: Math.min(20, Math.max(0.5, Number(p.metres) || known.get(p.texture).metres)) } : null));
+}
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();

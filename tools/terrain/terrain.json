@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska. sculptTools är penslarna i Sculpt med sina egna förval (defaults), sculptParams spakarna i kortet Brush (tools: vilka penslar som har spaken; stamp: bara med ett mönster), sculptStamps penselmönstren och sculptLandforms landformerna som trycks ut med ett klick (shared/terrain/stamps.js; blend add eller max, base ground eller sea).",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska. sculptTools är penslarna i Sculpt med sina egna förval (defaults), sculptParams spakarna i kortet Brush (tools: vilka penslar som har spaken; stamp: bara med ett mönster), sculptStamps penselmönstren och sculptLandforms landformerna som trycks ut med ett klick (shared/terrain/stamps.js; blend add eller max, base ground eller sea). groundTextures är marktexturerna man kan måla med i Paint (id = filen i assets/textures/, metres = hur stor en ruta av texturen är), biomeTextures varje biomens utbud (plus paths för stigar och vägar) och paintParams penselns spakar (shared/terrain/paint.js).",
   "camera": {
     "pos": [
       150,
@@ -52,6 +52,11 @@
       "id": "sculptbrush",
       "label": "Brush",
       "step": "sculpt"
+    },
+    {
+      "id": "paintbrush",
+      "label": "Paint brush",
+      "step": "paint"
     },
     {
       "id": "brush",
@@ -1440,6 +1445,274 @@
       "type": "bool",
       "default": true,
       "help": "A new variant every time you click; off repeats the same one"
+    }
+  ],
+  "groundTextures": [
+    {
+      "id": "surface_sand",
+      "label": "Sand",
+      "metres": 2.5
+    },
+    {
+      "id": "surface_gravel",
+      "label": "Gravel",
+      "metres": 2.5
+    },
+    {
+      "id": "surface_pondbed",
+      "label": "Pebbly shore",
+      "metres": 2.5
+    },
+    {
+      "id": "stone_painted",
+      "label": "Painted stones",
+      "metres": 3
+    },
+    {
+      "id": "ground_meadow",
+      "label": "Meadow",
+      "metres": 3
+    },
+    {
+      "id": "ground_lush",
+      "label": "Lush grass",
+      "metres": 3
+    },
+    {
+      "id": "ground_lawn",
+      "label": "Lawn",
+      "metres": 3
+    },
+    {
+      "id": "surface_grass",
+      "label": "Grass",
+      "metres": 3
+    },
+    {
+      "id": "surface_meadow",
+      "label": "Flower meadow",
+      "metres": 3
+    },
+    {
+      "id": "surface_forestfloor",
+      "label": "Forest floor",
+      "metres": 3
+    },
+    {
+      "id": "moss_stylized",
+      "label": "Moss",
+      "metres": 2.5
+    },
+    {
+      "id": "moss_painted",
+      "label": "Deep moss",
+      "metres": 2.5
+    },
+    {
+      "id": "surface_dirt",
+      "label": "Dirt",
+      "metres": 2.5
+    },
+    {
+      "id": "surface_mud",
+      "label": "Mud",
+      "metres": 2.5
+    },
+    {
+      "id": "surface_riverbed",
+      "label": "Riverbed",
+      "metres": 2.5
+    },
+    {
+      "id": "ground_steppe",
+      "label": "Steppe",
+      "metres": 3
+    },
+    {
+      "id": "ground_pampas",
+      "label": "Golden grass",
+      "metres": 3
+    },
+    {
+      "id": "surface_stone",
+      "label": "Stone",
+      "metres": 3
+    },
+    {
+      "id": "rock_stylized",
+      "label": "Rock",
+      "metres": 3
+    },
+    {
+      "id": "surface_cliff",
+      "label": "Cliff",
+      "metres": 7
+    },
+    {
+      "id": "surface_snow",
+      "label": "Snow",
+      "metres": 4
+    },
+    {
+      "id": "surface_path",
+      "label": "Path",
+      "metres": 2
+    },
+    {
+      "id": "surface_road",
+      "label": "Road",
+      "metres": 3
+    },
+    {
+      "id": "cobblestone",
+      "label": "Cobblestones",
+      "metres": 2
+    },
+    {
+      "id": "surface_planks",
+      "label": "Planks",
+      "metres": 2
+    }
+  ],
+  "biomeTextures": {
+    "beach": [
+      "surface_sand",
+      "surface_gravel",
+      "surface_pondbed",
+      "stone_painted"
+    ],
+    "meadow": [
+      "ground_meadow",
+      "ground_lush",
+      "ground_lawn",
+      "surface_grass",
+      "surface_meadow"
+    ],
+    "forest": [
+      "surface_forestfloor",
+      "moss_stylized",
+      "surface_dirt",
+      "ground_lush"
+    ],
+    "pine": [
+      "surface_forestfloor",
+      "moss_painted",
+      "moss_stylized",
+      "surface_dirt"
+    ],
+    "marsh": [
+      "surface_mud",
+      "moss_painted",
+      "surface_riverbed",
+      "surface_pondbed"
+    ],
+    "heath": [
+      "ground_steppe",
+      "ground_pampas",
+      "surface_gravel",
+      "surface_dirt"
+    ],
+    "rock": [
+      "surface_stone",
+      "rock_stylized",
+      "surface_cliff",
+      "surface_gravel"
+    ],
+    "snow": [
+      "surface_snow",
+      "surface_stone",
+      "surface_gravel"
+    ],
+    "paths": [
+      "surface_path",
+      "surface_road",
+      "cobblestone",
+      "surface_planks",
+      "surface_dirt"
+    ]
+  },
+  "paintParams": [
+    {
+      "key": "size",
+      "label": "Size",
+      "min": 1,
+      "max": 200,
+      "step": 1,
+      "default": 12,
+      "help": "The radius of the brush, in metres ([ and ] change it)"
+    },
+    {
+      "key": "strength",
+      "label": "Strength",
+      "min": 0.02,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35,
+      "help": "How much each touch paints over what is there, in per cent: the ground beneath stays in the rest"
+    },
+    {
+      "key": "hardness",
+      "label": "Hardness",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.3,
+      "help": "The falloff: soft (left) fades from the middle, hard (right) paints fully almost to the edge"
+    },
+    {
+      "key": "spacing",
+      "label": "Spacing",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.2,
+      "help": "How far apart the touches are along a stroke, in parts of the brush"
+    },
+    {
+      "key": "slopeMin",
+      "label": "Slope from",
+      "min": 0,
+      "max": 90,
+      "step": 1,
+      "default": 0,
+      "help": "Only paint where the land is at least this steep (degrees): for example rock only on slopes"
+    },
+    {
+      "key": "slopeMax",
+      "label": "Slope to",
+      "min": 0,
+      "max": 90,
+      "step": 1,
+      "default": 90,
+      "help": "Only paint where the land is at most this steep (degrees): for example grass only on the flat"
+    },
+    {
+      "key": "rotation",
+      "label": "Rotation",
+      "min": -180,
+      "max": 180,
+      "step": 1,
+      "default": 0,
+      "help": "The angle of the pattern (degrees)",
+      "stamp": true
+    },
+    {
+      "key": "follow",
+      "label": "Follow stroke",
+      "type": "bool",
+      "default": false,
+      "help": "Turn the pattern with the direction you drag in",
+      "stamp": true
+    },
+    {
+      "key": "scatter",
+      "label": "Scatter",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0,
+      "help": "A random angle and size for each touch, so a pattern does not repeat",
+      "stamp": true
     }
   ]
 }

@@ -15,6 +15,7 @@ import { computeBiomes } from '../../shared/terrain/biomes.js';
 import { regionField } from '../../shared/terrain/regions.js';
 import { applyEdits, brushDab, rampStroke, encodeDelta, decodeDelta } from '../../shared/terrain/sculpt.js';
 import { STAMP_IDS, createStamp, LANDFORM_IDS, createLandform, placeLandform } from '../../shared/terrain/stamps.js';
+import { SLOTS, paintDab, encodeWeights, decodeWeights } from '../../shared/terrain/paint.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -234,6 +235,32 @@ async function sculptScene() {
     for (let k = 0; k < n * n; k++) worst = Math.max(worst, Math.abs(d2[k] - d1[k] * 0.5));
     out.landforms.strength_50_err_m = r2(worst);
     ok &&= worst < 0.01;
+  }
+  // Målningen (steget Paint): 50 % ger hälften ovanpå det som finns, summan går aldrig över 1, Erase ger tillbaka
+  // marken, lutningsfiltret målar bara i branter, och lagret överlever texten exakt
+  {
+    const W = new Uint8Array(n * n * SLOTS), c0 = at(0, 0) * SLOTS;
+    paintDab(W, n, cell, half, 0, 0, { slot: 0, radius: 30, strength: 1, hardness: 1 });
+    paintDab(W, n, cell, half, 0, 0, { slot: 1, radius: 30, strength: 0.5, hardness: 1 });
+    let over = 0;
+    for (let k = 0; k < n * n; k++) { let sum = 0; for (let q = 0; q < SLOTS; q++) sum += W[k * SLOTS + q]; if (sum > 256) over++; }
+    const text = encodeWeights(W, n), back = decodeWeights(text);
+    let diff = 0;
+    for (let k = 0; k < W.length; k++) if (back.weights[k] !== W[k]) diff++;
+    const centre = [W[c0], W[c0 + 1]];
+    for (let q = 0; q < 30; q++) paintDab(W, n, cell, half, 0, 0, { slot: -1, radius: 40, strength: 0.4 });
+    const left = W.reduce((a, b) => a + b, 0);
+    const S2 = new Uint8Array(n * n * SLOTS);
+    paintDab(S2, n, cell, half, bx, bz, { slot: 2, radius: 120, strength: 1, hardness: 1, slope: [35, 90], heights: t.heights });
+    let steep = 0, flat = 0;
+    for (let j = 2; j < n - 2; j++) for (let i = 2; i < n - 2; i++) {
+      const k = j * n + i;
+      if (!S2[k * SLOTS + 2]) continue;
+      const hx = (t.heights[k + 1] - t.heights[k - 1]) / (2 * cell), hz = (t.heights[k + n] - t.heights[k - n]) / (2 * cell), deg = Math.atan(Math.hypot(hx, hz)) * 180 / Math.PI;
+      if (deg < 30) flat++; else steep++;
+    }
+    out.paint = { centre_two_layers: centre, over_one: over, encoded_chars: text.length, roundtrip_diff: diff, left_after_erase: left, slope_filter_painted_on_flat: flat, on_steep: steep };
+    ok &&= Math.abs(centre[0] - 128) <= 2 && Math.abs(centre[1] - 128) <= 2 && over === 0 && diff === 0 && left < 500 && flat === 0;
   }
   const mouth = e.heightAt(0.01 * size, 0.3 * size);
   let raised = 0;

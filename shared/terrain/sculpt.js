@@ -112,7 +112,7 @@ export function brushDab(h, delta, n, cell, half, x, z, opts) {
     let dh = 0;
     if (tool === 'raise' || tool === 'lower') dh = (tool === 'raise' ? 1 : -1) * rate * f * m; // en krater sänker mitten även med Raise
     else {
-      f *= Math.max(0, m); // för de andra penslarna är mönstret en mask för styrkan
+      f *= Math.min(1, Math.abs(m)); // för de andra penslarna är mönstret en mask för styrkan (beloppet: sprickor sänker men ska också verka)
       if (tool === 'smooth') {
         const s = src, q = k - o;
         const avg = (s[q - 1] + s[q + 1] + s[q - n] + s[q + n] + s[q] * 2 + (s[q - n - 1] + s[q - n + 1] + s[q + n - 1] + s[q + n + 1]) * 0.5) / 8;
