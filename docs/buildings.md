@@ -26,7 +26,7 @@ Referensen säger att **taklösaren, korsvirket, materialens sammanhang och foga
 | 3. Geometrin | Väggar med hål, djupa fönster och dörrar, korsvirke, sockel, takytor med rader och takfot, nockpannor, skorstenar, LOD0–LOD2, glTF | Kontaktark av alla hustyper ser ut som hus | Byggd 2026-10-28 (första skivan) |
 | 4. Sammanhang | Takkupor, balkonger, trappor, lyktor, rankor, väderbitning (ålder, mossa, sot) | Huset ser bott i ut | |
 | 5. Fler stilar och former | Runda torn i lösaren, valmade korsningar, mansard, stadsvärn, ruiner | Hela referensens lista (§17: hydda, korsvirkeshus, gård, stadshus, torn, borg, ruin) | |
-| 6. Studion och Kartrummet | Hustyperna i Smedjan med spakar; hus att ställa ut i Explore; redigering av grafen | Patrik kan dra i spakarna och ställa hus i en värld | |
+| 6. Studion och Kartrummet | Hustyperna i Smedjan med spakar; hus att ställa ut i Explore; redigering av grafen | Patrik kan dra i spakarna och ställa hus i en värld | Smedjan byggd 2026-10-28 |
 
 ## Byggt 2026-10-28 (första skivan)
 
@@ -39,4 +39,5 @@ Referensen säger att **taklösaren, korsvirket, materialens sammanhang och foga
 - **Balkong:** ett fönster mitt på huvudvolymens framsida på övervåningen blir en glasdörr med balkong (golv på konsoler, räcke med spjälor), oftare i stilar med korsvirke (`balcony` i stilen styr).
 - **WoW-stilisering:** takfoten svänger upp med avståndet utanför väggen i kvadrat (stilens `roof.flare`, mer ju högre stiliseringen). Det är en funktion av läget, så takytor, takfot och vindskivor som möts följer med lika mycket. Nockändarna böjs uppåt där nocken slutar i gavelns takutsprång (`roof.tips`).
 - **Kontrollen för överlapp** räknar bara punkter som ligger klart inne i två takytor: på en kant där en högre takfot står över ett annat tak får båda finnas. Alla sju hustyper i fyra stilar, tre frön och två stiliseringsgrader (168 hus) är gröna.
-- **Kvar:** utvändiga trappor, rankor och props kring huset, runda torn i lösaren, och hustyperna i Smedjan.
+- **Smedjan:** fliken House (i stället för den kommande Building part) bygger med den nya generatorn: lådan har en mall per hustyp, kortet House har hustyp, frö, stil och stiliseringsgrad (`tools/building/params.json`), och footern visar storlek, volymer, fönster, trianglar och takets glipor och överlapp. Spara lägger huset i biblioteket som vanligt. Servern läser hustyperna ur `houses.json` (`speciesKey: archetypes`). Testat med `tools/studio/ui_tests/house.json`.
+- **Kvar:** utvändiga trappor, rankor och props kring huset, runda torn i lösaren, och att öppna ett sparat hus i Smedjan igen.

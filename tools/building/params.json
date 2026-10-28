@@ -1,0 +1,91 @@
+{
+  "_doc": "Smedjans spakar för den nya byggnadsgeneratorn (tools/building/gen_house.mjs, docs/buildings.md): hustyp (houses.json), frö, stil (_styles i buildings.json) och stiliseringsgrad. Texten i appen är på engelska.",
+  "generator": "building",
+  "label": "House",
+  "species": [
+    "cottage",
+    "timber_house",
+    "townhouse",
+    "farmhouse",
+    "manor",
+    "tavern",
+    "tower_house"
+  ],
+  "parts": [
+    {
+      "id": "house",
+      "label": "House",
+      "accent": "#c0672e",
+      "kinds": [
+        "house"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "house_kind",
+      "part": "house",
+      "label": "House",
+      "open": true
+    },
+    {
+      "id": "house_style",
+      "part": "house",
+      "label": "Style",
+      "open": true
+    }
+  ],
+  "params": [
+    {
+      "path": "recipe.preset",
+      "group": "house_kind",
+      "label": "House type",
+      "type": "select",
+      "options": {
+        "Cottage": "cottage",
+        "Timber house": "timber_house",
+        "Town house": "townhouse",
+        "Farmhouse": "farmhouse",
+        "Manor": "manor",
+        "Tavern": "tavern",
+        "Tower house": "tower_house"
+      },
+      "help": "The shape of the house: its volumes, gables and wings"
+    },
+    {
+      "path": "recipe.seed",
+      "group": "house_kind",
+      "label": "Seed",
+      "type": "seed",
+      "default": 1,
+      "help": "Another house of the same type: sizes, which wings and dormers, windows and colours"
+    },
+    {
+      "path": "recipe.style",
+      "group": "house_style",
+      "label": "Style",
+      "type": "select",
+      "options": {
+        "Fantasy": "fantasy",
+        "RPG": "rpg",
+        "Steampunk": "steampunk",
+        "Vanlig tid": "modern",
+        "Framtid": "future",
+        "Cyberpunk": "cyberpunk"
+      },
+      "default": "fantasy",
+      "help": "Materials and details: timber framing, window shapes, roof, colours"
+    },
+    {
+      "path": "recipe.stylization",
+      "group": "house_style",
+      "label": "Stylization",
+      "type": "number",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.5,
+      "help": "0 almost realistic, 0.5 like Overwatch, 1 like WoW: bevels, wonkiness, overhang, flared eaves and ridge tips"
+    }
+  ]
+}

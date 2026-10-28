@@ -158,6 +158,8 @@ const TEMPLATES = await fetch('/tools/tree/templates.json', { cache: 'no-store' 
 const PROP_KINDS = Object.fromEntries(Object.entries(gens.prop?.params.params.find((q) => q.path === 'recipe.preset')?.options ?? {}).map(([l, v]) => [v, l]));
 function templatesOf(k) {
   if (genOf(k) === 'prop') return (k.species ?? []).map((id) => ({ id, label: PROP_KINDS[id] ?? id }));
+  // Husen: en mall per hustyp i houses.json (den nya byggnadsgeneratorn)
+  if (genOf(k) === 'building') return (k.species ?? []).map((id) => ({ id, label: gens.building?.species[id]?.label ?? id, help: gens.building?.species[id]?.help }));
   return (TEMPLATES[k.id] ?? []).map((t) => ({ id: t.id, label: t.label, help: t.help, preset: t.recipe.preset,
     model: `assets/trees/${t.id}/${t.id}.gltf`, recipe: `assets/trees/${t.id}/recipe.json` }));
 }
@@ -228,7 +230,10 @@ function blendNow() {
   return out;
 }
 // Stenarna (props-generatorn): presetet, fröet och presetets värden med spakarna ovanpå
-const recipeNow = () => (genOf(kind) === 'prop' ? { preset: state.recipe.preset, seed: state.recipe.seed, params: { ...state.spec } } : {
+const recipeNow = () => (genOf(kind) === 'building' ? {
+  // Husen: hustypen, fröet, stilen och stiliseringsgraden (texturer som saknas genereras inte här, det tar minuter)
+  archetype: state.recipe.preset, seed: state.recipe.seed, style: valueOf(paramAt('recipe.style')), stylization: valueOf(paramAt('recipe.stylization')), textures: false,
+} : genOf(kind) === 'prop' ? { preset: state.recipe.preset, seed: state.recipe.seed, params: { ...state.spec } } : {
   preset: `${state.recipe.preset}_medium`, seed: state.recipe.seed, height: state.recipe.height, ...(state.recipe.bole > 0 ? { bole: state.recipe.bole } : {}),
   ...(state.recipe.age < 1 ? { age: state.recipe.age } : {}),
   leaves: valueOf(paramAt('recipe.leaves')), bark: valueOf(paramAt('recipe.bark')), leaf_tint: valueOf(paramAt('recipe.leaf_tint')),
@@ -377,7 +382,14 @@ function showAssetStats(res, ms) {
   const c = res.checks ?? {};
   $('lamp').className = 'lamp ' + (c.ok ? 'ok' : 'bad');
   setState(c.ok ? 'Checks are green' : 'Checks are red');
-  const vals = genOf(kind) === 'prop' ? [
+  const vals = genOf(kind) === 'building' ? [
+    ['Size', res.size ? `${res.size.map((v) => fmt(v, 1)).join(' × ')} m` : '–'],
+    ['Volumes', (res.volumes ?? []).join(', ')],
+    ['Windows', fmt(res.windows ?? 0)],
+    ['Triangles', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
+    ['Roof', `${res.roof_pieces ?? '–'} pieces, ${c.roof_gaps ?? 0} gaps, ${c.roof_overlaps ?? 0} overlaps`],
+    ['Build time', `${fmt(ms / 1000, 1)} s`],
+  ] : genOf(kind) === 'prop' ? [
     ['Triangles', (res.tris_lod ?? []).map((n) => fmt(n)).join(' / ')],
     ['Resting on the ground', c.resting_on_ground ? 'yes' : 'no'],
     ['Build time', `${fmt(ms / 1000, 1)} s`],

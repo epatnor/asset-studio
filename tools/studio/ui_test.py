@@ -225,6 +225,10 @@ async def run(recipe):
 
 
 def main():
+    # Stoppas testet (timeout skickar SIGTERM) ska Chrome ändå stängas; annars håller ett kvarglömt fönster porten och
+    # nästa test ansluter till fel sida
+    import signal
+    signal.signal(signal.SIGTERM, lambda *_: (close(), sys.exit(143)))
     recipe = json.loads(sys.argv[1]) if len(sys.argv) > 1 else {}
     try:
         import websockets  # noqa: F401

@@ -1,0 +1,26 @@
+{
+  "_doc": "UI-test av Smedjans flik House (tools/studio/ui_test.py): den nya byggnadsgeneratorn (docs/buildings.md) bygger ett hus, byter stil, stiliseringsgrad och hustyp, och lådan har en mall per hustyp. Inget sparas.",
+  "name": "house",
+  "url": "/studio/#smedjan",
+  "size": [1600, 1000],
+  "steps": [
+    {"until": "!!document.querySelector('#kinds button[data-kind=house]')", "timeout": 60000},
+    {"click": "House", "in": "#kinds button"},
+    {"until": "/Checks are (green|red)/.test(document.querySelector('#state')?.textContent ?? '') && /Volumes/.test(document.querySelector('#assetStats')?.textContent ?? '')", "timeout": 120000},
+    {"expect": "document.querySelector('#state').textContent === 'Checks are green'", "label": "the first house type builds with green checks"},
+    {"expect": "/0 gaps, 0 overlaps/.test(document.querySelector('#assetStats').textContent)", "label": "the roof has no gaps or overlaps"},
+    {"expect": "document.querySelectorAll('#fdrawer .wprof, #fdrawer button').length >= 7 && document.querySelector('#fdrawer').textContent.includes('Tavern')", "label": "the drawer has a template per house type"},
+    {"wait": 1500},
+    {"shot": "1_cottage", "minLight": 30},
+    {"select": "House type", "value": "\"tavern\""},
+    {"until": "/Checks are (green|red)/.test(document.querySelector('#state')?.textContent ?? '') && /gable_l/.test(document.querySelector('#assetStats').textContent)", "timeout": 120000},
+    {"expect": "document.querySelector('#state').textContent === 'Checks are green'", "label": "the tavern builds with green checks"},
+    {"wait": 1500},
+    {"shot": "2_tavern", "minLight": 30},
+    {"select": "Style", "value": "\"steampunk\""},
+    {"slider": "Stylization", "value": 1},
+    {"until": "/Checks are (green|red)/.test(document.querySelector('#state')?.textContent ?? '') && document.querySelector('#lamp').className.includes('ok')", "timeout": 120000},
+    {"wait": 2500},
+    {"shot": "3_tavern_steampunk_wow", "minLight": 30}
+  ]
+}

@@ -7,7 +7,7 @@
     {"id": "bush", "label": "Bush", "species": ["cardbush"], "height": 1.5, "start": "bush_round"},
     {"id": "rock", "label": "Stone", "generator": "prop", "species": ["rock", "rock_mossy", "boulder_lowpoly", "boulder_mossy", "rock_slab", "standing_stone", "rock_cluster", "basalt"], "height": 1.2},
     {"id": "prop", "label": "Prop", "soon": true},
-    {"id": "part", "label": "Building part", "soon": true}
+    {"id": "house", "label": "House", "generator": "building", "species": ["cottage", "timber_house", "townhouse", "farmhouse", "manor", "tavern", "tower_house"], "height": 10}
   ],
   "species": [
     "cardtree",

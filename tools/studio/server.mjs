@@ -60,6 +60,14 @@ const GENERATORS = {
     species: 'tools/props/props.json',
     assets: 'assets/props',
   },
+  // Husen (Smedjans flik House): den nya byggnadsgeneratorn (docs/buildings.md); arterna är hustyperna i houses.json
+  building: {
+    params: 'tools/building/params.json',
+    script: 'tools/building/make_building.py',
+    species: 'tools/building/houses.json',
+    speciesKey: 'archetypes',
+    assets: 'assets/buildings',
+  },
 };
 
 const json = (res, code, body) => {
@@ -105,7 +113,8 @@ async function cleanPreviews() {
 
 // Receptet från studion: bara kända fält går vidare till generatorn
 const cleanRecipe = (r) => Object.fromEntries(Object.entries(r ?? {}).filter(([k]) =>
-  ['preset', 'seed', 'height', 'bole', 'age', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_uv', 'bark_blend', 'params', 'stone_tint', 'moss_tint'].includes(k)));
+  ['preset', 'seed', 'height', 'bole', 'age', 'species', 'canopy', 'leaves', 'bark', 'leaf_tint', 'bark_repeat', 'bark_uv', 'bark_blend', 'params', 'stone_tint', 'moss_tint',
+    'archetype', 'style', 'stylization', 'textures'].includes(k)));
 
 async function generate({ generator = 'tree', recipe }) {
   const g = GENERATORS[generator];
@@ -780,7 +789,7 @@ async function api(req, res, url) {
     const out = {};
     for (const [id, g] of Object.entries(GENERATORS)) {
       const params = JSON.parse(await readFile(path.join(ROOT, g.params), 'utf8'));
-      const all = JSON.parse(await readFile(path.join(ROOT, g.species), 'utf8'));
+      const file = JSON.parse(await readFile(path.join(ROOT, g.species), 'utf8')), all = g.speciesKey ? file[g.speciesKey] : file;
       out[id] = { params, species: Object.fromEntries(params.species.map((s) => [s, all[s]])) };
     }
     return json(res, 200, out);
