@@ -190,7 +190,8 @@ export function createPrecipitation({ max: MAX = 16000 } = {}) {
 }
 
 // ---------- Atmosfären: allt ovan styrt av ett väderläge ----------
-export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30 }) {
+// lightDistance: hur långt från mitten solen står (skuggkameran räcker dubbelt så långt); större för stora platser
+export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30, lightDistance = 80 }) {
   const sky = createSky(), fogFx = createFog(), precip = createPrecipitation();
   scene.backgroundNode = sky.node;
   scene.fogNode = fogFx.node;
@@ -201,7 +202,7 @@ export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30 })
   key.shadow.mapSize.set(shadowSize, shadowSize);
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.04;
-  Object.assign(key.shadow.camera, { left: -shadowRange, right: shadowRange, top: shadowRange, bottom: -shadowRange, near: 1, far: 160 });
+  Object.assign(key.shadow.camera, { left: -shadowRange, right: shadowRange, top: shadowRange, bottom: -shadowRange, near: 1, far: Math.max(160, lightDistance * 2) });
   // Blixtens ljus: alltid med, styrka 0 mellan blixtarna
   const flashLight = new THREE.DirectionalLight('#c8d4ff', 0);
   const bolt = createLightning({ color: '#b9b0ff', core: '#ffffff', width: 0.9, jitter: 0.5, branches: 6, regen: 0.06, intensity: 5 });
@@ -265,7 +266,7 @@ export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30 })
   }
   function placeLights() {
     key.target.position.copy(center);
-    key.position.copy(center).addScaledVector(keyDir, 80);
+    key.position.copy(center).addScaledVector(keyDir, lightDistance);
     flashLight.target.position.copy(center);
   }
   return {

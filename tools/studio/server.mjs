@@ -611,7 +611,7 @@ function recipeStore(area) {
     },
   };
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water');
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain'); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();
@@ -728,6 +728,8 @@ async function api(req, res, url) {
   if (url.pathname === '/api/weather/save' && req.method === 'POST') return json(res, 200, await weatherStore.save(await body(req)));
   if (url.pathname === '/api/water' && req.method === 'GET') return json(res, 200, await waterStore.info());
   if (url.pathname === '/api/water/save' && req.method === 'POST') return json(res, 200, await waterStore.save(await body(req)));
+  if (url.pathname === '/api/terrain' && req.method === 'GET') return json(res, 200, await terrainStore.info());
+  if (url.pathname === '/api/terrain/save' && req.method === 'POST') return json(res, 200, await terrainStore.save(await body(req)));
   if (url.pathname === '/api/wind/glade' && req.method === 'GET') {
     gladeBusy ??= windGlade().finally(() => { gladeBusy = null; }); // flera flikar som frågar samtidigt får samma bygge
     return json(res, 200, await gladeBusy);

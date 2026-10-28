@@ -145,7 +145,7 @@ Lärt på den här datorn: webbläsarpanelen i Claude-appen ritar på det inbygg
 | B5. Sammansättningar och pensel | recept av recept (sten med svampar, lägereld); maskpensel | Egna props byggs av biblioteket | Planerad |
 | A1–A3. Avdelningarna | Smedjan, Väderkvarnen, Ateljén, Häxkitteln och Skattkammaren med färg, landningssida och lådor; se [avdelningar.md](avdelningar.md) | Studion är fyra verkstäder och ett bibliotek | Planerad 2026-10-26 |
 | E1–E5. Effektlabben | flikarna Vind, Vatten och Väder med grundscener och recept, och effekterna som gemensamma TSL-moduler; se [effektlabb.md](effektlabb.md) | Effekterna provas i studion och delas av alla klienter | Planerad 2026-10-26 |
-| T1–T6. Terrängen | terrängkärna i studion (`shared/terrain/`, Tinkertown som förlaga), rätt mark vid vattnet, fliken Terrain, markmaterial, former (åar, vägar, sjöar) och penslar; se [terrain.md](terrain.md) | Marken hänger ihop, utan hack, och blir grunden för det nya Tinkertown | Påbörjad 2026-10-28 |
+| T1–T7. Terrängen (Kartrummet) | terrängkärna i studion (`shared/terrain/`, Tinkertown som förlaga), rätt mark vid vattnet, avdelningen Kartrummet (The Map Room) med fliken Landscape, markmaterial, former (åar, vägar, sjöar) och penslar; se [terrain.md](terrain.md) | Marken hänger ihop, utan hack, och blir grunden för det nya Tinkertown | Påbörjad 2026-10-28 |
 | GUI | professionellt utseende med designtokens, ljust och mörkt tema, väljare i headern | Studion ser ut som ett verktyg | Byggd 2026-10-26 |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.

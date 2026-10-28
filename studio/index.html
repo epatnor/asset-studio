@@ -34,6 +34,7 @@
   :root[data-dept=windmill] { --acc-l: #2c6fc4; --acc-d: #5ea6f2; --acc-ink-l: #ffffff; --acc-ink-d: #07152a; }
   :root[data-dept=atelier] { --acc-l: #b88a12; --acc-d: #e2b53c; --acc-ink-l: #1f1603; --acc-ink-d: #1f1603; }
   :root[data-dept=cauldron] { --acc-l: #7646d6; --acc-d: #a07ef6; --acc-ink-l: #ffffff; --acc-ink-d: #150b2c; }
+  :root[data-dept=maproom] { --acc-l: #b0562a; --acc-d: #e3895a; --acc-ink-l: #ffffff; --acc-ink-d: #2a1206; }
   :root[data-dept=vault] { --acc-l: #5c636d; --acc-d: #a8aeb7; --acc-ink-l: #ffffff; --acc-ink-d: #15171a; }
   :root { --accent-hover: color-mix(in srgb, var(--accent), #000 12%); --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
           --focus: color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -125,12 +126,12 @@
   @media (max-width: 900px) { #unpin, #redo, header#top h1 span { display: none; } }
 
   /* Paneler till höger (tillgångarnas kort, verkstadens kort): en dockad panel med kort som sektioner */
-  #side, #wside, #wmside, #cvside, #wxside, #waside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
+  #side, #wside, #wmside, #cvside, #wxside, #waside, #tside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
                   overflow-y: auto; flex-direction: column; gap: 0; background: var(--surface); backdrop-filter: blur(14px) saturate(1.2);
                   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); box-sizing: border-box; }
   #side { display: flex; }
   #side:empty { display: none; }
-  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass, #waside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass, #waside > .glass, #tside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
   .card { flex: none; border-bottom: 1px solid var(--line); }
   .card > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
   .card > header::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--part, var(--accent)); flex: none; }
@@ -196,10 +197,10 @@
   .tex .grid figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Footer: siffror i block med små rubriker */
-  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot, #wafoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
+  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot, #wafoot, #tfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
                           background: var(--surface-solid); border-top: 1px solid var(--line); box-sizing: border-box; }
   footer#bottom { display: flex; }
-  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass, #wafoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
+  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass, #wafoot.glass, #tfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
   footer .block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   footer .block > b { font-size: 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
@@ -269,12 +270,12 @@
   .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
 
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer, #wadrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
+  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer, #wadrawer, #tdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
           border-radius: var(--radius); flex-direction: column; overflow: hidden; z-index: 1; }
   body.texture-mode #wlib { display: flex; }
   /* Lådan (studio/drawer.js och verkstadens bibliotek): till vänster i varje avdelning, Ctrl+Mellanslag fäller ihop den */
   body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode):not(.weather-mode) #fdrawer { display: flex; }
-  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed #wadrawer, body.drawer-closed .lside { display: none !important; }
+  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed #wadrawer, body.drawer-closed #tdrawer, body.drawer-closed .lside { display: none !important; }
   #drawerbtn { align-self: center; margin-right: 4px; }
   #drawerbtn.on { color: var(--accent); }
   body.home-mode #drawerbtn { display: none; }
@@ -384,6 +385,17 @@
   #waside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
   #waside .card.closed > header h2::after { transform: none; }
   #waside .card.closed > .rows { display: none; }
+  /* Kartrummet, fliken Landscape (studio/terrain.js), som Vatten-fliken */
+  #tview, #tside, #tfoot { display: none; }
+  body.terrain-mode #app, body.terrain-mode #side, body.terrain-mode #bottom, body.terrain-mode .asset-tool { display: none; }
+  body.terrain-mode #tview { display: block; position: fixed; inset: 0; background: var(--viewport); }
+  body.terrain-mode #tview canvas { display: block; }
+  body.terrain-mode #tside, body.terrain-mode #tdrawer, body.terrain-mode #tfoot { display: flex; }
+  #tfoot .msg { margin-left: auto; color: var(--muted); text-align: right; }
+  #tside .card > header { cursor: pointer; }
+  #tside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #tside .card.closed > header h2::after { transform: none; }
+  #tside .card.closed > .rows { display: none; }
   /* Provplatsen (vattnets scener): en rad ikonknappar överst i bilden, mellan lådan och panelen */
   .stagebar { position: fixed; top: calc(var(--head) + var(--gap)); left: calc(288px + 2 * var(--gap)); right: calc(min(350px, calc(100vw - 24px)) + 2 * var(--gap)); display: flex; justify-content: center; gap: 6px; pointer-events: none; z-index: 1; }
   .stagebar button { pointer-events: auto; display: flex; align-items: center; gap: 8px; height: 40px; padding: 4px 12px 4px 4px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); backdrop-filter: blur(12px); color: var(--ink-2); }
@@ -606,6 +618,10 @@
 <div id="waside"></div>
 <div id="wadrawer" class="glass"></div>
 <footer id="wafoot" class="glass"></footer>
+<div id="tview"></div>
+<div id="tside"></div>
+<div id="tdrawer" class="glass"></div>
+<footer id="tfoot" class="glass"></footer>
 <div id="cvview"></div>
 <div id="cvside"></div>
 <div id="cvdrawer" class="glass"></div>

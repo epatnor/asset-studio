@@ -1,4 +1,4 @@
-// Landningssidan (docs/avdelningar.md): fyra verkstäder och storbiblioteket, var och en med illustration,
+// Landningssidan (docs/avdelningar.md): fem verkstäder och storbiblioteket, var och en med illustration,
 // accentfärg, underrubrik och en mening om vad man gör där. Texten i appen är på engelska.
 
 export const DEPARTMENTS = [
@@ -10,6 +10,8 @@ export const DEPARTMENTS = [
     text: 'Seamless textures and full materials from recipes, painted by algorithms or by AI, tried on real shapes.', ready: true },
   { id: 'cauldron', name: 'The Cauldron', sub: 'Spells and game effects', accent: '#8b5cf6', img: 'img/cauldron.webp',
     text: 'Glows and auras, markers on the ground, particles, trails and hits, brewed as recipes for the game.', ready: true },
+  { id: 'maproom', name: 'The Map Room', sub: 'Shape the land', accent: '#c0672e', img: 'img/maproom.webp',
+    text: 'Islands, hills, mountains and valleys from recipes, carved by rain and dressed in ground layers by height and slope.', ready: true },
 ];
 export const VAULT = { id: 'vault', name: 'The Vault', sub: 'Everything you have saved', accent: '#8a8f98', img: 'img/vault.webp',
   text: 'Families that grow new variants, fixed models with their own textures, and every recipe, in one place.', ready: true };

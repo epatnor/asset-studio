@@ -496,6 +496,124 @@
         },
         null
       ]
+    },
+    "maproom_land": {
+      "cols": 3,
+      "rows": 3,
+      "aspect": "1:1",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/island",
+          "prompt": "an island: a green hilly island with a sandy shore rising from turquoise sea, seen from above at an angle"
+        },
+        {
+          "id": "maproom/archipelago",
+          "prompt": "an archipelago: a cluster of small green islands scattered in blue sea"
+        },
+        {
+          "id": "maproom/rolling_hills",
+          "prompt": "rolling hills: soft round green hills in gentle waves, one behind the other"
+        },
+        {
+          "id": "maproom/mountains",
+          "prompt": "mountains: two sharp grey mountain peaks with white snowy tops"
+        },
+        {
+          "id": "maproom/plains",
+          "prompt": "plains: a wide flat golden-green field to a low horizon with one small tree"
+        },
+        {
+          "id": "maproom/river_valley",
+          "prompt": "a river valley: a blue river winding through a green valley between two ridges"
+        },
+        {
+          "id": "maproom/canyon",
+          "prompt": "a canyon: a deep red-orange gorge with layered stepped cliff walls"
+        },
+        {
+          "id": "maproom/highlands",
+          "prompt": "highlands: green stepped plateaus and terraces with small rocky ledges"
+        },
+        {
+          "id": "maproom/coast",
+          "prompt": "a coast: green cliffs and land on one side meeting blue sea with a white surf line"
+        }
+      ]
+    },
+    "maproom_tools": {
+      "cols": 4,
+      "rows": 4,
+      "aspect": "1:1",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/view_shaded",
+          "prompt": "a shaded landscape: a small green hill lit by a sun, with a soft shadow"
+        },
+        {
+          "id": "maproom/view_height",
+          "prompt": "a height map: a hill drawn in colour bands from blue at the bottom through green and brown to white at the top"
+        },
+        {
+          "id": "maproom/view_slope",
+          "prompt": "a slope map: a steep hillside with an angle arc and a red steep face"
+        },
+        {
+          "id": "maproom/view_wetness",
+          "prompt": "wetness: blue water drops running down branching gullies on a hill"
+        },
+        {
+          "id": "maproom/view_wireframe",
+          "prompt": "a wireframe: a hill made of a glowing triangle mesh grid"
+        },
+        {
+          "id": "maproom/sculpt_raise",
+          "prompt": "raise terrain: a mound of earth pushed up with a bold up arrow"
+        },
+        {
+          "id": "maproom/sculpt_lower",
+          "prompt": "lower terrain: a hollow dug into the ground with a bold down arrow"
+        },
+        {
+          "id": "maproom/sculpt_smooth",
+          "prompt": "smooth terrain: a soft rounded hill with a smoothing wave stroke over it"
+        },
+        {
+          "id": "maproom/sculpt_flatten",
+          "prompt": "flatten terrain: a flat level platform cut into a hill with a spirit level bubble"
+        },
+        {
+          "id": "maproom/sculpt_ramp",
+          "prompt": "ramp: a straight sloping ramp of earth between a low and a high level"
+        },
+        {
+          "id": "maproom/sculpt_noise",
+          "prompt": "roughen terrain: bumpy rough rocky ground with small jagged lumps"
+        },
+        {
+          "id": "maproom/shape_river",
+          "prompt": "a river tool: a winding blue river line drawn with a pen across green land"
+        },
+        {
+          "id": "maproom/shape_road",
+          "prompt": "a road tool: a winding brown dirt road with cart tracks across green land"
+        },
+        {
+          "id": "maproom/shape_path",
+          "prompt": "a footpath: a narrow stepping stone path winding through grass"
+        },
+        {
+          "id": "maproom/shape_lake",
+          "prompt": "a lake tool: a round blue lake dug into green land with a sandy rim"
+        },
+        {
+          "id": "maproom/shape_plateau",
+          "prompt": "a plateau tool: a flat raised square plateau of earth for a house, with sloped sides"
+        }
+      ]
     }
   }
 }

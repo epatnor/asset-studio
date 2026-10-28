@@ -31,8 +31,9 @@ function cellOf(a, v) {
   return lo;
 }
 
-// xs × zs med höjden ur heightAt(x, z)
-export function buildField(xs, zs, heightAt) {
+// xs × zs med höjden ur heightAt(x, z). byDifference: för höjder ur ett rutnät med samma täthet (generatorn), där
+// mitten bara är medelvärdet av hörnen; då delas rutan längs diagonalen med minst höjdskillnad (följer dalar och åsar)
+export function buildField(xs, zs, heightAt, { byDifference = false } = {}) {
   const nx = xs.length, nz = zs.length, n = nx * nz;
   const heights = new Float32Array(n), positions = new Float32Array(n * 3), normals = new Float32Array(n * 3);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
@@ -50,8 +51,12 @@ export function buildField(xs, zs, heightAt) {
   const diag = new Uint8Array((nx - 1) * (nz - 1)), index = new Uint32Array((nx - 1) * (nz - 1) * 6);
   for (let j = 0, q = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++, q++) {
     const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
-    const mid = heightAt((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2);
-    const ad = Math.abs((heights[a] + heights[d]) / 2 - mid) < Math.abs((heights[b] + heights[c]) / 2 - mid);
+    let ad;
+    if (byDifference) ad = Math.abs(heights[a] - heights[d]) < Math.abs(heights[b] - heights[c]);
+    else {
+      const mid = heightAt((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2);
+      ad = Math.abs((heights[a] + heights[d]) / 2 - mid) < Math.abs((heights[b] + heights[c]) / 2 - mid);
+    }
     diag[q] = ad ? 1 : 0;
     index.set(ad ? [a, c, d, a, d, b] : [a, c, b, b, c, d], q * 6);
   }

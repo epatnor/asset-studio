@@ -42,13 +42,22 @@ Byggs i studion, med Tinkertowns terräng som förlaga (kolumnen Förlaga). Kär
 | `chunks.js` | Chunks med LOD och kjolar, höjden läses i vertexshadern | Tinkertown `terrain.js` |
 | `material.js` | Marklagren efter regler (höjd, lutning, hålighet, fukt, avstånd till vatten) plus målad mask; triplanar bara i branter | Tinkertown `groundMaterial.js` |
 
-### 2. Fliken Terrain i Väderkvarnen (`studio/terrain.js`, `#terrang`)
+### 2. Kartrummet (The Map Room), fliken Landscape (`studio/terrain.js`, `#kartrummet`)
 
 - En testplats på 256 × 256 m, som referensen föreslår: först en övertygande biom som laddar snabbt, sedan större.
 - Presets: ö, kullar, berg, slätt och skärgård (finns i Tinkertown). Spakarna är data i `tools/terrain/terrain.json`, med `adv: true` för de finare, och sparade terränger hamnar i `assets/terrain/`.
 - Felsökningsvyer: höjd, lutning, fukt, lagervikter, LOD och trådmodell.
 - Kvalitetsnivåer låg, mellan och hög (rutnät 33, 65 och 129 per chunk; 2 lager mot 5–8 lager), med uppmätt GPU-tid och antal ritanrop.
 - Samma upplägg som de andra flikarna: scener och färdiga lägen till vänster, spakar och Spara till höger, vädret ur Väder-fliken.
+
+**Byggt 2026-10-28 (T3):** terrängen blev en egen avdelning, **Kartrummet** (The Map Room, *Shape the land*, terrakotta), med flikarna Landscape (byggd) och Sculpt, Rivers & roads och Biomes (kommer, T5–T7). Namnet följer de andra platserna i studion: ett kartrum där landet formas på ett bord. Landskapet står som ett block på kartbordet, med jordlager på sidorna.
+
+- **Generatorn** `shared/terrain/generate.js` (ren JavaScript, körs i `shared/terrain/worker.js` så att bilden inte står still): seedat gradientbrus i oktaver, åsbrus med rundade krön (mjukt |n|), domänvridning, formerna Open land, Island, Archipelago, Coast, Valley och Canyon, mjuka terrasser, droppar som eroderar med en rund pensel (radie 2 rutor) och stannar vid havet, rasvinkel, och sist en rensning av enstaka spetsar och gropar. Dropparnas spår blir fuktkartan. 256 × 256 m med 0,5 m mellan hörnen (263 000 hörn) på 0,25–0,6 s.
+- **Marken** byggs med `field.js` (`byDifference`: diagonalen med minst höjdskillnad). Lagren efter höjd, lutning och fukt: gräs (torrt till frodigt), äng, fuktigare dalar, rännor, sten mot snögränsen, sand vid havet, klippa (triplanar) i branter och snö. Havet är vattenmodulen (Tropical lagoon) med havsbotten utanför platsen; former med hav sjunker utåt mot −16 m.
+- **Vyerna** (raden överst i bilden): Shaded, Height, Slope, Wetness och Wireframe.
+- **Färdiga landskap** (`tools/terrain/terrain.json`): Island, Archipelago, Rolling hills, Mountains, Plains, River valley, Canyon, Highlands och Coast; sparade i `assets/terrain/`.
+- **Ikoner** (`assets/icons/maproom/`, arken `maproom_land` och `maproom_tools` i `tools/icons/icons.json`): de nio landskapen, de fem vyerna och redan nu verktygen som kommer: penslarna raise, lower, smooth, flatten, ramp och noise, och formerna river, road, path, lake och plateau. Landningssidans bild är `studio/img/maproom.webp`.
+- **Kontroller** (`node tools/terrain/check_terrain.mjs '{"scene": "landscapes"}'`): inga NaN, inga spetsar eller gropar på enstaka rutor (ett hörn som sticker ut åt alla fyra håll utan att marken fortsätter så två rutor ut), och ön och skärgården har kanten minst 1 m under havet. Erosionen gav först 39–984 spetsar per landskap (gropar från dropparnas fyra hörn, högar där de saktade in i havet); nu 0 i alla nio.
 
 ### 3. Rätt mark i vattenscenerna
 
@@ -118,7 +127,7 @@ Kontrollerna räknas i Node utan bilder, som `checks.ok` i generatorerna:
 |---|---|---|---|
 | T1. Kärnan | `shared/terrain/` i studion: `field.js` och `shapes.js` först, sedan höjddata, brus, generator och chunks med Tinkertown som förlaga; kontrollerna i Node | Studions scener ritar marken ur samma kod, kontrollerna är gröna | Påbörjad 2026-10-28: `field.js`, `shapes.js`, `noise.js` och `tools/terrain/check_terrain.mjs` |
 | T2. Rätt mark vid vattnet | Bäcken, sjön och stranden byggda på kärnan; bildläget rättat | Bäckens bankar och strandlinje är mjuka, utan hack eller sågtänder | Byggd 2026-10-28 |
-| T3. Fliken Terrain | `studio/terrain.js`, `tools/terrain/terrain.json`, presets, felsökningsvyer, kvalitetsnivåer | Patrik kan dra i spakarna och spara en terräng | Planerad |
+| T3. Kartrummet, Landscape | `studio/terrain.js`, `tools/terrain/terrain.json`, generatorn i en worker, nio landskap, felsökningsvyer, ikoner | Patrik kan dra i spakarna och spara en terräng | Byggd 2026-10-28 (kvalitetsnivåerna återstår) |
 | T4. Markmaterial | Regler och lager, blandning efter höjd, våthet, triplanar på branter, texturer ur Ateljén | Marken ser målad och avsiktlig ut, inte bara brusig | Planerad |
 | T5. Former | Åar, bäckar, vägar, sjöar och platåer som recept | En å kan dras genom en terräng och fyllas med vatten | Planerad |
 | T6. Penslar | Höj, sänk, jämna ut, platta till, ramp och brus; objekt följer marken | Marken går att forma för hand, och det som står på den följer med | Planerad |
@@ -127,5 +136,5 @@ Kontrollerna räknas i Node utan bilder, som `checks.ok` i generatorerna:
 ## Beslut
 
 - Bara i studion; Tinkertown är en förlaga och byggs senare om med studions verktyg (2026-10-28).
-- Fliken Terrain hamnar i Väderkvarnen, bredvid Vind, Vatten och Väder (förslag, inte bekräftat).
+- Terrängen är en egen avdelning, Kartrummet (The Map Room), med flikarna Landscape, Sculpt, Rivers & roads och Biomes (2026-10-28).
 - Ordning: T1 och T2 först, sedan fliken.

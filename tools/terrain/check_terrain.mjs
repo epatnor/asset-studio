@@ -1,6 +1,7 @@
 // Kontroller av terrängen utan bilder (docs/terrain.md, Kontroller): veck, hopp och sågtänder i strandlinjen.
 //
-//   node tools/terrain/check_terrain.mjs ['{"scene": "stream"}']
+//   node tools/terrain/check_terrain.mjs ['{"scene": "stream"}']       bäcken i Vatten-fliken
+//   node tools/terrain/check_terrain.mjs '{"scene": "landscapes"}'     Kartrummets färdiga landskap
 //
 // Svarar med en rad JSON: {"ok": ..., "checks": {...}}. Mätningarna exporteras också (measure), så att andra rutnät kan
 // jämföras med samma mått.
@@ -9,6 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { axis, buildField } from '../../shared/terrain/field.js';
 import { createChannel } from '../../shared/terrain/shapes.js';
+import { generateTerrain } from '../../shared/terrain/generate.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -33,7 +35,7 @@ export function measure(f, { levelAt = null, inside = () => true } = {}) {
       steep = Math.max(steep, Math.abs(h[m] - h[k]) / (di ? xs[i + 1] - xs[i] : zs[j + 1] - zs[j]));
     }
   }
-  const out = { bend_p99_deg: r2(pct(bends, 0.99)), bend_max_deg: r2(Math.max(0, ...bends)), steepest: r2(steep) };
+  const out = { bend_p99_deg: r2(pct(bends, 0.99)), bend_max_deg: r2(bends.reduce((a, b) => Math.max(a, b), 0)), steepest: r2(steep) };
   if (!levelAt) return out;
   // Strandlinjen: där marken skär vattennivån, triangel för triangel; kedjorna följs och vinkeln mellan stegen mäts
   const P = (k) => [f.positions[k * 3], f.positions[k * 3 + 2]];
@@ -99,9 +101,45 @@ export async function streamScene() {
 }
 
 // Gränser för ok (grader och lutning); hamnar i svaret så att de syns
-const LIMITS = { bend_max_deg: 25, shore_turn_p95_deg: 30, shore_turns_over_60: 0, edge_clearance_min: 0.02 };
+const LIMITS = { bend_max_deg: 25, shore_turn_p95_deg: 30, shore_turns_over_60: 0, edge_clearance_min: 0.02, landscape_spikes: 0 };
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Spetsar och gropar: ett hörn som ligger mer än tol över (under) alla fyra grannar, där marken två rutor ut inte
+// fortsätter att sjunka (stiga). En riktig topp eller sänka fortsätter utåt; en artefakt på en enda ruta gör det inte.
+function spikes(h, n, tol = 0.12) {
+  let c = 0;
+  for (let j = 2; j < n - 2; j++) for (let i = 2; i < n - 2; i++) {
+    const k = j * n + i, r1 = [h[k - 1], h[k + 1], h[k - n], h[k + n]], r2 = [h[k - 2], h[k + 2], h[k - 2 * n], h[k + 2 * n]];
+    const up = h[k] - Math.max(...r1), down = Math.min(...r1) - h[k];
+    if ((up > tol && Math.max(...r1) - Math.max(...r2) < up * 0.3) || (down > tol && Math.min(...r2) - Math.min(...r1) < down * 0.3)) c++;
+  }
+  return c;
+}
+// Kartrummets landskap: inga NaN, inga spetsar eller gropar, och för ön och skärgården en kant under havet
+async function landscapes() {
+  const T = JSON.parse(await readFile(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
+  const defaults = Object.fromEntries(T.params.map((q) => [q.key, q.default]));
+  const out = {};
+  let ok = true;
+  for (const [id, p] of Object.entries(T.presets)) {
+    const R = { ...defaults, ...p, size: T.size, cell: T.cell }, t = generateTerrain(R);
+    const xs = Array.from({ length: t.n }, (_, i) => -t.half + i * t.cell);
+    const f = buildField(xs, xs, t.heightAt, { byDifference: true });
+    const nan = t.heights.some((h) => !Number.isFinite(h));
+    let edge = -Infinity;
+    if (['island', 'archipelago'].includes(R.shape)) for (let i = 0; i < t.n; i++) for (const k of [i, (t.n - 1) * t.n + i, i * t.n, i * t.n + t.n - 1]) edge = Math.max(edge, t.heights[k]);
+    const m = measure(f);
+    const sp = spikes(t.heights, t.n);
+    const good = !nan && sp <= LIMITS.landscape_spikes && (edge === -Infinity || edge < (R.seaLevel ?? 0) - 1);
+    ok &&= good;
+    out[id] = { ok: good, ms: t.ms, top: r2(t.heights.reduce((a, b) => Math.max(a, b), -Infinity)), bend_p99_deg: m.bend_p99_deg, bend_max_deg: m.bend_max_deg, spikes: sp, ...(edge > -Infinity ? { edge_max: r2(edge) } : {}) };
+  }
+  return { ok, landscapes: out };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'landscapes') {
+  const r = await landscapes();
+  console.log(JSON.stringify({ ...r, limits: { spikes: LIMITS.landscape_spikes, edge: 'under the sea by 1 m' } }));
+} else if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { f, ch, ms } = await streamScene();
   // Vattnet ligger bara nära fåran (d < 1,3 w), som vattenytan i studio/water.js
   const levelAt = (x, z) => { const q = ch.query(x, z); return q && q.d < q.w * 1.3 ? q.level : null; };

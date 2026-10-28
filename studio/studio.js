@@ -18,6 +18,7 @@ import { createWindmill } from './windmill.js';
 import { createCauldron } from './cauldron.js';
 import { createWeather } from './weather.js';
 import { createWaterTab } from './water.js';
+import { createTerrainTab } from './terrain.js';
 import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
@@ -598,7 +599,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || holds(p.when));
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : terrainMode ? b === landBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
   drawer?.setKind(kind);
   applyDept();
 }
@@ -653,6 +654,19 @@ const waterBtn = el('button', null, 'Water');
 waterBtn.dataset.dept = 'windmill';
 waterBtn.title = 'The Windmill: water to try out, on open water, a beach, a stream and a lake, under the sky and sun';
 $('kinds').append(waterBtn, weatherBtn);
+// Kartrummet (studio/terrain.js, docs/terrain.md): Landscape är byggd; Sculpt, Rivers & roads och Biomes kommer (T5–T7)
+const landBtn = el('button', null, 'Landscape');
+landBtn.dataset.dept = 'maproom';
+landBtn.title = 'The Map Room: islands, hills, mountains and valleys from recipes, carved by rain';
+$('kinds').append(landBtn);
+for (const [label, tip] of [['Sculpt', 'Brushes that raise, lower, smooth, flatten and roughen the land (T6)'], ['Rivers & roads', 'Rivers, streams, roads, paths, lakes and plateaus drawn as lines (T5)'], ['Biomes', 'Forests, meadows, deserts and snow painted over the land (T7)']]) {
+  const b = el('button', null, label);
+  b.dataset.dept = 'maproom';
+  b.disabled = true;
+  b.title = `The Map Room: ${tip}; see docs/terrain.md`;
+  b.append(el('span', 'soon', 'soon'));
+  $('kinds').append(b);
+}
 // Häxkitteln (studio/cauldron.js): fyra flikar med en gemensam arena (docs/effektlabb.md, E6)
 const FX_TABS = [
   ['glow', 'Glow & aura', 'Glowing rims, light pillars and auras around figures'],
@@ -670,7 +684,7 @@ for (const [id, label, tip] of FX_TABS) {
   $('kinds').append(b);
 }
 let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false, windmill = null, windMode = false;
-let cauldron = null, fxMode = false, fxKind = 'glow', weather = null, weatherMode = false, waterTab = null, waterMode = false;
+let cauldron = null, fxMode = false, fxKind = 'glow', weather = null, weatherMode = false, waterTab = null, waterMode = false, terrainTab = null, terrainMode = false;
 // Miniatyrerna (The Vault och lådan) får samma material som studion, utan vind
 const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
 const thumbPatch = createMaterialPatcher(THREE, { wind: thumbWind, sunDir });
@@ -695,9 +709,10 @@ function openDept(id) {
   else if (id === 'vault') libBtn.onclick();
   else if (id === 'windmill') windBtn.onclick();
   else if (id === 'cauldron') openCauldron(fxKind);
+  else if (id === 'maproom') landBtn.onclick();
   else selectKind(kind);
 }
-const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode || waterMode ? 'windmill' : fxMode ? 'cauldron' : 'forge');
+const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode || waterMode ? 'windmill' : terrainMode ? 'maproom' : fxMode ? 'cauldron' : 'forge');
 function applyDept() {
   const d = currentDept();
   if (d) document.documentElement.dataset.dept = d; else delete document.documentElement.dataset.dept;
@@ -742,7 +757,7 @@ libBtn.onclick = async () => {
   leaveTextureMode();
   leaveWindMode();
   leaveFxMode();
-  leaveWeatherMode(); leaveWaterMode();
+  leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   libraryMode = true;
   document.body.classList.add('library-mode');
   paused = true;
@@ -787,7 +802,7 @@ texBtn.onclick = async () => {
   leaveLibraryMode();
   leaveWindMode();
   leaveFxMode();
-  leaveWeatherMode(); leaveWaterMode();
+  leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   textureMode = true;
   document.body.classList.add('texture-mode');
   paused = true; // 3D-vyn behövs inte medan man arbetar med texturer
@@ -800,7 +815,7 @@ windBtn.onclick = async () => {
   leaveLibraryMode();
   leaveTextureMode();
   leaveFxMode();
-  leaveWeatherMode(); leaveWaterMode();
+  leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   windMode = true;
   document.body.classList.add('wind-mode');
   paused = true; // studions egen 3D-vy behövs inte; gläntan har sin egen renderare
@@ -826,7 +841,7 @@ async function openCauldron(id) {
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
-  leaveWeatherMode(); leaveWaterMode();
+  leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   fxMode = true;
   fxKind = id;
   document.body.classList.add('fx-mode');
@@ -847,7 +862,7 @@ weatherBtn.onclick = async () => {
   leaveTextureMode();
   leaveWindMode();
   leaveFxMode();
-  leaveWaterMode();
+  leaveWaterMode(); leaveTerrainMode();
   weatherMode = true;
   document.body.classList.add('weather-mode');
   paused = true; // platsen har sin egen renderare
@@ -868,6 +883,7 @@ waterBtn.onclick = async () => {
   leaveWindMode();
   leaveFxMode();
   leaveWeatherMode();
+  leaveTerrainMode();
   waterMode = true;
   document.body.classList.add('water-mode');
   paused = true; // scenerna har sin egen renderare
@@ -881,6 +897,34 @@ waterBtn.onclick = async () => {
   }
   if (waterMode) waterTab.show();
 };
+landBtn.onclick = async () => {
+  leaveHome();
+  leaveLibraryMode();
+  leaveTextureMode();
+  leaveWindMode();
+  leaveFxMode();
+  leaveWeatherMode();
+  leaveWaterMode();
+  terrainMode = true;
+  document.body.classList.add('terrain-mode');
+  paused = true; // landskapet har sin egen renderare
+  refreshUi();
+  try {
+    terrainTab ??= await createTerrainTab({ api, el, view: $('tview'), side: $('tside'), drawer: $('tdrawer'), footer: $('tfoot') });
+  } catch (e) {
+    $('tfoot').replaceChildren(el('div', 'msg', `The landscape could not start: ${e.message ?? e}`));
+    console.error(e);
+    return;
+  }
+  if (terrainMode) terrainTab.show();
+};
+function leaveTerrainMode() {
+  if (!terrainMode) return;
+  terrainMode = false;
+  document.body.classList.remove('terrain-mode');
+  terrainTab?.hide();
+  paused = false;
+}
 function leaveWaterMode() {
   if (!waterMode) return;
   waterMode = false;
@@ -910,7 +954,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (homeMode || textureMode || libraryMode || windMode || fxMode || weatherMode || waterMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); if (k.id === kind.id) return refreshUi(); }
+  if (homeMode || textureMode || libraryMode || windMode || fxMode || weatherMode || waterMode || terrainMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -980,6 +1024,7 @@ window.__studio = {
   get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
   get windmill() { return windmill; }, // Väderkvarnen (wind, scene, stats), när den har öppnats
   get weather() { return weather; }, // Väderfliken (vals, apply, shafts, stats), när den har öppnats
+  get terrain() { return terrainTab; }, // Kartrummets Landscape (vals, apply, regenerate, stats), när den har öppnats
   get water() { return waterTab; }, // Vattenfliken (vals, apply, showScene, active, stats), när den har öppnats
   get cauldron() { return cauldron; }, // Häxkitteln (fx, select, stats), när den har öppnats
   prepareThumb, // för att rendera om miniatyrer: renderThumb(url, __studio.prepareThumb) i library.js
@@ -1001,7 +1046,7 @@ regenerate();
 const home = createHome({ el, api, root: $('home'), open: openDept });
 createGpuMenu({ el, api, button: $('gpu'), root: document.body });
 function goHome() {
-  leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode();
+  leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   homeMode = true;
   paused = true; // 3D-vyn behövs inte under landningssidan
   home.show();
@@ -1014,11 +1059,12 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet, #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
 else if (location.hash === '#vind') windBtn.onclick();
 else if (location.hash === '#vader') weatherBtn.onclick();
 else if (location.hash === '#vatten') waterBtn.onclick();
+else if (location.hash === '#kartrummet') landBtn.onclick();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();

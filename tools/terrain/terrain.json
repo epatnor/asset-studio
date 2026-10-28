@@ -1,0 +1,483 @@
+{
+  "_doc": "Kartrummet, fliken Landscape (docs/terrain.md, T3): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Platsen är 256 × 256 m med 0,5 m mellan hörnen. Spakar med \"recipe\": false (vyn och himlen) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
+  "size": 256,
+  "cell": 0.5,
+  "camera": {
+    "pos": [
+      150,
+      110,
+      190
+    ],
+    "target": [
+      0,
+      4,
+      0
+    ]
+  },
+  "groups": [
+    {
+      "id": "shape",
+      "label": "Shape"
+    },
+    {
+      "id": "detail",
+      "label": "Detail"
+    },
+    {
+      "id": "erosion",
+      "label": "Erosion"
+    },
+    {
+      "id": "water",
+      "label": "Water"
+    },
+    {
+      "id": "material",
+      "label": "Ground"
+    },
+    {
+      "id": "view",
+      "label": "View"
+    },
+    {
+      "id": "sky",
+      "label": "Weather"
+    }
+  ],
+  "params": [
+    {
+      "key": "shape",
+      "group": "shape",
+      "label": "Shape",
+      "type": "choice",
+      "default": "island",
+      "options": [
+        {
+          "id": "open",
+          "label": "Open land",
+          "help": "Only the noise: hills, mountains, plains or highlands"
+        },
+        {
+          "id": "island",
+          "label": "Island",
+          "help": "Land that falls toward the sea on every side, with an irregular shore"
+        },
+        {
+          "id": "archipelago",
+          "label": "Archipelago",
+          "help": "Many islands where the low noise rises above the sea, sparser outward"
+        },
+        {
+          "id": "coast",
+          "label": "Coast",
+          "help": "Land in the distance, the sea in front"
+        },
+        {
+          "id": "valley",
+          "label": "Valley",
+          "help": "Two ridges with a wide, winding valley floor between them"
+        },
+        {
+          "id": "canyon",
+          "label": "Canyon",
+          "help": "A high plateau cut by a deep, winding gorge with steep walls"
+        }
+      ],
+      "help": "The overall form the noise is laid into"
+    },
+    {
+      "key": "seed",
+      "group": "shape",
+      "label": "Seed",
+      "min": 1,
+      "max": 999,
+      "step": 1,
+      "default": 7,
+      "help": "Another seed gives another landscape with the same character"
+    },
+    {
+      "key": "height",
+      "group": "shape",
+      "label": "Height",
+      "min": 2,
+      "max": 120,
+      "step": 1,
+      "default": 30,
+      "help": "The height of the highest land, in metres"
+    },
+    {
+      "key": "scale",
+      "group": "shape",
+      "label": "Feature size",
+      "min": 20,
+      "max": 250,
+      "step": 1,
+      "default": 90,
+      "help": "How large the hills are, in metres: small values give many small hills"
+    },
+    {
+      "key": "coast",
+      "group": "shape",
+      "label": "Shore",
+      "min": 0.4,
+      "max": 0.95,
+      "step": 0.01,
+      "default": 0.72,
+      "adv": true,
+      "help": "Where the island's shore runs, as a share of the radius"
+    },
+    {
+      "key": "octaves",
+      "group": "detail",
+      "label": "Detail levels",
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "default": 6,
+      "adv": true,
+      "help": "How many finer layers of noise lie on top of each other"
+    },
+    {
+      "key": "roughness",
+      "group": "detail",
+      "label": "Roughness",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.45,
+      "help": "How much the finer layers weigh: low is soft and rounded, high is rough and rocky"
+    },
+    {
+      "key": "ridges",
+      "group": "detail",
+      "label": "Ridges",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.25,
+      "help": "Sharp mountain ridges that branch (ridged noise) instead of round hills"
+    },
+    {
+      "key": "warp",
+      "group": "detail",
+      "label": "Swirl",
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "default": 24,
+      "help": "How much the shapes wind and swirl (domain warp), in metres"
+    },
+    {
+      "key": "terraces",
+      "group": "detail",
+      "label": "Terraces",
+      "min": 0,
+      "max": 12,
+      "step": 1,
+      "default": 0,
+      "help": "Steps in the land: plateaus and bands of cliffs (0 = none)"
+    },
+    {
+      "key": "terraceSharp",
+      "group": "detail",
+      "label": "Terrace edges",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.6,
+      "adv": true,
+      "help": "How flat the steps are and how sharp their edges"
+    },
+    {
+      "key": "erosion",
+      "group": "erosion",
+      "label": "Rain erosion",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "help": "Drops that run downhill, carve gullies and leave sediment in the valleys"
+    },
+    {
+      "key": "talus",
+      "group": "erosion",
+      "label": "Scree angle",
+      "min": 0,
+      "max": 70,
+      "step": 1,
+      "default": 42,
+      "help": "Slopes steeper than this angle crumble (degrees; 0 = off)"
+    },
+    {
+      "key": "sea",
+      "group": "water",
+      "label": "Sea",
+      "type": "bool",
+      "default": true,
+      "help": "Water at sea level around the land"
+    },
+    {
+      "key": "seaLevel",
+      "group": "water",
+      "label": "Sea level",
+      "min": -10,
+      "max": 40,
+      "step": 0.1,
+      "default": 0,
+      "help": "The height of the sea, in metres"
+    },
+    {
+      "key": "snowline",
+      "group": "material",
+      "label": "Snow line",
+      "min": 5,
+      "max": 150,
+      "step": 1,
+      "default": 60,
+      "help": "Snow above this height, in metres"
+    },
+    {
+      "key": "sandBand",
+      "group": "material",
+      "label": "Beach",
+      "min": 0,
+      "max": 5,
+      "step": 0.05,
+      "default": 1.4,
+      "help": "How high above the sea the sand reaches, in metres"
+    },
+    {
+      "key": "cliffAngle",
+      "group": "material",
+      "label": "Cliff angle",
+      "min": 15,
+      "max": 65,
+      "step": 1,
+      "default": 36,
+      "help": "Steeper than this shows bare rock (degrees)"
+    },
+    {
+      "key": "grassTone",
+      "group": "material",
+      "label": "Grass",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.6,
+      "help": "From dry and golden to lush and green"
+    },
+    {
+      "key": "view",
+      "group": "view",
+      "label": "View",
+      "type": "choice",
+      "recipe": false,
+      "default": "shaded",
+      "options": [
+        {
+          "id": "shaded",
+          "label": "Shaded",
+          "help": "The land with its ground layers, sun and shadows"
+        },
+        {
+          "id": "height",
+          "label": "Height",
+          "help": "Colour by height: blue under the sea, green, brown and white up to the top"
+        },
+        {
+          "id": "slope",
+          "label": "Slope",
+          "help": "Colour by steepness: flat is dark, the cliff angle and steeper is red"
+        },
+        {
+          "id": "wetness",
+          "label": "Wetness",
+          "help": "Where the rain ran (the erosion drops): dry is light, gullies and valleys blue"
+        },
+        {
+          "id": "wireframe",
+          "label": "Wireframe",
+          "help": "The triangles, to see the grid and how the diagonals follow the slopes"
+        }
+      ],
+      "help": "What the land shows: shaded, or a debug map"
+    },
+    {
+      "key": "weather",
+      "group": "sky",
+      "label": "Weather",
+      "type": "choice",
+      "recipe": false,
+      "default": "noon",
+      "options": [],
+      "help": "The weather from the Weather tab (ready-made and saved)"
+    },
+    {
+      "key": "hour",
+      "group": "sky",
+      "label": "Time of day",
+      "recipe": false,
+      "min": 0,
+      "max": 24,
+      "step": 0.05,
+      "default": 10,
+      "help": "The time of day (the weather's own time is replaced)"
+    },
+    {
+      "key": "azimuth",
+      "group": "sky",
+      "label": "Sun direction",
+      "recipe": false,
+      "min": 0,
+      "max": 359,
+      "step": 1,
+      "default": 210,
+      "help": "The compass direction of the sun"
+    },
+    {
+      "key": "haze",
+      "group": "sky",
+      "label": "Haze",
+      "recipe": false,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.25,
+      "help": "How much the air hazes the distance (share of the weather's own haze)"
+    },
+    {
+      "key": "exposure",
+      "group": "sky",
+      "label": "Exposure",
+      "recipe": false,
+      "min": 0.4,
+      "max": 2,
+      "step": 0.01,
+      "default": 1,
+      "help": "Overall brightness (on top of the weather's own)"
+    }
+  ],
+  "presets": {
+    "island": {
+      "label": "Island",
+      "shape": "island",
+      "seed": 7,
+      "height": 34,
+      "scale": 90,
+      "ridges": 0.25,
+      "warp": 24,
+      "roughness": 0.45,
+      "erosion": 0.55,
+      "sea": true,
+      "coast": 0.72
+    },
+    "archipelago": {
+      "label": "Archipelago",
+      "shape": "archipelago",
+      "seed": 12,
+      "height": 16,
+      "scale": 60,
+      "ridges": 0.1,
+      "warp": 30,
+      "roughness": 0.5,
+      "erosion": 0.4,
+      "sea": true
+    },
+    "rolling_hills": {
+      "label": "Rolling hills",
+      "shape": "open",
+      "seed": 3,
+      "height": 22,
+      "scale": 110,
+      "ridges": 0,
+      "warp": 20,
+      "roughness": 0.35,
+      "erosion": 0.35,
+      "sea": false,
+      "talus": 0
+    },
+    "mountains": {
+      "label": "Mountains",
+      "shape": "open",
+      "seed": 21,
+      "height": 90,
+      "scale": 140,
+      "ridges": 0.85,
+      "warp": 30,
+      "roughness": 0.55,
+      "erosion": 0.7,
+      "talus": 45,
+      "sea": false,
+      "snowline": 62
+    },
+    "plains": {
+      "label": "Plains",
+      "shape": "open",
+      "seed": 5,
+      "height": 5,
+      "scale": 160,
+      "ridges": 0,
+      "warp": 40,
+      "roughness": 0.3,
+      "erosion": 0.1,
+      "sea": false,
+      "talus": 0
+    },
+    "river_valley": {
+      "label": "River valley",
+      "shape": "valley",
+      "seed": 9,
+      "height": 46,
+      "scale": 100,
+      "ridges": 0.4,
+      "warp": 20,
+      "roughness": 0.45,
+      "erosion": 0.6,
+      "sea": false
+    },
+    "canyon": {
+      "label": "Canyon",
+      "shape": "canyon",
+      "seed": 4,
+      "height": 40,
+      "scale": 70,
+      "ridges": 0.2,
+      "warp": 12,
+      "roughness": 0.4,
+      "terraces": 6,
+      "terraceSharp": 0.75,
+      "erosion": 0.3,
+      "talus": 60,
+      "sea": false,
+      "cliffAngle": 30,
+      "grassTone": 0.15
+    },
+    "highlands": {
+      "label": "Highlands",
+      "shape": "open",
+      "seed": 17,
+      "height": 48,
+      "scale": 120,
+      "ridges": 0.35,
+      "warp": 26,
+      "roughness": 0.5,
+      "terraces": 4,
+      "terraceSharp": 0.55,
+      "erosion": 0.5,
+      "sea": false
+    },
+    "coast": {
+      "label": "Coast",
+      "shape": "coast",
+      "seed": 11,
+      "height": 36,
+      "scale": 90,
+      "ridges": 0.45,
+      "warp": 24,
+      "roughness": 0.5,
+      "erosion": 0.55,
+      "sea": true,
+      "cliffAngle": 34
+    }
+  }
+}
