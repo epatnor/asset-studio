@@ -225,22 +225,22 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
         else if (m.shore) [x, z] = B.shore(...m.shore);
         else if (m.ring) [x, z] = B.shore(rand(m.ring[0], m.ring[1]), rand(m.ring[2], m.ring[3]));
         else if (m.pool) { const a = r() * Math.PI * 2, d = Math.sqrt(r()) * B.pool.w * 0.75; [x, z] = [B.pool.x + Math.cos(a) * d, B.pool.z + Math.sin(a) * d]; }
-        else if (m.bank) { const [px, pz] = B.along(rand(0.05, 0.95), (r() < 0.5 ? -1 : 1) * rand(m.bank[0], m.bank[1])); [x, z] = [px, pz]; }
+        else if (m.bank) { const [t0, t1] = m.span ?? [0.05, 0.95], [px, pz] = B.along(rand(t0, t1), (r() < 0.5 ? -1 : 1) * rand(m.bank[0], m.bank[1])); [x, z] = [px, pz]; } // span: andel av bäckens längd
         else if (m.zone) [x, z] = [rand(m.zone[0], m.zone[1]), rand(m.zone[2], m.zone[3])];
         else continue;
         const bed = B.bedAt(x, z), lvl = B.query?.(x, z)?.level ?? B.level;
         const y = m.float ? lvl + 0.01 : bed - (m.scatter ? 0.03 : 0.08);
         const rot = m.rot ?? r() * 360, sc = m.scatter ? rand(s0, s1) : s0, ph = r() * 6;
         if (m.float && bed > lvl - 0.05) continue; // näckrosor bara där det är vatten
-        if (!m.float && !m.pool && m.scatter && bed < lvl - 0.05 && !/reed|cattail/.test(m.model)) continue; // gräs inte under vattnet
+        if (!m.float && !m.pool && m.scatter && bed < lvl - 0.05 && !/reed|cattail|rock|pebble/.test(m.model)) continue; // gräs inte under vattnet (vass och stenar får stå i kanten)
         if (m.scatter) list.push({ x, y, z, rot, sc, float: !!m.float, lvl, bed, ph });
         else jobs.push(place(group, m.model, x, y, z, rot, sc));
       }
-      if (list.length) flocks.push({ url: m.model, list });
+      if (list.length) flocks.push({ url: m.model, list, shadow: !!m.shadow });
     }
     const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), V = new THREE.Vector3(), SC = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
     const baseOf = (it, y = it.y) => M.compose(V.set(it.x, y, it.z), Q.setFromAxisAngle(UP, it.rot * DEG), SC.setScalar(it.sc));
-    for (const { url, list } of flocks) jobs.push(loadModel(url).then((src) => {
+    for (const { url, list, shadow } of flocks) jobs.push(loadModel(url).then((src) => {
       if (!src) return;
       src.updateMatrixWorld(true);
       const parts = [];
@@ -248,7 +248,7 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
         if (!o.isMesh || o.material.userData?.shadowProxy) return;
         for (let a = o; a && a !== src; a = a.parent) if (/_LOD[12]$/.test(a.name)) return;
         const im = new THREE.InstancedMesh(o.geometry, o.material, list.length);
-        im.castShadow = false;
+        im.castShadow = shadow; // stenar kastar skugga (shadow: true), växterna inte
         im.receiveShadow = true;
         if (list.some((it) => it.float)) im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); // guppar varje bildruta
         list.forEach((it, i) => im.setMatrixAt(i, baseOf(it).multiply(o.matrixWorld)));

@@ -912,14 +912,14 @@
       "preset": "forest_creek",
       "camera": {
         "pos": [
-          3.2,
-          1.5,
-          21
+          3.5,
+          2.4,
+          27
         ],
         "target": [
-          -2,
-          0.3,
-          4
+          -3,
+          0.2,
+          6
         ],
         "overGround": true
       },
@@ -930,29 +930,34 @@
       },
       "path": [
         [
-          -14,
+          -16,
           -46,
           2.4
         ],
         [
-          -9,
-          -32,
+          -12,
+          -33,
           2.0
         ],
         [
-          -1,
-          -22,
+          -3,
+          -26,
           1.6
         ],
         [
-          3,
-          -12,
+          6,
+          -19,
+          1.3
+        ],
+        [
+          9,
+          -10,
           1.2
         ],
         [
-          0,
-          -4,
-          1.3
+          4,
+          -3,
+          1.4
         ],
         [
           -3.5,
@@ -960,17 +965,22 @@
           3.0
         ],
         [
-          -1,
-          11,
-          1.4
+          -7,
+          10,
+          1.5
         ],
         [
-          3,
-          20,
+          -4,
+          17,
           1.3
         ],
         [
-          5,
+          2,
+          23,
+          1.3
+        ],
+        [
+          4,
           34,
           1.6
         ]
@@ -1036,6 +1046,73 @@
             1.9
           ],
           "rot": 15
+        },
+        {
+          "model": "assets/props/rock_lp1/rock_lp1.gltf",
+          "scatter": 24,
+          "bank": [
+            0.85,
+            1.25
+          ],
+          "scale": [
+            1.0,
+            1.8
+          ],
+          "shadow": true,
+          "span": [
+            0.35,
+            0.95
+          ]
+        },
+        {
+          "model": "assets/props/rock_lp2/rock_lp2.gltf",
+          "scatter": 20,
+          "bank": [
+            0.85,
+            1.25
+          ],
+          "scale": [
+            0.9,
+            1.6
+          ],
+          "shadow": true,
+          "span": [
+            0.35,
+            0.95
+          ]
+        },
+        {
+          "model": "assets/props/rock_lp_mossy1/rock_lp_mossy1.gltf",
+          "scatter": 16,
+          "bank": [
+            0.95,
+            1.35
+          ],
+          "scale": [
+            0.9,
+            1.5
+          ],
+          "shadow": true,
+          "span": [
+            0.35,
+            0.95
+          ]
+        },
+        {
+          "model": "assets/props/pebbles1/pebbles1.gltf",
+          "scatter": 16,
+          "bank": [
+            0.8,
+            1.15
+          ],
+          "scale": [
+            1.2,
+            1.8
+          ],
+          "span": [
+            0.35,
+            0.95
+          ]
         },
         {
           "model": "assets/plants/water_lily1/water_lily1.gltf",
@@ -1137,8 +1214,8 @@
         {
           "model": "assets/trees/ash/ash.gltf",
           "at": [
-            9,
-            -18
+            13,
+            -21
           ],
           "rot": 300,
           "scale": 1.1
@@ -1146,8 +1223,8 @@
         {
           "model": "assets/trees/willow/willow.gltf",
           "at": [
-            -8.5,
-            12
+            -11.5,
+            13
           ],
           "rot": 90,
           "scale": 1
