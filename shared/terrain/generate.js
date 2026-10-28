@@ -58,10 +58,37 @@ const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a
 const SHAPES = {
   // Öppet land: bara bruset (kullar, berg, slätter, högland)
   open: (u, v, b) => b,
-  // En ö: landet faller mot havet utåt, med oregelbunden strand
-  island: (u, v, b, w, R) => { const r = Math.hypot(u, v) + w * 0.22; return b * smooth(R.coast + 0.25, R.coast - 0.3, r) - 0.18 * smooth(R.coast - 0.2, R.coast + 0.2, r); },
+  // En ö: en kupol som stiger inåt land (högst i mitten, inte en platå), bruset ovanpå, och en oregelbunden strand
+  island: (u, v, b, w, R) => {
+    const r = Math.hypot(u, v) + w * 0.22, land = smooth(R.coast + 0.15, R.coast - 0.2, r), dome = Math.max(0, 1 - r / (R.coast + 0.15)) ** 0.75;
+    return (0.2 + b * 0.8) * dome * land - 0.18 * (1 - land);
+  },
   // Skärgård: många öar där det låga bruset sticker upp, allt glesare utåt
   archipelago: (u, v, b, w, R, lo) => { const r = Math.hypot(u, v); const land = smooth(-0.05, 0.3, lo + 0.25 - r * 0.45) * smooth(0.97, 0.8, Math.max(Math.abs(u), Math.abs(v))); return b * land - 0.15 * (1 - land); },
+  // Vulkan: en kon med krater i toppen, kullar och raviner på sluttningarna, havet runt om
+  volcano: (u, v, b, w, R) => {
+    const k = (Math.hypot(u, v) + w * 0.12) / (R.coast ?? 0.8), cone = Math.max(0, 1 - k) ** 1.25;
+    const crater = smooth(0.16, 0.07, k) * 0.42;
+    return (cone * 0.85 + (b - 0.4) * 0.35 * smooth(1.05, 0.6, k) - crater) * smooth(1.12, 0.95, k) - 0.2 * smooth(0.9, 1.2, k);
+  },
+  // Atoll: en ring av låga öar runt en grund lagun, med öppningar i ringen
+  atoll: (u, v, b, w, R) => {
+    const k = Math.hypot(u, v) / (R.coast ?? 0.8), ring = 1 - Math.abs(k - 0.86) / 0.11;
+    const land = smooth(0.3, 0.6, ring * 0.8 + w * 0.9 + (b - 0.5) * 0.9); // bruset bryter ringen i öar med öppningar
+    const sea = -1.0 + 0.6 * smooth(1.0, 0.8, k); // lagunen några meter djup, havet utanför djupare
+    return sea * (1 - land) + land * (0.1 + b * 0.35);
+  },
+  // Två öar med ett sund emellan
+  twin: (u, v, b, w) => {
+    const r = Math.min(Math.hypot(u + 0.38, v - 0.1) / 0.5, Math.hypot(u - 0.4, v + 0.18) / 0.42) + w * 0.22;
+    return b * smooth(1.2, 0.65, r) - 0.18 * smooth(0.8, 1.2, r);
+  },
+  // Halvmåne: en ö med en stor, skyddad vik som öppnar sig mot havet
+  crescent: (u, v, b, w, R) => {
+    const r = Math.hypot(u, v) + w * 0.2, bay = Math.hypot(u - 0.32, v - 0.38) / 0.55 + w * 0.15;
+    const land = smooth((R.coast ?? 0.8) + 0.25, (R.coast ?? 0.8) - 0.3, r) * smooth(0.75, 1.25, bay); // mjuk sluttning ned i viken
+    return b * land - 0.18 * (1 - land);
+  },
   // Kust: land på ena sidan (bortåt, −v), havet på den andra
   coast: (u, v, b, w) => { const t = smooth(-0.35, 0.35, -v * 0.9 + w * 0.3 + 0.1); return b * t - 0.16 * (1 - t); },
   // Dal: två åsar med en bred, flack dalbotten som slingrar sig längs mitten
@@ -70,9 +97,13 @@ const SHAPES = {
   canyon: (u, v, b, w) => { const d = Math.abs(u * 1.1 + w * 0.45 + Math.sin(v * 3.1) * 0.12); return 0.15 + smooth(0.06, 0.16, d) * (0.6 + b * 0.25); },
 };
 
-const SEA_SHAPES = new Set(['island', 'archipelago', 'coast']);
+const SEA_SHAPES = new Set(['island', 'archipelago', 'coast', 'volcano', 'atoll', 'twin', 'crescent']);
 
 // ---------- Generatorn ----------
+// Världens rutnät efter storleken: högst 1025 × 1025 hörn (0,5 m upp till 512 m, sedan size / 1024), och havsbottnen
+// utanför platsen djupare i större världar
+export const worldGrid = (size) => ({ size, cell: Math.max(0.5, size / 1024), seaFloor: -Math.max(16, size / 40) });
+
 // recipe: shape, seed, size (m), cell (m), height (m), scale (m per kulle), octaves, roughness (0..1), ridges (0..1),
 // warp (m), terraces (antal), terraceSharp (0..1), coast (ön: var stranden går, andel av radien), erosion (0..1),
 // talus (rasvinkel, grader), sea (havsnivån i m, eller null utan hav)
@@ -115,7 +146,7 @@ export function generateTerrain(R) {
     for (let k = 0; k < heights.length; k++) heights[k] = heights[k] * 0.5 + soft[k] * 0.5;
   }
   if ((R.talus ?? 0) > 0) thermal(heights, n, cell, R.talus, 4);
-  despeckle(heights, n, 0.04, 6); // sist: spetsar efter dropparna, rasen eller där åsar korsas
+  despeckle(heights, n, 0.04, 12); // sist: spetsar efter dropparna, rasen eller där åsar korsas
   // Fuktkartan: dropparnas spår, utjämnat och normerat till 0..1
   blur(wet, n, 2);
   let mx = 0;
@@ -184,10 +215,14 @@ function erode(h, wet, n, cell, R) {
 
 // Rensning: en ruta som ligger mer än tol över eller under alla fyra grannar (en spets eller grop på
 // en enda ruta) sätts till medlet av sina åtta grannar. Åsar och klippkanter har grannar i samma höjd och lämnas.
-function despeckle(h, n, tol, passes) {
-  for (let p = 0; p < passes; p++) for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) {
-    const k = j * n + i, a = h[k - 1], b = h[k + 1], c = h[k - n], d = h[k + n];
-    if (h[k] - Math.max(a, b, c, d) > tol || Math.min(a, b, c, d) - h[k] > tol) h[k] = (a + b + c + d + h[k - n - 1] + h[k - n + 1] + h[k + n - 1] + h[k + n + 1]) / 8;
+function despeckle(h, n, tol, maxPasses) {
+  for (let p = 0; p < maxPasses; p++) {
+    let changed = 0;
+    for (let j = 1; j < n - 1; j++) for (let i = 1; i < n - 1; i++) {
+      const k = j * n + i, a = h[k - 1], b = h[k + 1], c = h[k - n], d = h[k + n];
+      if (h[k] - Math.max(a, b, c, d) > tol || Math.min(a, b, c, d) - h[k] > tol) { h[k] = (a + b + c + d + h[k - n - 1] + h[k - n + 1] + h[k + n - 1] + h[k + n + 1]) / 8; changed++; }
+    }
+    if (!changed) break; // tills inget mer sticker ut
   }
 }
 

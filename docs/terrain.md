@@ -121,20 +121,43 @@ Kontrollerna räknas i Node utan bilder, som `checks.ok` i generatorerna:
 - **Vatten:** vattenytan sluttar aldrig uppför längs en å, och strandlinjens krökning har inga sågtänder (vinkeln mellan stegen längs linjen).
 - **Tider:** generering och erosion mäts i ms, ritanrop och trianglar per kvalitetsnivå.
 
+## Arbetsgången i Kartrummet (Patrik, 2026-10-28)
+
+Kartrummet går hela vägen från tom karta till levande värld. Flikarna följer stegen i den ordning man arbetar:
+
+| Steg | Flik | Vad man gör | Bygger på |
+|---|---|---|---|
+| 1 | **World** | Världen: nio gånger av tio en ö i havet. Världens storlek, öns form (rund, vulkan, atoll, två öar, halvmåne med vik), berg, kullar och erosion | T1–T3 (byggda) |
+| 2 | **Biomes** | Biomer ur geografin (höjd, lutning, fukt, temperatur, avstånd till havet), plus en målad biomkarta som går före reglerna | del 7 |
+| 3 | **Sculpt** | Forma världen för hand: penslar (höj, sänk, jämna ut, platta till, ramp, brus) och gräv bäck, å och vik | delarna 5 och 6 |
+| 4 | **Paint** | Texturmålning: marklagren efter regler (höjd, lutning, fukt, biom) och med pensel | del 4 |
+| 5 | **Populate** | Halvautomatisk utplacering av naturtillgångar som en PCG-graf: bibliotekets familjer efter geografi, biom och marktextur | B3 i asset-studio.md |
+| 6 | **Explore** | Äventyrsläget: gå eller flyg i världen, finjustera och placera ut strategiska objekt och hus. Kräver chunks, LOD och strömning nära kameran | del 7 |
+| 7 | **Life** | Monster, djur och NPC:er, sist | karaktärerna |
+
+Varje steg sparar sitt lager i världens recept (som Tinkertowns lagerstack: terräng, biomer, skulptering, målning, utplacering, placerat, liv), så att ett tidigare steg kan göras om utan att det senare försvinner.
+
+**Byggt 2026-10-28 (steg 1, World):** fliken Landscape blev World, och flikraden följer arbetsgången (Biomes, Sculpt, Paint, Populate, Explore och Life är markerade som kommande). Spaken *World size* väljer 256 m, 512 m, 1 km, 2 km eller 4 km; rutnätet har alltid högst 1025 × 1025 hörn (`worldGrid` i `generate.js`: 0,5 m upp till 512 m, sedan size / 1024), och havet, havsbottnen (−16 m, djupare i större världar), skuggornas räckvidd (`atm.setShadowRange`), diset och kameran följer storleken. Nya former: Volcano (kon med krater), Atoll (ring av låga öar runt en lagun, bruten av öppningar), Twin isles (två öar med ett sund) och Crescent bay (en ö runt en skyddad vik); Island fick en kupol som stiger inåt land i stället för en platå. Färdiga världar i 1 km: Green isle, Mountain isle, Volcano, Atoll, Twin isles, Crescent bay och Archipelago; de övriga sju är 256 m-landskap. En värld på 1 km byggs på 1,0–1,7 s i workern. Nya ikoner i arket `maproom_isles`.
+
+Felsökt: Mountain isle blev helt svart. En enstaka pixel med NaN eller oändligt i de brantaste sluttningarna spreds av glöden över hela bilden (utan glöd var bilden hel). Bilden före glöden sätts nu till svart där värdet inte är ändligt. Bildläget fick `only=<id>,<id>` och `set=<nyckel>:<värde>` för att prova en sak i taget; i `/api/gpu/launch` skrivs `:` och `,` som `%3A` och `%2C`.
+
 ## Faser
 
 | Fas | Innehåll | Klart när | Status |
 |---|---|---|---|
-| T1. Kärnan | `shared/terrain/` i studion: `field.js` och `shapes.js` först, sedan höjddata, brus, generator och chunks med Tinkertown som förlaga; kontrollerna i Node | Studions scener ritar marken ur samma kod, kontrollerna är gröna | Påbörjad 2026-10-28: `field.js`, `shapes.js`, `noise.js` och `tools/terrain/check_terrain.mjs` |
-| T2. Rätt mark vid vattnet | Bäcken, sjön och stranden byggda på kärnan; bildläget rättat | Bäckens bankar och strandlinje är mjuka, utan hack eller sågtänder | Byggd 2026-10-28 |
-| T3. Kartrummet, Landscape | `studio/terrain.js`, `tools/terrain/terrain.json`, generatorn i en worker, nio landskap, felsökningsvyer, ikoner | Patrik kan dra i spakarna och spara en terräng | Byggd 2026-10-28 (kvalitetsnivåerna återstår) |
-| T4. Markmaterial | Regler och lager, blandning efter höjd, våthet, triplanar på branter, texturer ur Ateljén | Marken ser målad och avsiktlig ut, inte bara brusig | Planerad |
-| T5. Former | Åar, bäckar, vägar, sjöar och platåer som recept | En å kan dras genom en terräng och fyllas med vatten | Planerad |
-| T6. Penslar | Höj, sänk, jämna ut, platta till, ramp och brus; objekt följer marken | Marken går att forma för hand, och det som står på den följer med | Planerad |
-| T7. Stora världar | Chunks i ett quadtree, strömning i en worker med LOD och morfning, biomer ur kartorna plus målad karta, export av kartorna | En sömlös värld på flera km² går att flyga över utan hack, med biomer som glider över i varandra | Planerad |
+| T1. Kärnan | `shared/terrain/`: `field.js`, `shapes.js`, `noise.js`, `generate.js`, `worker.js`; `tools/terrain/check_terrain.mjs` | Studions scener ritar marken ur samma kod, kontrollerna är gröna | Byggd 2026-10-28 |
+| T2. Rätt mark vid vattnet | Bäcken, sjön och stranden byggda på kärnan; bildläget utan fönster | Bäckens bankar och strandlinje är mjuka, utan hack eller sågtänder | Byggd 2026-10-28 |
+| T3. Kartrummet, Landscape | Generatorn i en worker, nio landskap, felsökningsvyer, ikoner | Patrik kan dra i spakarna och spara en terräng | Byggd 2026-10-28 |
+| Steg 1. World | Världens storlek (256 m–4 km), öformer (vulkan, atoll, två öar, halvmåne), ön som förval | En ö i havet i spelets storlek går att skapa och spara | Byggd 2026-10-28 (närbilden i stora världar väntar på Explore) |
+| Steg 2. Biomes | Klassning ur kartorna, målad biomkarta, mjuka övergångar | Biomerna syns på ön och går att måla om | Planerad |
+| Steg 3. Sculpt | Penslar; bäck, å och vik som linjer som gräver (`createChannel`) | Ön går att forma för hand och få vatten genom | Planerad |
+| Steg 4. Paint | Marklager efter regler och med pensel, texturer ur Ateljén | Marken ser målad och avsiktlig ut | Planerad |
+| Steg 5. Populate | PCG-graf: punkter → filter (biom, lutning, höjd, marktextur, avstånd till vatten) → familj → variant | Ön blir skog, äng och strand med en knapp, och kan justeras | Planerad |
+| Steg 6. Explore | Gå och flyg, chunks med LOD och strömning, placera och flytta hus och objekt | Man kan gå runt på ön och ställa ut ett hus | Planerad |
+| Steg 7. Life | Monster, djur och NPC:er | | Sist |
 
 ## Beslut
 
 - Bara i studion; Tinkertown är en förlaga och byggs senare om med studions verktyg (2026-10-28).
 - Terrängen är en egen avdelning, Kartrummet (The Map Room), med flikarna Landscape, Sculpt, Rivers & roads och Biomes (2026-10-28).
-- Ordning: T1 och T2 först, sedan fliken.
+- Ordning: arbetsgången ovan (Patrik 2026-10-28); karaktärer, djur och monster sist.

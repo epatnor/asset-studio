@@ -191,7 +191,8 @@ export function createPrecipitation({ max: MAX = 16000 } = {}) {
 
 // ---------- Atmosfären: allt ovan styrt av ett väderläge ----------
 // lightDistance: hur långt från mitten solen står (skuggkameran räcker dubbelt så långt); större för stora platser
-export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30, lightDistance = 80 }) {
+export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30, lightDistance: lightDist = 80 }) {
+  let lightDistance = lightDist;
   const sky = createSky(), fogFx = createFog(), precip = createPrecipitation();
   scene.backgroundNode = sky.node;
   scene.fogNode = fogFx.node;
@@ -279,6 +280,13 @@ export function createAtmosphere({ scene, shadowSize = 2048, shadowRange = 30, l
     get state() { return st; },
     set(state) { st = { ...state }; apply(); },
     moveTo(c) { center.copy(c); placeLights(); },
+    // Skuggornas räckvidd (halva bredden) och solens avstånd, när platsen byter storlek (Kartrummets världar)
+    setShadowRange(range, distance = lightDistance) {
+      lightDistance = distance;
+      Object.assign(key.shadow.camera, { left: -range, right: range, top: range, bottom: -range, far: Math.max(160, distance * 2) });
+      key.shadow.camera.updateProjectionMatrix();
+      placeLights();
+    },
     update(dt, time, camera) {
       // Molnen driver med vinden
       const wa = (st.windDir ?? 0) * DEG, sp = (st.cloudSpeed ?? 0.3) * 0.02;

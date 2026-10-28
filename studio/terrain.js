@@ -1,11 +1,11 @@
-// Kartrummet, fliken Landscape (docs/terrain.md, T3): landskap ur recept på en provplats om 256 × 256 m. Höjdfältet
+// Kartrummet, fliken World (docs/terrain.md, steg 1): världen ur ett recept, oftast en ö i havet, 256 m–4 km i fyrkant. Höjdfältet
 // räknas i en worker (shared/terrain/worker.js: generate.js och field.js), marken läggs i lager efter höjd, lutning och
 // fukt, och havet är vattenmodulen (shared/effects/water.js) med vädret ur Väder-fliken. Platsen står som ett block på
 // kartbordet, med jordlager på sidorna. Spakarna och de färdiga landskapen är data i tools/terrain/terrain.json;
 // sparade landskap i assets/terrain/. Egen renderare (WebGPU, WebGL2 som reserv). Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
 import {
-  pass, texture, positionWorld, normalWorld, attribute, mix, smoothstep, mx_noise_float, vec3, float, uniform, triplanarTexture, color, max,
+  pass, texture, positionWorld, normalWorld, attribute, mix, smoothstep, mx_noise_float, vec3, vec4, float, uniform, triplanarTexture, color, max, select,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -13,12 +13,13 @@ import { createAtmosphere } from '../shared/effects/weather.js';
 import { createWater, bedAndFlow } from '../shared/effects/water.js';
 import { antiTiled } from '../shared/effects/antitile.js';
 import { axis, buildField } from '../shared/terrain/field.js';
+import { worldGrid } from '../shared/terrain/generate.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
 const DEG = Math.PI / 180;
 // Spakar som kräver att höjdfältet räknas om; övriga ändrar bara materialet, havet eller vyn
-const SHAPE_KEYS = new Set(['shape', 'seed', 'height', 'scale', 'coast', 'octaves', 'roughness', 'ridges', 'warp', 'terraces', 'terraceSharp', 'erosion', 'talus']);
+const SHAPE_KEYS = new Set(['worldSize', 'shape', 'seed', 'height', 'scale', 'coast', 'octaves', 'roughness', 'ridges', 'warp', 'terraces', 'terraceSharp', 'erosion', 'talus']);
 
 export async function createTerrainTab({ api, el, view, side, drawer, footer }) {
   const [info, wx, wa] = await Promise.all([api('/api/terrain'), api('/api/weather'), api('/api/water')]);
@@ -30,7 +31,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const firstPreset = Object.keys(info.presets)[0];
   const vals = { ...defaults, ...stripLabel(info.presets[firstPreset] ?? {}) };
   let current = firstPreset;
-  const half = info.size / 2;
+  // Världens storlek (rutnätet och havsbottnen följer den: worldGrid i shared/terrain/generate.js)
+  const sizeOf = () => Number(vals.worldSize) || 1024;
+  let half = sizeOf() / 2, shownSize = 256; // kamerans läge i terrain.json gäller en värld på 256 m; resize3d skalar det
 
   // --- Renderaren (se weather.js): WebGPU bara på ett riktigt grafikkort ---
   const pref = gpuPreference() === 'default' ? undefined : gpuPreference();
@@ -57,8 +60,13 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const sky = atm.sky;
   const pipeline = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera, { samples: 4 });
-  const out = scenePass.getTextureNode('output');
-  pipeline.outputNode = out.add(bloom(out, 0.12, 0.25, 1.7));
+  const raw0 = scenePass.getTextureNode('output');
+  // Skydd före glöden: en enstaka pixel med NaN eller oändligt (det hände i de brantaste sluttningarna på Mountain isle)
+  // sprids annars av glöden över hela bilden, som blir svart. Jämförelser med NaN är falska, så den blir svart här.
+  const lum = raw0.r.add(raw0.g).add(raw0.b);
+  const out = select(lum.lessThan(1e5).and(lum.greaterThanEqual(0)), raw0, vec4(0, 0, 0, 1));
+  const dbg = new URLSearchParams(location.search).get('dbg') ?? ''; // felsökning: noshadow, nobloom
+  pipeline.outputNode = dbg.includes('nobloom') ? out : out.add(bloom(out, 0.12, 0.25, 1.7));
 
   // --- Texturer: världskoordinater, med skydd mot upprepning (shared/effects/antitile.js) ---
   const texLoader = new THREE.TextureLoader(), texCache = new Map();
@@ -71,7 +79,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // --- Havet: vattenmodulen med en havstyp ur Vatten-fliken; botten utanför platsen ligger djupt ---
   const waterVals = { ...Object.fromEntries(wa.params.map((q) => [q.key, q.default])), ...stripLabel(wa.presets.tropical_lagoon ?? {}) };
   let field = null; // senaste marken: { n, cell, heights }
-  const SEABED = -16;
+  let SEABED = worldGrid(sizeOf()).seaFloor;
   const bedAt = (x, z) => {
     if (!field || Math.abs(x) > half || Math.abs(z) > half) return SEABED;
     const { n, cell, heights } = field;
@@ -79,7 +87,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     return (heights[k] * (1 - fx) + heights[k + 1] * fx) * (1 - fz) + (heights[k + n] * (1 - fx) + heights[k + n + 1] * fx) * fz;
   };
   const waterGeometry = (level) => {
-    const f = buildField(axis(-1400, 1400, -half - 4, half + 4, 2, 1.1), axis(-1400, 1400, -half - 4, half + 4, 2, 1.1), () => level);
+    const W = Math.max(1400, half * 6), step = Math.max(2, half / 64);
+    const f = buildField(axis(-W, W, -half - 4, half + 4, step, 1.1), axis(-W, W, -half - 4, half + 4, step, 1.1), () => level);
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(f.positions, 3));
     g.setIndex(new THREE.BufferAttribute(f.index, 1));
@@ -88,7 +97,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const water = createWater({ geometry: waterGeometry(vals.seaLevel), level: vals.seaLevel, sky });
   scene.add(water.mesh);
   // Havsbotten runt platsen, så att havet har en botten ut mot horisonten
-  const seabed = new THREE.Mesh(new THREE.PlaneGeometry(2800, 2800).rotateX(-Math.PI / 2), new THREE.MeshStandardNodeMaterial({ roughness: 1 }));
+  const seabed = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshStandardNodeMaterial({ roughness: 1 }));
   seabed.material.colorNode = tex('surface_sand', 4).mul(0.6);
   seabed.position.y = SEABED;
   scene.add(seabed);
@@ -125,7 +134,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     wireframe: Object.assign(debug(mix(color('#3a4a3a'), color('#c8e0c0'), t)), { wireframe: true }),
   };
   const ground = new THREE.Mesh(new THREE.BufferGeometry(), shaded);
-  ground.receiveShadow = ground.castShadow = true;
+  ground.receiveShadow = ground.castShadow = !dbg.includes('noshadow');
   // Blocket: jordlager på platsens fyra sidor ned till en sockel
   const sideMat = new THREE.MeshStandardNodeMaterial({ roughness: 1, side: THREE.DoubleSide });
   const band = mx_noise_float(vec3(positionWorld.x.add(positionWorld.z).mul(0.05), positionWorld.y.mul(0.35), 1));
@@ -159,10 +168,11 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // --- Generatorn i en worker: den senaste begäran vinner, och bara en räknas åt gången ---
   const worker = new Worker(new URL('../shared/terrain/worker.js', import.meta.url), { type: 'module' });
   let sent = 0, busy = false, dirty = false, waiters = [], stats = { ms: 0, vertices: 0, triangles: 0, land: 0, top: 0 };
-  const recipe = () => ({ size: info.size, cell: info.cell, ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])) });
+  const recipe = () => ({ ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])), ...worldGrid(sizeOf()) });
   function request() {
     if (busy) { dirty = true; return; }
     busy = true;
+    note.textContent = 'Building the world…';
     worker.postMessage({ id: ++sent, recipe: recipe() });
   }
   worker.onmessage = (e) => {
@@ -178,6 +188,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     ground.geometry.dispose();
     ground.geometry = g;
     field = { n: d.n, cell: d.cell, heights: d.heights };
+    resize3d(d.size);
     let lo = Infinity, hi = -Infinity, land = 0;
     for (const v of d.heights) { lo = Math.min(lo, v); hi = Math.max(hi, v); if (!vals.sea || v > vals.seaLevel) land++; }
     U.low.value = lo; U.top.value = hi;
@@ -186,10 +197,27 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     rebuildWater();
     stats = { ms: d.ms, vertices: d.positions.length / 3, triangles: d.index.length / 3, land: Math.round((100 * land) / d.heights.length), top: Math.round(hi) };
     showStats();
+    note.textContent = 'Drag to orbit, scroll to zoom';
     const w = waiters; waiters = [];
     w.forEach((r) => r());
   };
   const regenerate = () => new Promise((r) => { waiters.push(r); request(); });
+  // En ny världsstorlek: havet, botten, skuggorna, dimman och kameran skalas med
+  function resize3d(size) {
+    half = size / 2;
+    SEABED = worldGrid(size).seaFloor;
+    seabed.position.y = SEABED;
+    seabed.scale.setScalar(Math.max(2800, size * 12));
+    atm.setShadowRange(half * 1.25, half * 2.2);
+    controls.maxDistance = size * 3.5;
+    camera.far = Math.max(4000, size * 14);
+    camera.updateProjectionMatrix();
+    if (size !== shownSize) {
+      const k = size / shownSize;
+      camera.position.sub(controls.target).multiplyScalar(k).add(controls.target.multiplyScalar(k));
+      shownSize = size;
+    }
+  }
   function rebuildWater() {
     water.mesh.geometry.dispose();
     water.mesh.geometry = waterGeometry(vals.seaLevel);
@@ -201,7 +229,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   let sun = null;
   function apply() {
     const w = { ...wxDefaults, ...(weathers[vals.weather] ?? {}), hour: vals.hour, azimuth: vals.azimuth };
-    w.haze = (w.haze ?? 0.01) * vals.haze;
+    w.haze = (w.haze ?? 0.01) * vals.haze * Math.min(1, 400 / sizeOf()); // tunnare dis i större världar
     w.fog = (w.fog ?? 0) * vals.haze;
     atm.set(w);
     atm.moveTo(new THREE.Vector3(0, 0, 0));
@@ -253,10 +281,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }
   const saveCard = cards.card('Save', '#4a90d9');
   const saveMsg = el('div', 'note');
-  const saveBtn = el('button', 'primary', 'Save landscape…');
-  saveBtn.title = 'Saves the sliders as a landscape recipe in assets/terrain/ (the land is computed from the recipe, nothing is baked)';
+  const saveBtn = el('button', 'primary', 'Save world…');
+  saveBtn.title = 'Saves the sliders as a world recipe in assets/terrain/ (the land is computed from the recipe, nothing is baked)';
   saveBtn.onclick = async () => {
-    const name = prompt('Name of the landscape (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_landscape');
+    const name = prompt('Name of the world (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_island');
     if (!name) return;
     const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
     let r = await api('/api/terrain/save', { name, settings: vals, from });
@@ -271,14 +299,15 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
 
   // --- Lådan: färdiga och sparade landskap ---
   const head = el('div', 'libhead'), body = el('div', 'libbody');
-  head.append(el('h2', null, 'Landscapes'), el('div', 'note', 'Click a landscape to start from it. Save your own in the Save card.'));
+  head.append(el('h2', null, 'Worlds'), el('div', 'note', 'Click a world to start from it. Save your own in the Save card.'));
   drawer.append(head, body);
+  const sizeLabel = Object.fromEntries(info.params.find((q) => q.key === 'worldSize').options.map((o) => [o.id, o.label]));
   const shapeLabel = Object.fromEntries(info.params.find((q) => q.key === 'shape').options.map((o) => [o.id, o.label]));
   function tile(id, label, settings, icon) {
     const v = { ...defaults, ...stripLabel(settings) };
     const f = el('button', `wprof${current === id ? ' on' : ''}`);
     f.dataset.id = id;
-    f.append(el('b', null, label), el('span', 'wmeta', `${shapeLabel[v.shape] ?? v.shape} · ${v.height} m${v.sea ? ' · sea' : ''}`));
+    f.append(el('b', null, label), el('span', 'wmeta', `${shapeLabel[v.shape] ?? v.shape} · ${sizeLabel[v.worldSize] ?? v.worldSize} · ${v.height} m high`));
     f.onclick = () => use(id, v);
     return withIcon(el, f, 'maproom', icon, label);
   }
@@ -307,7 +336,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const block = (b, title, text) => { b.replaceChildren(el('b', null, title), el('div', 'vals', text)); };
   const clock = (hh) => `${String(Math.floor(hh)).padStart(2, '0')}:${String(Math.round((hh % 1) * 60) % 60).padStart(2, '0')}`;
   function showStats() {
-    block(fLand, 'Land', `${info.size} × ${info.size} m · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms`);
+    block(fLand, 'World', `${sizeLabel[vals.worldSize] ?? vals.worldSize} square · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms`);
   }
   note.textContent = 'Drag to orbit, scroll to zoom';
   await regenerate();
@@ -337,13 +366,16 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     }
   }
 
-  // För prov: ?shot=<namn> sparar en bild av varje färdigt landskap (build/shots/studio_<namn>_<landskap>_<renderare>_<fps>.png);
+  // För prov: ?shot=<namn> sparar en bild av varje färdig värld (eller bara only=<id>,<id>) (build/shots/studio_<namn>_<landskap>_<renderare>_<fps>.png);
   // med test=1 stängs provfönstret efter den sista
   const q = new URLSearchParams(location.search), shotName = q.get('shot');
   if (shotName && /^[\w-]{1,40}$/.test(shotName) && /kartrummet/.test(location.hash)) setTimeout(async () => {
-    const ids = Object.keys(info.presets);
+    const ids = Object.keys(info.presets).filter((id) => !q.get('only') || q.get('only').split(',').includes(id)); // only=a,b: bara de världarna
     for (const [i, id] of ids.entries()) {
-      await use(id, { ...defaults, ...stripLabel(info.presets[id]) });
+      // set=nyckel:värde,...: prova en ändring i receptet (felsökning)
+      const over = Object.fromEntries((q.get('set') ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, v === 'true' ? true : v === 'false' ? false : Number.isNaN(Number(v)) ? v : Number(v)]; }));
+      await use(id, { ...defaults, ...stripLabel(info.presets[id]), ...over });
+      if (over.view) { vals.view = over.view; apply(); }
       await new Promise((r) => setTimeout(r, 2500));
       tick(0);
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));

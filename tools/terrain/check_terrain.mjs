@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { axis, buildField } from '../../shared/terrain/field.js';
 import { createChannel } from '../../shared/terrain/shapes.js';
-import { generateTerrain } from '../../shared/terrain/generate.js';
+import { generateTerrain, worldGrid } from '../../shared/terrain/generate.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -114,19 +114,19 @@ function spikes(h, n, tol = 0.12) {
   }
   return c;
 }
-// Kartrummets landskap: inga NaN, inga spetsar eller gropar, och för ön och skärgården en kant under havet
+// Kartrummets världar: inga NaN, inga spetsar eller gropar, och för öarna en kant under havet
 async function landscapes() {
   const T = JSON.parse(await readFile(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
   const defaults = Object.fromEntries(T.params.map((q) => [q.key, q.default]));
   const out = {};
   let ok = true;
   for (const [id, p] of Object.entries(T.presets)) {
-    const R = { ...defaults, ...p, size: T.size, cell: T.cell }, t = generateTerrain(R);
+    const R = { ...defaults, ...p }, t = generateTerrain({ ...R, ...worldGrid(Number(R.worldSize)) });
     const xs = Array.from({ length: t.n }, (_, i) => -t.half + i * t.cell);
     const f = buildField(xs, xs, t.heightAt, { byDifference: true });
     const nan = t.heights.some((h) => !Number.isFinite(h));
     let edge = -Infinity;
-    if (['island', 'archipelago'].includes(R.shape)) for (let i = 0; i < t.n; i++) for (const k of [i, (t.n - 1) * t.n + i, i * t.n, i * t.n + t.n - 1]) edge = Math.max(edge, t.heights[k]);
+    if (['island', 'archipelago', 'volcano', 'atoll', 'twin', 'crescent'].includes(R.shape)) for (let i = 0; i < t.n; i++) for (const k of [i, (t.n - 1) * t.n + i, i * t.n, i * t.n + t.n - 1]) edge = Math.max(edge, t.heights[k]);
     const m = measure(f);
     const sp = spikes(t.heights, t.n);
     const good = !nan && sp <= LIMITS.landscape_spikes && (edge === -Infinity || edge < (R.seaLevel ?? 0) - 1);

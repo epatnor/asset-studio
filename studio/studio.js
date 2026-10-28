@@ -654,16 +654,24 @@ const waterBtn = el('button', null, 'Water');
 waterBtn.dataset.dept = 'windmill';
 waterBtn.title = 'The Windmill: water to try out, on open water, a beach, a stream and a lake, under the sky and sun';
 $('kinds').append(waterBtn, weatherBtn);
-// Kartrummet (studio/terrain.js, docs/terrain.md): Landscape är byggd; Sculpt, Rivers & roads och Biomes kommer (T5–T7)
-const landBtn = el('button', null, 'Landscape');
+// Kartrummet (studio/terrain.js, docs/terrain.md): flikarna följer arbetsgången, från världen till livet i den.
+// World är byggd; de andra stegen kommer i ordning
+const landBtn = el('button', null, 'World');
 landBtn.dataset.dept = 'maproom';
-landBtn.title = 'The Map Room: islands, hills, mountains and valleys from recipes, carved by rain';
+landBtn.title = 'The Map Room, step 1: the world, most often an island in the sea, its size, shape, mountains and erosion';
 $('kinds').append(landBtn);
-for (const [label, tip] of [['Sculpt', 'Brushes that raise, lower, smooth, flatten and roughen the land (T6)'], ['Rivers & roads', 'Rivers, streams, roads, paths, lakes and plateaus drawn as lines (T5)'], ['Biomes', 'Forests, meadows, deserts and snow painted over the land (T7)']]) {
+for (const [label, tip] of [
+  ['Biomes', 'step 2: biomes from the geography (height, slope, wetness, warmth, distance to the sea) and painted by hand'],
+  ['Sculpt', 'step 3: shape the world by hand, and dig streams, rivers and bays'],
+  ['Paint', 'step 4: paint the ground layers, by rules and with a brush'],
+  ['Populate', 'step 5: fill the world with trees, plants and rocks by geography, biome and ground'],
+  ['Explore', 'step 6: walk or fly through the world, fine-tune it and place houses and key objects'],
+  ['Life', 'step 7: animals, monsters and NPCs'],
+]) {
   const b = el('button', null, label);
   b.dataset.dept = 'maproom';
   b.disabled = true;
-  b.title = `The Map Room: ${tip}; see docs/terrain.md`;
+  b.title = `The Map Room, ${tip} (coming; see docs/terrain.md)`;
   b.append(el('span', 'soon', 'soon'));
   $('kinds').append(b);
 }

@@ -614,6 +614,36 @@
           "prompt": "a plateau tool: a flat raised square plateau of earth for a house, with sloped sides"
         }
       ]
+    },
+    "maproom_isles": {
+      "cols": 3,
+      "rows": 2,
+      "aspect": "3:2",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/mountain_isle",
+          "prompt": "a mountain island: a tall rocky island with snowy peaks rising steeply out of blue sea"
+        },
+        {
+          "id": "maproom/volcano",
+          "prompt": "a volcanic island: a green cone-shaped volcano with a crater at the top, a thin wisp of smoke, blue sea around"
+        },
+        {
+          "id": "maproom/atoll",
+          "prompt": "an atoll: a thin ring of sandy palm islets around a bright turquoise lagoon in deep blue sea"
+        },
+        {
+          "id": "maproom/twin_isles",
+          "prompt": "twin islands: two green hilly islands side by side with a narrow blue strait between them"
+        },
+        {
+          "id": "maproom/crescent_bay",
+          "prompt": "a crescent island: a green island curved like a crescent moon around a sheltered blue bay"
+        },
+        null
+      ]
     }
   }
 }

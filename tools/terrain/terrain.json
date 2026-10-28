@@ -1,7 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken Landscape (docs/terrain.md, T3): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Platsen är 256 × 256 m med 0,5 m mellan hörnen. Spakar med \"recipe\": false (vyn och himlen) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
-  "size": 256,
-  "cell": 0.5,
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Spakar med \"recipe\": false (vyn och himlen) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
   "camera": {
     "pos": [
       150,
@@ -46,6 +44,41 @@
   ],
   "params": [
     {
+      "key": "worldSize",
+      "group": "shape",
+      "label": "World size",
+      "type": "choice",
+      "default": "1024",
+      "options": [
+        {
+          "id": "256",
+          "label": "256 m",
+          "help": "A test site: quick to build, 0.5 m between the corners"
+        },
+        {
+          "id": "512",
+          "label": "512 m",
+          "help": "A small island or valley, 0.5 m between the corners"
+        },
+        {
+          "id": "1024",
+          "label": "1 km",
+          "help": "An island for a game level, 1 m between the corners"
+        },
+        {
+          "id": "2048",
+          "label": "2 km",
+          "help": "A large island, 2 m between the corners"
+        },
+        {
+          "id": "4096",
+          "label": "4 km",
+          "help": "A whole world, 4 m between the corners (the close view needs the coming Explore step)"
+        }
+      ],
+      "help": "How large the world is. The grid always has at most 1025 × 1025 corners, so larger worlds are coarser up close"
+    },
+    {
       "key": "shape",
       "group": "shape",
       "label": "Shape",
@@ -53,14 +86,29 @@
       "default": "island",
       "options": [
         {
-          "id": "open",
-          "label": "Open land",
-          "help": "Only the noise: hills, mountains, plains or highlands"
-        },
-        {
           "id": "island",
           "label": "Island",
           "help": "Land that falls toward the sea on every side, with an irregular shore"
+        },
+        {
+          "id": "volcano",
+          "label": "Volcano",
+          "help": "A cone with a crater at the top and ravines down its sides, the sea around it"
+        },
+        {
+          "id": "atoll",
+          "label": "Atoll",
+          "help": "A ring of low islands around a shallow lagoon, with gaps in the ring"
+        },
+        {
+          "id": "twin",
+          "label": "Twin isles",
+          "help": "Two islands with a strait between them"
+        },
+        {
+          "id": "crescent",
+          "label": "Crescent bay",
+          "help": "An island with a large, sheltered bay that opens to the sea"
         },
         {
           "id": "archipelago",
@@ -71,6 +119,11 @@
           "id": "coast",
           "label": "Coast",
           "help": "Land in the distance, the sea in front"
+        },
+        {
+          "id": "open",
+          "label": "Open land",
+          "help": "Only the noise: hills, mountains, plains or highlands"
         },
         {
           "id": "valley",
@@ -124,7 +177,7 @@
       "step": 0.01,
       "default": 0.72,
       "adv": true,
-      "help": "Where the island's shore runs, as a share of the radius"
+      "help": "Where the island's shore runs, as a share of the half-width of the world"
     },
     {
       "key": "octaves",
@@ -359,29 +412,127 @@
   ],
   "presets": {
     "island": {
-      "label": "Island",
+      "label": "Green isle",
+      "worldSize": "1024",
       "shape": "island",
       "seed": 7,
-      "height": 34,
-      "scale": 90,
+      "height": 70,
+      "scale": 180,
       "ridges": 0.25,
-      "warp": 24,
+      "warp": 60,
       "roughness": 0.45,
       "erosion": 0.55,
+      "talus": 42,
       "sea": true,
-      "coast": 0.72
+      "coast": 0.72,
+      "snowline": 150
+    },
+    "mountain_isle": {
+      "label": "Mountain isle",
+      "worldSize": "1024",
+      "shape": "island",
+      "seed": 21,
+      "height": 190,
+      "scale": 260,
+      "ridges": 0.8,
+      "warp": 80,
+      "roughness": 0.55,
+      "erosion": 0.7,
+      "talus": 45,
+      "sea": true,
+      "coast": 0.76,
+      "snowline": 135
+    },
+    "volcano": {
+      "label": "Volcano",
+      "worldSize": "1024",
+      "shape": "volcano",
+      "seed": 5,
+      "height": 230,
+      "scale": 150,
+      "ridges": 0.35,
+      "warp": 40,
+      "roughness": 0.5,
+      "erosion": 0.6,
+      "talus": 40,
+      "sea": true,
+      "coast": 0.8,
+      "snowline": 400,
+      "cliffAngle": 34,
+      "grassTone": 0.7
+    },
+    "atoll": {
+      "label": "Atoll",
+      "worldSize": "1024",
+      "shape": "atoll",
+      "seed": 3,
+      "height": 14,
+      "scale": 120,
+      "ridges": 0,
+      "warp": 60,
+      "roughness": 0.4,
+      "erosion": 0.2,
+      "talus": 0,
+      "sea": true,
+      "coast": 0.8,
+      "sandBand": 2.5,
+      "grassTone": 0.85
+    },
+    "twin_isles": {
+      "label": "Twin isles",
+      "worldSize": "1024",
+      "shape": "twin",
+      "seed": 9,
+      "height": 85,
+      "scale": 170,
+      "ridges": 0.4,
+      "warp": 50,
+      "roughness": 0.5,
+      "erosion": 0.55,
+      "talus": 42,
+      "sea": true
+    },
+    "crescent_bay": {
+      "label": "Crescent bay",
+      "worldSize": "1024",
+      "shape": "crescent",
+      "seed": 14,
+      "height": 95,
+      "scale": 180,
+      "ridges": 0.35,
+      "warp": 50,
+      "roughness": 0.5,
+      "erosion": 0.55,
+      "talus": 42,
+      "sea": true,
+      "coast": 0.8
     },
     "archipelago": {
       "label": "Archipelago",
       "shape": "archipelago",
       "seed": 12,
-      "height": 16,
-      "scale": 60,
+      "height": 40,
+      "scale": 160,
       "ridges": 0.1,
-      "warp": 30,
+      "warp": 60,
       "roughness": 0.5,
       "erosion": 0.4,
-      "sea": true
+      "sea": true,
+      "worldSize": "1024"
+    },
+    "coast": {
+      "label": "Coast",
+      "shape": "coast",
+      "seed": 11,
+      "height": 36,
+      "scale": 90,
+      "ridges": 0.45,
+      "warp": 24,
+      "roughness": 0.5,
+      "erosion": 0.55,
+      "sea": true,
+      "cliffAngle": 34,
+      "worldSize": "256"
     },
     "rolling_hills": {
       "label": "Rolling hills",
@@ -394,7 +545,8 @@
       "roughness": 0.35,
       "erosion": 0.35,
       "sea": false,
-      "talus": 0
+      "talus": 0,
+      "worldSize": "256"
     },
     "mountains": {
       "label": "Mountains",
@@ -408,7 +560,8 @@
       "erosion": 0.7,
       "talus": 45,
       "sea": false,
-      "snowline": 62
+      "snowline": 62,
+      "worldSize": "256"
     },
     "plains": {
       "label": "Plains",
@@ -421,7 +574,8 @@
       "roughness": 0.3,
       "erosion": 0.1,
       "sea": false,
-      "talus": 0
+      "talus": 0,
+      "worldSize": "256"
     },
     "river_valley": {
       "label": "River valley",
@@ -433,7 +587,8 @@
       "warp": 20,
       "roughness": 0.45,
       "erosion": 0.6,
-      "sea": false
+      "sea": false,
+      "worldSize": "256"
     },
     "canyon": {
       "label": "Canyon",
@@ -450,7 +605,8 @@
       "talus": 60,
       "sea": false,
       "cliffAngle": 30,
-      "grassTone": 0.15
+      "grassTone": 0.15,
+      "worldSize": "256"
     },
     "highlands": {
       "label": "Highlands",
@@ -464,20 +620,8 @@
       "terraces": 4,
       "terraceSharp": 0.55,
       "erosion": 0.5,
-      "sea": false
-    },
-    "coast": {
-      "label": "Coast",
-      "shape": "coast",
-      "seed": 11,
-      "height": 36,
-      "scale": 90,
-      "ridges": 0.45,
-      "warp": 24,
-      "roughness": 0.5,
-      "erosion": 0.55,
-      "sea": true,
-      "cliffAngle": 34
+      "sea": false,
+      "worldSize": "256"
     }
   }
 }

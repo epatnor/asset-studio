@@ -698,8 +698,8 @@ async function gpuLaunch({ id, path: page, test = false, headless = false }) {
     '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check']); // WebGPU går på Vulkan; --enable-unsafe-webgpu behövs inte och ger en varningsrad
   const p = spawn(c, args, { detached: true, stdio: 'ignore' });
   p.unref();
-  // Ett osynligt prov som aldrig skickar sin bild får inte ligga kvar och dra ström
-  if (test && headless) setTimeout(closeTest, 180_000);
+  // Ett osynligt prov som aldrig skickar sin bild får inte ligga kvar och dra ström (10 minuter räcker för alla världar)
+  if (test && headless) setTimeout(closeTest, 600_000);
   return { ok: true, gpu: gpu.name, url, headless: test && headless };
 }
 
