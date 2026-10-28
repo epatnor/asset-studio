@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { axis, buildField } from '../../shared/terrain/field.js';
 import { createChannel } from '../../shared/terrain/shapes.js';
 import { generateTerrain, worldGrid } from '../../shared/terrain/generate.js';
+import { computeBiomes } from '../../shared/terrain/biomes.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -114,7 +115,7 @@ function spikes(h, n, tol = 0.12) {
   }
   return c;
 }
-// Kartrummets världar: inga NaN, inga spetsar eller gropar, och för öarna en kant under havet
+// Kartrummets världar: inga NaN, inga spetsar eller gropar, biomvikter som summerar till 1, och för öarna en kant under havet
 async function landscapes() {
   const T = JSON.parse(await readFile(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
   const defaults = Object.fromEntries(T.params.map((q) => [q.key, q.default]));
@@ -129,9 +130,13 @@ async function landscapes() {
     if (['island', 'archipelago', 'volcano', 'atoll', 'twin', 'crescent'].includes(R.shape)) for (let i = 0; i < t.n; i++) for (const k of [i, (t.n - 1) * t.n + i, i * t.n, i * t.n + t.n - 1]) edge = Math.max(edge, t.heights[k]);
     const m = measure(f);
     const sp = spikes(t.heights, t.n);
-    const good = !nan && sp <= LIMITS.landscape_spikes && (edge === -Infinity || edge < (R.seaLevel ?? 0) - 1);
+    // Biomerna: varje hörns vikter summerar till 1 (255 ± 8 efter avrundning)
+    const bio = computeBiomes(t, R);
+    let badSum = 0;
+    for (let k = 0; k < bio.weights.length; k += 8) { let sum = 0; for (let b = 0; b < 8; b++) sum += bio.weights[k + b]; if (Math.abs(sum - 255) > 8) badSum++; }
+    const good = !nan && sp <= LIMITS.landscape_spikes && badSum === 0 && (edge === -Infinity || edge < (R.seaLevel ?? 0) - 1);
     ok &&= good;
-    out[id] = { ok: good, ms: t.ms, top: r2(t.heights.reduce((a, b) => Math.max(a, b), -Infinity)), bend_p99_deg: m.bend_p99_deg, bend_max_deg: m.bend_max_deg, spikes: sp, ...(edge > -Infinity ? { edge_max: r2(edge) } : {}) };
+    out[id] = { ok: good, ms: t.ms, top: r2(t.heights.reduce((a, b) => Math.max(a, b), -Infinity)), bend_p99_deg: m.bend_p99_deg, bend_max_deg: m.bend_max_deg, spikes: sp, biome_ms: bio.ms, biome_sum_errors: badSum, biomes_pct_of_land: bio.coverage, ...(edge > -Infinity ? { edge_max: r2(edge) } : {}) };
   }
   return { ok, landscapes: out };
 }

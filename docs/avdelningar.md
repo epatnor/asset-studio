@@ -10,7 +10,7 @@ Appen är på engelska (planerna och dokumenten på svenska). Namnen i appen st�
 | **Väderkvarnen** (The Windmill) | Vind, Vatten, Väder | Wind, water and weather | Blå | [effektlabb.md](effektlabb.md) |
 | **Ateljén** (The Atelier) | Texturverkstaden, materiallabbet | Paint materials and textures | Guld | [texture-workshop.md](texture-workshop.md) |
 | **Häxkitteln** (The Cauldron) | Glöd och aura, Markörer, Partiklar, Spår och träffar | Spells and game effects | Lila | [effektlabb.md](effektlabb.md) |
-| **Kartrummet** (The Map Room) | World; Biomes, Sculpt, Paint, Populate, Explore och Life kommer, i den ordningen | Shape the land | Terrakotta | [terrain.md](terrain.md) |
+| **Kartrummet** (The Map Room) | World och Biomes; Sculpt, Paint, Populate, Explore och Life kommer, i den ordningen | Shape the land | Terrakotta | [terrain.md](terrain.md) |
 | **Skattkammaren** (The Vault) | Allt som sparats, alla typer (familjer, fasta modeller, texturer, recept) | Everything you have saved | Neutral (hör till alla) | [asset-studio.md](asset-studio.md) |
 
 Tinkertown är världen där allt används; den är en egen app.

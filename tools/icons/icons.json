@@ -644,6 +644,57 @@
         },
         null
       ]
+    },
+    "maproom_biomes": {
+      "cols": 4,
+      "rows": 3,
+      "aspect": "4:3",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/biome_beach",
+          "prompt": "a beach: golden sand with a small wave and a shell"
+        },
+        {
+          "id": "maproom/biome_meadow",
+          "prompt": "a meadow: bright green grass with small yellow and white flowers"
+        },
+        {
+          "id": "maproom/biome_forest",
+          "prompt": "a broadleaf forest: three round leafy green trees together"
+        },
+        {
+          "id": "maproom/biome_pine",
+          "prompt": "a pine forest: three dark green conifer trees"
+        },
+        {
+          "id": "maproom/biome_marsh",
+          "prompt": "a marsh: reeds and cattails in shallow dark water with moss"
+        },
+        {
+          "id": "maproom/biome_heath",
+          "prompt": "a heath: purple heather and low golden shrubs on a dry hill"
+        },
+        {
+          "id": "maproom/biome_rock",
+          "prompt": "rocky mountain ground: grey boulders and a bare rock ledge"
+        },
+        {
+          "id": "maproom/biome_snow",
+          "prompt": "snow: a white snowy slope with a snowflake"
+        },
+        {
+          "id": "maproom/biome_erase",
+          "prompt": "an eraser rubbing out a painted patch, back to plain ground"
+        },
+        {
+          "id": "maproom/view_biomes",
+          "prompt": "a biome map: an island divided into soft coloured regions of green, dark green, sand and white"
+        },
+        null,
+        null
+      ]
     }
   }
 }

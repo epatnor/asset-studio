@@ -1,11 +1,12 @@
-// Kartrummet, fliken World (docs/terrain.md, steg 1): världen ur ett recept, oftast en ö i havet, 256 m–4 km i fyrkant. Höjdfältet
-// räknas i en worker (shared/terrain/worker.js: generate.js och field.js), marken läggs i lager efter höjd, lutning och
-// fukt, och havet är vattenmodulen (shared/effects/water.js) med vädret ur Väder-fliken. Platsen står som ett block på
+// Kartrummet, stegen World och Biomes (docs/terrain.md, steg 1 och 2): världen ur ett recept, oftast en ö i havet,
+// 256 m–4 km i fyrkant, och biomerna på den. Höjdfältet och biomerna räknas i en worker (shared/terrain/worker.js:
+// generate.js, field.js och biomes.js), marken läggs i lager efter biomerna (med klippor i branter och rännor där
+// vattnet runnit), biomerna kan målas med pensel (ett eget lager i receptet), och havet är vattenmodulen (shared/effects/water.js) med vädret ur Väder-fliken. Platsen står som ett block på
 // kartbordet, med jordlager på sidorna. Spakarna och de färdiga landskapen är data i tools/terrain/terrain.json;
 // sparade landskap i assets/terrain/. Egen renderare (WebGPU, WebGL2 som reserv). Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
 import {
-  pass, texture, positionWorld, normalWorld, attribute, mix, smoothstep, mx_noise_float, vec3, vec4, float, uniform, triplanarTexture, color, max, select,
+  pass, texture, positionWorld, normalWorld, attribute, mix, smoothstep, mx_noise_float, vec3, vec4, float, uniform, triplanarTexture, color, max, select, length, abs, Fn,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -14,12 +15,15 @@ import { createWater, bedAndFlow } from '../shared/effects/water.js';
 import { antiTiled } from '../shared/effects/antitile.js';
 import { axis, buildField } from '../shared/terrain/field.js';
 import { worldGrid } from '../shared/terrain/generate.js';
+import { BIOMES, PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../shared/terrain/biomes.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
 const DEG = Math.PI / 180;
 // Spakar som kräver att höjdfältet räknas om; övriga ändrar bara materialet, havet eller vyn
 const SHAPE_KEYS = new Set(['worldSize', 'shape', 'seed', 'height', 'scale', 'coast', 'octaves', 'roughness', 'ridges', 'warp', 'terraces', 'terraceSharp', 'erosion', 'talus']);
+// Spakar som bara räknar om biomerna (snabbt, på den senaste terrängen i workern)
+const BIOME_KEYS = new Set(['sea', 'seaLevel', 'sandBand', 'snowline', 'cliffAngle', 'treeline', 'rainfall', 'forestCover', 'marshes', 'coastWind']);
 
 export async function createTerrainTab({ api, el, view, side, drawer, footer }) {
   const [info, wx, wa] = await Promise.all([api('/api/terrain'), api('/api/weather'), api('/api/water')]);
@@ -106,20 +110,37 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const U = {
     sea: uniform(vals.seaLevel), seaOn: uniform(vals.sea ? 1 : 0), sand: uniform(vals.sandBand), snow: uniform(vals.snowline),
     cliff: uniform(Math.cos(vals.cliffAngle * DEG)), tone: uniform(vals.grassTone), top: uniform(40), low: uniform(-8),
+    brush: uniform(new THREE.Vector3(0, 0, 30)), brushOn: uniform(0), // x, z, radie; 1 när penselns ring syns
   };
   const h = positionWorld.y, up = normalWorld.y, wet = attribute('wet', 'float');
+  // Biomernas vikter (shared/terrain/biomes.js): bio0 = strand, äng, lövskog, barrskog; bio1 = myr, hed, berg, snö
+  const bio0 = attribute('bio0', 'vec4'), bio1 = attribute('bio1', 'vec4');
   const wobble = mx_noise_float(vec3(positionWorld.xz.mul(0.06), 0)).mul(1.0).add(mx_noise_float(vec3(positionWorld.xz.mul(0.4), 3)).mul(0.25));
-  const grass = mix(tex('ground_steppe', 3), tex('ground_lush', 3), U.tone);
+  const steppe = tex('ground_steppe', 3), moss = tex('moss_stylized', 2.5), floor = tex('surface_forestfloor', 3);
+  const grass = mix(steppe, tex('ground_lush', 3), U.tone);
   const meadow = mix(grass, tex('ground_meadow', 3), smoothstep(0.2, 0.8, mx_noise_float(vec3(positionWorld.xz.mul(0.025), 7)).add(0.5)).mul(0.6));
-  let c = mix(meadow, tex('surface_forestfloor', 3), smoothstep(0.4, 0.9, wet).mul(0.3)); // fuktiga dalar lite mörkare
-  c = mix(c, tex('surface_dirt', 2.5), smoothstep(0.75, 1, wet).mul(smoothstep(0.97, 0.88, up)).mul(0.7)); // rännor i branta sluttningar
-  c = mix(c, tex('surface_stone', 3), smoothstep(-14, -2, h.sub(U.snow).add(wobble.mul(3))).mul(0.85)); // stenigt mot snögränsen
-  c = mix(c, tex('surface_sand', 2.5), U.seaOn.mul(smoothstep(0.3, -0.3, h.sub(U.sea).sub(U.sand).add(wobble.mul(0.4))))); // stranden
+  const LAYER = [
+    tex('surface_sand', 2.5), // strand
+    meadow, // äng
+    floor, // lövskog
+    mix(floor, moss, 0.45).mul(0.85), // barrskog: barr och mossa
+    mix(tex('surface_mud', 2.5), moss, 0.35), // myr
+    mix(steppe, color('#9a8048'), 0.3), // hed: ljung och gyllene gräs
+    tex('surface_stone', 3), // berg
+    tex('surface_snow', 4), // snö
+  ];
+  let c = LAYER[0].mul(bio0.x).add(LAYER[1].mul(bio0.y)).add(LAYER[2].mul(bio0.z)).add(LAYER[3].mul(bio0.w))
+    .add(LAYER[4].mul(bio1.x)).add(LAYER[5].mul(bio1.y)).add(LAYER[6].mul(bio1.z)).add(LAYER[7].mul(bio1.w));
+  c = mix(c, tex('surface_dirt', 2.5), smoothstep(0.75, 1, wet).mul(smoothstep(0.97, 0.88, up)).mul(float(1).sub(bio1.w)).mul(0.7)); // rännor i branta sluttningar
   const rock = triplanarTexture(texture(raw('surface_cliff')), null, null, float(1 / 7), positionWorld, normalWorld).rgb;
   c = mix(c, rock, smoothstep(U.cliff.add(0.05), U.cliff.sub(0.05), up.add(wobble.mul(0.03)))); // klippor i branter
-  c = mix(c, tex('surface_snow', 4), smoothstep(-1, 2, h.sub(U.snow).add(wobble.mul(3))).mul(smoothstep(0.6, 0.8, up))); // snö, inte på klippor
+  // Penselns ring (steg Biomes): en ring på marken där penseln är
+  const brushRing = Fn(() => {
+    const d = length(positionWorld.xz.sub(U.brush.xy)), w = U.brush.z.mul(0.035).add(0.4);
+    return float(1).sub(smoothstep(0, w, abs(d.sub(U.brush.z)))).mul(U.brushOn);
+  })();
   const shaded = new THREE.MeshStandardNodeMaterial({ roughness: 0.92 });
-  shaded.colorNode = water.groundColor(c.mul(0.92), water.uniforms.level);
+  shaded.colorNode = mix(water.groundColor(c.mul(0.92), water.uniforms.level), color('#ffffff'), brushRing.mul(0.85));
   shaded.roughnessNode = water.groundRoughness(float(0.92), water.uniforms.level);
   // Felsökningsvyerna
   const debug = (node) => { const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.9 }); m.colorNode = node; return m; };
@@ -131,6 +152,11 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     height: debug(heightCol.mul(float(0.85).add(smoothstep(0.92, 1, h.mul(0.5).fract()).mul(0.3)))), // ljusa band var 2 m
     slope: debug(mix(mix(color('#20302a'), color('#d8c050'), smoothstep(0, float(1).sub(U.cliff), slopeT)), color('#d03a2a'), smoothstep(float(1).sub(U.cliff).sub(0.02), float(1).sub(U.cliff).add(0.02), slopeT))),
     wetness: debug(mix(color('#e8dcc0'), color('#1f5fb0'), wet)),
+    biomes: debug((() => {
+      const C = info.biomes.map((x) => color(x.color));
+      return C[0].mul(bio0.x).add(C[1].mul(bio0.y)).add(C[2].mul(bio0.z)).add(C[3].mul(bio0.w)).add(C[4].mul(bio1.x)).add(C[5].mul(bio1.y)).add(C[6].mul(bio1.z)).add(C[7].mul(bio1.w))
+        .mul(float(0.8).add(up.mul(0.2))).add(brushRing.mul(0.8));
+    })()),
     wireframe: Object.assign(debug(mix(color('#3a4a3a'), color('#c8e0c0'), t)), { wireframe: true }),
   };
   const ground = new THREE.Mesh(new THREE.BufferGeometry(), shaded);
@@ -167,18 +193,51 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
 
   // --- Generatorn i en worker: den senaste begäran vinner, och bara en räknas åt gången ---
   const worker = new Worker(new URL('../shared/terrain/worker.js', import.meta.url), { type: 'module' });
-  let sent = 0, busy = false, dirty = false, waiters = [], stats = { ms: 0, vertices: 0, triangles: 0, land: 0, top: 0 };
+  let sent = 0, busy = false, dirty = null, waiters = [], stats = { ms: 0, vertices: 0, triangles: 0, land: 0, top: 0, biomeMs: 0, coverage: {} };
+  // Biomerna: de beräknade vikterna (auto, ur workern), det målade lagret (paint) och det som ritas (final = auto + paint)
+  let auto = null, final = null, paint = new Uint8Array(PAINT_SIZE * PAINT_SIZE * 2);
   const recipe = () => ({ ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])), ...worldGrid(sizeOf()) });
-  function request() {
-    if (busy) { dirty = true; return; }
+  // kind = 'world' (bygg om terrängen och biomerna) eller 'biomes' (bara biomerna, på samma terräng)
+  function request(kind = 'world') {
+    if (busy) { dirty = dirty === 'world' || kind === 'world' ? 'world' : 'biomes'; return; }
     busy = true;
-    note.textContent = 'Building the world…';
-    worker.postMessage({ id: ++sent, recipe: recipe() });
+    note.textContent = kind === 'world' ? 'Building the world…' : 'Placing the biomes…';
+    worker.postMessage({ id: ++sent, recipe: recipe(), only: kind === 'biomes' ? 'biomes' : undefined });
+  }
+  // Vikterna till marken: auto och det målade lagret blandas och delas på två attribut (bio0 och bio1, 4 × 8 bitar)
+  function applyBiomes() {
+    if (!auto || !field) return;
+    final = mixPaint(auto, paint, field.n, final && final.length === auto.length ? final : undefined);
+    const g = ground.geometry, count = final.length / 8;
+    let a0 = g.getAttribute('bio0'), a1 = g.getAttribute('bio1');
+    if (!a0 || a0.count !== count) {
+      a0 = new THREE.BufferAttribute(new Uint8Array(count * 4), 4, true);
+      a1 = new THREE.BufferAttribute(new Uint8Array(count * 4), 4, true);
+      g.setAttribute('bio0', a0);
+      g.setAttribute('bio1', a1);
+    }
+    const A = a0.array, B = a1.array;
+    for (let k = 0; k < count; k++) {
+      const o = k * 8, p4 = k * 4;
+      A[p4] = final[o]; A[p4 + 1] = final[o + 1]; A[p4 + 2] = final[o + 2]; A[p4 + 3] = final[o + 3];
+      B[p4] = final[o + 4]; B[p4 + 1] = final[o + 5]; B[p4 + 2] = final[o + 6]; B[p4 + 3] = final[o + 7];
+    }
+    a0.needsUpdate = a1.needsUpdate = true;
   }
   worker.onmessage = (e) => {
     const d = e.data;
     busy = false;
-    if (dirty) { dirty = false; request(); return; }
+    if (dirty) { const k = dirty; dirty = null; request(k); return; }
+    if (d.only === 'biomes') {
+      auto = d.biomes;
+      stats.coverage = d.coverage; stats.biomeMs = d.biomeMs;
+      applyBiomes();
+      showStats();
+      note.textContent = hint();
+      const w = waiters; waiters = [];
+      w.forEach((r) => r());
+      return;
+    }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(d.positions, 3));
     g.setAttribute('normal', new THREE.BufferAttribute(d.normals, 3));
@@ -188,6 +247,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     ground.geometry.dispose();
     ground.geometry = g;
     field = { n: d.n, cell: d.cell, heights: d.heights };
+    auto = d.biomes;
+    applyBiomes();
     resize3d(d.size);
     let lo = Infinity, hi = -Infinity, land = 0;
     for (const v of d.heights) { lo = Math.min(lo, v); hi = Math.max(hi, v); if (!vals.sea || v > vals.seaLevel) land++; }
@@ -195,13 +256,13 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sides.geometry.dispose();
     sides.geometry = sideGeometry(field, Math.min(lo, SEABED) - 4);
     rebuildWater();
-    stats = { ms: d.ms, vertices: d.positions.length / 3, triangles: d.index.length / 3, land: Math.round((100 * land) / d.heights.length), top: Math.round(hi) };
+    stats = { ms: d.ms, vertices: d.positions.length / 3, triangles: d.index.length / 3, land: Math.round((100 * land) / d.heights.length), top: Math.round(hi), biomeMs: d.biomeMs, coverage: d.coverage };
     showStats();
-    note.textContent = 'Drag to orbit, scroll to zoom';
+    note.textContent = hint();
     const w = waiters; waiters = [];
     w.forEach((r) => r());
   };
-  const regenerate = () => new Promise((r) => { waiters.push(r); request(); });
+  const regenerate = (kind = 'world') => new Promise((r) => { waiters.push(r); request(kind); });
   // En ny världsstorlek: havet, botten, skuggorna, dimman och kameran skalas med
   function resize3d(size) {
     half = size / 2;
@@ -266,15 +327,21 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const cards = createCards({ el, side });
   const get = (k) => vals[k];
   const set = (k, v) => { vals[k] = v; };
-  const COL = { shape: '#c0672e', detail: '#b88a5a', erosion: '#6a8fb0', water: '#3fa6a0', material: '#6aa84f', sky: '#e0a030' };
+  const COL = { shape: '#c0672e', detail: '#b88a5a', erosion: '#6a8fb0', water: '#3fa6a0', material: '#6aa84f', climate: '#3f8f3a', brush: '#e0e0e0', sky: '#e0a030' };
+  // Vilka kort som syns i vilket steg: World formar landet, Biomes klimatet och penseln; marken, vädret och Spara i båda
+  const IN_STEP = { world: ['shape', 'detail', 'erosion', 'water', 'material', 'sky'], biomes: ['material', 'climate', 'brush', 'sky'] };
+  const cardOf = {};
   for (const g of info.groups) {
     if (g.id === 'view') continue;
     const body = cards.card(g.label, COL[g.id] ?? '#c0672e', { closed: ['erosion', 'water', 'sky'].includes(g.id) });
+    cardOf[g.id] = body.parentElement;
     for (const q of info.params.filter((x) => x.group === g.id)) {
       body.append(cards.rowFor(q)(q, get, set, () => {
-        mark(null);
+        if (q.recipe !== false) mark(null);
         if (SHAPE_KEYS.has(q.key)) regenerate();
-        else if (q.key === 'sea' || q.key === 'seaLevel') rebuildWater();
+        else if (BIOME_KEYS.has(q.key)) regenerate('biomes');
+        if (q.key === 'sea' || q.key === 'seaLevel') rebuildWater();
+        if (q.key === 'brush') U.brush.value.z = vals.brush;
         apply();
       }));
     }
@@ -287,8 +354,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const name = prompt('Name of the world (a–z, 0–9 and _):', current?.replace(/^saved:/, '') ?? 'my_island');
     if (!name) return;
     const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
-    let r = await api('/api/terrain/save', { name, settings: vals, from });
-    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, overwrite: true });
+    const layers = { biomePaint: encodePaint(paint) ?? '' }; // det målade biomlagret följer med receptet
+    let r = await api('/api/terrain/save', { name, settings: vals, from, layers });
+    if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
     if (!r.entry) return;
     info.saved = [r.entry, ...info.saved.filter((x) => x.name !== r.entry.name)];
@@ -299,21 +367,23 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
 
   // --- Lådan: färdiga och sparade landskap ---
   const head = el('div', 'libhead'), body = el('div', 'libbody');
-  head.append(el('h2', null, 'Worlds'), el('div', 'note', 'Click a world to start from it. Save your own in the Save card.'));
+  const headTitle = el('h2', null, 'Worlds'), headNote = el('div', 'note', '');
+  head.append(headTitle, headNote);
   drawer.append(head, body);
   const sizeLabel = Object.fromEntries(info.params.find((q) => q.key === 'worldSize').options.map((o) => [o.id, o.label]));
   const shapeLabel = Object.fromEntries(info.params.find((q) => q.key === 'shape').options.map((o) => [o.id, o.label]));
-  function tile(id, label, settings, icon) {
+  function tile(id, label, settings, icon, layers) {
     const v = { ...defaults, ...stripLabel(settings) };
     const f = el('button', `wprof${current === id ? ' on' : ''}`);
     f.dataset.id = id;
     f.append(el('b', null, label), el('span', 'wmeta', `${shapeLabel[v.shape] ?? v.shape} · ${sizeLabel[v.worldSize] ?? v.worldSize} · ${v.height} m high`));
-    f.onclick = () => use(id, v);
+    f.onclick = () => use(id, v, layers);
     return withIcon(el, f, 'maproom', icon, label);
   }
-  // Ett landskap ur lådan: receptets spakar byts, vyn och vädret står kvar
-  async function use(id, v) {
+  // En värld ur lådan: receptets spakar och det målade lagret byts (färdiga världar har inget), vyn och vädret står kvar
+  async function use(id, v, layers) {
     for (const k of recipeKeys) vals[k] = v[k];
+    paint = decodePaint(layers?.biomePaint);
     mark(id);
     cards.sync();
     apply();
@@ -322,21 +392,107 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function renderDrawer() {
     body.replaceChildren();
     const sec = (title, tiles) => { if (!tiles.length) return; const g = el('section', 'libgroup'); const grid = el('div', 'wprofs'); grid.append(...tiles); g.append(el('h3', null, title), grid); body.append(g); };
+    if (step === 'biomes') {
+      headTitle.textContent = 'Biomes';
+      headNote.textContent = 'Pick a biome and paint it on the land with the left mouse button; the right button turns the view. The rules place the rest.';
+      sec('Paint', [...info.biomes.map((b, i) => biomeTile(b, i)), biomeTile({ id: 'erase', label: 'Erase', help: 'Wipe the painting, so the rules decide again' }, -1)]);
+      const clear = el('button', null, 'Clear all painting');
+      clear.onclick = () => { paint.fill(0); applyBiomes(); };
+      body.append(clear);
+      return;
+    }
+    headTitle.textContent = 'Worlds';
+    headNote.textContent = 'Click a world to start from it. Save your own in the Save card.';
     sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p, id)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings, x.from)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, x.settings, x.from, x.layers)));
   }
-  function mark(id) { current = id; for (const b of body.querySelectorAll('.wprof')) b.classList.toggle('on', b.dataset.id === id); }
+  // En biom i lådan: väljer penseln (Erase suddar); klick igen släpper penseln, så att vänsterknappen roterar igen
+  function biomeTile(b, i) {
+    const f = el('button', `wprof${brushBiome === i && painting ? ' on' : ''}`);
+    f.dataset.biome = b.id;
+    f.title = b.help;
+    const sw = el('span', 'gswatch');
+    sw.style.background = b.color ?? 'transparent';
+    f.append(el('b', null, b.label), i >= 0 ? sw : el('span', 'wmeta', 'back to the rules'), el('span', 'wmeta', i >= 0 ? `${stats.coverage?.[b.id] ?? 0} % of the land` : ''));
+    f.onclick = () => { if (painting && brushBiome === i) setBrush(null); else setBrush(i); };
+    return withIcon(el, f, 'maproom', `biome_${b.id}`, b.label);
+  }
+  function mark(id) { current = id; for (const b of body.querySelectorAll('.wprof[data-id]')) b.classList.toggle('on', b.dataset.id === id); }
+
+  // --- Stegen: World formar landet, Biomes målar naturen på det; samma värld och scen ---
+  let step = 'world', painting = false, brushBiome = null;
+  function setStep(s) {
+    step = s;
+    for (const [id, c] of Object.entries(cardOf)) c.hidden = !(IN_STEP[s] ?? IN_STEP.world).includes(id);
+    vals.view = s === 'biomes' ? 'biomes' : 'shaded';
+    if (s !== 'biomes') setBrush(null);
+    renderDrawer();
+    apply();
+    note.textContent = hint();
+  }
+  // Penseln: med en biom vald målar vänsterknappen och högerknappen roterar; utan pensel som vanligt
+  function setBrush(i) {
+    painting = i !== null && step === 'biomes';
+    brushBiome = painting ? i : null;
+    controls.mouseButtons = painting ? { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE } : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    U.brushOn.value = 0;
+    for (const b of body.querySelectorAll('.wprof[data-biome]')) b.classList.toggle('on', painting && b.dataset.biome === (i < 0 ? 'erase' : info.biomes[i]?.id));
+    note.textContent = hint();
+  }
+  const hint = () => (painting ? `Painting ${brushBiome < 0 ? 'erase' : info.biomes[brushBiome].label.toLowerCase()}: left button paints, right button turns, scroll zooms` : 'Drag to orbit, scroll to zoom');
+
+  // Var pekaren träffar marken: en stråle från kameran, stegvis mot höjdfältet och sedan halvering
+  const ndc = new THREE.Vector2(), rc = new THREE.Raycaster();
+  function groundAt(ev) {
+    if (!field) return null;
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+    rc.setFromCamera(ndc, camera);
+    const o = rc.ray.origin, dir = rc.ray.direction, stepLen = Math.max(0.5, field.cell * 1.5), maxT = camera.far;
+    let t0 = 0;
+    for (let t = stepLen; t < maxT; t += stepLen) {
+      const x = o.x + dir.x * t, z = o.z + dir.z * t;
+      if (Math.abs(x) > half && Math.abs(z) > half && dir.y >= 0) return null;
+      if (o.y + dir.y * t <= bedAt(x, z)) {
+        let a = t0, b = t;
+        for (let it = 0; it < 12; it++) { const m = (a + b) / 2; if (o.y + dir.y * m <= bedAt(o.x + dir.x * m, o.z + dir.z * m)) b = m; else a = m; }
+        const px = o.x + dir.x * b, pz = o.z + dir.z * b;
+        return Math.abs(px) <= half && Math.abs(pz) <= half ? { x: px, z: pz } : null;
+      }
+      t0 = t;
+    }
+    return null;
+  }
+  let down = false, queued = false;
+  const canvas = renderer.domElement;
+  function strokeAt(ev) {
+    const p = groundAt(ev);
+    U.brushOn.value = p ? 1 : 0;
+    if (!p) return;
+    U.brush.value.set(p.x, p.z, vals.brush);
+    if (!down) return;
+    paintStroke(paint, p.x, p.z, { biome: brushBiome, radius: vals.brush, strength: vals.brushStrength, size: sizeOf() });
+    if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; applyBiomes(); }); }
+    mark(null);
+  }
+  canvas.addEventListener('pointerdown', (ev) => { if (!painting || ev.button !== 0) return; down = true; canvas.setPointerCapture(ev.pointerId); strokeAt(ev); });
+  canvas.addEventListener('pointermove', (ev) => { if (painting) strokeAt(ev); });
+  canvas.addEventListener('pointerup', (ev) => { if (!down) return; down = false; canvas.releasePointerCapture(ev.pointerId); });
+  canvas.addEventListener('pointerleave', () => { if (!down) U.brushOn.value = 0; });
   renderDrawer();
   cards.sync();
   apply();
 
   // --- Footern ---
-  const fLand = el('div', 'block'), fStats = el('div', 'block'), note = el('div', 'msg');
-  footer.append(fLand, fStats, note);
+  const fLand = el('div', 'block'), fBiomes = el('div', 'block'), fStats = el('div', 'block'), note = el('div', 'msg');
+  footer.append(fLand, fBiomes, fStats, note);
   const block = (b, title, text) => { b.replaceChildren(el('b', null, title), el('div', 'vals', text)); };
   const clock = (hh) => `${String(Math.floor(hh)).padStart(2, '0')}:${String(Math.round((hh % 1) * 60) % 60).padStart(2, '0')}`;
   function showStats() {
     block(fLand, 'World', `${sizeLabel[vals.worldSize] ?? vals.worldSize} square · top ${stats.top} m${vals.sea ? ` · ${stats.land} % above the sea` : ''} · built in ${stats.ms} ms`);
+    const top = Object.entries(stats.coverage ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4); // andelar av landet
+    block(fBiomes, 'Biomes', `${top.map(([id, v]) => `${info.biomes.find((x) => x.id === id)?.label ?? id} ${v} %`).join(' · ')} · ${stats.biomeMs} ms`);
+    if (step === 'biomes') for (const b of body.querySelectorAll('.wprof[data-biome]')) { const m = b.querySelectorAll('.wmeta'); const v = stats.coverage?.[b.dataset.biome]; if (v != null && m.length) m[m.length - 1].textContent = `${v} % of the land`; }
   }
   note.textContent = 'Drag to orbit, scroll to zoom';
   await regenerate();
@@ -375,6 +531,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       // set=nyckel:värde,...: prova en ändring i receptet (felsökning)
       const over = Object.fromEntries((q.get('set') ?? '').split(',').filter(Boolean).map((kv) => { const [k, v] = kv.split(':'); return [k, v === 'true' ? true : v === 'false' ? false : Number.isNaN(Number(v)) ? v : Number(v)]; }));
       await use(id, { ...defaults, ...stripLabel(info.presets[id]), ...over });
+      if (q.get('step')) setStep(q.get('step'));
       if (over.view) { vals.view = over.view; apply(); }
       await new Promise((r) => setTimeout(r, 2500));
       tick(0);
@@ -387,7 +544,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   return {
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },
-    scene, camera, controls, renderer, vals, apply, regenerate, atm, water,
+    scene, camera, controls, renderer, vals, apply, regenerate, atm, water, setStep, setBrush,
+    get step() { return step; }, get paint() { return paint; }, get weights() { return final; },
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),
   };
 }

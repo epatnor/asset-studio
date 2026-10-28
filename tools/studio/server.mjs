@@ -589,7 +589,8 @@ function recipeStore(area) {
       const saved = existsSync(dir) ? (await Promise.all((await readdir(dir)).filter((f) => f.endsWith(EXT)).map((f) => readJson(`${SAVED}/${f}`)))).filter(Boolean) : [];
       return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
     },
-    async save({ name, settings, overwrite, from }) {
+    // layers: lager som inte är spakar (Kartrummets målade biomer), som base64-text, högst 400 000 tecken totalt
+    async save({ name, settings, overwrite, from, layers }) {
       name = String(name ?? '').trim().toLowerCase();
       if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
       const X = await readJson(JSON_FILE);
@@ -605,7 +606,9 @@ function recipeStore(area) {
       const file = path.join(ROOT, SAVED, `${name}${EXT}`);
       if (existsSync(file) && !overwrite) return { exists: true };
       await mkdir(path.dirname(file), { recursive: true });
-      const entry = { name, settings: clean, ...fromOf(from), saved: new Date().toISOString() };
+      const lay = Object.fromEntries(Object.entries(layers && typeof layers === 'object' ? layers : {}).filter(([k, v]) => /^\w{1,40}$/.test(k) && typeof v === 'string' && v && /^[A-Za-z0-9+/=]*$/.test(v)));
+      if (Object.values(lay).reduce((n, v) => n + v.length, 0) > 400000) return { error: 'the layers are too large' };
+      const entry = { name, settings: clean, ...(Object.keys(lay).length ? { layers: lay } : {}), ...fromOf(from), saved: new Date().toISOString() };
       await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
       return { entry, file: `${SAVED}/${name}${EXT}` };
     },

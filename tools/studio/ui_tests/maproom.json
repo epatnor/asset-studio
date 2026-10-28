@@ -155,8 +155,8 @@
       "minLight": 40
     },
     {
-      "expect": "[...document.querySelectorAll('#kinds button')].filter((b) => b.dataset.dept === 'maproom' && b.disabled).length === 6",
-      "label": "the six coming steps are disabled tabs"
+      "expect": "[...document.querySelectorAll('#kinds button')].filter((b) => b.dataset.dept === 'maproom' && b.disabled).length === 5",
+      "label": "the five coming steps are disabled tabs"
     },
     {
       "click": "Windmill",

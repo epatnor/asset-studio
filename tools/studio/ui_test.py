@@ -13,6 +13,8 @@ ordning; varje steg är ett av:
   {"click": "<text>", "in": "<css>"}           klicka på den knapp (eller det element) i in vars text innehåller text
   {"slider": "<etikett>", "value": v, "in": "<css>"}   sätt en spak (input range bredvid etiketten) och skicka input
   {"select": "<etikett>", "value": "<id>", "in": "<css>"} välj i en lista (select bredvid etiketten)
+  {"drag": [[x, y], [x, y], ...], "button": "left"}  musen trycks ned i första punkten, dras genom de andra och släpps
+                                               (bildpunkter i fönstret; riktiga pekarhändelser, som penseln läser)
   {"prompt": "<svar>"}                         nästa prompt() eller confirm() besvaras så
   {"shot": "<namn>", "minLight": 40}           skärmdump av hela sidan → build/ui/<recept>_<namn>.png; med minLight ska
                                                mitten av bilden (3D-vyn) ha minst den ljusstyrkan (0–255), annars ok false
@@ -146,7 +148,7 @@ async def run(recipe):
             await send('Runtime.enable')
             await send('Page.enable')
             for st in recipe.get('steps', []):
-                rec = {k: v for k, v in st.items() if k in ('wait', 'until', 'eval', 'expect', 'click', 'slider', 'select', 'prompt', 'shot', 'label')}
+                rec = {k: v for k, v in st.items() if k in ('wait', 'until', 'eval', 'expect', 'click', 'slider', 'select', 'drag', 'prompt', 'shot', 'label')}
                 try:
                     if 'wait' in st:
                         await asyncio.sleep(st['wait'] / 1000)
@@ -169,6 +171,17 @@ async def run(recipe):
                         rec['value'] = await js(f"__ui.slider({json.dumps(st['slider'])}, {json.dumps(st['value'])}, {json.dumps(st.get('in', 'body'))})")
                     elif 'select' in st:
                         rec['value'] = await js(f"__ui.select({json.dumps(st['select'])}, {json.dumps(st['value'])}, {json.dumps(st.get('in', 'body'))})")
+                    elif 'drag' in st:
+                        pts, btn = st['drag'], st.get('button', 'left')
+                        mask = {'left': 1, 'right': 2, 'middle': 4}[btn]
+                        await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': pts[0][0], 'y': pts[0][1]})
+                        await send('Input.dispatchMouseEvent', {'type': 'mousePressed', 'x': pts[0][0], 'y': pts[0][1], 'button': btn, 'buttons': mask, 'clickCount': 1})
+                        for a, b in zip(pts, pts[1:]):
+                            for k in range(1, 9):  # mellanpunkter, så att draget blir jämnt
+                                x, y = a[0] + (b[0] - a[0]) * k / 8, a[1] + (b[1] - a[1]) * k / 8
+                                await send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': btn, 'buttons': mask})
+                                await asyncio.sleep(0.03)
+                        await send('Input.dispatchMouseEvent', {'type': 'mouseReleased', 'x': pts[-1][0], 'y': pts[-1][1], 'button': btn, 'buttons': 0, 'clickCount': 1})
                     elif 'prompt' in st:
                         answer['text'] = st['prompt']
                     elif 'shot' in st:

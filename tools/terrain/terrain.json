@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Spakar med \"recipe\": false (vyn och himlen) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (climate och brush till Biomes). biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
   "camera": {
     "pos": [
       150,
@@ -34,12 +34,22 @@
       "label": "Ground"
     },
     {
-      "id": "view",
-      "label": "View"
+      "id": "climate",
+      "label": "Climate",
+      "step": "biomes"
+    },
+    {
+      "id": "brush",
+      "label": "Brush",
+      "step": "biomes"
     },
     {
       "id": "sky",
       "label": "Weather"
+    },
+    {
+      "id": "view",
+      "label": "View"
     }
   ],
   "params": [
@@ -320,6 +330,78 @@
       "help": "From dry and golden to lush and green"
     },
     {
+      "key": "treeline",
+      "group": "climate",
+      "label": "Tree line",
+      "min": 10,
+      "max": 400,
+      "step": 1,
+      "default": 110,
+      "help": "Above this height (metres) the trees stop and bare mountain begins; pine forest grows just below it"
+    },
+    {
+      "key": "rainfall",
+      "group": "climate",
+      "label": "Rainfall",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "help": "How wet the world is: dry gives heath and open meadow, wet gives forest and marshes"
+    },
+    {
+      "key": "forestCover",
+      "group": "climate",
+      "label": "Forest",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.55,
+      "help": "How much of the green land is forest, in groves with clearings between them"
+    },
+    {
+      "key": "marshes",
+      "group": "climate",
+      "label": "Marshes",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.3,
+      "help": "Marshes in flat, wet hollows and valley floors"
+    },
+    {
+      "key": "coastWind",
+      "group": "climate",
+      "label": "Coastal wind",
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "default": 40,
+      "help": "How far in from the shore the wind keeps trees away (metres): heath and grass along the coast"
+    },
+    {
+      "key": "brush",
+      "group": "brush",
+      "label": "Brush size",
+      "recipe": false,
+      "min": 2,
+      "max": 200,
+      "step": 1,
+      "default": 30,
+      "help": "The radius of the biome brush, in metres"
+    },
+    {
+      "key": "brushStrength",
+      "group": "brush",
+      "label": "Strength",
+      "recipe": false,
+      "min": 0.02,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35,
+      "help": "How much each stroke paints over what the rules chose"
+    },
+    {
       "key": "view",
       "group": "view",
       "label": "View",
@@ -331,6 +413,11 @@
           "id": "shaded",
           "label": "Shaded",
           "help": "The land with its ground layers, sun and shadows"
+        },
+        {
+          "id": "biomes",
+          "label": "Biomes",
+          "help": "The biomes as flat colours: beach, meadow, forest, pine, marsh, heath, rock and snow"
         },
         {
           "id": "height",
@@ -441,7 +528,8 @@
       "talus": 45,
       "sea": true,
       "coast": 0.76,
-      "snowline": 135
+      "snowline": 135,
+      "treeline": 85
     },
     "volcano": {
       "label": "Volcano",
@@ -459,7 +547,9 @@
       "coast": 0.8,
       "snowline": 400,
       "cliffAngle": 34,
-      "grassTone": 0.7
+      "grassTone": 0.7,
+      "treeline": 130,
+      "rainfall": 0.6
     },
     "atoll": {
       "label": "Atoll",
@@ -476,7 +566,9 @@
       "sea": true,
       "coast": 0.8,
       "sandBand": 2.5,
-      "grassTone": 0.85
+      "grassTone": 0.85,
+      "forestCover": 0.4,
+      "coastWind": 25
     },
     "twin_isles": {
       "label": "Twin isles",
@@ -561,7 +653,8 @@
       "talus": 45,
       "sea": false,
       "snowline": 62,
-      "worldSize": "256"
+      "worldSize": "256",
+      "treeline": 45
     },
     "plains": {
       "label": "Plains",
@@ -575,7 +668,8 @@
       "erosion": 0.1,
       "sea": false,
       "talus": 0,
-      "worldSize": "256"
+      "worldSize": "256",
+      "rainfall": 0.35
     },
     "river_valley": {
       "label": "River valley",
@@ -606,7 +700,9 @@
       "sea": false,
       "cliffAngle": 30,
       "grassTone": 0.15,
-      "worldSize": "256"
+      "worldSize": "256",
+      "rainfall": 0.1,
+      "forestCover": 0.15
     },
     "highlands": {
       "label": "Highlands",
@@ -621,7 +717,59 @@
       "terraceSharp": 0.55,
       "erosion": 0.5,
       "sea": false,
-      "worldSize": "256"
+      "worldSize": "256",
+      "treeline": 30,
+      "rainfall": 0.65
     }
-  }
+  },
+  "biomes": [
+    {
+      "id": "beach",
+      "label": "Beach",
+      "color": "#e2cf9a",
+      "help": "Sand along the shore and under the shallow sea"
+    },
+    {
+      "id": "meadow",
+      "label": "Meadow",
+      "color": "#8cbf4f",
+      "help": "Open grassland with flowers; what grows where nothing else does"
+    },
+    {
+      "id": "forest",
+      "label": "Forest",
+      "color": "#3f8f3a",
+      "help": "Broadleaf forest in groves, on moist lowland"
+    },
+    {
+      "id": "pine",
+      "label": "Pine forest",
+      "color": "#2f6b4a",
+      "help": "Conifers higher up, toward the tree line"
+    },
+    {
+      "id": "marsh",
+      "label": "Marsh",
+      "color": "#6f8a5a",
+      "help": "Wet, flat hollows and valley floors"
+    },
+    {
+      "id": "heath",
+      "label": "Heath",
+      "color": "#b59a5a",
+      "help": "Dry or wind-swept land: heather, low shrubs and golden grass"
+    },
+    {
+      "id": "rock",
+      "label": "Rock",
+      "color": "#8e8a84",
+      "help": "Cliffs and bare mountain above the tree line"
+    },
+    {
+      "id": "snow",
+      "label": "Snow",
+      "color": "#f2f5f8",
+      "help": "Above the snow line, where the slopes are gentle enough"
+    }
+  ]
 }

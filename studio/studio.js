@@ -599,7 +599,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || holds(p.when));
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : terrainMode ? b === landBtn : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : terrainMode ? b.dataset.step === terrainStep : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
   drawer?.setKind(kind);
   applyDept();
 }
@@ -658,10 +658,17 @@ $('kinds').append(waterBtn, weatherBtn);
 // World är byggd; de andra stegen kommer i ordning
 const landBtn = el('button', null, 'World');
 landBtn.dataset.dept = 'maproom';
+landBtn.dataset.step = 'world';
 landBtn.title = 'The Map Room, step 1: the world, most often an island in the sea, its size, shape, mountains and erosion';
 $('kinds').append(landBtn);
+// Biomes (steg 2) är byggd: samma värld och vy, andra kort och en pensel
+const biomeBtn = el('button', null, 'Biomes');
+biomeBtn.dataset.dept = 'maproom';
+biomeBtn.dataset.step = 'biomes';
+biomeBtn.title = 'The Map Room, step 2: biomes from the geography (height, slope, wetness, tree line, distance to the sea), and painted by hand';
+$('kinds').append(biomeBtn);
+let terrainStep = 'world';
 for (const [label, tip] of [
-  ['Biomes', 'step 2: biomes from the geography (height, slope, wetness, warmth, distance to the sea) and painted by hand'],
   ['Sculpt', 'step 3: shape the world by hand, and dig streams, rivers and bays'],
   ['Paint', 'step 4: paint the ground layers, by rules and with a brush'],
   ['Populate', 'step 5: fill the world with trees, plants and rocks by geography, biome and ground'],
@@ -717,7 +724,7 @@ function openDept(id) {
   else if (id === 'vault') libBtn.onclick();
   else if (id === 'windmill') windBtn.onclick();
   else if (id === 'cauldron') openCauldron(fxKind);
-  else if (id === 'maproom') landBtn.onclick();
+  else if (id === 'maproom') openTerrain(terrainStep); // steget man var i
   else selectKind(kind);
 }
 const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode || waterMode ? 'windmill' : terrainMode ? 'maproom' : fxMode ? 'cauldron' : 'forge');
@@ -905,7 +912,11 @@ waterBtn.onclick = async () => {
   }
   if (waterMode) waterTab.show();
 };
-landBtn.onclick = async () => {
+// Ett steg i Kartrummet: samma flik (studio/terrain.js), ett annat steg
+landBtn.onclick = () => openTerrain('world');
+biomeBtn.onclick = () => openTerrain('biomes');
+async function openTerrain(stepId) {
+  terrainStep = stepId;
   leaveHome();
   leaveLibraryMode();
   leaveTextureMode();
@@ -924,8 +935,11 @@ landBtn.onclick = async () => {
     console.error(e);
     return;
   }
-  if (terrainMode) terrainTab.show();
-};
+  if (!terrainMode) return;
+  terrainTab.setStep(stepId);
+  terrainTab.show();
+  refreshUi();
+}
 function leaveTerrainMode() {
   if (!terrainMode) return;
   terrainMode = false;
@@ -1067,12 +1081,13 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet, #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet(-biomes), #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
 else if (location.hash === '#vind') windBtn.onclick();
 else if (location.hash === '#vader') weatherBtn.onclick();
 else if (location.hash === '#vatten') waterBtn.onclick();
 else if (location.hash === '#kartrummet') landBtn.onclick();
+else if (location.hash === '#kartrummet-biomes') biomeBtn.onclick();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();
