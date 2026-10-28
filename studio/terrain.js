@@ -855,7 +855,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     saveSculptSet();
     const base = L.base === 'sea' ? (vals.sea ? vals.seaLevel : 0) : bedAt(p.x, p.z);
     updateRows(placeLandform(field.heights, delta, field.n, field.cell, half, p.x, p.z, createLandform(L.id, st.seed ?? 1), {
-      radius: st.size, height: st.height, depth: L.negative ? st.height : Math.max(10, -SEABED), angle: (st.rotation ?? 0) * DEG, blend: L.blend, base,
+      radius: st.size, height: st.height, depth: L.negative ? st.height : Math.max(10, -SEABED), angle: (st.rotation ?? 0) * DEG, blend: L.blend, base, strength: st.strength ?? 1,
     }));
     mark(null);
     renderDrawer();

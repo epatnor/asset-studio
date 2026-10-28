@@ -52,7 +52,7 @@
     {"until": "document.querySelector('#tfoot .msg')?.textContent.includes('drag on the land')", "timeout": 60000},
     {"expect": "__studio.terrain.delta.reduce((a, b) => a + Math.abs(b), 0) > window.__d0 + 1", "label": "Erode moves soil"},
     {"click": "Mountain", "in": "#tdrawer .wprof"},
-    {"expect": "__ui.els('#tside label').some((l) => l.textContent === 'New each click')", "label": "a landform has its own size, height and variation"},
+    {"expect": "__ui.els('#tside label').some((l) => l.textContent === 'New each click') && __ui.els('#tside label').some((l) => l.textContent === 'Strength')", "label": "a landform has its own size, height, strength and variation"},
     {"eval": "window.__top0 = __studio.terrain.field.heights.reduce((a, b) => Math.max(a, b), -1e9)"},
     {"drag": "[__studio.terrain.screenOf(-250, -180), __studio.terrain.screenOf(-250, -180)]"},
     {"until": "document.querySelector('#tfoot .msg')?.textContent.includes('click once')", "timeout": 60000},

@@ -170,6 +170,7 @@ Felsökt: Mountain isle blev helt svart. En enstaka pixel med NaN eller oändlig
 
 ## Beslut
 
+- Det man målar eller trycker ut påverkar det som redan finns i procent och ersätter det aldrig (Patrik 2026-10-28): penslarna flyttar marken lite per tryck, landformerna läggs ovanpå med *Strength*, biom- och regionpenseln blandar efter styrkan, och marklagren i Paint ska blandas med vikter på samma sätt.
 - Bara i studion; Tinkertown är en förlaga och byggs senare om med studions verktyg (2026-10-28).
 - Terrängen är en egen avdelning, Kartrummet (The Map Room), med flikarna Landscape, Sculpt, Rivers & roads och Biomes (2026-10-28).
 - Ordning: arbetsgången ovan (Patrik 2026-10-28); karaktärer, djur och monster sist.

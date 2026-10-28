@@ -1417,6 +1417,15 @@
       "help": "How high it rises (or how deep a canyon goes), in metres"
     },
     {
+      "key": "strength",
+      "label": "Strength",
+      "min": 0.05,
+      "max": 1,
+      "step": 0.01,
+      "default": 1,
+      "help": "How much of the landform goes into the land, on top of what is there: at 50 % it adds half its height and keeps the ground beneath"
+    },
+    {
       "key": "rotation",
       "label": "Rotation",
       "min": -180,

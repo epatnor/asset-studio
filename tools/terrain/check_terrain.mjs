@@ -225,6 +225,16 @@ async function sculptScene() {
     out.landforms[id] = { min_m: r2(lo), max_m: r2(hi), spikes: sp, ...(island ? { centre_m: r2(top), before_m: r2(t.heights[at(px, pz)]) } : {}) };
     ok &&= !nan && sp <= 2 && (id === 'canyon' ? lo < -30 : hi > 40 * (island ? 0.4 : 1)) && (!island || (top > 2 && t.heights[at(px, pz)] < 0));
   }
+  // Styrkan i procent: ett berg på 50 % lägger halva höjden ovanpå marken och behåller marken under
+  {
+    const full = t.heights.slice(), half50 = t.heights.slice(), d1 = new Float32Array(n * n), d2 = new Float32Array(n * n);
+    placeLandform(full, d1, n, cell, half, 0, 0, createLandform('mountain', 3), { radius: 150, height: 120 });
+    placeLandform(half50, d2, n, cell, half, 0, 0, createLandform('mountain', 3), { radius: 150, height: 120, strength: 0.5 });
+    let worst = 0;
+    for (let k = 0; k < n * n; k++) worst = Math.max(worst, Math.abs(d2[k] - d1[k] * 0.5));
+    out.landforms.strength_50_err_m = r2(worst);
+    ok &&= worst < 0.01;
+  }
   const mouth = e.heightAt(0.01 * size, 0.3 * size);
   let raised = 0;
   for (let k = 0; k < n * n; k++) if (t.heights[k] < -0.05 && e.heights[k] > t.heights[k] + 0.05) raised++;

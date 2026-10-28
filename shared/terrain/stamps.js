@@ -112,8 +112,9 @@ export function createLandform(id, seed = 1) {
 }
 
 // En landform på höjderna: center (x, z), radius (m), height (m), depth (m, för det negativa), angle (radianer),
-// blend (add | max) och base (meter; vid max: höjden som formen står på). Svar: de rader som ändrats.
-export function placeLandform(h, delta, n, cell, half, x, z, form, { radius, height, depth = 20, angle = 0, blend = 'add', base = 0, edge = 0.15 }) {
+// blend (add | max), base (meter; vid max: höjden som formen står på) och strength (0..1). Formen läggs alltid
+// ovanpå det som finns, i procent (strength), och ersätter aldrig marken under. Svar: de rader som ändrats.
+export function placeLandform(h, delta, n, cell, half, x, z, form, { radius, height, depth = 20, angle = 0, blend = 'add', base = 0, edge = 0.15, strength = 1 }) {
   const ci = (x + half) / cell, cj = (z + half) / cell, r = radius / cell, ca = Math.cos(angle), sa = Math.sin(angle);
   const i0 = Math.max(0, Math.floor(ci - r)), i1 = Math.min(n - 1, Math.ceil(ci + r)), j0 = Math.max(0, Math.floor(cj - r)), j1 = Math.min(n - 1, Math.ceil(cj + r));
   if (i0 > i1 || j0 > j1) return null;
@@ -125,7 +126,7 @@ export function placeLandform(h, delta, n, cell, half, x, z, form, { radius, hei
     if (d >= 1) continue;
     const m = form(du * ca + dv * sa, -du * sa + dv * ca), f = smooth(1, 1 - edge, d); // mjuk kant mot marken runt om
     const v = m >= 0 ? m * height : m * depth, k = j * n + i;
-    add[(j - j0) * W + (i - i0)] = blend === 'max' ? Math.max(0, base + v - h[k]) * f : v * f;
+    add[(j - j0) * W + (i - i0)] = (blend === 'max' ? Math.max(0, base + v - h[k]) : v) * f * strength;
   }
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
     const q = (j - j0) * W + (i - i0);
