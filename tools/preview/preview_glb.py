@@ -1,7 +1,7 @@
 # Körs i Blender: renderar en eller flera GLB-filer på rad i en bild, med standardljuset
 # från docs/style-guide.md avsnitt 6 (värden ur tools/style.json).
 # blender --background --factory-startup --python preview_glb.py -- '<json>'
-# json: {"glbs": [...], "out": png, "style": style.json, "lod": 0, "size": [w, h], "labels": bool, "backlight": bool}
+# json: {"glbs": [...], "out": png, "style": style.json, "lod": 0, "size": [w, h], "labels": bool, "backlight": bool, "elev": grader}
 # backlight: motljus snett bakifrån för karaktärer (style.json character.preview_backlight)
 import bpy, json, math, sys
 from mathutils import Matrix, Vector
@@ -102,7 +102,7 @@ aspect = w / h
 fov_x = 2 * math.atan(cam.data.sensor_width / 2 / cam.data.lens)
 fov_y = 2 * math.atan(math.tan(fov_x / 2) / aspect)
 dist = max(size.x * 0.55 / math.tan(fov_x / 2), size.z * 0.55 / math.tan(fov_y / 2)) + size.y / 2
-elev = math.radians(8)
+elev = math.radians(args.get("elev", 8))  # kamerans höjd i grader (husen granskas snett ovanifrån)
 cam.location = (center.x, center.y - dist * math.cos(elev), center.z + dist * math.sin(elev))
 target = bpy.data.objects.new("Target", None)
 target.location = (center.x, center.y, center.z)

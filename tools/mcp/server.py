@@ -201,7 +201,8 @@ def building_data() -> dict:
 
 @mcp.tool()
 def create_building(name: str, preset: str = "house", style: str = "fantasy", stylization: str | float = "overwatch",
-                    seed: int = 0, params: dict | None = None, style_params: dict | None = None, textures: bool = True) -> dict:
+                    seed: int = 0, params: dict | None = None, style_params: dict | None = None, textures: bool = True,
+                    archetype: str | None = None) -> dict:
     """Skapa en byggnad som glTF (3 LOD, delade texturer) i assets/buildings/<name>/.
 
     Alla hus byggs av samma delar: grund, väggar per våning, tak, torn, flygel, skorsten, fönster, dörr med
@@ -212,6 +213,9 @@ def create_building(name: str, preset: str = "house", style: str = "fantasy", st
     params: överstyr typen, t.ex. {"floors": [3, 3], "roof": "hip"}; style_params överstyr stilen,
       t.ex. {"vines": 1.0, "tints": {"roof": ["#C0503A"]}}.
     textures: saknade texturer för stilen genereras med Krea-2 (ca 3 min styck, bara första gången).
+    archetype: i stället för preset, en hustyp ur tools/building/houses.json (cottage, timber_house, townhouse,
+      farmhouse, manor, tavern, tower_house), byggd av den nya generatorn: volymer med korsande gavlar, vinklar och
+      torn under ett gemensamt tak (docs/buildings.md).
     Svaret har "checks" (dörr, trappa, öppningar krockar inte, skorsten genom taket, står på marken, budget, LOD).
     """
     _check_name(name)
@@ -222,6 +226,11 @@ def create_building(name: str, preset: str = "house", style: str = "fantasy", st
     if style not in data["_styles"]:
         raise ValueError(f"okänd stil, välj bland: {', '.join(data['_styles'])}")
     recipe = {"name": name, "preset": preset, "style": style, "stylization": stylization, "seed": seed, "textures": textures}
+    if archetype:
+        houses = json.loads((ROOT / "tools" / "building" / "houses.json").read_text())["archetypes"]
+        if archetype not in houses:
+            raise ValueError(f"okänd hustyp, välj bland: {', '.join(houses)}")
+        recipe["archetype"] = archetype
     if params:
         recipe["params"] = params
     if style_params:

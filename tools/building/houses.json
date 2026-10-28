@@ -1,0 +1,604 @@
+{
+  "_doc": "Hustyperna för den nya byggnadsgeneratorn (docs/buildings.md, tools/building/gen_house.mjs): en grammatik av volymer. Varje volym: w (längs nocken eller den sida den sitter på), d (djup), floors (antal, eller rel: +/− mot volymen den sitter på), roof (gable, hip, shed, pyramid), axis (x: nocken längs x; auto: längs den längsta sidan; across: tvärs sidan den sitter på), pitch (grader), chance (sannolikhet att den finns), attach { to, side: front | back | left | right, at: −0,5..0,5 längs sidan (corner: i ett hörn), inset: hur långt in i volymen den sitter (m) }, jetty (utkragning i m per övervåning på långsidorna), stone (sannolikhet för bottenvåning i sten). Stilen (_styles i buildings.json) bestämmer material och detaljer. Måtten är meter; intervall slumpas ur seed.",
+  "archetypes": {
+    "cottage": {
+      "label": "Cottage",
+      "help": "A small house with a steep roof and room in the attic, sometimes with a lean-to on one side",
+      "floorHeight": 2.7,
+      "plinth": [
+        0.3,
+        0.5
+      ],
+      "chimneys": [
+        1,
+        1
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            6.5,
+            8
+          ],
+          "d": [
+            4.8,
+            5.6
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "roof": "gable",
+          "axis": "x",
+          "pitch": [
+            48,
+            56
+          ],
+          "stone": 0.3
+        },
+        {
+          "id": "leanto",
+          "chance": 0.6,
+          "attach": {
+            "to": "main",
+            "side": [
+              "left",
+              "right"
+            ],
+            "at": [
+              -0.1,
+              0.1
+            ],
+            "inset": 0.2
+          },
+          "w": [
+            3,
+            4
+          ],
+          "d": [
+            2,
+            2.6
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "roof": "shed",
+          "pitch": [
+            24,
+            30
+          ],
+          "height": 0.82
+        }
+      ]
+    },
+    "timber_house": {
+      "label": "Timber house",
+      "help": "Two storeys, a stone ground floor with timber framing above, a jettied upper floor and a gable on the front",
+      "floorHeight": 2.8,
+      "plinth": [
+        0.4,
+        0.7
+      ],
+      "chimneys": [
+        1,
+        2
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            8,
+            10
+          ],
+          "d": [
+            5.5,
+            6.5
+          ],
+          "floors": [
+            2,
+            2
+          ],
+          "roof": "gable",
+          "axis": "x",
+          "pitch": [
+            44,
+            52
+          ],
+          "jetty": 0.35,
+          "stone": 0.7
+        },
+        {
+          "id": "front_gable",
+          "chance": 0.85,
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.22,
+              0.22
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            3.4,
+            4.4
+          ],
+          "d": [
+            1.6,
+            2.4
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        }
+      ]
+    },
+    "townhouse": {
+      "label": "Town house",
+      "help": "A narrow, tall house with its gable to the street and each storey jutting out over the one below",
+      "floorHeight": 2.7,
+      "plinth": [
+        0.3,
+        0.5
+      ],
+      "chimneys": [
+        1,
+        1
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            4.8,
+            5.8
+          ],
+          "d": [
+            8.5,
+            10.5
+          ],
+          "floors": [
+            3,
+            3
+          ],
+          "roof": "gable",
+          "axis": "z",
+          "pitch": [
+            52,
+            58
+          ],
+          "jetty": 0.3,
+          "jettySides": "front",
+          "stone": 0.8
+        },
+        {
+          "id": "side_bay",
+          "chance": 0.5,
+          "attach": {
+            "to": "main",
+            "side": [
+              "left",
+              "right"
+            ],
+            "at": [
+              -0.2,
+              0.15
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            2.6,
+            3.2
+          ],
+          "d": [
+            1.2,
+            1.6
+          ],
+          "floors": {
+            "rel": -1
+          },
+          "roof": "shed",
+          "pitch": [
+            28,
+            34
+          ]
+        }
+      ]
+    },
+    "farmhouse": {
+      "label": "Farmhouse",
+      "help": "A long house with a wing at one end, an L around a yard",
+      "floorHeight": 2.7,
+      "plinth": [
+        0.3,
+        0.6
+      ],
+      "chimneys": [
+        1,
+        2
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            10,
+            12.5
+          ],
+          "d": [
+            5.5,
+            6.5
+          ],
+          "floors": [
+            1,
+            2
+          ],
+          "roof": "gable",
+          "axis": "x",
+          "pitch": [
+            44,
+            50
+          ],
+          "stone": 0.4
+        },
+        {
+          "id": "wing",
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": "corner",
+            "inset": 0.3
+          },
+          "w": [
+            5,
+            6
+          ],
+          "d": [
+            5,
+            7.5
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            44,
+            50
+          ]
+        },
+        {
+          "id": "porch",
+          "chance": 0.5,
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.25,
+              0.25
+            ],
+            "inset": 0.2
+          },
+          "w": [
+            2.6,
+            3.2
+          ],
+          "d": [
+            1.8,
+            2.2
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            40,
+            46
+          ],
+          "height": 0.85
+        }
+      ]
+    },
+    "manor": {
+      "label": "Manor",
+      "help": "A large two-storey house in a T, with a cross gable on the front and a hipped main roof",
+      "floorHeight": 3.0,
+      "plinth": [
+        0.5,
+        0.8
+      ],
+      "chimneys": [
+        2,
+        2
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            12,
+            14
+          ],
+          "d": [
+            6.5,
+            7.5
+          ],
+          "floors": [
+            2,
+            2
+          ],
+          "roof": [
+            "hip",
+            "gable"
+          ],
+          "axis": "x",
+          "pitch": [
+            42,
+            48
+          ],
+          "jetty": 0.3,
+          "stone": 0.8
+        },
+        {
+          "id": "cross",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.05,
+              0.05
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            4.4,
+            5.2
+          ],
+          "d": [
+            2.2,
+            3
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "back",
+          "chance": 0.8,
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": [
+              -0.1,
+              0.1
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            5,
+            6
+          ],
+          "d": [
+            4,
+            6
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            44,
+            50
+          ]
+        }
+      ]
+    },
+    "tavern": {
+      "label": "Tavern",
+      "help": "A big inn with two gables on the front, a jettied upper floor and a lean-to kitchen",
+      "floorHeight": 3.0,
+      "plinth": [
+        0.4,
+        0.7
+      ],
+      "chimneys": [
+        2,
+        2
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            12,
+            14
+          ],
+          "d": [
+            7,
+            8
+          ],
+          "floors": [
+            2,
+            2
+          ],
+          "roof": "gable",
+          "axis": "x",
+          "pitch": [
+            46,
+            52
+          ],
+          "jetty": 0.4,
+          "stone": 0.9
+        },
+        {
+          "id": "gable_l",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.3,
+              -0.24
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            3.4,
+            4
+          ],
+          "d": [
+            1.6,
+            2.2
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            52,
+            58
+          ]
+        },
+        {
+          "id": "gable_r",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              0.24,
+              0.3
+            ],
+            "inset": 0.3
+          },
+          "w": [
+            3.4,
+            4
+          ],
+          "d": [
+            1.6,
+            2.2
+          ],
+          "floors": {
+            "rel": 0
+          },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            52,
+            58
+          ]
+        },
+        {
+          "id": "kitchen",
+          "chance": 0.8,
+          "attach": {
+            "to": "main",
+            "side": [
+              "left",
+              "right"
+            ],
+            "at": [
+              -0.15,
+              0.15
+            ],
+            "inset": 0.2
+          },
+          "w": [
+            4,
+            5
+          ],
+          "d": [
+            2.8,
+            3.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "roof": "shed",
+          "pitch": [
+            24,
+            30
+          ],
+          "height": 0.85
+        }
+      ]
+    },
+    "tower_house": {
+      "label": "Tower house",
+      "help": "A house with a square tower at one front corner, under a steep pyramid roof",
+      "floorHeight": 2.8,
+      "plinth": [
+        0.4,
+        0.7
+      ],
+      "chimneys": [
+        1,
+        1
+      ],
+      "volumes": [
+        {
+          "id": "main",
+          "w": [
+            8,
+            9.5
+          ],
+          "d": [
+            5.5,
+            6.5
+          ],
+          "floors": [
+            2,
+            2
+          ],
+          "roof": "gable",
+          "axis": "x",
+          "pitch": [
+            44,
+            50
+          ],
+          "jetty": 0.3,
+          "stone": 0.6
+        },
+        {
+          "id": "tower",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": "corner",
+            "inset": 1.4
+          },
+          "w": [
+            3.4,
+            3.9
+          ],
+          "d": [
+            3.4,
+            3.9
+          ],
+          "floors": {
+            "rel": 1.5
+          },
+          "roof": "pyramid",
+          "pitch": [
+            62,
+            68
+          ],
+          "stone": 1
+        }
+      ]
+    }
+  }
+}

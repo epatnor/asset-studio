@@ -61,7 +61,7 @@ def blender_cmd():
     return (["host-spawn"] if shutil.which("host-spawn") else []) + flatpak
 
 
-def preview(glbs, out, lod=0, size=(1024, 512), backlight=False):
+def preview(glbs, out, lod=0, size=(1024, 512), backlight=False, elev=8):
     # Blender körs i en annan arbetskatalog, så alla sökvägar måste vara absoluta
     absolute = lambda p: str((ROOT / p).resolve())
     # Blenders glTF-importör saknar meshopt-avkodaren: packa upp varje modell till en tillfällig kopia
@@ -89,7 +89,7 @@ def preview(glbs, out, lod=0, size=(1024, 512), backlight=False):
             temp += [Path(dst), Path(dst).with_suffix(".bin")]
     items = [{**g, "glb": unpacked[absolute(g["glb"])]} if isinstance(g, dict) else unpacked[absolute(g)] for g in glbs]
     args = {"glbs": items, "out": absolute(out), "style": str(ROOT / "tools" / "style.json"),
-            "lod": lod, "size": list(size), "backlight": backlight}
+            "lod": lod, "size": list(size), "backlight": backlight, "elev": elev}
     try:
         run = subprocess.run(blender_cmd() + ["--background", "--factory-startup", "--python-exit-code", "1",
                                               "--python", str(ROOT / "tools" / "preview" / "preview_glb.py"), "--", json.dumps(args)],

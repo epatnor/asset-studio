@@ -4,6 +4,8 @@
 
 Receptfält (alla utom name är valfria):
   preset        typ i tools/building/buildings.json: cottage, house, tavern, townhouse, tower, shop
+  archetype     i stället för preset: hustyp i tools/building/houses.json (cottage, timber_house, townhouse, farmhouse,
+                manor, tavern, tower_house), byggd av den nya generatorn gen_house.mjs (volymer och taklösare)
   style         spelstil: fantasy, rpg, steampunk, modern (vanlig tid), future, cyberpunk
   stylization   "realistic", "overwatch", "wow" eller ett tal 0..1 (0,5 = Overwatch, 1 = WoW)
   seed          samma recept ger samma hus
@@ -91,7 +93,9 @@ def main():
     gltf = out_dir / f"{name}.gltf"
     gen = {k: v for k, v in recipe.items() if k != "textures"}
     gen.update({"out": str(gltf), "textures": textures})
-    run = subprocess.run(["node", str(TOOL / "gen_building.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
+    # Med archetype (houses.json) bygger den nya generatorn huset av volymer med ett gemensamt tak (docs/buildings.md)
+    script = "gen_house.mjs" if recipe.get("archetype") else "gen_building.mjs"
+    run = subprocess.run(["node", str(TOOL / script), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-800:]}))
     result = json.loads(run.stdout.strip().splitlines()[-1])
