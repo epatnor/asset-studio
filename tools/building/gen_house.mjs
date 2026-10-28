@@ -138,8 +138,21 @@ function openingMesh(o) {
     }
     return;
   }
+  // Balkong: golv på konsoler, räcke med spjälor och ledstång (glasdörren är fönstret ovanför)
+  if (o.balcony) {
+    const bw = o.w + 1.3, bd = 1.0 + 0.15 * S, ty = W.yb, rt = STY.trim * 0.55, rh = 0.95;
+    box('trim', W3(f, o.s, ty - 0.07, bd / 2), [bw, 0.14, bd], { ax });
+    for (const sd of [-1, 1]) beam('trim', W3(f, o.s + sd * (bw / 2 - 0.2), ty - 0.08, bd - 0.15), W3(f, o.s + sd * (bw / 2 - 0.2), ty - 0.75, 0.02), STY.trim * 0.7, STY.trim * 0.7);
+    const rail = (sa, oa, sb, ob) => beam('trim', W3(f, sa, ty + rh, oa), W3(f, sb, ty + rh, ob), rt * 1.4, rt * 1.4);
+    rail(o.s - bw / 2 + 0.05, bd - 0.05, o.s + bw / 2 - 0.05, bd - 0.05);
+    for (const sd of [-1, 1]) rail(o.s + sd * (bw / 2 - 0.05), 0.05, o.s + sd * (bw / 2 - 0.05), bd - 0.05);
+    if (ctx.lod.detail > 1) {
+      for (let s2 = o.s - bw / 2 + 0.05; s2 <= o.s + bw / 2 - 0.04; s2 += 0.22) box('trim', W3(f, s2, ty + rh / 2, bd - 0.05), [rt, rh, rt], { ax });
+      for (const sd of [-1, 1]) for (let q = 0.27; q < bd - 0.1; q += 0.22) box('trim', W3(f, o.s + sd * (bw / 2 - 0.05), ty + rh / 2, q), [rt, rh, rt], { ax });
+    } else for (const sd of [-1, 1]) box('trim', W3(f, o.s + sd * (bw / 2 - 0.05), ty + rh / 2, bd - 0.05), [rt * 1.4, rh, rt * 1.4], { ax });
+  }
   // Fönster: bröstning, glas (lyser ibland), spröjs, luckor och blomlåda
-  box('trim', W3(f, o.s, y0 - ft * 0.4, fd * 0.9), [o.w + ft * 3, ft * 0.8, fd * 1.8], { ax });
+  if (!o.balcony) box('trim', W3(f, o.s, y0 - ft * 0.4, fd * 0.9), [o.w + ft * 3, ft * 0.8, fd * 1.8], { ax });
   const glass = o.lit ? `glow:${ST.window?.litColor ?? '#FFB65A'}` : 'glass', gd = -dep + 0.09;
   const gpts = archy(o) ? [W3(f, s0, y0, gd), W3(f, s1, y0, gd), W3(f, s1, cy, gd), ...Array.from({ length: arcN - 1 }, (_, i) => { const [s, y] = arc(arcN - 1 - i); return W3(f, s, y, gd); }), W3(f, s0, cy, gd)] : [W3(f, s0, y0, gd), W3(f, s1, y0, gd), W3(f, s1, y1, gd), W3(f, s0, y1, gd)];
   polygon(glass, gpts, n);
@@ -208,6 +221,7 @@ function framing(W, wi) {
 // ---------- Sockeln ----------
 function plinths() {
   for (const V of vols) {
+    if (V.elevated) continue; // takkupor står på taket
     const [x0, z0, x1, z1] = V.levelRects[0];
     box('base', [(x0 + x1) / 2, (V.plinth - 0.6) / 2, (z0 + z1) / 2], [x1 - x0 + 0.26, V.plinth + 0.6, z1 - z0 + 0.26], { bevel: 0.06 + 0.06 * S });
   }
@@ -270,6 +284,12 @@ function roofMesh() {
       if (seen.has(key)) continue;
       seen.add(key);
       beam('roof', add(A3, [0, th * 0.35, 0]), add(B3, [0, th * 0.35, 0]), th * 1.0, th * 1.5, { color: [0.82, 0.82, 0.82] });
+      // Uppböjda nockändar där nocken slutar ute i gavelns takutsprång (WoW)
+      if (ST.roof?.tips && Math.abs(E.ya - E.yb) < 0.05) for (const [P, Q] of [[A3, B3], [B3, A3]]) {
+        if (outsideWalls(P[0], P[2]) < 0.05) continue;
+        const d = norm(sub(P, Q)), L = 0.3 + 0.35 * S;
+        beam('roof', add(P, [0, th * 0.35, 0]), add(P, [d[0] * L, th * 0.35 + L * (0.8 + 0.6 * S), d[2] * L]), th * 0.9, th * 1.3, { color: [0.82, 0.82, 0.82] });
+      }
     }
   }
 }
@@ -280,6 +300,28 @@ function chimneyMesh() {
     box('base', [c.x, (c.bottom + c.top) / 2, c.z], [c.size, c.top - c.bottom, c.size], { bevel: 0.05 });
     if (ctx.lod.detail > 0) box(ST.chimney === 'brick' ? 'base' : 'trim', [c.x, c.top + 0.06, c.z], [c.size + 0.2, 0.14, c.size + 0.2], { bevel: 0.03 });
     if (ctx.lod.detail > 1) box('metal', [c.x, c.top + 0.22, c.z], [c.size * 0.35, 0.22, c.size * 0.35]);
+  }
+}
+
+// Hur långt utanför husets väggar en punkt ligger (0 inne i en volym), och den närmaste volymen
+function outsideWalls(x, z) {
+  let m = Infinity;
+  for (const V of vols) { if (V.elevated) continue; const [x0, z0, x1, z1] = V.rect; m = Math.min(m, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1))); }
+  return m;
+}
+// Utsvängd takfot (stilens roof.flare, mer ju högre stiliseringen): takutsprånget böjs uppåt med avståndet utanför
+// väggen i kvadrat. En funktion av läget, så att takytor, takfot och vindskivor som möts följer med lika mycket.
+function flare() {
+  const k = (ST.roof?.flare ?? 0) * (0.3 + 0.7 * S) * 0.9;
+  if (k <= 0) return;
+  const lowTop = Math.min(...vols.filter((V) => !V.elevated).map((V) => V.top));
+  for (const [part, gg] of Object.entries(geom.G)) {
+    if (!/^(roof|trim)/.test(part)) continue;
+    for (let i = 0; i < gg.positions.length; i += 3) {
+      if (gg.positions[i + 1] < lowTop - 0.6) continue;
+      const d = outsideWalls(gg.positions[i], gg.positions[i + 2]);
+      if (d > 0) gg.positions[i + 1] += k * Math.min(d, STY.overhang + 0.4) ** 2;
+    }
   }
 }
 
@@ -315,6 +357,7 @@ function buildLod(level) {
   walls.forEach((W, wi) => framing(W, wi));
   roofMesh();
   chimneyMesh();
+  flare();
   let H = 0;
   for (const gg of Object.values(geom.G)) for (let i = 1; i < gg.positions.length; i += 3) H = Math.max(H, gg.positions[i]);
   deform(H);
@@ -400,11 +443,14 @@ await writeGltf(doc, out);
 // ---------- Kontroller ----------
 // Taket: inga glipor eller överlapp mellan takytorna (prov i ett rutnät över husets utbredning)
 const insidePoly = (poly, x, z) => { for (let i = 0; i < poly.length; i++) { const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length]; if ((x1 - x0) * (z - z0) - (z1 - z0) * (x - x0) < -1e-9) return false; } return true; };
+// Klart inne (1 mm från kanterna): på en kant där en högre takfot står över ett annat tak får båda ytorna finnas
+const wellInside = (poly, x, z) => { for (let i = 0; i < poly.length; i++) { const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length], L = Math.hypot(x1 - x0, z1 - z0) || 1; if (((x1 - x0) * (z - z0) - (z1 - z0) * (x - x0)) / L < 1e-3) return false; } return true; };
 let gaps = 0, overlaps = 0;
 for (let x = bx0 - 1; x <= bx1 + 1; x += 0.23) for (let z = bz0 - 1; z <= bz1 + 1; z += 0.21) {
   const H = roof.heightAt(x, z), hits = roof.pieces.filter((P) => insidePoly(P.poly, x, z));
   if (H > -Infinity && !hits.length) gaps++;
-  if (hits.length > 1) { const ys = hits.map((P) => P.plane.a * x + P.plane.b * z + P.plane.c); if (Math.max(...ys) - Math.min(...ys) > 1e-3) overlaps++; }
+  const deep = hits.filter((P) => wellInside(P.poly, x, z));
+  if (deep.length > 1) { const ys = deep.map((P) => P.plane.a * x + P.plane.b * z + P.plane.c); if (Math.max(...ys) - Math.min(...ys) > 1e-3) overlaps++; }
 }
 // Öppningarna: inom en körning på sin vägg och sin våning, och inte över varandra
 let outside = 0, clash = 0;

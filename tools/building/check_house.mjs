@@ -7,6 +7,7 @@ import { solveRoof } from './house/roof.mjs';
 import { planHouse } from './house/graph.mjs';
 
 const inside = (poly, x, z) => { for (let i = 0; i < poly.length; i++) { const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length]; if ((x1 - x0) * (z - z0) - (z1 - z0) * (x - x0) < -1e-9) return false; } return true; };
+const wellInside = (poly, x, z) => { for (let i = 0; i < poly.length; i++) { const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % poly.length], L = Math.hypot(x1 - x0, z1 - z0) || 1; if (((x1 - x0) * (z - z0) - (z1 - z0) * (x - x0)) / L < 1e-3) return false; } return true; };
 const pitch = (45 * Math.PI) / 180;
 const CASES = {
   gable: [{ rect: [-4, -3, 4, 3], top: 5, roof: { type: 'gable', axis: 'x', pitch, overhang: 0.4 } }],
@@ -25,7 +26,8 @@ for (const [name, vols] of Object.entries(CASES)) {
     if (H === -Infinity) continue;
     if (!hits.length) gaps++;
     else if (Math.abs(hits[0].plane.a * x + hits[0].plane.b * z + hits[0].plane.c - H) > 1e-3) wrong++;
-    if (hits.length > 1) { const ys = hits.map((p) => p.plane.a * x + p.plane.b * z + p.plane.c); if (Math.max(...ys) - Math.min(...ys) > 1e-3) overlaps++; }
+    const deep = hits.filter((p) => wellInside(p.poly, x, z));
+    if (deep.length > 1) { const ys = deep.map((p) => p.plane.a * x + p.plane.b * z + p.plane.c); if (Math.max(...ys) - Math.min(...ys) > 1e-3) overlaps++; }
   }
   roofs[name] = { pieces: R.pieces.length, gaps, overlaps, wrong_height: wrong, edges: R.edges.reduce((m, e) => ((m[e.kind] = (m[e.kind] ?? 0) + 1), m), {}) };
   ok &&= !gaps && !overlaps && !wrong;

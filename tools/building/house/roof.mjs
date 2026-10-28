@@ -8,7 +8,7 @@
 // områden där en annan volyms tak ligger högre. Differensen delas upp i konvexa bitar med halvplansklippning, så att
 // inget bibliotek behövs och varje bit trianguleras som en solfjäder.
 //
-//   const R = solveRoof(volumes);   // volumes: [{ rect: [x0, z0, x1, z1], top, roof: { type, axis, pitch, overhang, dir } }]
+//   const R = solveRoof(volumes);   // volumes: [{ rect: [x0, z0, x1, z1], top, roof: { type, axis, pitch, overhang, dir, inner } }]
 //   R.pieces    [{ v, plane, poly: [[x, z], ...] }]   synliga takytor, konvexa, moturs sett uppifrån
 //   R.heightAt(x, z)      husets tak (−Infinity utanför)
 //   R.roofOf(v, x, z)     volymens eget tak
@@ -58,7 +58,12 @@ export function roofPlanes(V) {
   return (axis === 'x' ? ['+z', '-z'] : ['+x', '-x']).map((s) => ({ ...P[s], side: s })); // sadeltak
 }
 const yOf = (p, x, z) => p.a * x + p.b * z + p.c;
-const extRect = (V) => { const o = V.roof.overhang ?? 0.4, [x0, z0, x1, z1] = V.rect; return [x0 - o, z0 - o, x1 + o, z1 + o]; };
+// Takutsprånget runt volymen; roof.inner = den sida som sitter inne i en annan volym ('front', 'back', 'left', 'right'),
+// där taket slutar vid väggen i stället (annars sticker en takkupas tak ut på andra sidan nocken)
+const extRect = (V) => {
+  const o = V.roof.overhang ?? 0.4, [x0, z0, x1, z1] = V.rect, inn = V.roof.inner;
+  return [x0 - (inn === 'left' ? 0 : o), z0 - (inn === 'back' ? 0 : o), x1 + (inn === 'right' ? 0 : o), z1 + (inn === 'front' ? 0 : o)];
+};
 
 export function solveRoof(volumes) {
   const vols = volumes.map((V, i) => ({ ...V, i, planes: roofPlanes(V), ext: extRect(V) }));

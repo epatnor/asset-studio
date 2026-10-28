@@ -45,7 +45,8 @@ export function planHouse({ archetype: A, style: ST, sty, seed = 0 }) {
     if (!parent) rect = [-w / 2, -d / 2, w / 2, d / 2];
     else {
       side = choose(r, `${spec.id}:side`, spec.attach.side);
-      const [px0, pz0, px1, pz1] = parent.levelRects[0], inset = spec.attach.inset ?? 0.3;
+      // En takkupa (base: eave) sitter på den översta våningens vägglinje, annat på bottenvåningens
+      const [px0, pz0, px1, pz1] = spec.base === 'eave' ? parent.rect : parent.levelRects[0], inset = spec.attach.inset ?? 0.3;
       const along = side === 'front' || side === 'back' ? [px0, px1] : [pz0, pz1], L = along[1] - along[0];
       const a = spec.attach.at === 'corner' ? (r(`${spec.id}:corner`) < 0.5 ? -0.5 : 0.5) : range(r, `${spec.id}:at`, spec.attach.at);
       const c = (along[0] + along[1]) / 2 + a * Math.max(0, L - w);
@@ -69,10 +70,14 @@ export function planHouse({ archetype: A, style: ST, sty, seed = 0 }) {
       const e = jetty * l, [x0, z0, x1, z1] = rect;
       return [x0 - (jettySides.includes('left') ? e : 0), z0 - (jettySides.includes('back') ? e : 0), x1 + (jettySides.includes('right') ? e : 0), z1 + (jettySides.includes('front') ? e : 0)];
     });
-    const top = plinth + floors * fh * (spec.height ?? 1);
+    // Takkupor står på takfoten: väggen börjar där och är wallHeight hög (en våning)
+    const base = spec.base === 'eave' ? parent.top : plinth; // exakt vid takfoten, så att kupans vägg inte ligger dubbelt mot husets
+    const top = spec.base === 'eave' ? base + range(r, `${spec.id}:wh`, spec.wallHeight ?? [1.3, 1.5]) : plinth + floors * fh * (spec.height ?? 1);
     const stone = r(`${spec.id}:stone`) < (spec.stone ?? 0) * (ST.timber ? 1 : 0.6);
-    const V = { i: vols.length, id: spec.id, rect: levelRects[levels - 1], levelRects, levels, floors, fh, plinth, top, side, parent: parent?.i ?? null, stone, jetty, jettySides,
-      roof: { type, axis, pitch, overhang: sty.overhang * (type === 'pyramid' ? 0.6 : 1), dir } };
+    const elevated = spec.base === 'eave';
+    const V = { i: vols.length, id: spec.id, rect: levelRects[levels - 1], levelRects, levels: elevated ? 1 : levels, floors, fh: elevated ? top - base : fh, plinth: base, top, side, parent: parent?.i ?? null, stone: elevated ? false : stone, jetty: elevated ? 0 : jetty, jettySides, elevated,
+      // Den sida som sitter i föräldern får inget takutsprång (bara takkupor: deras tak slutar annars bortom nocken)
+      roof: { type, axis, pitch, overhang: sty.overhang * (type === 'pyramid' ? 0.6 : 1), dir, inner: elevated ? { front: 'back', back: 'front', left: 'right', right: 'left' }[side] : null } };
     vols.push(V);
     byId[spec.id] = V;
   }
@@ -129,11 +134,11 @@ export function planHouse({ archetype: A, style: ST, sty, seed = 0 }) {
   // --- Öppningar: dörren på den främsta väggen, fönster i fack längs körningarna, gavelfönster högt upp ---
   const open = sty.open, ow = 0.95 * open, oh = 1.25 * open, dw = 1.15 * open, dh = Math.min(A.floorHeight - 0.4, 2.15 * open);
   const shape = ST.window?.shape ?? 'rect', openings = [];
-  const front = walls.filter((W) => W.level === 0 && W.face.name === 'front' && W.runs.some(([a, b]) => b - a > dw + 0.8));
+  const front = walls.filter((W) => W.level === 0 && !vols[W.v].elevated && W.face.name === 'front' && W.runs.some(([a, b]) => b - a > dw + 0.8));
   const doorWall = front.sort((a, b) => b.face.o[1] - a.face.o[1] || Math.abs(a.face.o[0] + a.face.len / 2) - Math.abs(b.face.o[0] + b.face.len / 2))[0];
   const bay = 2.4 * open;
   walls.forEach((W, wi) => {
-    const V = vols[W.v], rate = W.face.name === 'front' ? 0.9 : W.face.name === 'back' ? 0.45 : 0.65;
+    const V = vols[W.v], rate = V.elevated ? 1 : W.face.name === 'front' ? 0.9 : W.face.name === 'back' ? 0.45 : 0.65;
     for (const [s0, s1] of W.runs) {
       const L = s1 - s0, nb = Math.max(1, Math.floor((L - 0.4) / bay)), bw = (L - 0.4) / nb;
       let doorBay = -1;
@@ -141,10 +146,10 @@ export function planHouse({ archetype: A, style: ST, sty, seed = 0 }) {
       for (let i = 0; i < nb; i++) {
         const s = s0 + 0.2 + (i + 0.5) * bw, key = `${V.id}:${W.level}:${W.face.name}:${i}`;
         if (i === doorBay) { openings.push({ kind: 'door', wall: wi, s, y: W.yb, w: dw, h: Math.min(dh, W.yt - W.yb - 0.15), shape: ST.door?.shape ?? 'rect' }); continue; }
-        const h = Math.min(oh, W.yt - W.yb - 0.75);
-        if (bw < ow + 0.5 || h < 0.6 || r(key) > rate) continue;
-        const y = W.yb + Math.min((W.yt - W.yb) * 0.34, W.yt - W.yb - h - 0.3);
-        openings.push({ kind: 'window', wall: wi, s, y, w: ow, h, shape, lit: r(`${key}:lit`) < (ST.window?.lit ?? 0.6), shutters: shape !== 'strip' && r(`${key}:sh`) < (ST.window?.shutters ?? 0), flower: shape !== 'strip' && W.level > 0 && r(`${key}:fl`) < (ST.flowerboxes ?? 0) });
+        const h = V.elevated ? W.yt - W.yb - 0.35 : Math.min(oh, W.yt - W.yb - 0.75); // en takkupa är mest fönster
+        if (bw < (V.elevated ? ow * 0.7 : ow) + 0.5 || h < 0.6 || r(key) > rate) continue;
+        const y = V.elevated ? W.yb + 0.12 : W.yb + Math.min((W.yt - W.yb) * 0.34, W.yt - W.yb - h - 0.3);
+        openings.push({ kind: 'window', wall: wi, s, y, w: V.elevated ? Math.min(ow, bw - 0.55) : ow, h, shape, lit: r(`${key}:lit`) < (ST.window?.lit ?? 0.6), shutters: shape !== 'strip' && r(`${key}:sh`) < (ST.window?.shutters ?? 0), flower: shape !== 'strip' && W.level > 0 && r(`${key}:fl`) < (ST.flowerboxes ?? 0) });
       }
     }
     // Gavelfönster: där väggen fortsätter upp i ett gavelröste, mitt på gaveln
@@ -155,6 +160,15 @@ export function planHouse({ archetype: A, style: ST, sty, seed = 0 }) {
         openings.push({ kind: 'window', wall: wi, s: mid, y: W.yt + rise * 0.22, w: ow * 0.75, h: Math.min(oh, rise * 0.42), shape: shape === 'strip' ? 'rect' : shape, gable: true, lit: r(`${V.id}:gl:${W.face.name}`) < 0.5 });
     }
   });
+
+  // --- En balkong: ett fönster på huvudvolymens framsida (övervåningen, nära mitten) blir en glasdörr med balkong ---
+  const balconyP = ST.balcony ?? (ST.timber ? 0.55 : 0.3);
+  if (r('balcony') < balconyP) {
+    const cand = openings.filter((o) => o.kind === 'window' && !o.gable && walls[o.wall].v === 0 && walls[o.wall].level >= 1 && walls[o.wall].face.name === 'front')
+      .sort((a, b) => walls[a.wall].level - walls[b.wall].level || Math.abs(a.s - walls[a.wall].face.len / 2) - Math.abs(b.s - walls[b.wall].face.len / 2));
+    const o = cand[0];
+    if (o) { const W = walls[o.wall]; Object.assign(o, { balcony: true, y: W.yb + 0.05, h: Math.min(W.yt - W.yb - 0.3, 2.05 * open), w: Math.max(o.w, 1.0 * open), shutters: false, flower: false }); }
+  }
 
   // --- Skorstenar: längs huvudvolymens nock, där inget annat tak ligger högre ---
   const chimneys = [], M = vols[0], n = Math.round(range(r, 'chimneys', A.chimneys ?? [1, 1]));

@@ -1,5 +1,5 @@
 {
-  "_doc": "Hustyperna för den nya byggnadsgeneratorn (docs/buildings.md, tools/building/gen_house.mjs): en grammatik av volymer. Varje volym: w (längs nocken eller den sida den sitter på), d (djup), floors (antal, eller rel: +/− mot volymen den sitter på), roof (gable, hip, shed, pyramid), axis (x: nocken längs x; auto: längs den längsta sidan; across: tvärs sidan den sitter på), pitch (grader), chance (sannolikhet att den finns), attach { to, side: front | back | left | right, at: −0,5..0,5 längs sidan (corner: i ett hörn), inset: hur långt in i volymen den sitter (m) }, jetty (utkragning i m per övervåning på långsidorna), stone (sannolikhet för bottenvåning i sten). Stilen (_styles i buildings.json) bestämmer material och detaljer. Måtten är meter; intervall slumpas ur seed.",
+  "_doc": "Hustyperna för den nya byggnadsgeneratorn (docs/buildings.md, tools/building/gen_house.mjs): en grammatik av volymer. Varje volym: w (längs nocken eller den sida den sitter på), d (djup), floors (antal, eller rel: +/− mot volymen den sitter på), roof (gable, hip, shed, pyramid), axis (x: nocken längs x; auto: längs den längsta sidan; across: tvärs sidan den sitter på), pitch (grader), chance (sannolikhet att den finns), attach { to, side: front | back | left | right, at: −0,5..0,5 längs sidan (corner: i ett hörn), inset: hur långt in i volymen den sitter (m) }, jetty (utkragning i m per övervåning på långsidorna), stone (sannolikhet för bottenvåning i sten). base: eave gör volymen till en takkupa: den står på takfoten på förälderns översta våning, med wallHeight (m) vägg och ett eget tak som möter huvudtaket i ränndalar; inset = d gör framsidan jäms med väggen. Stilen (_styles i buildings.json) bestämmer material och detaljer. Måtten är meter; intervall slumpas ur seed.",
   "archetypes": {
     "cottage": {
       "label": "Cottage",
@@ -69,6 +69,78 @@
             30
           ],
           "height": 0.82
+        },
+        {
+          "id": "dormer",
+          "chance": 0.75,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.15,
+              0.15
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_back",
+          "chance": 0.5,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": [
+              -0.2,
+              0.2
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
         }
       ]
     },
@@ -131,6 +203,42 @@
           "floors": {
             "rel": 0
           },
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_back",
+          "chance": 0.7,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": [
+              -0.25,
+              0.25
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
           "roof": "gable",
           "axis": "across",
           "pitch": [
@@ -303,6 +411,78 @@
             46
           ],
           "height": 0.85
+        },
+        {
+          "id": "dormer_l",
+          "chance": 0.8,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.42,
+              -0.34
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_r",
+          "chance": 0.8,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              0.34,
+              0.42
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
         }
       ]
     },
@@ -402,6 +582,78 @@
           "pitch": [
             44,
             50
+          ]
+        },
+        {
+          "id": "dormer_l",
+          "chance": 0.85,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.42,
+              -0.36
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_r",
+          "chance": 0.85,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              0.36,
+              0.42
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
           ]
         }
       ]
@@ -533,6 +785,114 @@
             30
           ],
           "height": 0.85
+        },
+        {
+          "id": "dormer_m",
+          "chance": 0.8,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "front",
+            "at": [
+              -0.04,
+              0.04
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_b1",
+          "chance": 0.7,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": [
+              -0.3,
+              -0.2
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
+        },
+        {
+          "id": "dormer_b2",
+          "chance": 0.7,
+          "base": "eave",
+          "attach": {
+            "to": "main",
+            "side": "back",
+            "at": [
+              0.2,
+              0.3
+            ],
+            "inset": 2.4
+          },
+          "w": [
+            1.7,
+            2.1
+          ],
+          "d": [
+            2.4,
+            2.4
+          ],
+          "floors": [
+            1,
+            1
+          ],
+          "wallHeight": [
+            1.35,
+            1.55
+          ],
+          "roof": "gable",
+          "axis": "across",
+          "pitch": [
+            50,
+            56
+          ]
         }
       ]
     },
