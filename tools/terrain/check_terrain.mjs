@@ -16,6 +16,7 @@ import { regionField } from '../../shared/terrain/regions.js';
 import { applyEdits, brushDab, rampStroke, encodeDelta, decodeDelta } from '../../shared/terrain/sculpt.js';
 import { STAMP_IDS, createStamp, LANDFORM_IDS, createLandform, placeLandform } from '../../shared/terrain/stamps.js';
 import { SLOTS, paintDab, encodeWeights, decodeWeights } from '../../shared/terrain/paint.js';
+import { populate, STRIDE } from '../../shared/terrain/populate.js';
 import { hills } from '../../shared/terrain/noise.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -270,7 +271,50 @@ async function sculptScene() {
   return { ok, scene: 'sculpt', ...out };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'sculpt') {
+// Steget Populate på Green isle: samma frö ger samma natur, en målad väg håller undan träden, höstträden växer bara i
+// en region med temat Autumn wood, inga träd står under havet och inga stenar i en stam
+async function populateScene() {
+  const T = JSON.parse(await readFile(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
+  const R = { ...Object.fromEntries(T.params.map((q) => [q.key, q.default])), ...T.presets.island, regionThemes: T.regionThemes, regionColors: T.regionColors };
+  const t = generateTerrain({ ...R, ...worldGrid(Number(R.worldSize)) }), { n, cell, half } = t;
+  const worldFor = (regions, ground = null) => {
+    const rf = regionField(t, { ...R, regions }), b = computeBiomes(t, { ...R, regions }, rf);
+    return { ...t, biomes: b.weights, sea: R.seaLevel ?? 0, ground, regions: { P: rf.P, count: rf.count, weights: rf.weights, themes: regions.map((r) => r.theme) } };
+  };
+  const plain = worldFor([{ name: 'Heartland', theme: 'temperate' }]);
+  const a = populate(plain, T.populate, { seed: 3 }), b = populate(plain, T.populate, { seed: 3 });
+  const same = a.layers.every((l, i) => l.count === b.layers[i].count && l.data.every((v, k) => v === b.layers[i].data[k]));
+  const trees = (r) => r.layers.filter((l) => l.kind === 'tree');
+  let wet = 0;
+  for (const l of trees(a)) for (let i = 0; i < l.count; i++) if (l.data[i * STRIDE + 1] < (R.seaLevel ?? 0) - 0.2) wet++;
+  // En väg målad till 100 % i en ruta på 200 × 200 m mitt på ön
+  const W = new Uint8Array(n * n * SLOTS), box = (x, z) => Math.abs(x) < 100 && Math.abs(z) < 100;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (box(-half + i * cell, -half + j * cell)) W[(j * n + i) * SLOTS] = 255;
+  const road = populate({ ...plain, ground: { W, effects: [T.groundTextures.find((x) => x.id === 'surface_road').populate] } }, T.populate, { seed: 3 });
+  let onRoad = 0, before = 0;
+  const inner = (x, z) => Math.abs(x) < 98 && Math.abs(z) < 98; // en ruta in från kanten: kanthörnen ligger utanför vägen
+  for (const l of trees(road)) for (let i = 0; i < l.count; i++) if (inner(l.data[i * STRIDE], l.data[i * STRIDE + 2])) onRoad++;
+  for (const l of trees(a)) for (let i = 0; i < l.count; i++) if (box(l.data[i * STRIDE], l.data[i * STRIDE + 2])) before++;
+  // Höstträd: inga med en vanlig region, några med en region i Autumn wood
+  const autumn = populate(worldFor([{ name: 'Goldleaf', theme: 'autumn' }]), T.populate, { seed: 3 });
+  const count = (r, id) => r.layers.find((l) => l.id === id).count;
+  // Stenar i stammar: en sten närmare ett träd än en meter
+  const stems = [];
+  for (const l of trees(a)) for (let i = 0; i < l.count; i++) stems.push([l.data[i * STRIDE], l.data[i * STRIDE + 2]]);
+  let inStem = 0;
+  const rocks = a.layers.find((l) => l.id === 'boulders');
+  for (let i = 0; i < rocks.count; i++) { const x = rocks.data[i * STRIDE], z = rocks.data[i * STRIDE + 2]; if (stems.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 1)) inStem++; }
+  const out = {
+    ms: a.ms, total: a.total, per_layer: Object.fromEntries(a.layers.map((l) => [l.id, l.count])), same_seed_same_nature: same, trees_under_sea: wet,
+    trees_in_road_box: onRoad, trees_in_box_without_road: before, autumn_trees_plain: count(a, 'autumn'), autumn_trees_in_autumn_region: count(autumn, 'autumn'), broadleaf_in_autumn_region: count(autumn, 'broadleaf'), rocks_in_stems: inStem,
+  };
+  const ok = same && wet === 0 && onRoad === 0 && before > 20 && count(a, 'autumn') === 0 && count(autumn, 'autumn') > 300 && count(autumn, 'broadleaf') < count(a, 'broadleaf') * 0.4 && inStem === 0 && a.total > 10000;
+  return { ok, scene: 'populate', ...out };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'populate') {
+  console.log(JSON.stringify(await populateScene()));
+} else if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'sculpt') {
   console.log(JSON.stringify(await sculptScene()));
 } else if (process.argv[1] === fileURLToPath(import.meta.url) && JSON.parse(process.argv[2] ?? '{}').scene === 'landscapes') {
   const r = await landscapes();

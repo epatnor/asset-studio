@@ -645,7 +645,15 @@ function cleanPaintLayers(list, X) {
   const known = new Map((X.groundTextures ?? []).map((t) => [t.id, t]));
   return list.slice(0, 8).map((p) => (p && known.has(p.texture) ? { texture: p.texture, metres: Math.min(20, Math.max(0.5, Number(p.metres) || known.get(p.texture).metres)) } : null));
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers } }); // Kartrummet: docs/terrain.md
+// Kartrummets utplacering (steget Populate): frö, täthet och detaljavstånd, och per lager på/av och täthet
+function cleanPopulate(v, X) {
+  if (!v || typeof v !== 'object') return null;
+  const num = (x, lo, hi, d) => (Number.isFinite(Number(x)) ? Math.min(hi, Math.max(lo, Number(x))) : d);
+  const ids = new Set((X.populate?.layers ?? []).map((l) => l.id));
+  const layers = Object.fromEntries(Object.entries(v.layers ?? {}).filter(([id]) => ids.has(id)).map(([id, l]) => [id, { on: l?.on !== false, density: num(l?.density, 0, 2, 1) }]));
+  return { seed: Math.round(num(v.seed, 1, 999, 1)), density: num(v.density, 0, 2, 1), detail: num(v.detail, 0.3, 3, 1), layers };
+}
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers, populate: cleanPopulate } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();

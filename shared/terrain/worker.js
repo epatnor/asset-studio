@@ -5,7 +5,7 @@
 //                              genererade världen, utan att generera den igen; annars allt
 //   Ut: { id, n, size, cell, positions, normals, index, wet, heights, channels, biomes, coverage, regions, reg, look,
 //   ms, editMs, biomeMs } (buffertarna flyttas, kopieras inte; vid only = 'biomes' utan höjdfältet).
-//   regions = { coverage, centers, ms }
+//   regions = { coverage, centers, ms, P, count, weights }
 import { generateTerrain } from './generate.js';
 import { buildField } from './field.js';
 import { computeBiomes } from './biomes.js';
@@ -21,8 +21,9 @@ function nature(t, recipe) {
   const b = computeBiomes(t, recipe, rf);
   const a = regionAttributes(t, rf);
   return {
-    out: { biomes: b.weights, coverage: b.coverage, biomeMs: b.ms + rf.ms, reg: a.reg, look: a.look, regions: { coverage: rf.coverage, centers: rf.centers, ms: rf.ms } },
-    transfer: [b.weights.buffer, a.reg.buffer, a.look.buffer],
+    // regionernas vikter (P · P · count) följer med, så att utplaceringen kan läsa regionens tema
+    out: { biomes: b.weights, coverage: b.coverage, biomeMs: b.ms + rf.ms, reg: a.reg, look: a.look, regions: { coverage: rf.coverage, centers: rf.centers, ms: rf.ms, P: rf.P, count: rf.count, weights: rf.weights } },
+    transfer: [b.weights.buffer, a.reg.buffer, a.look.buffer, rf.weights.buffer],
   };
 }
 

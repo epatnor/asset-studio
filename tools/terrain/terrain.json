@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska. sculptTools är penslarna i Sculpt med sina egna förval (defaults), sculptParams spakarna i kortet Brush (tools: vilka penslar som har spaken; stamp: bara med ett mönster), sculptStamps penselmönstren och sculptLandforms landformerna som trycks ut med ett klick (shared/terrain/stamps.js; blend add eller max, base ground eller sea). groundTextures är marktexturerna man kan måla med i Paint (id = filen i assets/textures/, metres = hur stor en ruta av texturen är), biomeTextures varje biomens utbud (plus paths för stigar och vägar) och paintParams penselns spakar (shared/terrain/paint.js).",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). channelKinds är vattnet man gräver i steget Sculpt (shared/terrain/sculpt.js): halva bredden från start till slut (m), djupet (a + b · bredd), hur långt under marken ytan ligger (drop), bankens rundning och vallen; sea: ytan i havets nivå (en vik). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska. sculptTools är penslarna i Sculpt med sina egna förval (defaults), sculptParams spakarna i kortet Brush (tools: vilka penslar som har spaken; stamp: bara med ett mönster), sculptStamps penselmönstren och sculptLandforms landformerna som trycks ut med ett klick (shared/terrain/stamps.js; blend add eller max, base ground eller sea). groundTextures är marktexturerna man kan måla med i Paint (id = filen i assets/textures/, metres = hur stor en ruta av texturen är), biomeTextures varje biomens utbud (plus paths för stigar och vägar) och paintParams penselns spakar (shared/terrain/paint.js). populate är stegets PCG-lager (shared/terrain/populate.js): models [sökväg under assets/ utan .gltf, vikt], spacing (m mellan punkterna), density, biomes (täthet per biom), slope och height (grader, meter över havet), wet, clump [brusets skala i m, mängd], themes (regionens tema gör lagret tätare eller glesare; themeOnly: bara där temat finns), scale, align (luta med marken), sink, footprint (m som lagret tar upp, så att senare lager håller undan), max, lod (near: full modell, mid: LOD1, längre bort proxy eller inget) och proxy (form och färg för stand-ins långt bort). groundTextures populate: hur en målad textur påverkar tätheten per sort (tree, bush, rock, plant, prop).",
   "camera": {
     "pos": [
       150,
@@ -57,6 +57,16 @@
       "id": "paintbrush",
       "label": "Paint brush",
       "step": "paint"
+    },
+    {
+      "id": "populate",
+      "label": "Nature",
+      "step": "populate"
+    },
+    {
+      "id": "poplayer",
+      "label": "Layer",
+      "step": "populate"
     },
     {
       "id": "brush",
@@ -1451,17 +1461,32 @@
     {
       "id": "surface_sand",
       "label": "Sand",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 0.05,
+        "bush": 0.2,
+        "plant": 0.3
+      }
     },
     {
       "id": "surface_gravel",
       "label": "Gravel",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 0.3,
+        "rock": 1.5,
+        "plant": 0.5
+      }
     },
     {
       "id": "surface_pondbed",
       "label": "Pebbly shore",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 0,
+        "bush": 0.2,
+        "plant": 0.5
+      }
     },
     {
       "id": "stone_painted",
@@ -1471,7 +1496,11 @@
     {
       "id": "ground_meadow",
       "label": "Meadow",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0.5,
+        "plant": 1.5
+      }
     },
     {
       "id": "ground_lush",
@@ -1481,7 +1510,12 @@
     {
       "id": "ground_lawn",
       "label": "Lawn",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0.3,
+        "bush": 0.5,
+        "plant": 0.4
+      }
     },
     {
       "id": "surface_grass",
@@ -1491,22 +1525,39 @@
     {
       "id": "surface_meadow",
       "label": "Flower meadow",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0.4,
+        "plant": 1.8
+      }
     },
     {
       "id": "surface_forestfloor",
       "label": "Forest floor",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 1.5,
+        "bush": 1.3,
+        "plant": 1.2
+      }
     },
     {
       "id": "moss_stylized",
       "label": "Moss",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 1.3,
+        "plant": 1.3
+      }
     },
     {
       "id": "moss_painted",
       "label": "Deep moss",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 1.3,
+        "plant": 1.3
+      }
     },
     {
       "id": "surface_dirt",
@@ -1516,12 +1567,21 @@
     {
       "id": "surface_mud",
       "label": "Mud",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 0.3,
+        "plant": 1.3
+      }
     },
     {
       "id": "surface_riverbed",
       "label": "Riverbed",
-      "metres": 2.5
+      "metres": 2.5,
+      "populate": {
+        "tree": 0,
+        "bush": 0,
+        "plant": 0.5
+      }
     },
     {
       "id": "ground_steppe",
@@ -1536,42 +1596,91 @@
     {
       "id": "surface_stone",
       "label": "Stone",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0.2,
+        "bush": 0.4,
+        "rock": 2,
+        "plant": 0.3
+      }
     },
     {
       "id": "rock_stylized",
       "label": "Rock",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0.2,
+        "rock": 2,
+        "plant": 0.3
+      }
     },
     {
       "id": "surface_cliff",
       "label": "Cliff",
-      "metres": 7
+      "metres": 7,
+      "populate": {
+        "tree": 0,
+        "bush": 0.1,
+        "plant": 0.1
+      }
     },
     {
       "id": "surface_snow",
       "label": "Snow",
-      "metres": 4
+      "metres": 4,
+      "populate": {
+        "tree": 0.4,
+        "bush": 0.2,
+        "plant": 0
+      }
     },
     {
       "id": "surface_path",
       "label": "Path",
-      "metres": 2
+      "metres": 2,
+      "populate": {
+        "tree": 0,
+        "bush": 0.1,
+        "rock": 0.2,
+        "plant": 0.2,
+        "prop": 0.2
+      }
     },
     {
       "id": "surface_road",
       "label": "Road",
-      "metres": 3
+      "metres": 3,
+      "populate": {
+        "tree": 0,
+        "bush": 0,
+        "rock": 0,
+        "plant": 0,
+        "prop": 0
+      }
     },
     {
       "id": "cobblestone",
       "label": "Cobblestones",
-      "metres": 2
+      "metres": 2,
+      "populate": {
+        "tree": 0,
+        "bush": 0,
+        "rock": 0,
+        "plant": 0,
+        "prop": 0
+      }
     },
     {
       "id": "surface_planks",
       "label": "Planks",
-      "metres": 2
+      "metres": 2,
+      "populate": {
+        "tree": 0,
+        "bush": 0,
+        "rock": 0,
+        "plant": 0,
+        "prop": 0
+      }
     }
   ],
   "biomeTextures": {
@@ -1714,5 +1823,791 @@
       "help": "A random angle and size for each touch, so a pattern does not repeat",
       "stamp": true
     }
-  ]
+  ],
+  "populate": {
+    "layers": [
+      {
+        "id": "broadleaf",
+        "label": "Broadleaf trees",
+        "help": "Oak, maple, ash, birch, aspen and cherry in the broadleaf forest, a few out on the meadows",
+        "kind": "tree",
+        "models": [
+          [
+            "trees/oak",
+            3
+          ],
+          [
+            "trees/maple",
+            2
+          ],
+          [
+            "trees/ash",
+            2
+          ],
+          [
+            "trees/birch",
+            2
+          ],
+          [
+            "trees/aspen",
+            1.5
+          ],
+          [
+            "trees/cherry",
+            0.6
+          ]
+        ],
+        "spacing": 9,
+        "density": 0.8,
+        "biomes": {
+          "forest": 1,
+          "meadow": 0.05,
+          "heath": 0.02,
+          "pine": 0.15
+        },
+        "slope": [
+          0,
+          32
+        ],
+        "height": [
+          0.8,
+          1000
+        ],
+        "clump": [
+          60,
+          0.35
+        ],
+        "themes": {
+          "autumn": 0.15,
+          "pinewood": 0.3,
+          "frost": 0.1,
+          "ashland": 0.1,
+          "steppe": 0.4
+        },
+        "scale": [
+          0.75,
+          1.2
+        ],
+        "align": 0.08,
+        "sink": 0.15,
+        "footprint": 1.6,
+        "max": 20000,
+        "lod": {
+          "near": 90,
+          "mid": 260
+        },
+        "proxy": {
+          "shape": "blob",
+          "color": "#4e7a34",
+          "trunk": "#5a4430"
+        }
+      },
+      {
+        "id": "autumn",
+        "label": "Autumn trees",
+        "help": "Maples and birches in autumn colours, where a region has the Autumn wood theme",
+        "kind": "tree",
+        "models": [
+          [
+            "trees/maple_autumn",
+            3
+          ],
+          [
+            "trees/birch_autumn",
+            2
+          ]
+        ],
+        "spacing": 9,
+        "density": 0.8,
+        "biomes": {
+          "forest": 1,
+          "meadow": 0.05,
+          "pine": 0.15
+        },
+        "slope": [
+          0,
+          32
+        ],
+        "height": [
+          0.8,
+          1000
+        ],
+        "clump": [
+          60,
+          0.35
+        ],
+        "themes": {
+          "autumn": 1
+        },
+        "themeOnly": true,
+        "scale": [
+          0.75,
+          1.2
+        ],
+        "align": 0.08,
+        "sink": 0.15,
+        "footprint": 1.6,
+        "max": 20000,
+        "lod": {
+          "near": 90,
+          "mid": 260
+        },
+        "proxy": {
+          "shape": "blob",
+          "color": "#c0782c",
+          "trunk": "#5a4430"
+        }
+      },
+      {
+        "id": "conifers",
+        "label": "Conifers",
+        "help": "Pine and spruce in the pine forest, up towards the tree line",
+        "kind": "tree",
+        "models": [
+          [
+            "trees/pine",
+            3
+          ],
+          [
+            "trees/spruce",
+            3
+          ],
+          [
+            "trees/jpine",
+            1
+          ]
+        ],
+        "spacing": 8,
+        "density": 0.85,
+        "biomes": {
+          "pine": 1,
+          "forest": 0.12,
+          "rock": 0.04,
+          "heath": 0.04
+        },
+        "slope": [
+          0,
+          38
+        ],
+        "height": [
+          1,
+          1000
+        ],
+        "clump": [
+          50,
+          0.3
+        ],
+        "themes": {
+          "pinewood": 1.4,
+          "frost": 1.3,
+          "steppe": 0.3,
+          "ashland": 0.2
+        },
+        "scale": [
+          0.75,
+          1.25
+        ],
+        "align": 0.05,
+        "sink": 0.15,
+        "footprint": 1.4,
+        "max": 20000,
+        "lod": {
+          "near": 90,
+          "mid": 260
+        },
+        "proxy": {
+          "shape": "cone",
+          "color": "#2f5a36",
+          "trunk": "#4a3828"
+        }
+      },
+      {
+        "id": "wetland_trees",
+        "label": "Willows and poplars",
+        "help": "Willows by the water and in the marsh, poplars along the edges",
+        "kind": "tree",
+        "models": [
+          [
+            "trees/willow",
+            3
+          ],
+          [
+            "trees/poplar",
+            1
+          ]
+        ],
+        "spacing": 11,
+        "density": 0.6,
+        "biomes": {
+          "marsh": 1,
+          "meadow": 0.03,
+          "forest": 0.05
+        },
+        "wet": [
+          0.45,
+          1
+        ],
+        "slope": [
+          0,
+          20
+        ],
+        "height": [
+          0.4,
+          60
+        ],
+        "scale": [
+          0.8,
+          1.15
+        ],
+        "align": 0.05,
+        "sink": 0.15,
+        "footprint": 1.6,
+        "max": 5000,
+        "lod": {
+          "near": 90,
+          "mid": 260
+        },
+        "proxy": {
+          "shape": "blob",
+          "color": "#6a8a3c",
+          "trunk": "#5a4430"
+        }
+      },
+      {
+        "id": "dead_trees",
+        "label": "Dead trees",
+        "help": "A few dead trees on the heath, in the marsh and in the Gloomwood and Ashlands",
+        "kind": "tree",
+        "models": [
+          [
+            "trees/deadtree",
+            1
+          ]
+        ],
+        "spacing": 22,
+        "density": 0.25,
+        "biomes": {
+          "heath": 0.5,
+          "marsh": 0.6,
+          "rock": 0.2,
+          "forest": 0.05
+        },
+        "slope": [
+          0,
+          35
+        ],
+        "height": [
+          0.6,
+          1000
+        ],
+        "themes": {
+          "gloom": 5,
+          "ashland": 6,
+          "steppe": 1.5
+        },
+        "scale": [
+          0.7,
+          1.2
+        ],
+        "align": 0.05,
+        "sink": 0.1,
+        "footprint": 1,
+        "max": 3000,
+        "lod": {
+          "near": 120,
+          "mid": 400
+        },
+        "proxy": {
+          "shape": "twig",
+          "color": "#6a5a48",
+          "trunk": "#6a5a48"
+        }
+      },
+      {
+        "id": "boulders",
+        "label": "Rocks and boulders",
+        "help": "Boulders and rocks on the mountain and the steep slopes, a few in the forest and on the heath",
+        "kind": "rock",
+        "models": [
+          [
+            "props/boulder_lp1",
+            2
+          ],
+          [
+            "props/boulder_lp2",
+            2
+          ],
+          [
+            "props/rock_lp1",
+            2
+          ],
+          [
+            "props/rock_lp2",
+            2
+          ],
+          [
+            "props/rock_lp_mossy1",
+            1
+          ],
+          [
+            "props/basalt_lp1",
+            0.7
+          ],
+          [
+            "props/slab_lp1",
+            0.7
+          ]
+        ],
+        "spacing": 7,
+        "density": 0.5,
+        "biomes": {
+          "rock": 1,
+          "heath": 0.18,
+          "forest": 0.08,
+          "pine": 0.15,
+          "beach": 0.06,
+          "snow": 0.3,
+          "meadow": 0.02
+        },
+        "slope": [
+          0,
+          60
+        ],
+        "height": [
+          -0.5,
+          1000
+        ],
+        "clump": [
+          30,
+          0.5
+        ],
+        "themes": {
+          "ashland": 2,
+          "highland": 1.5
+        },
+        "scale": [
+          0.6,
+          1.8
+        ],
+        "align": 0.7,
+        "sink": 0.25,
+        "footprint": 1.2,
+        "max": 15000,
+        "lod": {
+          "near": 350
+        }
+      },
+      {
+        "id": "bushes",
+        "label": "Bushes",
+        "help": "Bushes along the forest edges, on the meadows and on the heath",
+        "kind": "bush",
+        "models": [
+          [
+            "trees/bush_round",
+            2
+          ],
+          [
+            "trees/bush_wild",
+            2
+          ],
+          [
+            "trees/bush_flower",
+            1
+          ],
+          [
+            "trees/bush_mound",
+            1.5
+          ],
+          [
+            "trees/bush_dark",
+            1
+          ],
+          [
+            "trees/bush_box",
+            0.5
+          ]
+        ],
+        "spacing": 6,
+        "density": 0.35,
+        "biomes": {
+          "forest": 0.5,
+          "meadow": 0.18,
+          "heath": 0.35,
+          "pine": 0.25,
+          "marsh": 0.15
+        },
+        "slope": [
+          0,
+          35
+        ],
+        "height": [
+          0.6,
+          1000
+        ],
+        "clump": [
+          25,
+          0.5
+        ],
+        "themes": {
+          "autumn": 0.6
+        },
+        "scale": [
+          0.7,
+          1.3
+        ],
+        "align": 0.25,
+        "sink": 0.1,
+        "footprint": 0.8,
+        "max": 20000,
+        "lod": {
+          "near": 100,
+          "mid": 220
+        },
+        "proxy": {
+          "shape": "blob",
+          "color": "#4a7230",
+          "trunk": "#4a7230"
+        }
+      },
+      {
+        "id": "forest_floor",
+        "label": "Forest floor",
+        "help": "Ferns, stumps, mossy logs, mossy stones and mushrooms under the trees",
+        "kind": "prop",
+        "models": [
+          [
+            "plants/fern1",
+            5
+          ],
+          [
+            "props/mossy_stump1",
+            1
+          ],
+          [
+            "props/stump1",
+            1
+          ],
+          [
+            "props/mossy_log1",
+            0.8
+          ],
+          [
+            "props/log1",
+            0.6
+          ],
+          [
+            "props/mossy_stone1",
+            1.5
+          ],
+          [
+            "props/fly_agaric1",
+            0.8
+          ],
+          [
+            "props/chanterelle1",
+            0.6
+          ],
+          [
+            "props/porcini1",
+            0.6
+          ]
+        ],
+        "spacing": 4,
+        "density": 0.45,
+        "biomes": {
+          "forest": 1,
+          "pine": 0.8,
+          "marsh": 0.2
+        },
+        "slope": [
+          0,
+          35
+        ],
+        "height": [
+          0.6,
+          1000
+        ],
+        "clump": [
+          18,
+          0.6
+        ],
+        "scale": [
+          0.7,
+          1.3
+        ],
+        "align": 0.6,
+        "sink": 0.05,
+        "footprint": 0.4,
+        "max": 30000,
+        "lod": {
+          "near": 70
+        }
+      },
+      {
+        "id": "flowers",
+        "label": "Meadow flowers",
+        "help": "Buttercups, daisies, cornflowers, poppies, lupines and lavender in the meadows",
+        "kind": "plant",
+        "models": [
+          [
+            "plants/buttercup1",
+            3
+          ],
+          [
+            "plants/daisy1",
+            3
+          ],
+          [
+            "plants/cornflower1",
+            2
+          ],
+          [
+            "plants/poppy1",
+            1.5
+          ],
+          [
+            "plants/lupine1",
+            1
+          ],
+          [
+            "plants/lavender1",
+            0.8
+          ],
+          [
+            "plants/tulip1",
+            0.4
+          ]
+        ],
+        "spacing": 2.5,
+        "density": 0.35,
+        "biomes": {
+          "meadow": 1,
+          "heath": 0.2,
+          "forest": 0.05
+        },
+        "slope": [
+          0,
+          30
+        ],
+        "height": [
+          0.6,
+          1000
+        ],
+        "clump": [
+          12,
+          0.8
+        ],
+        "themes": {
+          "frost": 0.2,
+          "ashland": 0.1,
+          "gloom": 0.2
+        },
+        "scale": [
+          0.8,
+          1.3
+        ],
+        "align": 0.6,
+        "max": 40000,
+        "lod": {
+          "near": 55
+        }
+      },
+      {
+        "id": "grasses",
+        "label": "Tall grass",
+        "help": "Grass tufts, tall grass and feather grass on the meadow and heath",
+        "kind": "plant",
+        "models": [
+          [
+            "plants/grass_tuft1",
+            3
+          ],
+          [
+            "plants/grass_tall1",
+            2
+          ],
+          [
+            "plants/feather_grass1",
+            1.5
+          ],
+          [
+            "plants/grass_seeded1",
+            1
+          ]
+        ],
+        "spacing": 2.2,
+        "density": 0.4,
+        "biomes": {
+          "meadow": 0.7,
+          "heath": 1,
+          "beach": 0.15,
+          "forest": 0.15
+        },
+        "slope": [
+          0,
+          35
+        ],
+        "height": [
+          0.5,
+          1000
+        ],
+        "clump": [
+          10,
+          0.7
+        ],
+        "scale": [
+          0.8,
+          1.3
+        ],
+        "align": 0.6,
+        "max": 40000,
+        "lod": {
+          "near": 55
+        }
+      },
+      {
+        "id": "reeds",
+        "label": "Reeds and cattails",
+        "help": "Reeds and cattails in the marsh and at the water's edge",
+        "kind": "plant",
+        "models": [
+          [
+            "plants/reed1",
+            3
+          ],
+          [
+            "plants/cattail1",
+            2
+          ]
+        ],
+        "spacing": 1.8,
+        "density": 0.6,
+        "biomes": {
+          "marsh": 1,
+          "beach": 0.1,
+          "meadow": 0.05
+        },
+        "wet": [
+          0.55,
+          1
+        ],
+        "slope": [
+          0,
+          20
+        ],
+        "height": [
+          -0.3,
+          30
+        ],
+        "clump": [
+          8,
+          0.8
+        ],
+        "scale": [
+          0.8,
+          1.3
+        ],
+        "align": 0.3,
+        "max": 30000,
+        "lod": {
+          "near": 70
+        }
+      },
+      {
+        "id": "shore",
+        "label": "Shore stones",
+        "help": "Pebbles and stones along the beach",
+        "kind": "rock",
+        "models": [
+          [
+            "props/pebbles1",
+            3
+          ],
+          [
+            "props/stones1",
+            1
+          ],
+          [
+            "props/rocks_lp1",
+            1
+          ]
+        ],
+        "spacing": 4,
+        "density": 0.35,
+        "biomes": {
+          "beach": 1
+        },
+        "slope": [
+          0,
+          40
+        ],
+        "height": [
+          -0.6,
+          6
+        ],
+        "clump": [
+          15,
+          0.6
+        ],
+        "scale": [
+          0.7,
+          1.4
+        ],
+        "align": 0.8,
+        "sink": 0.05,
+        "max": 15000,
+        "lod": {
+          "near": 120
+        }
+      }
+    ],
+    "params": [
+      {
+        "key": "density",
+        "label": "Density",
+        "min": 0,
+        "max": 2,
+        "step": 0.01,
+        "default": 1,
+        "help": "How much of this layer grows, compared with the rules"
+      },
+      {
+        "key": "on",
+        "label": "On",
+        "type": "bool",
+        "default": true,
+        "help": "Turn this layer on or off"
+      }
+    ],
+    "global": [
+      {
+        "key": "density",
+        "label": "All nature",
+        "min": 0,
+        "max": 2,
+        "step": 0.01,
+        "default": 1,
+        "help": "Thin out or fill in everything at once"
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "min": 1,
+        "max": 999,
+        "step": 1,
+        "default": 1,
+        "help": "A different, equally valid layout of the same rules"
+      },
+      {
+        "key": "detail",
+        "label": "Detail range",
+        "min": 0.3,
+        "max": 3,
+        "step": 0.05,
+        "default": 1,
+        "help": "How far out the full models are drawn (the LOD distances): lower is faster, higher is finer"
+      }
+    ]
+  }
 }
