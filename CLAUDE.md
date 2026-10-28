@@ -80,4 +80,5 @@ Kommandoradsvarianter:
 | `python3 -I tools/texture/fetch_references.py` | Referensbiblioteket: några CC0-texturer från Poly Haven med manifest (källa, licens, fysisk storlek) i `material-references/` |
 | `python3 -I tools/texture/reference_analysis.py '{"all": true}'` | Mäter referens och vårt material lika (palett, skala i meter, riktning, relief); `sheet` ritar jämförelseark |
 | `python3 -I tools/texture/fit_reference.py '<recept>'` | Barkrecept styrt mot en referens (färger ur paletten, skala × exaggerate), sparas som vanligt material |
+| `node tools/terrain/check_terrain.mjs` | Terrängens kontroller utan bilder (veck, sågtänder i strandlinjen, vattenkanten under marken) för bäckscenen; marken byggs med `shared/terrain/` ([docs/terrain.md](docs/terrain.md)) |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

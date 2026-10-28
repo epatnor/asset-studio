@@ -671,7 +671,9 @@ async function gpuList() {
 }
 // test: ett provfönster (?shot=) med en egen profil, så att det kan stängas helt efteråt (gpuCloseTest) utan att
 // röra studiofönster som redan är öppna; vanliga fönster delar en profil per kort och öppnas i samma Chrome
-async function gpuLaunch({ id, path: page, test = false }) {
+// headless (bara med test): utan fönster, så att proven ritar även när skärmen är låst eller släckt (då står ett
+// vanligt fönster stilla på 0 fps). Ingen WebGPU utan fönster, så sidan ritar med WebGL2 på samma kort.
+async function gpuLaunch({ id, path: page, test = false, headless = false }) {
   const { gpus, browser, canLaunch } = await gpuList();
   // id: kortets nummer, eller 'discrete' för det snabba kortet (genvägen i appmenyn, tools/studio/launch.sh)
   const gpu = id === 'discrete' ? gpus.find((g) => g.discrete) ?? gpus[0] : gpus.find((g) => g.id === id);
@@ -691,11 +693,14 @@ async function gpuLaunch({ id, path: page, test = false }) {
   // (SwiftShader). X11 (XWayland) i stället för Wayland: Chrome med Vulkan och NVIDIA fungerar inte på Wayland.
   const env = /nvidia/i.test(gpu.name) && !gpu.default ? ['__NV_PRIME_RENDER_OFFLOAD=1', '__GLX_VENDOR_LIBRARY_NAME=nvidia'] : gpu.default ? [] : ['DRI_PRIME=1'];
   // --class: fönstrets klass i X11, så att dockan och aktivitetsfältet visar Asset Studio med sin ikon (StartupWMClass)
-  const [c, ...args] = onHost(['env', ...env, 'flatpak', 'run', browser, `--user-data-dir=${profile}`, '--ozone-platform=x11', '--class=asset-studio',
-    `--app=${url}`, '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check']); // WebGPU går på Vulkan; --enable-unsafe-webgpu behövs inte och ger en varningsrad
+  const mode = test && headless ? ['--headless=new', '--window-size=1280,1280', url] : ['--ozone-platform=x11', '--class=asset-studio', `--app=${url}`];
+  const [c, ...args] = onHost(['env', ...env, 'flatpak', 'run', browser, `--user-data-dir=${profile}`, ...mode,
+    '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check']); // WebGPU går på Vulkan; --enable-unsafe-webgpu behövs inte och ger en varningsrad
   const p = spawn(c, args, { detached: true, stdio: 'ignore' });
   p.unref();
-  return { ok: true, gpu: gpu.name, url };
+  // Ett osynligt prov som aldrig skickar sin bild får inte ligga kvar och dra ström
+  if (test && headless) setTimeout(closeTest, 180_000);
+  return { ok: true, gpu: gpu.name, url, headless: test && headless };
 }
 
 async function api(req, res, url) {

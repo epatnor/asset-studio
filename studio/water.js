@@ -11,34 +11,26 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createAtmosphere } from '../shared/effects/weather.js';
 import { createWater, bedAndFlow } from '../shared/effects/water.js';
 import { antiTiled } from '../shared/effects/antitile.js';
+import { axis, buildField } from '../shared/terrain/field.js';
+import { createChannel } from '../shared/terrain/shapes.js';
+import { hills } from '../shared/terrain/noise.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
 const DEG = Math.PI / 180;
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-// Låg-frekvent brus i JS (för terrängen): några sinusvågor i olika riktningar
-const hills = (x, z) => Math.sin(x * 0.11 + 1.3) * Math.cos(z * 0.09 - 0.4) * 0.5 + Math.sin(x * 0.043 - z * 0.051) * 0.7 + Math.sin(x * 0.27 + z * 0.19) * 0.12;
-
-// Koordinater längs en axel: tätt i [fineMin, fineMax], allt glesare utanför (växer med growth per steg)
-function axis(min, max, fineMin, fineMax, step, growth = 1.07) {
-  const xs = [];
-  for (let x = fineMin; x <= fineMax + 1e-6; x += step) xs.push(x);
-  for (let s = step, x = fineMin; x > min;) { s *= growth; x = Math.max(min, x - s); xs.unshift(x); }
-  for (let s = step, x = xs[xs.length - 1]; x < max;) { s *= growth; x = Math.min(max, x + s); xs.push(x); }
-  return xs;
-}
-// Ett rutnät i världen: xs × zs, höjden ur yAt
-function grid(xs, zs, yAt) {
-  const nx = xs.length, nz = zs.length, pos = new Float32Array(nx * nz * 3), idx = [];
-  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const k = (j * nx + i) * 3; pos[k] = xs[i]; pos[k + 1] = yAt(xs[i], zs[j]); pos[k + 2] = zs[j]; }
-  for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i, b = a + 1, c = a + nx, d = c + 1; idx.push(a, c, b, b, c, d); }
+// Marken byggs med terrängkärnan (shared/terrain/, docs/terrain.md): rutnät med diagonaler längs höjdkurvorna och
+// normaler ur höjdfunktionen, och bäckens fåra som ett avståndsfält
+function toGeometry(f) {
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
+  g.setAttribute('position', new THREE.BufferAttribute(f.positions, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(f.normals, 3));
+  g.setIndex(new THREE.BufferAttribute(f.index, 1));
   return g;
 }
+// Ett rutnät i världen: xs × zs, höjden ur yAt
+const grid = (xs, zs, yAt) => toGeometry(buildField(xs, zs, yAt));
 
 export async function createWaterTab({ api, el, view, side, drawer, footer }) {
   const [info, wx] = await Promise.all([api('/api/water'), api('/api/weather')]);
@@ -149,68 +141,47 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
       ground.material = groundMaterial(water, water.uniforms.level, { low: 'surface_sand', mid: 'surface_sand', high: 'surface_grass', highAt: 1.9 });
       return { water, ground, level: L, bedAt };
     },
-    // En bäck som slingrar sig genom en äng mot kameran, med en bred, lugn göl på mitten
+    // En bäck som slingrar sig genom en äng mot kameran, med en bred, lugn göl på mitten. Fåran är ett avståndsfält
+    // längs splinen (shared/terrain/shapes.js): jämn profil, runda bankkrön och en yta som aldrig rinner uppför.
     async stream(S, group) {
-      // Catmull-Rom genom punkterna [x, z, halva bredden], samplad var 0,4 m
-      const P = S.path, smp = [];
-      for (let i = 0; i < P.length - 1; i++) {
-        const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
-        const n = Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 0.4);
-        for (let k = 0; k < n; k++) {
-          const t = k / n, t2 = t * t, t3 = t2 * t;
-          const cr = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-          smp.push({ x: cr(p0[0], p1[0], p2[0], p3[0]), z: cr(p0[1], p1[1], p2[1], p3[1]), w: p1[2] + (p2[2] - p1[2]) * (t2 * (3 - 2 * t)) });
-        }
-      }
-      smp.push({ x: P.at(-1)[0], z: P.at(-1)[1], w: P.at(-1)[2] });
       const base = (x, z) => 0.6 - 0.01 * z + hills(x, z) * 0.35;
-      let s = 0, lvl = Infinity;
-      smp.forEach((p, i) => {
-        const q = smp[Math.min(i + 1, smp.length - 1)], r = smp[Math.max(i - 1, 0)];
-        const tx = q.x - r.x, tz = q.z - r.z, tl = Math.hypot(tx, tz) || 1;
-        p.tx = tx / tl; p.tz = tz / tl;
-        if (i) s += Math.hypot(p.x - smp[i - 1].x, p.z - smp[i - 1].z);
-        p.s = s;
-        lvl = Math.min(lvl, base(p.x, p.z) - 0.32); // ytan sluttar nedströms och stiger aldrig
-        p.level = lvl;
-        p.depth = 0.22 + 0.2 * p.w;
-      });
-      const nearest = (x, z) => {
-        let best = 1e9, bi = 0;
-        for (let i = 0; i < smp.length; i += 2) { const d = (smp[i].x - x) ** 2 + (smp[i].z - z) ** 2; if (d < best) { best = d; bi = i; } }
-        for (let i = Math.max(0, bi - 2); i <= Math.min(smp.length - 1, bi + 2); i++) { const d = (smp[i].x - x) ** 2 + (smp[i].z - z) ** 2; if (d < best) { best = d; bi = i; } }
-        return [smp[bi], Math.sqrt(best)];
-      };
-      const bedAt = (x, z) => {
-        const [p, d] = nearest(x, z), k = d / p.w;
-        const chan = p.level - p.depth * Math.max(0, 1 - k * k) ** 0.7 + Math.max(0, d - p.w * 0.9) * 0.45 + 0.06;
-        return Math.min(base(x, z), chan);
-      };
-      // Vattnet: ett band längs bäcken, lite bredare än fåran (kanterna göms av marken)
-      const pos = [], idx = [], across = 10, edgeK = 1.35;
-      smp.forEach((p) => { for (let j = 0; j <= across; j++) { const o = (j / across * 2 - 1) * p.w * edgeK; pos.push(p.x - p.tz * o, p.level, p.z + p.tx * o); } });
-      for (let i = 0; i < smp.length - 1; i++) for (let j = 0; j < across; j++) { const a = i * (across + 1) + j, b = a + 1, c = a + across + 1, d = c + 1; idx.push(a, b, c, b, d, c); }
+      const { smp, query, bedAt } = createChannel({ path: S.path, base });
+      // Vattnet: rutnätet längs bäcken, bara rutor nära fåran (vattenlinjen ligger vid d = w, ytan under marken utanför
+      // döljs av marken). Nivån och strömmen ur närmaste sträcka, så att de är jämna längs hela bäcken.
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const p of smp) { x0 = Math.min(x0, p.x - p.w * 2); x1 = Math.max(x1, p.x + p.w * 2); z0 = Math.min(z0, p.z - p.w * 2); z1 = Math.max(z1, p.z + p.w * 2); }
+      const wf = buildField(axis(x0, x1, x0, x1, 0.3), axis(z0, z1, z0, z1, 0.3), (x, z) => query(x, z)?.level ?? -50);
+      const wet = (k) => { const q = query(wf.positions[k * 3], wf.positions[k * 3 + 2]); return q && q.d < q.w * 1.3; };
+      const keep = new Uint8Array(wf.count), tris = [];
+      for (let t = 0; t < wf.index.length; t += 3) {
+        const [a, b, c] = [wf.index[t], wf.index[t + 1], wf.index[t + 2]];
+        if (wet(a) || wet(b) || wet(c)) { tris.push(a, b, c); keep[a] = keep[b] = keep[c] = 1; }
+      }
+      const remap = new Int32Array(wf.count).fill(-1), pos = [];
+      for (let k = 0; k < wf.count; k++) if (keep[k]) { remap[k] = pos.length / 3; pos.push(wf.positions[k * 3], wf.positions[k * 3 + 1], wf.positions[k * 3 + 2]); }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      geo.setIndex(idx);
+      geo.setIndex(tris.map((k) => remap[k]));
       // Strömmen: snabbare där bäcken är smal, långsammare vid kanterna och i gölen
-      bedAndFlow(geo, bedAt, (x, z, i) => {
-        const p = smp[Math.floor(i / (across + 1))], j = (i % (across + 1)) / across * 2 - 1, v = (1.1 / p.w) ** 0.9 * (1 - 0.6 * j * j);
-        return [p.tx * v, p.tz * v];
+      bedAndFlow(geo, bedAt, (x, z) => {
+        const q = query(x, z);
+        if (!q) return [0, 0];
+        const k = Math.min(1, q.d / q.w), v = (1.1 / q.w) ** 0.9 * (1 - 0.6 * k * k);
+        return [q.tx * v, q.tz * v];
       });
-      const near = nearest(0, 2)[0];
-      const water = createWater({ geometry: geo, level: near.level, sky });
-      const tg = grid(axis(-90, 90, -30, 30, 0.35), axis(-120, 120, -50, 40, 0.35), bedAt);
-      // Vattnets nivå vid varje markhörn, för våt strand och kaustik
+      const level = query(0, 2).level;
+      const water = createWater({ geometry: geo, level, sky });
+      // Marken; vattnets nivå vid varje hörn (för våt strand och kaustik) tonar mjukt bort från bäcken
+      const tg = grid(axis(-90, 90, -30, 30, 0.3), axis(-120, 120, -50, 40, 0.3), bedAt);
       const tp = tg.attributes.position, wl = new Float32Array(tp.count);
-      for (let i = 0; i < tp.count; i++) { const [p, d] = nearest(tp.getX(i), tp.getZ(i)); wl[i] = d < p.w * 3 ? p.level : -50; }
+      for (let i = 0; i < tp.count; i++) { const q = query(tp.getX(i), tp.getZ(i)); wl[i] = q ? q.level - 50 * smooth(q.w * 2, q.w * 5, q.d) : -50; }
       tg.setAttribute('wlevel', new THREE.BufferAttribute(wl, 1));
       const ground = new THREE.Mesh(tg, null);
       ground.material = groundMaterial(water, attribute('wlevel', 'float'), { low: 'surface_riverbed', mid: 'surface_mud', high: 'ground_meadow', highAt: 0.18 });
       // Platserna för modellerna: längs bäcken (andel av längden, sidled i bredder), på bankarna och i gölen
       const along = (t, off) => { const p = smp[Math.round(t * (smp.length - 1))]; return [p.x - p.tz * off * p.w, p.z + p.tx * off * p.w, p]; };
       const pool = smp.reduce((a, b) => (b.w > a.w ? b : a));
-      return { water, ground, level: near.level, bedAt, along, pool, smp, mirrorLevel: near.level };
+      return { water, ground, level, bedAt, along, pool, query, mirrorLevel: level };
     },
     // En liten sjö med oregelbunden strand, en kulle bakom och träd runt om
     async lake(S, group) {
@@ -219,7 +190,8 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
       const kAt = (x, z) => Math.hypot(x, z) / radiusAt(Math.atan2(-z, x));
       const bedAt = (x, z) => {
         const k = kAt(x, z), h0 = 0.25 + smooth(1.3, 2.6, k) * (0.4 + hills(x, z) * 0.4) + 3.2 * smooth(-R * 1.3, -R * 3, z) * (0.7 + 0.3 * Math.sin(x * 0.08));
-        return mix1(L - 0.12 - depth * Math.max(0, 1 - k * k) ** 0.8, h0, smooth(0.97, 1.45, k));
+        // Skålen: en parabel som fortsätter rakt ut över stranden (samma profil som bäckens fåra), utan veck i kanten
+        return mix1(L - 0.12 - depth + depth * (k < 1 ? k * k : 2 * k - 1), h0, smooth(0.97, 1.45, k));
       };
       const geo = bedAndFlow(grid(axis(-R * 2, R * 2, -R * 1.8, R * 1.8, 0.35), axis(-R * 2, R * 2, -R * 1.8, R * 1.8, 0.35), () => L), bedAt);
       const water = createWater({ geometry: geo, level: L, sky });
@@ -256,7 +228,7 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
         else if (m.bank) { const [px, pz] = B.along(rand(0.05, 0.95), (r() < 0.5 ? -1 : 1) * rand(m.bank[0], m.bank[1])); [x, z] = [px, pz]; }
         else if (m.zone) [x, z] = [rand(m.zone[0], m.zone[1]), rand(m.zone[2], m.zone[3])];
         else continue;
-        const bed = B.bedAt(x, z), lvl = B.smp ? nearestLevel(B, x, z) : B.level;
+        const bed = B.bedAt(x, z), lvl = B.query?.(x, z)?.level ?? B.level;
         const y = m.float ? lvl + 0.01 : bed - (m.scatter ? 0.03 : 0.08);
         const rot = m.rot ?? r() * 360, sc = m.scatter ? rand(s0, s1) : s0, ph = r() * 6;
         if (m.float && bed > lvl - 0.05) continue; // näckrosor bara där det är vatten
@@ -289,7 +261,6 @@ export async function createWaterTab({ api, el, view, side, drawer, footer }) {
     await Promise.all(jobs);
     return { ...B, group, floats, S };
   }
-  const nearestLevel = (B, x, z) => { let best = 1e9, lv = 0; for (const p of B.smp) { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < best) { best = d; lv = p.level; } } return lv; };
 
   async function showScene(id, { keep = false } = {}) {
     note.textContent = built[id] ? '' : 'Building the scene…';
