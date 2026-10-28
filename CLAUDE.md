@@ -81,4 +81,5 @@ Kommandoradsvarianter:
 | `python3 -I tools/texture/reference_analysis.py '{"all": true}'` | Mäter referens och vårt material lika (palett, skala i meter, riktning, relief); `sheet` ritar jämförelseark |
 | `python3 -I tools/texture/fit_reference.py '<recept>'` | Barkrecept styrt mot en referens (färger ur paletten, skala × exaggerate), sparas som vanligt material |
 | `node tools/terrain/check_terrain.mjs ['{"scene": "landscapes"}']` | Terrängens kontroller utan bilder: bäckscenen (veck, sågtänder i strandlinjen, vattenkanten under marken) eller Kartrummets landskap (spetsar och gropar, kanten under havet); marken byggs med `shared/terrain/` ([docs/terrain.md](docs/terrain.md)) |
+| `python3 -I tools/studio/ui_test.py "$(cat tools/studio/ui_tests/smoke.json)"` | UI-test i Chrome utan fönster på RTX-kortet (CDP): klickar, drar i spakar, svarar på dialoger, läser konsolen och tar skärmdumpar av hela gränssnittet, även med låst skärm. `smoke.json` går igenom alla avdelningar, `maproom.json` Kartrummet. Studioservern måste vara igång |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur / sprite med alfa |

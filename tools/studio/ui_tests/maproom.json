@@ -1,0 +1,183 @@
+{
+  "name": "maproom",
+  "url": "/studio/#kartrummet",
+  "size": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "until": "window.__studio?.terrain && document.querySelector('#tfoot .msg')?.textContent.includes('Drag')",
+      "timeout": 120000
+    },
+    {
+      "expect": "document.documentElement.dataset.dept === 'maproom'",
+      "label": "the Map Room is the department"
+    },
+    {
+      "expect": "__studio.terrain.stats().vertices === 1025 * 1025",
+      "label": "a 1 km world has 1025 x 1025 corners"
+    },
+    {
+      "expect": "document.querySelectorAll('#tdrawer .wprof').length >= 14",
+      "label": "the drawer lists the ready-made worlds"
+    },
+    {
+      "expect": "[...document.querySelectorAll('#tdrawer .ticon img')].filter((i) => i.complete && i.naturalWidth > 0).length >= 14",
+      "label": "every ready-made world has its icon"
+    },
+    {
+      "shot": "1_start",
+      "minLight": 40
+    },
+    {
+      "click": "Volcano",
+      "in": "#tdrawer .wprof"
+    },
+    {
+      "until": "__studio.terrain.vals.shape === 'volcano' && document.querySelector('#tfoot .msg').textContent.includes('Drag')",
+      "timeout": 60000
+    },
+    {
+      "expect": "__studio.terrain.stats().top > 120",
+      "label": "the volcano is tall"
+    },
+    {
+      "shot": "2_volcano",
+      "minLight": 40
+    },
+    {
+      "slider": "Height",
+      "value": 80,
+      "in": "#tside"
+    },
+    {
+      "wait": 300
+    },
+    {
+      "until": "document.querySelector('#tfoot .msg').textContent.includes('Drag')",
+      "timeout": 60000
+    },
+    {
+      "expect": "__studio.terrain.stats().top < 80",
+      "label": "the Height slider lowers the volcano"
+    },
+    {
+      "click": "Slope",
+      "in": ".stagebar button"
+    },
+    {
+      "wait": 1500
+    },
+    {
+      "expect": "__studio.terrain.vals.view === 'slope'",
+      "label": "the Slope view is on"
+    },
+    {
+      "shot": "3_slope",
+      "minLight": 40
+    },
+    {
+      "click": "Shaded",
+      "in": ".stagebar button"
+    },
+    {
+      "select": "World size",
+      "value": "2048",
+      "in": "#tside"
+    },
+    {
+      "wait": 300
+    },
+    {
+      "until": "document.querySelector('#tfoot .msg').textContent.includes('Drag')",
+      "timeout": 90000
+    },
+    {
+      "expect": "document.querySelector('#tfoot').textContent.includes('2 km')",
+      "label": "the footer shows a 2 km world"
+    },
+    {
+      "shot": "4_two_km",
+      "minLight": 40
+    },
+    {
+      "select": "World size",
+      "value": "4096",
+      "in": "#tside"
+    },
+    {
+      "wait": 300
+    },
+    {
+      "until": "document.querySelector('#tfoot .msg').textContent.includes('Drag')",
+      "timeout": 90000
+    },
+    {
+      "wait": 1200
+    },
+    {
+      "shot": "4b_four_km",
+      "minLight": 40
+    },
+    {
+      "select": "World size",
+      "value": "2048",
+      "in": "#tside"
+    },
+    {
+      "wait": 300
+    },
+    {
+      "until": "document.querySelector('#tfoot .msg').textContent.includes('Drag')",
+      "timeout": 90000
+    },
+    {
+      "prompt": "ui_test_world"
+    },
+    {
+      "click": "Save world",
+      "in": "#tside button"
+    },
+    {
+      "wait": 1500
+    },
+    {
+      "expect": "document.querySelector('#tside').textContent.includes('assets/terrain/ui_test_world.terrain.json')",
+      "label": "Save writes the recipe"
+    },
+    {
+      "expect": "[...document.querySelectorAll('#tdrawer .wprof')].some((b) => b.textContent.includes('ui_test_world'))",
+      "label": "the saved world appears under Saved"
+    },
+    {
+      "shot": "5_saved",
+      "minLight": 40
+    },
+    {
+      "expect": "[...document.querySelectorAll('#kinds button')].filter((b) => b.dataset.dept === 'maproom' && b.disabled).length === 6",
+      "label": "the six coming steps are disabled tabs"
+    },
+    {
+      "click": "Windmill",
+      "in": "#depts button"
+    },
+    {
+      "until": "document.documentElement.dataset.dept === 'windmill'",
+      "timeout": 30000
+    },
+    {
+      "click": "Map Room",
+      "in": "#depts button"
+    },
+    {
+      "until": "document.body.classList.contains('terrain-mode')",
+      "timeout": 10000
+    },
+    {
+      "expect": "document.documentElement.dataset.dept === 'maproom'",
+      "label": "back in the Map Room from the header"
+    }
+  ],
+  "_doc": "UI-test av Kartrummet (tools/studio/ui_test.py). Sparar världen ui_test_world i assets/terrain/; ta bort den efteråt."
+}

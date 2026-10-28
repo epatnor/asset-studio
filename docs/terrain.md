@@ -141,6 +141,8 @@ Varje steg sparar sitt lager i världens recept (som Tinkertowns lagerstack: ter
 
 Felsökt: Mountain isle blev helt svart. En enstaka pixel med NaN eller oändligt i de brantaste sluttningarna spreds av glöden över hela bilden (utan glöd var bilden hel). Bilden före glöden sätts nu till svart där värdet inte är ändligt. Bildläget fick `only=<id>,<id>` och `set=<nyckel>:<värde>` för att prova en sak i taget; i `/api/gpu/launch` skrivs `:` och `,` som `%3A` och `%2C`.
 
+**Testat 2026-10-28 utan Patrik (UI-test):** `tools/studio/ui_test.py` styr Chrome utan fönster med CDP. `ui_tests/maproom.json` (världar, Volcano, Height, vyn Slope, 1, 2 och 4 km, Save, flikraden, tillbaka via headern) och `ui_tests/smoke.json` (alla avdelningar och flikar) är gröna, utan konsolfel. Testet hittade att världarna på 2 och 4 km blev helt svarta: höjddimmans integral i `shared/effects/weather.js` räknade `e^a · (1 − e^−k) / k`, och med kameran på 880 m över en låg dimma blev `k` under −88. Då blev `e^−k` oändligt, och gånger täthet 0 gav det NaN. Integralen räknas nu som `(e^−a − e^−b) / (b − a)` med begränsade exponenter.
+
 ## Faser
 
 | Fas | Innehåll | Klart när | Status |

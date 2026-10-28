@@ -132,9 +132,15 @@ export function createFog() {
   const g = (v) => uniform(v).setGroup(renderGroup);
   const u = { color: g(C('#c4dcf2')), density: g(0), falloff: g(0.1), base: g(0), haze: g(0.01), sunDir: g(new THREE.Vector3(0, 1, 0)), sunColor: g(C('#ffffff')), sun: g(1), flash: g(0) };
   const factor = Fn(() => {
-    const ray = positionWorld.sub(cameraPosition), dist = length(ray), k = u.falloff.mul(ray.y);
-    const shape = select(abs(k).greaterThan(1e-3), float(1).sub(exp(k.negate())).div(k), float(1));
-    const height = u.density.mul(exp(u.falloff.mul(cameraPosition.y.sub(u.base)).negate().max(-30))).mul(dist).mul(shape);
+    // ∫ täthet längs strålen = density · dist · (e^−a − e^−b) / (b − a), a och b = falloff · höjden över base vid kameran
+    // och vid punkten. Exponenterna räknas var för sig (och begränsas), inte som e^a · (1 − e^−(b−a)) / (b − a): med
+    // kameran högt över en låg dimma blir b − a under −88 och e^(a−b) oändligt, som gånger täthet 0 ger NaN (svart bild
+    // i Kartrummets världar på 2 och 4 km)
+    const ray = positionWorld.sub(cameraPosition), dist = length(ray);
+    const a = u.falloff.mul(cameraPosition.y.sub(u.base)), b = u.falloff.mul(positionWorld.y.sub(u.base)), k = b.sub(a);
+    const ea = exp(a.negate().min(80)), eb = exp(b.negate().min(80));
+    const shape = select(abs(k).greaterThan(1e-3), ea.sub(eb).div(k), ea);
+    const height = u.density.mul(dist).mul(shape);
     const hz = u.haze.mul(dist);
     return float(1).sub(exp(height.add(hz.mul(hz)).negate()));
   })();
