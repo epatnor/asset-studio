@@ -1,5 +1,5 @@
 {
-  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (climate och brush till Biomes). biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
+  "_doc": "Kartrummet, fliken World (docs/terrain.md, steg 1): spakarna, de färdiga landskapen och vyerna. Generatorn är shared/terrain/generate.js (brus, form, terrasser, erosion), marken byggs med shared/terrain/field.js och havet är shared/effects/water.js. Världen är 256 m–4 km i fyrkant (worldSize) med högst 1025 × 1025 hörn. Grupper med \"step\" hör till ett steg (regions till Regions, climate till Biomes; brush används av båda). regionThemes är regionernas teman (klimat som tillägg eller faktorer på världens spakar, biomernas vikter, färgton på växtligheten och väder för Explore), regionParams spakarna per region och regionColors kartfärgerna, i shared/terrain/regions.js. Färdiga världar kan ha en lista regions. biomes är biomernas namn och färger, i samma ordning som shared/terrain/biomes.js. Spakar med \"recipe\": false (vyn, himlen och penseln) sparas inte; sparade landskap hamnar i assets/terrain/<namn>.terrain.json. Texten i appen är på engelska.",
   "camera": {
     "pos": [
       150,
@@ -32,6 +32,16 @@
     {
       "id": "material",
       "label": "Ground"
+    },
+    {
+      "id": "regions",
+      "label": "Regions",
+      "step": "regions"
+    },
+    {
+      "id": "region",
+      "label": "Region",
+      "step": "regions"
     },
     {
       "id": "climate",
@@ -163,7 +173,7 @@
       "group": "shape",
       "label": "Height",
       "min": 2,
-      "max": 120,
+      "max": 400,
       "step": 1,
       "default": 30,
       "help": "The height of the highest land, in metres"
@@ -173,7 +183,7 @@
       "group": "shape",
       "label": "Feature size",
       "min": 20,
-      "max": 250,
+      "max": 600,
       "step": 1,
       "default": 90,
       "help": "How large the hills are, in metres: small values give many small hills"
@@ -294,7 +304,7 @@
       "group": "material",
       "label": "Snow line",
       "min": 5,
-      "max": 150,
+      "max": 500,
       "step": 1,
       "default": 60,
       "help": "Snow above this height, in metres"
@@ -328,6 +338,36 @@
       "step": 0.01,
       "default": 0.6,
       "help": "From dry and golden to lush and green"
+    },
+    {
+      "key": "regionBorder",
+      "group": "regions",
+      "label": "Border width",
+      "min": 5,
+      "max": 300,
+      "step": 1,
+      "default": 60,
+      "help": "How wide the blend between two regions is (metres): narrow gives a clear border, wide a slow change"
+    },
+    {
+      "key": "regionWander",
+      "group": "regions",
+      "label": "Wandering",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5,
+      "help": "How much the borders wind and bulge instead of running straight"
+    },
+    {
+      "key": "regionTerrain",
+      "group": "regions",
+      "label": "Natural borders",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.6,
+      "help": "How much the borders follow the land: ridges, streams and the sea between islands"
     },
     {
       "key": "treeline",
@@ -388,7 +428,7 @@
       "max": 200,
       "step": 1,
       "default": 30,
-      "help": "The radius of the biome brush, in metres"
+      "help": "The radius of the brush, in metres (biomes and regions)"
     },
     {
       "key": "brushStrength",
@@ -413,6 +453,11 @@
           "id": "shaded",
           "label": "Shaded",
           "help": "The land with its ground layers, sun and shadows"
+        },
+        {
+          "id": "regions",
+          "label": "Regions",
+          "help": "The regions in flat colours, darker along the borders where they blend"
         },
         {
           "id": "biomes",
@@ -529,7 +574,21 @@
       "sea": true,
       "coast": 0.76,
       "snowline": 135,
-      "treeline": 85
+      "treeline": 85,
+      "regions": [
+        {
+          "name": "Greenhollow",
+          "theme": "temperate"
+        },
+        {
+          "name": "Stormcrest",
+          "theme": "pinewood"
+        },
+        {
+          "name": "Saltmoor",
+          "theme": "highland"
+        }
+      ]
     },
     "volcano": {
       "label": "Volcano",
@@ -582,7 +641,17 @@
       "roughness": 0.5,
       "erosion": 0.55,
       "talus": 42,
-      "sea": true
+      "sea": true,
+      "regions": [
+        {
+          "name": "Elderwood",
+          "theme": "woodland"
+        },
+        {
+          "name": "Sunreach",
+          "theme": "steppe"
+        }
+      ]
     },
     "crescent_bay": {
       "label": "Crescent bay",
@@ -597,7 +666,17 @@
       "erosion": 0.55,
       "talus": 42,
       "sea": true,
-      "coast": 0.8
+      "coast": 0.8,
+      "regions": [
+        {
+          "name": "Harbour vale",
+          "theme": "temperate"
+        },
+        {
+          "name": "Gloomwood",
+          "theme": "gloom"
+        }
+      ]
     },
     "archipelago": {
       "label": "Archipelago",
@@ -770,6 +849,198 @@
       "label": "Snow",
       "color": "#f2f5f8",
       "help": "Above the snow line, where the slopes are gentle enough"
+    }
+  ],
+  "regionThemes": {
+    "temperate": {
+      "label": "Green vale",
+      "help": "The world's own climate: meadows, groves and heath as the sliders say",
+      "tint": "#ffffff",
+      "weather": "noon"
+    },
+    "woodland": {
+      "label": "Deep woods",
+      "help": "Wetter, with much more forest and fewer open meadows",
+      "rain": 0.12,
+      "forest": 0.3,
+      "biomes": {
+        "meadow": 0.7,
+        "heath": 0.6
+      },
+      "tint": "#e6f0dc",
+      "tone": 0.25,
+      "weather": "morning_forest"
+    },
+    "pinewood": {
+      "label": "Pine highlands",
+      "help": "Cool and high: pine instead of broadleaf, and a lower tree line",
+      "forest": 0.15,
+      "treeline": 0.75,
+      "snowline": 0.85,
+      "biomes": {
+        "forest": 0.4,
+        "pine": 1.8,
+        "heath": 1.2
+      },
+      "tint": "#dfe8df",
+      "tone": 0.05,
+      "weather": "dawn_mist"
+    },
+    "wetland": {
+      "label": "Fens",
+      "help": "Wet lowland: marshes in every hollow, reeds and dark green",
+      "rain": 0.28,
+      "marsh": 0.45,
+      "forest": -0.1,
+      "biomes": {
+        "marsh": 1.6,
+        "heath": 0.6
+      },
+      "tint": "#d8dcc0",
+      "tone": 0.2,
+      "weather": "rainy_day"
+    },
+    "steppe": {
+      "label": "Golden steppe",
+      "help": "Dry and open: heath and golden grass, few trees",
+      "rain": -0.3,
+      "forest": -0.35,
+      "marsh": -0.25,
+      "biomes": {
+        "heath": 1.7,
+        "forest": 0.5,
+        "marsh": 0.3
+      },
+      "tint": "#fff0d0",
+      "tone": -0.6,
+      "weather": "golden_hour"
+    },
+    "autumn": {
+      "label": "Autumn wood",
+      "help": "Broadleaf forest in autumn colours, warm and golden",
+      "forest": 0.2,
+      "biomes": {
+        "forest": 1.3,
+        "pine": 0.6
+      },
+      "tint": "#f4c890",
+      "tone": -0.35,
+      "weather": "golden_hour"
+    },
+    "highland": {
+      "label": "Windswept highlands",
+      "help": "Open moor: heath and rock, a low tree line and strong wind from the sea",
+      "rain": 0.05,
+      "forest": -0.25,
+      "treeline": 0.6,
+      "wind": 2.2,
+      "biomes": {
+        "heath": 1.5,
+        "rock": 1.3,
+        "forest": 0.5
+      },
+      "tint": "#e8e0d0",
+      "tone": -0.25,
+      "weather": "dawn_mist"
+    },
+    "gloom": {
+      "label": "Gloomwood",
+      "help": "A dark, haunted forest: dense trees, grey-green ground and mist",
+      "rain": 0.15,
+      "forest": 0.4,
+      "biomes": {
+        "forest": 1.3,
+        "meadow": 0.5,
+        "heath": 0.4
+      },
+      "tint": "#a8b0b8",
+      "tone": -0.2,
+      "weather": "moonlit_fog"
+    },
+    "frost": {
+      "label": "Frostlands",
+      "help": "Cold: snow comes far down, pine and bare rock, pale ground",
+      "forest": -0.1,
+      "treeline": 0.5,
+      "snowline": 0.45,
+      "biomes": {
+        "snow": 1.6,
+        "pine": 1.4,
+        "forest": 0.3,
+        "marsh": 0.4
+      },
+      "tint": "#e0e8f0",
+      "tone": -0.3,
+      "weather": "snowfall"
+    },
+    "ashland": {
+      "label": "Ashlands",
+      "help": "Burnt and barren: rock and dry heath, almost no meadow or forest",
+      "rain": -0.4,
+      "forest": -0.5,
+      "marsh": -0.3,
+      "biomes": {
+        "rock": 1.5,
+        "heath": 1.3,
+        "meadow": 0.3,
+        "forest": 0.2,
+        "pine": 0.3
+      },
+      "tint": "#b8a898",
+      "tone": -0.8,
+      "weather": "dusk"
+    }
+  },
+  "regionColors": [
+    "#e0b04a",
+    "#5aa0d8",
+    "#d86a5a",
+    "#7cc46a",
+    "#b07ad0",
+    "#e08a3a",
+    "#4ac0b0",
+    "#d878a8",
+    "#a0a04a",
+    "#7a8ad8",
+    "#c0c0c0",
+    "#5ac07a"
+  ],
+  "regionParams": [
+    {
+      "key": "rain",
+      "label": "Rain",
+      "min": -0.5,
+      "max": 0.5,
+      "step": 0.01,
+      "default": 0,
+      "help": "Wetter or drier than the theme says"
+    },
+    {
+      "key": "forest",
+      "label": "Forest",
+      "min": -0.5,
+      "max": 0.5,
+      "step": 0.01,
+      "default": 0,
+      "help": "More or less forest than the theme says"
+    },
+    {
+      "key": "treeline",
+      "label": "Tree line",
+      "min": -150,
+      "max": 150,
+      "step": 1,
+      "default": 0,
+      "help": "Raise or lower the tree line in this region (metres)"
+    },
+    {
+      "key": "tone",
+      "label": "Tone",
+      "min": -1,
+      "max": 1,
+      "step": 0.01,
+      "default": 0,
+      "help": "The plants' colour: dry and golden (left) or lush and green (right)"
     }
   ]
 }

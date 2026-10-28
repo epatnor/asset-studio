@@ -8,10 +8,11 @@
 // verklig lapse rate: öarna är några hundra meter höga, och gränserna ska gå att styra. Ett lågfrekvent brus ger
 // skogen dungar och gläntor.
 //
-//   const b = computeBiomes(t, recipe);   // t ur generateTerrain; { weights (Uint8, n·n·8), coverage (% av landet), ms }
+//   const b = computeBiomes(t, recipe, rf);   // t ur generateTerrain, rf ur regions.js (valfri); { weights (Uint8, n·n·8), coverage (% av landet), ms }
 //   mixPaint(b.weights, paint, n)          // det målade lagret ovanpå (se nedan)
 
 import { createNoise } from './generate.js';
+import { K } from './regions.js';
 
 // Ordningen är densamma överallt: vikterna, attributen bio0 (0–3) och bio1 (4–7) och färgerna i terrain.json
 export const BIOMES = ['beach', 'meadow', 'forest', 'pine', 'marsh', 'heath', 'rock', 'snow'];
@@ -39,26 +40,28 @@ export function seaDistance(heights, n, cell, sea) {
 }
 
 // t: { n, cell, half, heights, wet } ur generateTerrain. R: receptet (sea, seaLevel, sandBand, snowline, cliffAngle,
-// treeline, rainfall, forestCover, marshes, coastWind, seed)
-export function computeBiomes(t, R) {
+// treeline, rainfall, forestCover, marshes, coastWind, seed). rf: regionernas fält (regions.js); med det tar varje
+// hörn klimatet och biomernas vikter ur sina regioner i stället för ur världens spakar
+export function computeBiomes(t, R, rf = null) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const { n, cell, half, heights: H, wet } = t;
   const sea = R.sea ? (R.seaLevel ?? 0) : null, seaY = sea ?? -Infinity;
   const dSea = seaDistance(H, n, cell, sea);
   const noise = createNoise((R.seed ?? 1) * 5 + 11), patch = createNoise((R.seed ?? 1) * 3 + 2);
-  const tree = R.treeline ?? 120, snow = R.snowline ?? 150, cliff = Math.cos((R.cliffAngle ?? 36) * Math.PI / 180);
-  const rain = R.rainfall ?? 0.5, cover = R.forestCover ?? 0.55, marshes = R.marshes ?? 0.3, wind = R.coastWind ?? 40, sand = R.sandBand ?? 1.4;
-  const weights = new Uint8Array(n * n * 8), w = new Float32Array(8), sum = new Float64Array(8);
+  const cliff = Math.cos((R.cliffAngle ?? 36) * Math.PI / 180), sand = R.sandBand ?? 1.4;
+  let tree = R.treeline ?? 120, snow = R.snowline ?? 150, rain = R.rainfall ?? 0.5, cover = R.forestCover ?? 0.55, marshes = R.marshes ?? 0.3, wind = R.coastWind ?? 40;
+  const weights = new Uint8Array(n * n * 8), w = new Float32Array(8), sum = new Float64Array(8), rv = new Float32Array(K.size);
   let land = 0;
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const k = j * n + i, h = H[k], e = h - (sea ?? 0);
     if (h <= seaY) { weights[k * 8] = 255; continue; } // under havet: sandbotten (strandens lager), räknas inte i andelarna
     land++;
+    const x = -half + i * cell, z = -half + j * cell;
+    if (rf) { rf.sample(x, z, rv); tree = rv[K.treeline]; snow = rv[K.snowline]; rain = rv[K.rainfall]; cover = rv[K.forestCover]; marshes = rv[K.marshes]; wind = rv[K.coastWind]; }
     // Lutningen ur grannarna (centrala differenser), som normalens y
     const hx = (H[k + (i < n - 1 ? 1 : 0)] - H[k - (i > 0 ? 1 : 0)]) / (cell * ((i > 0) + (i < n - 1)));
     const hz = (H[k + (j < n - 1 ? n : 0)] - H[k - (j > 0 ? n : 0)]) / (cell * ((j > 0) + (j < n - 1)));
     const up = 1 / Math.hypot(hx, 1, hz);
-    const x = -half + i * cell, z = -half + j * cell;
     const low = noise(x / 90, z / 90) * 0.6 + noise(x / 30, z / 30) * 0.25; // −1..1, dungar och gläntor
     const coast = Math.exp(-dSea[k] / Math.max(1, wind)); // 1 vid stranden, 0 inåt land
     // Fukten: dropparnas spår, regnet och kustluften, minus branta sluttningar där vattnet rinner av
@@ -80,8 +83,10 @@ export function computeBiomes(t, R) {
     w[2] = woods * (1 - pineBand) * (1 - marsh) * free;
     w[3] = woods * pineBand * (1 - marsh) * free + smooth(0.2, 0.6, m) * pineBand * (1 - cold) * free * 0.25;
     w[1] = Math.max(0.05, free - w[2] - w[3] - w[4] - w[5]) * (0.6 + 0.4 * (1 - dry)); // äng: resten
+    if (rf) for (let b = 0; b < 8; b++) w[b] *= rv[K.bias + b]; // regionens tema: vilka biomer som trivs där
     let s = 0;
     for (let b = 0; b < 8; b++) s += w[b];
+    if (s < 1e-6) { w[1] = 1; s = 1; } // ett tema som stängt av allt: äng
     for (let b = 0; b < 8; b++) { const v = w[b] / s; weights[k * 8 + b] = Math.round(v * 255); sum[b] += v; }
   }
   // Andelarna av landet (procent), för lådan, footern och kontrollerna

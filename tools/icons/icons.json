@@ -695,6 +695,60 @@
         null,
         null
       ]
+    },
+    "maproom_regions": {
+      "cols": 4,
+      "rows": 3,
+      "aspect": "4:3",
+      "tint": "warm terracotta brown",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "maproom/region_temperate",
+          "prompt": "a green vale: soft green hills with a few round trees and a little path"
+        },
+        {
+          "id": "maproom/region_woodland",
+          "prompt": "deep woods: a dense lush green broadleaf forest seen from the edge"
+        },
+        {
+          "id": "maproom/region_pinewood",
+          "prompt": "pine highlands: dark pine trees on a cool misty hillside"
+        },
+        {
+          "id": "maproom/region_wetland",
+          "prompt": "fens: reeds and still dark water with lily pads and mist"
+        },
+        {
+          "id": "maproom/region_steppe",
+          "prompt": "golden steppe: dry golden grass on rolling open land under a warm sky"
+        },
+        {
+          "id": "maproom/region_autumn",
+          "prompt": "autumn wood: round trees in orange, red and gold leaves"
+        },
+        {
+          "id": "maproom/region_highland",
+          "prompt": "windswept highlands: purple heather moor and grey rocks, wind lines in the sky"
+        },
+        {
+          "id": "maproom/region_gloom",
+          "prompt": "gloomwood: a dark haunted forest with bare twisted trees and pale mist"
+        },
+        {
+          "id": "maproom/region_frost",
+          "prompt": "frostlands: snowy pines and icy blue rocks"
+        },
+        {
+          "id": "maproom/region_ashland",
+          "prompt": "ashlands: burnt black ground, cracked grey rock and a smouldering dead tree"
+        },
+        {
+          "id": "maproom/view_regions",
+          "prompt": "a fantasy region map: an island divided into a few large soft coloured zones with name banners"
+        },
+        null
+      ]
     }
   }
 }

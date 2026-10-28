@@ -661,19 +661,25 @@ landBtn.dataset.dept = 'maproom';
 landBtn.dataset.step = 'world';
 landBtn.title = 'The Map Room, step 1: the world, most often an island in the sea, its size, shape, mountains and erosion';
 $('kinds').append(landBtn);
-// Biomes (steg 2) är byggd: samma värld och vy, andra kort och en pensel
+// Regions (steg 2): världens zoner, var och en med eget klimat, tema och färgton; samma värld och vy
+const regionBtn = el('button', null, 'Regions');
+regionBtn.dataset.dept = 'maproom';
+regionBtn.dataset.step = 'regions';
+regionBtn.title = 'The Map Room, step 2: divide the world into regions, each with its own climate, theme and colour, with borders along ridges, streams and the sea';
+$('kinds').append(regionBtn);
+// Biomes (steg 3) är byggd: samma värld och vy, andra kort och en pensel
 const biomeBtn = el('button', null, 'Biomes');
 biomeBtn.dataset.dept = 'maproom';
 biomeBtn.dataset.step = 'biomes';
-biomeBtn.title = 'The Map Room, step 2: biomes from the geography (height, slope, wetness, tree line, distance to the sea), and painted by hand';
+biomeBtn.title = 'The Map Room, step 3: biomes from the geography (height, slope, wetness, tree line, distance to the sea), and painted by hand';
 $('kinds').append(biomeBtn);
 let terrainStep = 'world';
 for (const [label, tip] of [
-  ['Sculpt', 'step 3: shape the world by hand, and dig streams, rivers and bays'],
-  ['Paint', 'step 4: paint the ground layers, by rules and with a brush'],
-  ['Populate', 'step 5: fill the world with trees, plants and rocks by geography, biome and ground'],
-  ['Explore', 'step 6: walk or fly through the world, fine-tune it and place houses and key objects'],
-  ['Life', 'step 7: animals, monsters and NPCs'],
+  ['Sculpt', 'step 4: shape the world by hand, and dig streams, rivers and bays'],
+  ['Paint', 'step 5: paint the ground layers, by rules and with a brush'],
+  ['Populate', 'step 6: fill the world with trees, plants and rocks by geography, biome and ground'],
+  ['Explore', 'step 7: walk or fly through the world, fine-tune it and place houses and key objects'],
+  ['Life', 'step 8: animals, monsters and NPCs'],
 ]) {
   const b = el('button', null, label);
   b.dataset.dept = 'maproom';
@@ -914,6 +920,7 @@ waterBtn.onclick = async () => {
 };
 // Ett steg i Kartrummet: samma flik (studio/terrain.js), ett annat steg
 landBtn.onclick = () => openTerrain('world');
+regionBtn.onclick = () => openTerrain('regions');
 biomeBtn.onclick = () => openTerrain('biomes');
 async function openTerrain(stepId) {
   terrainStep = stepId;
@@ -1089,5 +1096,6 @@ else if (location.hash === '#vader') weatherBtn.onclick();
 else if (location.hash === '#vatten') waterBtn.onclick();
 else if (location.hash === '#kartrummet') landBtn.onclick();
 else if (location.hash === '#kartrummet-biomes') biomeBtn.onclick();
+else if (location.hash === '#kartrummet-regions') regionBtn.onclick();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();

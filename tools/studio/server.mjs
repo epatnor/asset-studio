@@ -580,7 +580,8 @@ async function vfxSave({ name, kind, settings, overwrite, from }) {
 // --- Väderkvarnen, flikarna Väder och Vatten (docs/effektlabb.md, E4 och E3): spakar, färdiga lägen och platserna
 // (tools/<område>/<område>.json), sparade recept i assets/<område>/<namn>.<område>.json. Spakar med recipe: false
 // (vattnets scen och himmel) sparas inte ---
-function recipeStore(area) {
+// extra: fält utanför spakarna som får sparas, med en funktion som rensar värdet (svarar null för att hoppa över)
+function recipeStore(area, { extra = {} } = {}) {
   const JSON_FILE = `tools/${area}/${area}.json`, SAVED = `assets/${area}`, EXT = `.${area}.json`;
   return {
     async info() {
@@ -590,7 +591,7 @@ function recipeStore(area) {
       return { ...X, saved: saved.sort((a, b) => String(b.saved).localeCompare(String(a.saved))) };
     },
     // layers: lager som inte är spakar (Kartrummets målade biomer), som base64-text, högst 400 000 tecken totalt
-    async save({ name, settings, overwrite, from, layers }) {
+    async save({ name, settings, overwrite, from, layers, ...rest }) {
       name = String(name ?? '').trim().toLowerCase();
       if (!NAME.test(name)) return { error: 'the name may only contain a–z, 0–9 and _' };
       const X = await readJson(JSON_FILE);
@@ -608,13 +609,28 @@ function recipeStore(area) {
       await mkdir(path.dirname(file), { recursive: true });
       const lay = Object.fromEntries(Object.entries(layers && typeof layers === 'object' ? layers : {}).filter(([k, v]) => /^\w{1,40}$/.test(k) && typeof v === 'string' && v && /^[A-Za-z0-9+/=]*$/.test(v)));
       if (Object.values(lay).reduce((n, v) => n + v.length, 0) > 400000) return { error: 'the layers are too large' };
-      const entry = { name, settings: clean, ...(Object.keys(lay).length ? { layers: lay } : {}), ...fromOf(from), saved: new Date().toISOString() };
+      const more = Object.fromEntries(Object.entries(extra).map(([k, fn]) => [k, fn(rest[k], X)]).filter(([, v]) => v != null));
+      const entry = { name, settings: clean, ...more, ...(Object.keys(lay).length ? { layers: lay } : {}), ...fromOf(from), saved: new Date().toISOString() };
       await writeFile(file, JSON.stringify(entry, null, 2) + '\n');
       return { entry, file: `${SAVED}/${name}${EXT}` };
     },
   };
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain'); // Kartrummet: docs/terrain.md
+// Kartrummets regioner (docs/terrain.md, steget Regions): högst 16, med namn, tema, mittpunkt (andelar av världen, eller
+// automatisk) och justeringar inom spakarnas gränser i terrain.json (regionParams)
+function cleanRegions(list, X) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const num = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Number(v))) : d);
+  return list.slice(0, 16).map((r, i) => {
+    const out = { name: String(r?.name ?? `Region ${i + 1}`).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40) || `Region ${i + 1}`, theme: X.regionThemes?.[r?.theme] ? r.theme : 'temperate' };
+    if (Array.isArray(r?.at) && r.at.length === 2) out.at = r.at.map((v) => num(v, -0.5, 0.5, 0));
+    if (/^#[0-9a-f]{6}$/i.test(r?.color ?? '')) out.color = r.color;
+    const adj = Object.fromEntries((X.regionParams ?? []).map((q) => [q.key, num(r?.adjust?.[q.key], q.min, q.max, q.default)]).filter(([, v]) => v !== 0));
+    if (Object.keys(adj).length) out.adjust = adj;
+    return out;
+  });
+}
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();

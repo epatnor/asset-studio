@@ -402,6 +402,14 @@
   .stagebar button img { width: 32px; height: 32px; border-radius: 7px; }
   .stagebar button.on { border-color: var(--accent); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 2px var(--accent-soft); }
   body.drawer-closed .stagebar { left: var(--gap); }
+  /* Kartrummets regioner: namnen på kartan, vid varje regions mittpunkt */
+  .rlabels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  .rlabel { position: absolute; transform: translate(-50%, -100%); padding: 3px 9px; border-radius: 8px; background: rgba(20, 16, 12, 0.55); border: 1px solid var(--rc, #fff); color: #fff; font: 600 13px/1.2 var(--font, system-ui); letter-spacing: 0.04em; white-space: nowrap; text-shadow: 0 1px 2px #000; }
+  .rlabel small { display: block; font-weight: 400; font-size: 11px; opacity: 0.8; letter-spacing: 0; }
+  .rlabel.on { box-shadow: 0 0 0 2px var(--rc, #fff); }
+  .rname { width: 100%; }
+  .rtools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .rtools button.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
   /* Häxkittelns verktygslåda i andra avdelningar (studio/fxtoolbox.js): en liten låda nederst i mitten av vyn */
   .fxbox { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--foot) + var(--gap)); width: min(620px, calc(100vw - 720px)); min-width: 300px;
            border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; z-index: 2; box-sizing: border-box; --accent: #8b5cf6; --accent-soft: color-mix(in srgb, #8b5cf6 30%, transparent); }
