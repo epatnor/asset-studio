@@ -6,10 +6,15 @@
 // samstämmig fronten är (1 på rena fronter, mot 0 där fronter från två strandsträckor möts; där tonas vågorna ut).
 // Ultra-Waters strålrör (ray-tube) för uddar och vikar är inte med.
 //
-//   const s = travelField(bedAt, level, x0, x1, z0, z1);  s.at(x, z) → [τ, riktning x, riktning z, samstämmighet]
+// Dessutom kustkartan (s.coast) för skummet vid branta kanter: avståndet till land i meter (R, 0..COAST_MAX) och hur
+// brant kusten är (G: djupt nära land, som vid klippor, stenar och kajer), även runt små holmar.
 //
-// Utan någon strand i rutan (eller bara små holmar) är s null.
+//   const s = travelField(bedAt, level, x0, x1, z0, z1);  s.at(x, z) → [τ, riktning x, riktning z, samstämmighet]
+//   s.coast → { data (RGBA8, nx × nz), x0, z0, h }
+//
+// Utan någon vattenlinje i rutan är s null.
 const GRAV = 9.81, DMIN = 0.3, DMAX = 14;
+export const COAST_MAX = 24;
 const ISLET = 24; // landfläckar mindre än så (rutor) ger inga egna fronter: de bryter de förbipasserande i stället
 
 export function travelField(bedAt, level, x0, x1, z0, z1, maxCells = 384) {
@@ -20,14 +25,18 @@ export function travelField(bedAt, level, x0, x1, z0, z1, maxCells = 384) {
     const k = j * nx + i, y = bedAt(x0 + i * h, z0 + j * h) - level;
     height[k] = y; sea[k] = y < 0 ? 1 : 0;
   }
+  const coast = coastMap(height, sea, nx, nz, h);
+  if (!coast) return null;
+  coast.x0 = x0; coast.z0 = z0; coast.h = h;
+  const still = { h, nx, nz, at: () => [0, 0, 0, 0], coast }; // bara holmar: inga vågfronter, men kustkartan
   const wet = wetMask(sea, nx, nz);
   let any = false;
   for (let k = 0; k < n && !any; k++) if (!wet[k]) any = true;
-  if (!any) return null;
+  if (!any) return still;
   const c = new Float32Array(n), slow = new Float64Array(n);
   for (let k = 0; k < n; k++) { c[k] = Math.sqrt(GRAV * Math.min(DMAX, Math.max(DMIN, -height[k]))); slow[k] = h / c[k]; }
   const W = nx + 2, T = new Float64Array(W * (nz + 2)).fill(Infinity), open = new Uint8Array(W * (nz + 2));
-  if (!seed(T, open, height, wet, slow, nx, nz)) return null;
+  if (!seed(T, open, height, wet, slow, nx, nz)) return still;
   for (let it = 0; it < 40; it++) if (!sweep(T, open, slow, nx, nz)) break;
   // τ med tecken: positiv ute i vattnet, negativ på land
   const tau = new Float32Array(n);
@@ -50,7 +59,7 @@ export function travelField(bedAt, level, x0, x1, z0, z1, maxCells = 384) {
   }
   blur(coh, nx, nz, 2); // mjuk övergång in mot chockerna
   return {
-    h, nx, nz,
+    h, nx, nz, coast,
     at(x, z) {
       const gx = Math.min(nx - 1.001, Math.max(0, (x - x0) / h)), gz = Math.min(nz - 1.001, Math.max(0, (z - z0) / h));
       const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, k = j * nx + i;
@@ -66,6 +75,31 @@ export function travelField(bedAt, level, x0, x1, z0, z1, maxCells = 384) {
     },
   };
 }
+
+// Kustkartan: avståndet till vattenlinjen (samma lösare med farten 1, så att tiden blir meter) och brantheten: djupet
+// delat med avståndet till land nära kusten (en flack strand ≈ 0,05, en klippa > 1), utsträckt och utjämnad lite
+function coastMap(height, sea, nx, nz, h) {
+  const n = nx * nz, W = nx + 2, unit = new Float64Array(n).fill(h);
+  const T = new Float64Array(W * (nz + 2)).fill(Infinity), open = new Uint8Array(W * (nz + 2));
+  if (!seed(T, open, height, sea, unit, nx, nz)) return null;
+  for (let it = 0; it < 40; it++) if (!sweep(T, open, unit, nx, nz)) break;
+  const dist = new Float32Array(n), steep = new Float32Array(n);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const k = j * nx + i, d = T[(j + 1) * W + i + 1];
+    dist[k] = d;
+    if (sea[k] && d < 16) steep[k] = smooth(0.25, 0.8, -height[k] / Math.max(d, h * 0.5));
+  }
+  dilate(steep, nx, nz, 2);
+  blur(steep, nx, nz, 2);
+  const data = new Uint8Array(n * 4);
+  for (let k = 0; k < n; k++) {
+    data[k * 4] = Math.round(255 * Math.min(1, dist[k] / COAST_MAX));
+    data[k * 4 + 1] = Math.round(255 * Math.min(1, steep[k]));
+    data[k * 4 + 3] = 255;
+  }
+  return { data, nx, nz };
+}
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // Havet med små holmar översvämmade: de skulle annars få egna ringar av vågkammar
 function wetMask(sea, nx, nz) {
@@ -131,6 +165,20 @@ function pass(T, open, slow, nx, nz, di, dj) {
 }
 const sweep = (T, open, slow, nx, nz) =>
   pass(T, open, slow, nx, nz, 1, 1) + pass(T, open, slow, nx, nz, -1, 1) + pass(T, open, slow, nx, nz, 1, -1) + pass(T, open, slow, nx, nz, -1, -1);
+
+function dilate(a, nx, nz, r) {
+  const tmp = new Float32Array(a.length);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    let m = 0;
+    for (let q = Math.max(0, i - r); q <= Math.min(nx - 1, i + r); q++) m = Math.max(m, a[j * nx + q]);
+    tmp[j * nx + i] = m;
+  }
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    let m = 0;
+    for (let q = Math.max(0, j - r); q <= Math.min(nz - 1, j + r); q++) m = Math.max(m, tmp[q * nx + i]);
+    a[j * nx + i] = m;
+  }
+}
 
 function blur(a, nx, nz, r) {
   const tmp = new Float32Array(a.length);

@@ -75,6 +75,8 @@ Som i de andra vyerna (docs/avdelningar.md): vattentyperna med sina ikoner i lå
 
 På i Beach surf (0,35 m), Tropical lagoon (0,12), Rolling ocean (0,3) och Storm sea (0,7), alla med Lace foam 1. Kartrummets hav är Tropical lagoon. Inte med från Ultra-Water: FFT-havet, strålrören (uddar och vikar förstärker inte vågorna), undervattensvyn och flytkroppar. `heightAt` (för flytande saker) räknar inte med de brytande vågorna.
 
+**Branta kanter och kaustik (2026-10-29).** Vid klippor, stenar och kajer är det djupt ända fram till väggen, så strandskummet (som går på djupet ur djupbufferten) gav bara en tunn rand. `shore.js` gör nu också en kustkarta: avståndet till vattenlinjen i meter och hur brant kusten är (djupet delat med avståndet till land: en flack strand ≈ 0,05, en klippa > 1, utjämnat över ett tiotal meter). Den följer med geometrin som en textur (`geometry.userData.coast`), även runt små holmar. Där kusten är brant ligger ett band av skum längs kanten, bredare och tätare när en våg slår i (Wash period), med glesa spetsar längre ut; bredden följer Foam width (högst 6 m) och tätheten Shore foam. Övergången mellan strand och klippa är mjuk: branta och flacka sträckor tonar i varandra, och stranden har sina brytande vågor kvar. Kaustiken tonas nu bort under 3–9 m djup, på branta väggar och där mönstret blir finare än pixlarna (annars blev den till lodräta streck över djupt vatten, som vid Kartrummets kust). Kartrummets standardvärld har brant kust runt hela ön (botten faller 10–13 m inom några meter), så där får hela kusten kantskummet.
+
 Kvar: vattenfall och å med fall, interaktiva krusningar som simulering (pöl, regn, fotsteg), undervattensvy, flytkraft, Tinkertown och att vind och väder styr vågorna.
 
 ## Fliken Väder

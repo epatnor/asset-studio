@@ -23,7 +23,8 @@
 // Geometrin har hörnen i världens koordinater (y = ytans nivå i vila) och fyra attribut: bed (markens höjd under hörnet,
 // för dämpning och sköljning), bedSlope (markens lutning, för vågryggarna mot stranden), flow (strömmens fart i xz,
 // m/s vid Current = 1) och shore (gångtiden från stranden, riktningen in mot land och frontens samstämmighet, för de
-// brytande vågorna). bedAndFlow() fyller dem.
+// brytande vågorna). bedAndFlow() fyller dem, och lägger kustkartan (avståndet till land och hur brant kusten är, för
+// skummet vid klippor och stenar) som en textur i geometry.userData.coast.
 //
 // Brytande vågor och spetsskum (Breakers och Lace foam, båda av som standard, så att vattnet annars är som förut) är
 // efter Ultra-Water (github.com/Humpalumps/Ultra-Water, MIT, © 2026 Humpalumps): vågfronter som går på gångtiden från
@@ -35,9 +36,9 @@ import {
   Fn, uniform, uniformArray, attribute, varying, float, vec2, vec3, vec4, sin, cos, exp, pow, max, min, mix, abs, fract, floor,
   smoothstep, normalize, dot, reflect, length, select, saturate, positionWorld, cameraPosition, screenUV, texture,
   viewportSharedTexture, viewportDepthTexture, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, reflector,
-  sqrt, clamp, acos, mx_noise_float,
+  sqrt, clamp, acos, mx_noise_float, fwidth, normalWorld,
 } from 'three/tsl';
-import { travelField } from './shore.js';
+import { travelField, COAST_MAX } from './shore.js';
 
 const G = 9.81, DEG = Math.PI / 180;
 // De fyra vågorna i förhållande till den största: längd, vinkel mot huvudriktningen och höjd
@@ -137,6 +138,7 @@ function foamTex(N) {
   }
   return dataTex(data, N);
 }
+const NO_COAST = (() => { const t = new THREE.DataTexture(new Uint8Array([255, 0, 0, 255]), 1, 1, THREE.RGBAFormat); t.needsUpdate = true; return t; })();
 function smoothN(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 
 // Fyll attributen bed och flow för en geometri vars hörn ligger i världen: bedAt(x, z) ger markens höjd, flowAt(x, z) [vx, vz]
@@ -163,6 +165,14 @@ export function bedAndFlow(geometry, bedAt, flowAt = null) {
     for (let i = 0; i < n; i++) if (bed[i] > L - 12) { const x = p.getX(i), z = p.getZ(i); x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
     const field = x0 < x1 ? travelField(bedAt, L, x0 - 20, x1 + 20, z0 - 20, z1 + 20) : null;
     if (field) for (let i = 0; i < n; i++) shore.set(field.at(p.getX(i), p.getZ(i)), i * 4);
+    if (field) {
+      const c = field.coast, tex = new THREE.DataTexture(c.data, c.nx, c.nz, THREE.RGBAFormat);
+      tex.magFilter = tex.minFilter = THREE.LinearFilter;
+      tex.needsUpdate = true;
+      // Rutornas mitt: u = (x − x0 + h/2) / (nx·h)
+      geometry.userData.coast = { tex, box: [c.x0 - c.h / 2, c.z0 - c.h / 2, 1 / (c.nx * c.h), 1 / (c.nz * c.h)] };
+      geometry.addEventListener('dispose', () => tex.dispose());
+    }
   }
   geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 4));
   return geometry;
@@ -180,12 +190,22 @@ export function createWater({ geometry, level = 0, sky }) {
     shoreFoam: uniform(0.35), foamWidth: uniform(0.25), crestFoam: uniform(0), foamScale: uniform(1),
     edge: uniform(0.06), wetShore: uniform(0.6), wetBand: uniform(0.12), surge: uniform(0), surgePeriod: uniform(7),
     flowSpeed: uniform(0.8), flowFoam: uniform(0.4), caustics: uniform(0.8), causticScale: uniform(1.5),
-    breakers: uniform(0), lace: uniform(0), swellDir: uniform(new THREE.Vector2(0, 1)),
+    breakers: uniform(0), lace: uniform(0), swellDir: uniform(new THREE.Vector2(0, 1)), coastBox: uniform(new THREE.Vector4()),
     sunDir: uniform(new THREE.Vector3(0, 1, 0)), sunColor: uniform(new THREE.Color('#ffffff')), sunI: uniform(1), ambient: uniform(new THREE.Color('#8090a0')),
     level: uniform(level), rain: uniform(0),
     splash: uniformArray(Array.from({ length: RIPPLES }, () => new THREE.Vector4(0, 0, -99, 0)), 'vec4'), // x, z, start, styrka
   };
   let nextSplash = 0;
+  // Kustkartan följer geometrin (Kartrummet byter geometri när havsnivån ändras); utan karta: långt till land överallt
+  const coastTex = texture(NO_COAST);
+  let coastOf;
+  const syncCoast = () => {
+    const c = mesh.geometry.userData.coast ?? null;
+    if (c === coastOf) return;
+    coastOf = c;
+    coastTex.value = c ? c.tex : NO_COAST;
+    u.coastBox.value.set(...(c ? c.box : [0, 0, 0, 0]));
+  };
 
   // ---------- Hörnen: Gerstnervågor och sköljning ----------
   const P0 = attribute('position', 'vec3'), bed = attribute('bed', 'float'), flowA = attribute('flow', 'vec2'), bedSlope = attribute('bedSlope', 'vec2');
@@ -385,7 +405,18 @@ export function createWater({ geometry, level = 0, sky }) {
     const S = float(1).div(3); // tre gånger längre längs stranden än tvärs
     const along = mix(foamNoise(vec2(S, 1)), foamNoise(vec2(1, S)), sx.div(sx.add(sz).add(1e-6)));
     const noise = mix(foamNoise(vec2(1, 1)), along, smoothstep(0.002, 0.03, sx.add(sz)));
-    const shore = float(1).sub(smoothstep(0, u.foamWidth, dv)).mul(u.shoreFoam);
+    // Vid branta kanter (klippor, stenar, kajer) är det djupt ända fram till väggen, så djupet ovan ger nästan ingen rand.
+    // Där går skummet på avståndet till land i världen (kustkartan): ett band längs kanten som kokar upp och breder ut
+    // sig när en våg slår i och sedan nöts ned. Lugnt vatten (ingen sköljning) ger ett jämnt smalare band
+    const cm = texture(coastTex, Pw.xz.sub(u.coastBox.xy).mul(u.coastBox.zw)), cd = cm.r.mul(COAST_MAX);
+    const cs = fract(t.div(max(u.surgePeriod, 1)).add(shorePhase(Pw.xz).div(TAU)));
+    const hit = select(cs.lessThan(0.12), smoothstep(0, 0.12, cs), exp(cs.sub(0.12).mul(-2.6)));
+    const burst = mix(0.55, hit, saturate(u.surge.mul(4).add(u.breakers.mul(2))));
+    const reach = min(u.foamWidth.mul(12).add(2), 6).mul(burst.mul(0.6).add(0.75));
+    const core = float(1).sub(smoothstep(reach.mul(0.45), reach, cd)).mul(burst.mul(0.25).add(0.75));
+    const tail = float(1).sub(smoothstep(reach, reach.mul(2), cd)).mul(0.4); // glesa spetsar längre ut
+    const cliff = max(core, tail).mul(cm.g).mul(u.shoreFoam).mul(2);
+    const shore = max(float(1).sub(smoothstep(0, u.foamWidth, dv)).mul(u.shoreFoam), cliff);
     const crest = smoothstep(0.5, 0.9, vPinch.div(max(u.steep, 0.01))).mul(u.crestFoam).mul(1.4);
     // Forsskummet har sin topp en bit ut från kanten (där strömmen bryts över stenarna), inte ända in mot land
     const rapids = saturate(fl.mul(0.8)).mul(float(1).sub(smoothstep(0.08, 0.45, dv))).mul(smoothstep(0.0, 0.1, dv)).mul(u.flowFoam).mul(1.3);
@@ -477,10 +508,12 @@ export function createWater({ geometry, level = 0, sky }) {
 
   // ---------- Marken under och vid vattnet ----------
   // Kaustik på botten (i världen, så att mönstret ligger still när kameran rör sig), våt strand och sand som sköljts
+  // De tunna linjerna tonas bort där en pixel täcker mer än en bråkdel av en cell (långt bort och i flack vinkel), annars
+  // blir de bara de linjer som råkar gå längs blicken kvar, som streck
   const caustic = (xz) => {
     const t = u.time, s = xz.div(u.causticScale.mul(4));
     const a = texture(T.misc, s.add(vec2(t.mul(0.021), t.mul(0.013)))).b, b = texture(T.misc, s.mul(0.77).add(vec2(t.mul(-0.017), t.mul(0.019))).add(0.31)).b;
-    return min(a, b).mul(2.2);
+    return min(a, b).mul(2.2).mul(float(1).sub(smoothstep(0.08, 0.4, length(fwidth(s)).mul(7))));
   };
   function wetness(levelNode = u.level) {
     const y = positionWorld.y, above = y.sub(levelNode);
@@ -505,7 +538,8 @@ export function createWater({ geometry, level = 0, sky }) {
     // Markens färg: kaustik under ytan, mörkare där det är vått
     groundColor(base, levelNode = u.level) {
       const below = levelNode.sub(positionWorld.y);
-      const under = smoothstep(0.02, 0.25, below).mul(exp(below.mul(-0.22)));
+      // Kaustiken syns bara på grunt (borta på 9 m) och på botten som vetter uppåt, inte på branta väggar
+      const under = smoothstep(0.02, 0.25, below).mul(exp(below.mul(-0.22))).mul(float(1).sub(smoothstep(3, 9, below))).mul(smoothstep(0.6, 0.85, normalWorld.y));
       const c = caustic(positionWorld.xz).mul(u.caustics).mul(u.sunI).mul(max(u.sunDir.y, 0).add(0.1)).mul(under);
       return base.mul(float(1).sub(wetness(levelNode).mul(0.62))).mul(c.add(1));
     },
@@ -533,7 +567,7 @@ export function createWater({ geometry, level = 0, sky }) {
       setMirror(!!v.mirror);
     },
     setLevel(y) { u.level.value = y; if (mirrorNode) mirrorNode.target.position.y = y; },
-    update(time) { u.time.value = time; },
+    update(time) { u.time.value = time; syncCoast(); },
     // Ringar på ytan där något slog i
     splash(x, z, strength = 1) { u.splash.array[nextSplash].set(x, z, u.time.value, strength); nextSplash = (nextSplash + 1) % RIPPLES; },
     // Ytans höjd i vila plus vågorna (för flytande saker); bed: markens höjd där
