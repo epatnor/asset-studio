@@ -28,27 +28,10 @@
     }
   },
   "source": {
-    "ridges": 7,
-    "depth": 0.6,
-    "width": 0.22,
-    "wiggle": 0.45,
-    "plates": 0.5,
-    "detail": 0.25,
-    "seed": 1,
-    "dark": "#3B2618",
-    "light": "#8A5B3A",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.75,
-      "colors": 6,
-      "shape": 0.5,
-      "saturation": 1.08,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 2,
@@ -153,5 +136,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_generic",
+    "variant": 1,
+    "seed": 20268948
   }
 }

@@ -37,37 +37,10 @@
     }
   },
   "source": {
-    "ridges": 9,
-    "depth": 0.7,
-    "width": 0.32,
-    "wiggle": 0.5,
-    "plates": 0.35,
-    "rows": 0,
-    "aspect": 4,
-    "cracks": 0.3,
-    "detail": 0.7,
-    "tint": 0.08,
-    "flakes": 0.1,
-    "accent": "#C9C2B0",
-    "lenticels": 0,
-    "crevice": "#24211E",
-    "lichen": 0,
-    "lichenColor": "#9DA67A",
-    "seed": 7,
-    "dark": "#3A3530",
-    "light": "#ABA398",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_weathered_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.5,
-      "colors": 8,
-      "shape": 0.5,
-      "saturation": 1.0,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 1.0,
@@ -172,5 +145,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_weathered",
+    "variant": 1,
+    "seed": 20268948
   }
 }

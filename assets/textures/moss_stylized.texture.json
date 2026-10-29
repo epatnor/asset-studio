@@ -23,25 +23,10 @@
     }
   },
   "source": {
-    "kind": "fbm",
-    "scale": 14,
-    "octaves": 4,
-    "sharpness": 0.3,
-    "seed": 1,
-    "dark": "#3E5A2B",
-    "light": "#8FB65A",
-    "type": "noise"
+    "type": "image",
+    "name": "moss_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.7,
-      "colors": 5,
-      "shape": 0.5,
-      "saturation": 1.05,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 2,
@@ -146,5 +131,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "moss",
+    "variant": 0,
+    "seed": 20261029
   }
 }

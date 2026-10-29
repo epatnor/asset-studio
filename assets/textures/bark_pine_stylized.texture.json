@@ -37,37 +37,10 @@
     }
   },
   "source": {
-    "ridges": 6,
-    "depth": 0.7,
-    "width": 0.34,
-    "wiggle": 0.45,
-    "plates": 0.5,
-    "rows": 0,
-    "aspect": 2.2,
-    "cracks": 0.6,
-    "detail": 0.9,
-    "tint": 0.12,
-    "flakes": 0.1,
-    "accent": "#877563",
-    "lenticels": 0,
-    "crevice": "#2A231C",
-    "lichen": 0.4,
-    "lichenColor": "#C0602A",
-    "seed": 1,
-    "dark": "#4F4131",
-    "light": "#775E48",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_pine_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.5,
-      "colors": 8,
-      "shape": 0.5,
-      "saturation": 1.0,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 1.0,
@@ -172,5 +145,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_pine",
+    "variant": 4,
+    "seed": 36826
   }
 }

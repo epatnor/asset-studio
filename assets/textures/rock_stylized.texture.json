@@ -28,37 +28,10 @@
     }
   },
   "source": {
-    "kind": "worley",
-    "scale": 3,
-    "octaves": 4,
-    "sharpness": 0.3,
-    "seed": 1,
-    "dark": "#6E6355",
-    "light": "#B3A58F",
-    "type": "noise"
+    "type": "image",
+    "name": "rock_stylized"
   },
-  "steps": [
-    {
-      "amount": 0.05,
-      "scale": 4,
-      "seed": 7,
-      "op": "warp"
-    },
-    {
-      "edge": 0.45,
-      "cavity": 0.5,
-      "radius": 4,
-      "op": "edges"
-    },
-    {
-      "strength": 0.7,
-      "colors": 6,
-      "shape": 0.5,
-      "saturation": 1.08,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 2,
@@ -163,5 +136,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "rock",
+    "variant": 4,
+    "seed": 36826
   }
 }

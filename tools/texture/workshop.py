@@ -560,6 +560,11 @@ def src_cracks(n, p, rng):
     return np.clip(col, 0, 1), h
 
 
+SOURCES = {"noise": src_noise, "bark": src_bark, "stone": src_stone, "bricks": src_bricks, "planks": src_planks, "ripples": src_ripples, "cracks": src_cracks,
+           "shingles": src_shingles, "splat": src_splat, "gradient": src_gradient, "image": src_image}
+
+
+# --- Ingredienser: namngivna under-texturer, cachade var för sig ---
 def tex_files(obj, acc):
     # Texturfiler som ett recept läser (för cachenyckeln: ändras filen ska cachen inte gälla)
     if isinstance(obj, dict):

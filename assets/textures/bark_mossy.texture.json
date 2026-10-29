@@ -28,55 +28,11 @@
     }
   },
   "source": {
-    "ridges": 7,
-    "depth": 0.6,
-    "width": 0.22,
-    "wiggle": 0.45,
-    "plates": 0.4,
-    "detail": 0.25,
-    "seed": 1,
-    "dark": "#3B2618",
-    "light": "#8A5B3A",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_mossy"
   },
-  "steps": [
-    {
-      "input": "moss",
-      "mask": "low",
-      "amount": 0.5,
-      "opacity": 1,
-      "softness": 0.08,
-      "mask_input": "",
-      "breakup": 0.3,
-      "breakup_scale": 10,
-      "repeat": 1,
-      "mode": "mix",
-      "height": "fill",
-      "seed": 3,
-      "op": "layer"
-    },
-    {
-      "strength": 0.6,
-      "colors": 7,
-      "shape": 0.5,
-      "saturation": 1.08,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
-  "inputs": {
-    "moss": {
-      "recipe": {
-        "source": {
-          "type": "noise",
-          "scale": 16,
-          "dark": "#3E5A2B",
-          "light": "#8FB65A"
-        },
-        "steps": []
-      }
-    }
-  },
+  "steps": [],
+  "inputs": {},
   "material": {
     "meters": 2,
     "normal": {
@@ -180,5 +136,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_mossy",
+    "variant": 5,
+    "seed": 44745
   }
 }

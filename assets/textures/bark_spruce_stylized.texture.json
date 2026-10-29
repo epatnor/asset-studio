@@ -37,37 +37,10 @@
     }
   },
   "source": {
-    "ridges": 12,
-    "depth": 0.55,
-    "width": 0.34,
-    "wiggle": 0.45,
-    "plates": 0.5,
-    "rows": 0,
-    "aspect": 2.5,
-    "cracks": 0.4,
-    "detail": 0.9,
-    "tint": 0.12,
-    "flakes": 0.2,
-    "accent": "#A69F87",
-    "lenticels": 0,
-    "crevice": "#2F2C17",
-    "lichen": 0.4,
-    "lichenColor": "#8FA032",
-    "seed": 1,
-    "dark": "#575124",
-    "light": "#958B6D",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_spruce_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.5,
-      "colors": 8,
-      "shape": 0.5,
-      "saturation": 1.0,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 1.0,
@@ -172,5 +145,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_spruce",
+    "variant": 1,
+    "seed": 20268948
   }
 }

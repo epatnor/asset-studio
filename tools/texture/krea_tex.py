@@ -229,15 +229,54 @@ def to_webp(png):
         Image.open(png).save(webp, "WEBP", quality=90, method=6)
 
 
+def targets_of(name, m):
+    # Biblioteksmaterial (nya, inte ersättningar) får egna filer: krea_<namn>.png, _normal, _height
+    if m.get("library"):
+        b = f"assets/textures/krea_{name}"
+        return {"color": f"{b}.png", "normal": f"{b}_normal.png", "height": f"{b}_height.png"}
+    return m.get("targets", {})
+
+
+def catalog_update(cat, name, m, info):
+    # Texturverkstadens katalog: en ersatt textur behåller sin rad, men receptet pekar nu på Krea-bilden (källan
+    # "image") med samma materialinställningar; det procedurella receptet sparas bredvid som <namn>.procedural.texture.json.
+    # Ett nytt biblioteksmaterial får en egen rad och ett eget recept.
+    tg = targets_of(name, m)
+    stem = Path(tg["color"]).stem
+    row = next((r for r in cat["textures"] if r.get("files", {}).get("color") == tg["color"]), None)
+    if row is None and m.get("library"):
+        lib = m["library"]
+        row = {"name": stem, "profile": lib["profile"], "maps": list(tg), "files": tg, "meters": lib["meters"], "tags": lib.get("tags", []),
+               "recipe": f"assets/textures/{stem}.texture.json", "size": 1024, "saved": time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())}
+        (ROOT / row["recipe"]).write_text(json.dumps({**row, "source": {"type": "image", "name": stem}, "steps": [], "inputs": {},
+                                                      "material": {"meters": lib["meters"]}}, indent=2, ensure_ascii=False) + "\n")
+        cat["textures"].append(row)
+    if row is None:
+        return
+    row["krea"] = info
+    if row.get("recipe") and not m.get("library"):
+        rp = ROOT / row["recipe"]
+        proc = rp.with_name(rp.name.replace(".texture.json", ".procedural.texture.json"))
+        if rp.exists():
+            rec = json.loads(rp.read_text())
+            if rec.get("source", {}).get("type") != "image":
+                proc.write_text(rp.read_text())
+                row["recipe_procedural"] = str(proc.relative_to(ROOT))
+            rec.update(source={"type": "image", "name": stem}, steps=[], inputs={}, krea=info)
+            rp.write_text(json.dumps(rec, indent=2, ensure_ascii=False) + "\n")
+
+
 def install(choice):
     manifest_path = TEX / "krea_installed.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+    cat_path = TEX / "catalog.json"
+    cat = json.loads(cat_path.read_text())
     done = []
     for name, v in choice.items():
         m = SET["materials"][name]
         d = BUILD / name
         meta = json.loads((d / "meta.json").read_text())
-        for kind, target in m.get("targets", {}).items():
+        for kind, target in targets_of(name, m).items():
             src = d / (f"v{v}.png" if kind == "color" else f"v{v}_{kind}.png")
             dst = ROOT / target
             img = Image.open(src)
@@ -250,14 +289,9 @@ def install(choice):
             to_webp(dst)
             done.append(target)
         manifest[name] = {"variant": int(v), "seed": meta["variants"][str(v)]["seed"], "prompt": meta.get("prompt"),
-                          "targets": m.get("targets", {}), "installed": time.strftime("%Y-%m-%d %H:%M")}
-        # Katalograden (Texturverkstaden) får veta att filerna nu kommer från Krea; receptet står kvar för att kunna göras om
-        cat_path = TEX / "catalog.json"
-        cat = json.loads(cat_path.read_text())
-        for row in cat["textures"]:
-            if row.get("files", {}).get("color") == m.get("targets", {}).get("color"):
-                row["krea"] = {"material": name, "variant": int(v), "seed": manifest[name]["seed"]}
-        cat_path.write_text(json.dumps(cat, indent=2, ensure_ascii=False) + "\n")
+                          "targets": targets_of(name, m), "installed": time.strftime("%Y-%m-%d %H:%M")}
+        catalog_update(cat, name, m, {"material": name, "variant": int(v), "seed": manifest[name]["seed"]})
+    cat_path.write_text(json.dumps(cat, indent=2, ensure_ascii=False) + "\n")
     manifest_path.write_text(json.dumps(manifest, indent=1, ensure_ascii=False))
     return {"installed": done}
 

@@ -11,7 +11,7 @@
    "rough": "assets/textures/bark_oak_stylized_rough.png",
    "orm": "assets/textures/bark_oak_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_birch": {
   "variant": 1,
@@ -25,7 +25,7 @@
    "rough": "assets/textures/bark_birch_stylized_rough.png",
    "orm": "assets/textures/bark_birch_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_spruce": {
   "variant": 1,
@@ -39,7 +39,7 @@
    "rough": "assets/textures/bark_spruce_stylized_rough.png",
    "orm": "assets/textures/bark_spruce_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_cherry": {
   "variant": 0,
@@ -53,7 +53,7 @@
    "rough": "assets/textures/bark_cherry_stylized_rough.png",
    "orm": "assets/textures/bark_cherry_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_furrowed": {
   "variant": 0,
@@ -67,7 +67,7 @@
    "rough": "assets/textures/bark_furrowed_stylized_rough.png",
    "orm": "assets/textures/bark_furrowed_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_weathered": {
   "variant": 1,
@@ -81,7 +81,7 @@
    "rough": "assets/textures/bark_weathered_stylized_rough.png",
    "orm": "assets/textures/bark_weathered_stylized_orm.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "bark_generic": {
   "variant": 1,
@@ -92,7 +92,7 @@
    "normal": "assets/textures/bark_stylized_normal.png",
    "height": "assets/textures/bark_stylized_height.png"
   },
-  "installed": "2026-10-29 00:37"
+  "installed": "2026-10-29 03:19"
  },
  "stone_painted": {
   "variant": 1,
@@ -101,7 +101,7 @@
   "targets": {
    "color": "assets/textures/stone_painted.png"
   },
-  "installed": "2026-10-29 00:54"
+  "installed": "2026-10-29 03:19"
  },
  "moss": {
   "variant": 0,
@@ -110,7 +110,7 @@
   "targets": {
    "color": "assets/textures/moss_stylized.png"
   },
-  "installed": "2026-10-29 00:54"
+  "installed": "2026-10-29 03:19"
  },
  "kit_slate": {
   "variant": 1,
@@ -121,6 +121,480 @@
    "normal": "assets/textures/kit_slate_normal.png",
    "height": "assets/textures/kit_slate_height.png"
   },
-  "installed": "2026-10-29 00:54"
+  "installed": "2026-10-29 03:19"
+ },
+ "planks": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, weathered wooden floor planks running vertically, warm brown wood with soft grain, a few knots, slightly darker gaps between boards, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_planks.png",
+   "normal": "assets/textures/surface_planks_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "dirt": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, bare forest ground soil, warm brown earth with a few tiny pebbles and soft darker patches, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_dirt.png",
+   "normal": "assets/textures/surface_dirt_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "grass": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, short lush lawn seen from directly above, a dense carpet of grass blade tips and small clumps in fresh greens with lighter yellow-green tips, no individual tall blades, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_grass.png",
+   "normal": "assets/textures/surface_grass_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "meadow": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, wild meadow ground seen from directly above, dense green grass carpet with scattered tiny yellow and white flower heads seen face-on as small round dots, and clover leaves, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_meadow.png",
+   "normal": "assets/textures/surface_meadow_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "path": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, trodden forest footpath of packed light brown earth with small embedded pebbles and a few dry leaves, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_path.png",
+   "normal": "assets/textures/surface_path_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "road": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, old cobblestone road of rounded light grey stones tightly packed, soft warm dust between the stones, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_road.png",
+   "normal": "assets/textures/surface_road_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "cliff": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, stylized cliff rock face with large flat planes and soft fractures, light grey stone with cool blue-grey shadows, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_cliff.png",
+   "normal": "assets/textures/surface_cliff_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "stone": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, large smooth rounded grey flagstones and rock surface with soft cracks, light grey with subtle warm tint, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_stone.png",
+   "normal": "assets/textures/surface_stone_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "gravel": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, loose gravel of small rounded grey and beige pebbles seen from above, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_gravel.png",
+   "normal": "assets/textures/surface_gravel_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "riverbed": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, shallow riverbed of smooth rounded pebbles in soft blue-grey, beige and brown, wet sheen, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_riverbed.png",
+   "normal": "assets/textures/surface_riverbed_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "mud": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, soft wet dark brown mud with gentle ripples and a few puddle highlights, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_mud.png",
+   "normal": "assets/textures/surface_mud_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "sand": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, fine warm beach sand with gentle wind ripples and a few tiny shell fragments, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_sand.png",
+   "normal": "assets/textures/surface_sand_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "forestfloor": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, forest floor seen from directly above, flat mix of moss patches, pine needles, small twigs and fallen leaves lying flat on dark earth, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_forestfloor.png",
+   "normal": "assets/textures/surface_forestfloor_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "snow": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, fresh soft snow surface with gentle drifts and faint blue shadows, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_snow.png",
+   "normal": "assets/textures/surface_snow_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "pondbed": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, murky pond bottom seen from above, fine dark gravel and silt with a few sunken brown leaves, small twigs and tiny green algae patches, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_pondbed.png",
+   "normal": "assets/textures/surface_pondbed_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "cobblestone": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, old cobblestone pavement of rounded light grey and warm beige stones tightly packed, soft dust in the joints, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/cobblestone.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "ground_lawn": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, short dense lawn grass carpet in fresh greens with small darker soil gaps, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/ground_lawn.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "ground_lush": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, lush deep green grass carpet with rich dark soil showing between dense tufts, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/ground_lush.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "ground_meadow": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, meadow grass carpet with clover leaves and scattered tiny white and yellow flower dots, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/ground_meadow.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "ground_pampas": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dry pale golden grass carpet over light sandy soil, soft straw tones, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/ground_pampas.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "ground_steppe": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dry yellow-green steppe grass in sparse tufts with patches of dusty light brown soil, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/ground_steppe.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_fantasy_base": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, chunky rounded fieldstones in thick light mortar, cool gray-blue stone, irregular sizes, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_fantasy_base.png",
+   "normal": "assets/textures/surface_bld_fantasy_base_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_fantasy_wall": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, smooth cream white plaster wall with soft uneven painted patches, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_fantasy_wall.png",
+   "normal": "assets/textures/surface_bld_fantasy_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_fantasy_roof": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, rows of overlapping rounded slate roof shingles, slightly uneven, cool blue-gray, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_fantasy_roof.png",
+   "normal": "assets/textures/surface_bld_fantasy_roof_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_fantasy_trim": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, dark brown timber beam with long straight wood grain running horizontally, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_fantasy_trim.png",
+   "normal": "assets/textures/surface_bld_fantasy_trim_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_rpg_wall": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, horizontal weathered wooden log planks with dark gaps, warm brown, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_rpg_wall.png",
+   "normal": "assets/textures/surface_bld_rpg_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_rpg_roof": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, thick golden straw thatch roof, bundled straw strands running downward, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_rpg_roof.png",
+   "normal": "assets/textures/surface_bld_rpg_roof_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_steampunk_base": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, large dark sooty granite blocks in even courses, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_steampunk_base.png",
+   "normal": "assets/textures/surface_bld_steampunk_base_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_steampunk_wall": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, red-brown brick wall in running bond with light mortar, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_steampunk_wall.png",
+   "normal": "assets/textures/surface_bld_steampunk_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_steampunk_roof": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, riveted copper roof panels with soft green patina streaks, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_steampunk_roof.png",
+   "normal": "assets/textures/surface_bld_steampunk_roof_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_steampunk_trim": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, polished brass metal band with round rivets, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_steampunk_trim.png",
+   "normal": "assets/textures/surface_bld_steampunk_trim_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_modern_base": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, smooth light gray poured concrete with faint form lines, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_modern_base.png",
+   "normal": "assets/textures/surface_bld_modern_base_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_modern_wall": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, horizontal painted wooden siding boards, clean and even, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_modern_wall.png",
+   "normal": "assets/textures/surface_bld_modern_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_modern_roof": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, rows of dark gray concrete roof tiles, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_modern_roof.png",
+   "normal": "assets/textures/surface_bld_modern_roof_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_modern_trim": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, smooth white painted wood board, faint grain, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_modern_trim.png",
+   "normal": "assets/textures/surface_bld_modern_trim_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_future_base": {
+  "variant": 1,
+  "seed": 20268948,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, smooth light gray composite panels with thin dark seams, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_future_base.png",
+   "normal": "assets/textures/surface_bld_future_base_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_future_wall": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, clean white ceramic composite panels with thin panel lines, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_future_wall.png",
+   "normal": "assets/textures/surface_bld_future_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_future_trim": {
+  "variant": 0,
+  "seed": 20261029,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, brushed pale silver metal, soft horizontal brushing, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_future_trim.png",
+   "normal": "assets/textures/surface_bld_future_trim_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_cyber_base": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, stained dark gray concrete with rust drips and grime, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_cyber_base.png",
+   "normal": "assets/textures/surface_bld_cyber_base_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_cyber_wall": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, grimy dark concrete wall with bolted metal panels and streaks, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_cyber_wall.png",
+   "normal": "assets/textures/surface_bld_cyber_wall_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bld_cyber_trim": {
+  "variant": 2,
+  "seed": 20276867,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, dark gunmetal metal plate with scratches and bolts, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/surface_bld_cyber_trim.png",
+   "normal": "assets/textures/surface_bld_cyber_trim_normal.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "kit_masonry": {
+  "variant": 3,
+  "seed": 28907,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, rough-cut fieldstone masonry wall in irregular horizontal courses with recessed light mortar joints, warm gray stones with subtle beige and blue tints, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/kit_masonry.png",
+   "normal": "assets/textures/kit_masonry_normal.png",
+   "height": "assets/textures/kit_masonry_height.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "rock": {
+  "variant": 4,
+  "seed": 36826,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, natural boulder rock surface with large flat faceted planes, soft chipped edges and a few thin cracks, light warm gray stone with cool blue-gray tints, one continuous rock, no tiles, no paving, no mortar joints, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/rock_stylized.png",
+   "normal": "assets/textures/rock_stylized_normal.png",
+   "height": "assets/textures/rock_stylized_height.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bark_smooth": {
+  "variant": 4,
+  "seed": 36826,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, smooth beech bark, soft neutral gray with a faint cool tint and gentle mottled lighter patches, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_smooth_stylized.png",
+   "normal": "assets/textures/bark_smooth_stylized_normal.png",
+   "height": "assets/textures/bark_smooth_stylized_height.png",
+   "ao": "assets/textures/bark_smooth_stylized_ao.png",
+   "rough": "assets/textures/bark_smooth_stylized_rough.png",
+   "orm": "assets/textures/bark_smooth_stylized_orm.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bark_pine": {
+  "variant": 4,
+  "seed": 36826,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, scots pine bark of large flat muted orange-brown and gray plates separated by dark cracks, plates stacked vertically, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_pine_stylized.png",
+   "normal": "assets/textures/bark_pine_stylized_normal.png",
+   "height": "assets/textures/bark_pine_stylized_height.png",
+   "ao": "assets/textures/bark_pine_stylized_ao.png",
+   "rough": "assets/textures/bark_pine_stylized_rough.png",
+   "orm": "assets/textures/bark_pine_stylized_orm.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "bark_mossy": {
+  "variant": 5,
+  "seed": 44745,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, tree bark with a soft velvety carpet of moss filling the furrows, muted brown bark ridges running vertically, moss in small fuzzy patches, no leaves, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/bark_mossy.png",
+   "normal": "assets/textures/bark_mossy_normal.png",
+   "height": "assets/textures/bark_mossy_height.png"
+  },
+  "installed": "2026-10-29 03:19"
+ },
+ "moss_painted": {
+  "variant": 4,
+  "seed": 36826,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, soft cushion moss carpet in fresh and olive greens with a few darker hollows and small lighter tips, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/moss_painted.png"
+  },
+  "installed": "2026-10-29 03:19"
  }
 }

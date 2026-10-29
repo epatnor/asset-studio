@@ -37,37 +37,10 @@
     }
   },
   "source": {
-    "ridges": 6,
-    "depth": 0.35,
-    "width": 0.34,
-    "wiggle": 0.4,
-    "plates": 0.5,
-    "rows": 0,
-    "aspect": 2,
-    "cracks": 0.3,
-    "detail": 0.9,
-    "tint": 0.12,
-    "flakes": 0.1,
-    "accent": "#9F8670",
-    "lenticels": 0.8,
-    "crevice": "#372E27",
-    "lichen": 0,
-    "lichenColor": "#9DA67A",
-    "seed": 1,
-    "dark": "#665546",
-    "light": "#8C735E",
-    "type": "bark"
+    "type": "image",
+    "name": "bark_cherry_stylized"
   },
-  "steps": [
-    {
-      "strength": 0.5,
-      "colors": 8,
-      "shape": 0.5,
-      "saturation": 1.0,
-      "relief": true,
-      "op": "stylize"
-    }
-  ],
+  "steps": [],
   "inputs": {},
   "material": {
     "meters": 1.0,
@@ -172,5 +145,10 @@
   },
   "blend": {
     "layers": []
+  },
+  "krea": {
+    "material": "bark_cherry",
+    "variant": 0,
+    "seed": 20261029
   }
 }

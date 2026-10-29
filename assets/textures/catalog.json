@@ -67,7 +67,8 @@
         "material": "bark_generic",
         "variant": 1,
         "seed": 20268948
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_stylized.procedural.texture.json"
     },
     {
       "name": "bark_mossy",
@@ -97,7 +98,13 @@
           "normal": "assets/textures/hd/bark_mossy_hd_normal.png",
           "height": "assets/textures/hd/bark_mossy_hd_height.png"
         }
-      }
+      },
+      "krea": {
+        "material": "bark_mossy",
+        "variant": 5,
+        "seed": 44745
+      },
+      "recipe_procedural": "assets/textures/bark_mossy.procedural.texture.json"
     },
     {
       "name": "moss_stylized",
@@ -127,7 +134,8 @@
         "material": "moss",
         "variant": 0,
         "seed": 20261029
-      }
+      },
+      "recipe_procedural": "assets/textures/moss_stylized.procedural.texture.json"
     },
     {
       "name": "rock_stylized",
@@ -157,7 +165,13 @@
           "normal": "assets/textures/hd/rock_stylized_hd_normal.png",
           "height": "assets/textures/hd/rock_stylized_hd_height.png"
         }
-      }
+      },
+      "krea": {
+        "material": "rock",
+        "variant": 4,
+        "seed": 36826
+      },
+      "recipe_procedural": "assets/textures/rock_stylized.procedural.texture.json"
     },
     {
       "name": "bark_pine_stylized",
@@ -196,7 +210,13 @@
           "rough": "assets/textures/hd/bark_pine_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_pine_stylized_hd_ao.png"
         }
-      }
+      },
+      "krea": {
+        "material": "bark_pine",
+        "variant": 4,
+        "seed": 36826
+      },
+      "recipe_procedural": "assets/textures/bark_pine_stylized.procedural.texture.json"
     },
     {
       "name": "bark_oak_stylized",
@@ -240,7 +260,8 @@
         "material": "bark_oak",
         "variant": 0,
         "seed": 1000
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_oak_stylized.procedural.texture.json"
     },
     {
       "name": "bark_cherry_stylized",
@@ -284,7 +305,8 @@
         "material": "bark_cherry",
         "variant": 0,
         "seed": 20261029
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_cherry_stylized.procedural.texture.json"
     },
     {
       "name": "bark_smooth_stylized",
@@ -323,7 +345,13 @@
           "rough": "assets/textures/hd/bark_smooth_stylized_hd_rough.png",
           "ao": "assets/textures/hd/bark_smooth_stylized_hd_ao.png"
         }
-      }
+      },
+      "krea": {
+        "material": "bark_smooth",
+        "variant": 4,
+        "seed": 36826
+      },
+      "recipe_procedural": "assets/textures/bark_smooth_stylized.procedural.texture.json"
     },
     {
       "name": "bark_furrowed_stylized",
@@ -367,7 +395,8 @@
         "material": "bark_furrowed",
         "variant": 0,
         "seed": 20261029
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_furrowed_stylized.procedural.texture.json"
     },
     {
       "name": "bark_spruce_stylized",
@@ -411,7 +440,8 @@
         "material": "bark_spruce",
         "variant": 1,
         "seed": 20268948
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_spruce_stylized.procedural.texture.json"
     },
     {
       "name": "bark_weathered_stylized",
@@ -455,7 +485,8 @@
         "material": "bark_weathered",
         "variant": 1,
         "seed": 20268948
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_weathered_stylized.procedural.texture.json"
     },
     {
       "name": "bark_birch_stylized",
@@ -499,7 +530,8 @@
         "material": "bark_birch",
         "variant": 1,
         "seed": 20268948
-      }
+      },
+      "recipe_procedural": "assets/textures/bark_birch_stylized.procedural.texture.json"
     }
   ]
 }
