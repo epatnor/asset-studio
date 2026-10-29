@@ -30,6 +30,7 @@ import { createGrass, groundSampler } from '../shared/effects/grass.js';
 import { createWind } from '../shared/effects/wind.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
+import { createSplash } from './splash.js';
 
 const DEG = Math.PI / 180;
 // Spakar som kräver att höjdfältet räknas om; övriga ändrar bara materialet, havet eller vyn
@@ -72,6 +73,12 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   renderer.toneMapping = THREE.AgXToneMapping;
   renderer.shadowMap.enabled = true;
   view.append(renderer.domElement);
+  // Laddningsskylten (studio/splash.js): när en värld byggs och när naturen och gräset växer fram
+  const splash = createSplash(el, view);
+  const painted = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0))); // så att skylten hinner ritas
+  // De första bilderna efter en ändring (då kompileras skuggningarna för det som syns); compileAsync på hela scenen tog
+  // 15–20 s med naturens alla nivåer, så skylten väntar bara in två ritade bilder
+  const prepareView = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 0))));
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.5, 4000);
   camera.position.set(...info.camera.pos);
@@ -99,7 +106,14 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   pipeline.outputNode = dbg.includes('nobloom') ? out : out.add(bloom(out, 0.12, 0.25, 1.7));
 
   // --- Texturer: världskoordinater, med skydd mot upprepning (shared/effects/antitile.js) ---
-  const texLoader = new THREE.TextureLoader(), texCache = new Map();
+  // Allt som laddas (texturer, modeller) går genom en LoadingManager, så att skylten kan räkna filerna
+  const manager = new THREE.LoadingManager();
+  let assetsBusy = false, assetWaiters = [];
+  manager.onStart = () => { assetsBusy = true; };
+  manager.onProgress = (url, loaded, total) => splash.set('assets', loaded / total, `${loaded} / ${total} files`);
+  manager.onLoad = () => { assetsBusy = false; const w = assetWaiters; assetWaiters = []; w.forEach((r) => r()); };
+  const assetsIdle = () => new Promise((r) => (assetsBusy ? assetWaiters.push(r) : r()));
+  const texLoader = new THREE.TextureLoader(manager), texCache = new Map();
   const raw = (name) => {
     if (!texCache.has(name)) { const t = texLoader.load(`/assets/textures/${name}.png`); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; texCache.set(name, t); }
     return texCache.get(name);
@@ -600,6 +614,9 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }
   // En värld ur lådan: receptets spakar och det målade lagret byts (färdiga världar har inget), vyn och vädret står kvar
   async function use(id, v, layers) {
+    const name = info.presets[id]?.label ?? id.replace(/^saved:/, '').replace(/_/g, ' ');
+    splash.start(`Loading ${name.charAt(0).toUpperCase()}${name.slice(1)}`, [['land', 'Shaping the land'], ['assets', 'Textures'], ['draw', 'Preparing the view']]);
+    await painted();
     for (const k of recipeKeys) vals[k] = v[k];
     vals.regions = firstRegions(v.regions);
     regionSel = 0;
@@ -619,6 +636,11 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     cards.sync();
     apply();
     await regenerate();
+    splash.done('land', `${stats.ms} ms`);
+    await assetsIdle();
+    splash.done('assets');
+    await prepareView();
+    splash.done('draw');
   }
   function renderDrawer() {
     body.replaceChildren();
@@ -833,10 +855,17 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // målade, målade marklager och regionernas teman), och sedan naturen i nivåer
   async function runPopulate() {
     if (!field || !final) return;
+    // Skylten: genast första gången (modellerna laddas), annars bara om det tar en stund
+    const grassOn = step === 'populate' && vals.populate.grass > 0;
+    if (!splash.active) splash.start('Growing the nature', [], { delay: nature ? 400 : 0 });
+    splash.add('place', 'Placing the nature');
+    splash.add('models', 'Loading models');
+    if (grassOn) splash.add('grass', 'Growing the grass');
+    splash.add('draw', 'Preparing the view');
     library ??= await api('/api/library').catch(() => ({ items: [] }));
-    nature ??= createNature({ scene, rules: info.populate, library });
+    nature ??= createNature({ scene, rules: info.populate, library, manager });
     note.textContent = 'Placing the nature…';
-    await new Promise((r) => setTimeout(r, 0));
+    await painted();
     const effects = vals.paintLayers.map((L) => (L ? info.groundTextures.find((t) => t.id === L.texture)?.populate ?? {} : null));
     const world = {
       n: field.n, cell: field.cell, half, size: sizeOf(), heights: field.heights, wet: field.wet, biomes: final, sea: vals.sea ? vals.seaLevel : null,
@@ -844,17 +873,21 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       regions: regionInfo?.weights ? { P: regionInfo.P, count: regionInfo.count, weights: regionInfo.weights, themes: vals.regions.map((r) => r.theme) } : null,
     };
     popResult = populate(world, info.populate, { seed: vals.populate.seed, density: vals.populate.density, layers: vals.populate.layers });
+    splash.done('place', `${popResult.total.toLocaleString('en')} placed`);
     natureDirty = false;
     await ensureGrass();
     grassEffects = effects.map((e) => (e ? e.grass ?? e.plant ?? 1 : null));
     grassField?.refresh();
     showGrass();
-    await nature.set(popResult);
+    await nature.set(popResult, (a, b) => splash.set('models', b ? a / b : 1, `${a} / ${b} models`));
+    splash.done('models');
     nature.visible = step === 'populate';
     nature.update(camera.position, vals.populate.detail);
     showStats();
     if (step === 'populate') renderDrawer();
     note.textContent = hint();
+    await prepareView();
+    splash.done('draw');
   }
   // Kortet Nature: allt på en gång (täthet, frö, detaljavstånd)
   function natureCard(body) {
@@ -1386,6 +1419,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     water.update(time);
     wind.update(dt);
     if (grassField && grassRoot.visible) grassField.update(camera);
+    if (splash.has('grass') && grassField) { const p = grassRoot.visible ? grassField.progress : 1; splash.set('grass', p, p >= 1 ? `${Math.round(grassField.blades / 1000)}k blades` : null); }
     riverWater?.update(time);
     controls.update();
     moveLabels();
@@ -1436,7 +1470,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     sculptSettings: () => S(),
     get groundW() { return groundW; }, get paintCov() { return paintCov; }, get paintChoice() { return paintChoice; },
     get popResult() { return popResult; }, natureStats: () => nature?.stats ?? null,
-    grassAt, grassStats: () => (grassField ? { blades: grassField.blades, drawn: grassField.visibleBlades(), shown: grassRoot.visible && grassField.group.visible } : null), get fps() { return fps; }, runPopulate,
+    grassAt, splashLog: () => splash.log, grassStats: () => (grassField ? { blades: grassField.blades, drawn: grassField.visibleBlades(), shown: grassRoot.visible && grassField.group.visible } : null), get fps() { return fps; }, runPopulate,
     // Var en punkt i världen hamnar i fönstret (för UI-testerna): [x, y] i bildpunkter
     screenOf(x, z) { const v = new THREE.Vector3(x, bedAt(x, z), z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height]; },
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),

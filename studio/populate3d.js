@@ -6,7 +6,7 @@
 // hundra ritanrop för en hel ö.
 //
 //   const nature = createNature({ scene, rules, library });
-//   await nature.set(result)          // ur populate()
+//   await nature.set(result, (done, total) => …)   // ur populate(); valfri återkoppling medan modellerna laddas
 //   nature.update(camera.position, detail)   // nivåerna om (gör det när kameran flyttat sig)
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -16,11 +16,11 @@ import { STRIDE } from '../shared/terrain/populate.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 
-export function createNature({ scene, rules, library }) {
+export function createNature({ scene, rules, library, manager }) {
   const group = new THREE.Group();
   group.name = 'nature';
   scene.add(group);
-  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const loader = new GLTFLoader(manager).setMeshoptDecoder(MeshoptDecoder);
   const lib = new Map((library?.items ?? []).map((e) => [e.model, e]));
   const models = new Map(); // url → Promise<{ near: delar, mid: delar }>
   // En modell i delar per nivå: { geometry, material, local (matrisen i modellen), shadow }. LOD0 (eller utan
@@ -69,7 +69,7 @@ export function createNature({ scene, rules, library }) {
 
   // En ny utplacering: delar instanserna på modell och variant, laddar modellerna och bygger en InstancedMesh per del
   // och nivå, och en för lagrets stand-ins
-  async function set(result) {
+  async function set(result, onProgress) {
     const my = ++token;
     for (const m of meshes) { group.remove(m.im); m.im.dispose(); }
     meshes = [];
@@ -118,7 +118,9 @@ export function createNature({ scene, rules, library }) {
         L.proxy = m;
       }
     }
-    await Promise.all(jobs);
+    let loaded = 0;
+    onProgress?.(0, jobs.length);
+    await Promise.all(jobs.map((j) => j.then(() => onProgress?.(++loaded, jobs.length))));
     if (my !== token) return;
     last = null;
   }

@@ -266,7 +266,7 @@ export function createGrass(wind, field = {}, settings = {}) {
   // follow: rutorna i ett fast rutnät ("i,j" → ruta, eller { level } för en ruta utan gräs), rutan kameran står i och
   // rutorna som väntar på att byggas (närmast först)
   const cells = new Map();
-  let at = null, todo = [];
+  let at = null, todo = [], wantN = 0;
   function build() {
     for (const ch of chunks) drop(ch);
     total = 0; cells.clear(); at = null; todo = [];
@@ -299,6 +299,7 @@ export function createGrass(wind, field = {}, settings = {}) {
         if (d - f.chunk * 0.71 < f.radius) want.set(`${i},${j}`, { i, j, d, level: levelAt(d) });
       }
       for (const [key, ch] of cells) if (!want.has(key)) { drop(ch); cells.delete(key); }
+      wantN = want.size;
       todo = [...want.entries()].filter(([key, w]) => cells.get(key)?.level !== w.level).map(([, w]) => w).sort((a, b) => a.d - b.d);
     }
     if (!todo.length && chunks.length === cells.size) return;
@@ -313,6 +314,8 @@ export function createGrass(wind, field = {}, settings = {}) {
   return {
     group, uniforms: u,
     get blades() { return total; },
+    // follow: hur stor del av rutorna runt kameran som är byggda (0..1), till exempel för en laddningsskylt
+    get progress() { return !f.follow || !group.visible ? 1 : !at ? 0 : 1 - todo.length / Math.max(1, wantN); },
     // Receptets värden: färger som '#rrggbb', resten som tal. clumpSize bygger om stråna.
     set(values) {
       for (const [k, v] of Object.entries(values)) {
