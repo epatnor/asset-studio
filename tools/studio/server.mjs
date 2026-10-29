@@ -659,8 +659,11 @@ function cleanPopulate(v, X) {
   if (!v || typeof v !== 'object') return null;
   const num = (x, lo, hi, d) => (Number.isFinite(Number(x)) ? Math.min(hi, Math.max(lo, Number(x))) : d);
   const ids = new Set((X.populate?.layers ?? []).map((l) => l.id));
-  const layers = Object.fromEntries(Object.entries(v.layers ?? {}).filter(([id]) => ids.has(id)).map(([id, l]) => [id, { on: l?.on !== false, density: num(l?.density, 0, 2, 1) }]));
-  return { seed: Math.round(num(v.seed, 1, 999, 1)), density: num(v.density, 0, 2, 1), detail: num(v.detail, 0.3, 3, 1), layers };
+  // gränserna ur spakarna i terrain.json (populate.global och populate.params)
+  const spak = (list, key, x, d) => { const q = list?.find((p) => p.key === key); return num(x, q?.min ?? 0, q?.max ?? d, q?.default ?? d); };
+  const layers = Object.fromEntries(Object.entries(v.layers ?? {}).filter(([id]) => ids.has(id)).map(([id, l]) => [id, { on: l?.on !== false, density: spak(X.populate?.params, 'density', l?.density, 1) }]));
+  const G = X.populate?.global;
+  return { seed: Math.round(spak(G, 'seed', v.seed, 1)), density: spak(G, 'density', v.density, 1), detail: spak(G, 'detail', v.detail, 1), grass: spak(G, 'grass', v.grass, 1), layers };
 }
 const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers, populate: cleanPopulate } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;

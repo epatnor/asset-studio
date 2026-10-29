@@ -43,15 +43,17 @@ export function channelPath(c, kinds, size) {
 }
 
 // Penslarna och kanalerna på en genererad terräng t (ur generateTerrain). R: receptet med sculpt (Float32Array, n · n
-// meter, eller null), channels ([{ kind, points: [[u, v], ...] }]), channelKinds (terrain.json), sea och seaLevel.
-// Svar: { ...t, heights, wet, heightAt, channels: [{ kind, smp (x, z, w, level, tx, tz), reach }], editMs }
+// meter, eller null), sculptOver (samma form: det som formats där vatten grävts, och som läggs på efter kanalerna så
+// att det inte skärs bort), channels ([{ kind, points: [[u, v], ...] }]), channelKinds (terrain.json), sea och seaLevel.
+// Svar: { ...t, heights, wet, heightAt, channels: [{ kind, smp (x, z, w, level, tx, tz), reach }], carved (hörnen som
+// kanalerna grävt, Int32Array), editMs }
 export function applyEdits(t, R) {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const { n, cell, half, size } = t;
   const heights = t.heights.slice(), wet = t.wet.slice();
   const delta = resampleDelta(R.sculpt, R.sculptN ?? n, n);
   if (delta && delta.length === n * n) for (let k = 0; k < n * n; k++) heights[k] += delta[k];
-  const kinds = R.channelKinds ?? {}, sea = R.sea ? (R.seaLevel ?? 0) : null, channels = [];
+  const kinds = R.channelKinds ?? {}, sea = R.sea ? (R.seaLevel ?? 0) : null, channels = [], dug = new Uint8Array(n * n);
   for (const c of (R.channels ?? []).slice(0, 32)) {
     if (!Array.isArray(c?.points) || c.points.length < 2) continue;
     const K = kinds[c.kind] ?? kinds.stream ?? { width: [1, 1.6] };
@@ -73,12 +75,19 @@ export function applyEdits(t, R) {
       if (!q) continue;
       const k = j * n + i;
       heights[k] = ch.bedAt(x, z);
+      dug[k] = 1;
       wet[k] = Math.max(wet[k], 1 - smoothstep(q.w, q.w * 5, q.d)); // fuktigt längs vattnet (myr och vass i biomerna)
     }
     channels.push({ kind: c.kind, sea: !!K.sea, smp: ch.smp.map((p) => ({ x: p.x, z: p.z, w: p.w, level: p.level, tx: p.tx, tz: p.tz })) });
   }
+  const over = resampleDelta(R.sculptOver, R.sculptN ?? n, n);
+  if (over && over.length === n * n) for (let k = 0; k < n * n; k++) heights[k] += over[k];
+  let nd = 0;
+  for (let k = 0; k < n * n; k++) nd += dug[k];
+  const carved = new Int32Array(nd);
+  for (let k = 0, q = 0; k < n * n; k++) if (dug[k]) carved[q++] = k;
   const t1 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  return { ...t, heights, wet, heightAt: gridSampler(heights, n, cell, half), channels, editMs: Math.round(t1 - t0) };
+  return { ...t, heights, wet, heightAt: gridSampler(heights, n, cell, half), channels, carved, editMs: Math.round(t1 - t0) };
 }
 
 // Penselns falloff: full verkan inom hardness · radien, sedan mjukt ut till kanten (0 = en kupol, 1 = en skarp kant)

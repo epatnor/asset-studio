@@ -96,18 +96,28 @@ export function computeBiomes(t, R, rf = null) {
 }
 
 // Det målade lagret: PAINT_SIZE² rutor med biomens nummer + 1 (0 = omålat) och styrkan (0–255). Ovanpå de
-// beräknade vikterna: vikt = (1 − styrka) · beräknad + styrka · målad biom. Rutans värde läses bilinjärt för
-// styrkan, så att penselns mjuka kant följer med. out får samma form som auto (n · n · 8).
+// beräknade vikterna: vikt = (1 − styrka) · beräknad + styrka · målad biom. Varje hörn läser de fyra närmaste rutorna
+// bilinjärt, och varje ruta bidrar med sin styrka till sin egen biom; där två målade biomer möts tonas de alltså i
+// varandra i stället för att rutorna byter biom tvärt (det gav en fyrkantig trappa i gränsen). out får samma form som
+// auto (n · n · 8).
+// En rutas bidrag till sin biom (vikten w · styrkan); svarar med bidraget
+function add(acc, ids, str, c, w) {
+  if (!ids[c] || !str[c] || w <= 0) return 0;
+  const a = (w * str[c]) / 255;
+  acc[ids[c] - 1] += a;
+  return a;
+}
 export function mixPaint(auto, paint, n, out = new Uint8Array(auto.length)) {
   if (!paint) { out.set(auto); return out; }
-  const P = PAINT_SIZE, ids = paint.subarray(0, P * P), str = paint.subarray(P * P);
+  const P = PAINT_SIZE, ids = paint.subarray(0, P * P), str = paint.subarray(P * P), acc = new Float32Array(8);
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const k = j * n + i, gx = (i / (n - 1)) * (P - 1), gz = (j / (n - 1)) * (P - 1);
     const pi = Math.min(P - 2, Math.floor(gx)), pj = Math.min(P - 2, Math.floor(gz)), fx = gx - pi, fz = gz - pj, q = pj * P + pi;
-    const s = ((str[q] * (1 - fx) + str[q + 1] * fx) * (1 - fz) + (str[q + P] * (1 - fx) + str[q + P + 1] * fx) * fz) / 255;
-    const id = ids[Math.round(gz) * P + Math.round(gx)];
-    if (!id || s <= 0) { for (let b = 0; b < 8; b++) out[k * 8 + b] = auto[k * 8 + b]; continue; }
-    for (let b = 0; b < 8; b++) out[k * 8 + b] = Math.round(auto[k * 8 + b] * (1 - s) + (b === id - 1 ? 255 * s : 0));
+    if (!str[q] && !str[q + 1] && !str[q + P] && !str[q + P + 1]) { for (let b = 0; b < 8; b++) out[k * 8 + b] = auto[k * 8 + b]; continue; }
+    acc.fill(0);
+    const s = add(acc, ids, str, q, (1 - fx) * (1 - fz)) + add(acc, ids, str, q + 1, fx * (1 - fz)) + add(acc, ids, str, q + P, (1 - fx) * fz) + add(acc, ids, str, q + P + 1, fx * fz);
+    if (s <= 0) { for (let b = 0; b < 8; b++) out[k * 8 + b] = auto[k * 8 + b]; continue; }
+    for (let b = 0; b < 8; b++) out[k * 8 + b] = Math.round(auto[k * 8 + b] * (1 - s) + 255 * acc[b]);
   }
   return out;
 }

@@ -3,7 +3,7 @@
 //   In: { id, recipe, only }   only = 'biomes': bara regionerna och biomerna om (klimat, regioner, målning), på den
 //                              senaste terrängen; only = 'edit': penslarna och kanalerna om (sculpt.js) på den senast
 //                              genererade världen, utan att generera den igen; annars allt
-//   Ut: { id, n, size, cell, positions, normals, index, wet, heights, channels, biomes, coverage, regions, reg, look,
+//   Ut: { id, n, size, cell, positions, normals, index, wet, heights, channels, carved, biomes, coverage, regions, reg, look,
 //   ms, editMs, biomeMs } (buffertarna flyttas, kopieras inte; vid only = 'biomes' utan höjdfältet).
 //   regions = { coverage, centers, ms, P, count, weights }
 import { generateTerrain } from './generate.js';
@@ -42,7 +42,7 @@ self.onmessage = (e) => {
   // Höjderna och fukten kopieras (workern behåller sina för nästa biomräkning); resten flyttas
   const out = {
     id, n: t.n, size: t.size, cell: t.cell, positions: f.positions, normals: f.normals, index: f.index, wet: t.wet.slice(), heights: t.heights.slice(),
-    channels: t.channels, ms: only === 'edit' ? 0 : t.ms, editMs: t.editMs, ...N.out,
+    channels: t.channels, carved: t.carved.slice(), ms: only === 'edit' ? 0 : t.ms, editMs: t.editMs, ...N.out,
   };
-  postMessage(out, [f.positions.buffer, f.normals.buffer, f.index.buffer, out.wet.buffer, out.heights.buffer, ...N.transfer]);
+  postMessage(out, [f.positions.buffer, f.normals.buffer, f.index.buffer, out.wet.buffer, out.heights.buffer, out.carved.buffer, ...N.transfer]);
 };
