@@ -12,6 +12,8 @@
 
 import { createNoise } from './generate.js';
 import { BIOMES } from './biomes.js';
+
+const MARSH = BIOMES.indexOf('marsh');
 import { SLOTS } from './paint.js';
 
 export const STRIDE = 9;
@@ -46,11 +48,13 @@ export function populate(world, rules, opts = {}) {
   const R = world.regions;
   const out = [];
   rules.layers.forEach((L, li) => {
-    const set = opts.layers?.[L.id] ?? {}, density = (L.density ?? 0.5) * (set.density ?? 1) * global;
+    const set = opts.layers?.[L.id] ?? {}, want = (L.density ?? 0.5) * (set.density ?? 1) * global;
+    // Över 1 räcker inte ett frö per ruta: rutnätet blir finare i stället (lika många per yta under 1, inget tak över)
+    const fine = Math.max(1, want), density = want / fine;
     const res = { id: L.id, kind: L.kind, models: L.models.map((m) => m[0]), count: 0, data: null };
     out.push(res);
     if (set.on === false || density <= 0) { res.data = new Float32Array(0); return; }
-    const sp = L.spacing, cols = Math.ceil(size / sp), max = L.max ?? 50000, buf = new Float32Array(Math.min(max, cols * cols) * STRIDE);
+    const sp = L.spacing / Math.sqrt(fine), cols = Math.ceil(size / sp), max = L.max ?? 50000, buf = new Float32Array(Math.min(max, cols * cols) * STRIDE);
     const bw = BIOMES.map((b) => L.biomes?.[b] ?? 0);
     const noise = L.clump ? createNoise(seed * 41 + li * 7 + 3) : null;
     const wsum = L.models.reduce((s, m) => s + m[1], 0);
@@ -72,7 +76,8 @@ export function populate(world, rules, opts = {}) {
       for (let b = 0; b < 8; b++) f += (B[k * 8 + b] / 255) * bw[b];
       if (f <= 0) continue;
       if (L.slope) f *= window01(L.slope[0], L.slope[1], slope, 3);
-      if (L.wet) f *= window01(L.wet[0], L.wet[1], wet[k], 0.08);
+      // Fukten: avrinningen, eller träskets andel (ett målat träsk är blött även där inget vatten rinner)
+      if (L.wet) f *= window01(L.wet[0], L.wet[1], Math.max(wet[k], B[k * 8 + MARSH] / 255), 0.08);
       if (L.height) f *= window01(L.height[0], L.height[1], e, Math.min(2, (L.height[1] - L.height[0]) * 0.1));
       // De målade marklagren: deras andel väger in med texturens verkan på den här sortens saker (stig, väg: inga träd)
       if (world.ground) {
@@ -96,7 +101,7 @@ export function populate(world, rules, opts = {}) {
       while (m < L.models.length - 1 && pick > L.models[m][1]) { pick -= L.models[m][1]; m++; }
       const scale = s0 + (s1 - s0) * hash(ci, cj, li + 404, seed), nl = Math.hypot(hx, 1, hz);
       const o = count * STRIDE;
-      buf[o] = x; buf[o + 1] = y - (L.sink ?? 0) * scale; buf[o + 2] = z;
+      buf[o] = x; buf[o + 1] = L.float && sea != null ? sea : y - (L.sink ?? 0) * scale; buf[o + 2] = z; // float: på vattenytan (näckrosblad)
       buf[o + 3] = hash(ci, cj, li + 505, seed) * Math.PI * 2; buf[o + 4] = scale; buf[o + 5] = m;
       buf[o + 6] = -hx / nl; buf[o + 7] = -hz / nl; buf[o + 8] = hash(ci, cj, li + 606, seed);
       if (L.footprint) mark(x, z, L.footprint * scale);

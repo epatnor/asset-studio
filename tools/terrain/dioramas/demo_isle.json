@@ -10,8 +10,8 @@
     "talus": 40,
     "snowline": 500,
     "treeline": 42,
-    "rainfall": 0.6,
-    "forestCover": 0.5,
+    "rainfall": 0.85,
+    "forestCover": 0.8,
     "marshes": 0.5,
     "cliffAngle": 42,
     "sandBand": 1.4,
@@ -43,9 +43,15 @@
         },
         {
           "biome": "meadow",
-          "from": -34,
+          "from": -28,
           "to": -16,
           "strength": 0.5
+        },
+        {
+          "biome": "forest",
+          "from": -48,
+          "to": -26,
+          "strength": 0.6
         }
       ]
     },
@@ -63,6 +69,12 @@
           "from": -36,
           "to": 2,
           "strength": 0.85
+        },
+        {
+          "biome": "forest",
+          "from": -56,
+          "to": -36,
+          "strength": 0.5
         }
       ]
     },
@@ -83,9 +95,9 @@
         },
         {
           "biome": "pine",
-          "from": -30,
+          "from": -40,
           "to": -6,
-          "strength": 0.55
+          "strength": 0.8
         }
       ]
     },
@@ -101,9 +113,15 @@
       "paint": [
         {
           "biome": "meadow",
-          "from": -40,
+          "from": -24,
           "to": -2,
           "strength": 0.75
+        },
+        {
+          "biome": "forest",
+          "from": -50,
+          "to": -22,
+          "strength": 0.6
         }
       ]
     }
@@ -115,28 +133,64 @@
   },
   "populate": {
     "seed": 3,
-    "density": 1.6,
+    "density": 4,
     "detail": 1.5,
     "layers": {
-      "reeds": {
+      "broadleaf": {
+        "on": true,
+        "density": 2
+      },
+      "autumn": {
+        "on": true,
+        "density": 2
+      },
+      "conifers": {
         "on": true,
         "density": 2
       },
       "wetland_trees": {
         "on": true,
-        "density": 2
+        "density": 3
       },
-      "broadleaf": {
+      "dead_trees": {
         "on": true,
-        "density": 1.8
+        "density": 3
+      },
+      "boulders": {
+        "on": true,
+        "density": 1.5
+      },
+      "bushes": {
+        "on": true,
+        "density": 3
+      },
+      "forest_floor": {
+        "on": true,
+        "density": 3
       },
       "flowers": {
         "on": true,
-        "density": 1.4
+        "density": 4
+      },
+      "grasses": {
+        "on": true,
+        "density": 4
+      },
+      "reeds": {
+        "on": true,
+        "density": 1.5
       },
       "shore": {
         "on": true,
         "density": 1.5
+      },
+      "lilies": {
+        "on": true,
+        "density": 3
+      },
+      "pondweed": {
+        "on": true,
+        "density": 2
       }
     }
   }

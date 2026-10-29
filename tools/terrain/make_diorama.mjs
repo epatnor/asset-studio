@@ -20,6 +20,7 @@ import { generateTerrain, worldGrid, createNoise } from '../../shared/terrain/ge
 import { applyEdits, encodeDelta } from '../../shared/terrain/sculpt.js';
 import { computeBiomes, mixPaint, encodePaint, PAINT_SIZE } from '../../shared/terrain/biomes.js';
 import { regionField } from '../../shared/terrain/regions.js';
+import { populate } from '../../shared/terrain/populate.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const X = JSON.parse(readFileSync(path.join(ROOT, 'tools/terrain/terrain.json'), 'utf8'));
@@ -163,6 +164,13 @@ const report = per.map((p) => ({
   coast: p.coast, depthAt6m: p.slope, pondsPct: Math.round(100 * p.ponds / Math.max(1, p.band)),
   biomes: Object.fromEntries([...p.biomes].map((v, b) => [biomeIds[b], Math.round(100 * v / Math.max(1, p.land))]).filter(([, v]) => v >= 5)),
 }));
+// Naturen som Populate-steget lägger ut den med receptets inställningar: antal per lager
+let nature = null;
+if (D.populate) {
+  const world = { ...t, biomes: W, sea: settings.seaLevel ?? 0, regions: { P: rf.P, count: rf.count, weights: rf.weights, themes: regions.map((g) => g.theme) } };
+  const pop = populate(world, X.populate, D.populate);
+  nature = { total: pop.total, ...Object.fromEntries(pop.layers.filter((l) => l.count).map((l) => [l.id, l.count])) };
+}
 let bad = 0;
 for (let k = 0; k < n * n; k++) if (!Number.isFinite(t.heights[k])) bad++;
 const landPct = Math.round(100 * t.heights.filter((y) => y > 0).length / (n * n));
@@ -185,4 +193,4 @@ const entry = { name, settings: clean, regions, ...(channels.length ? { channels
 const file = `assets/terrain/${name}.terrain.json`;
 mkdirSync(path.join(ROOT, 'assets/terrain'), { recursive: true });
 writeFileSync(path.join(ROOT, file), JSON.stringify(entry, null, 2) + '\n');
-console.log(JSON.stringify({ ok, file, n, landPct, foot: +foot.toFixed(1), maxDelta: +delta.reduce((m, v) => Math.max(m, Math.abs(v)), 0).toFixed(1), channels: channels.length, regions: regions.length, sectors: report, nan: bad }));
+console.log(JSON.stringify({ ok, file, n, landPct, foot: +foot.toFixed(1), maxDelta: +delta.reduce((m, v) => Math.max(m, Math.abs(v)), 0).toFixed(1), channels: channels.length, regions: regions.length, sectors: report, ...(nature ? { nature } : {}), nan: bad }));
