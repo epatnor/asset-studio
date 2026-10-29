@@ -36,11 +36,14 @@ const PROFILES = {
   marsh: { pts: [[-56, 19], [-40, 9], [-28, 3.5], [-19, 1.2], [-6, 0.4], [2, -0.4], [24, -1.4], [55, -7], [80, -15]], noise: [-54, -28], pools: [-21, -3] },
   // Klippkust: en platå som går ned i hyllor till djupt vatten. ledges: [kant (m från kusten), höjden nedanför, hur långt
   // kanten vandrar längs kusten (m)]; kanterna vandrar var för sig, så att hyllorna ligger omlott: en hylla smalnar av och
-  // tar slut, och där två kanter möts blir det en hög vägg. face: väggens bredd (m); under: botten utanför klippan
+  // tar slut, och där två kanter möts blir det en hög vägg. face: väggens bredd (m). Vid vattnet hällar som i skärgården:
+  // under är en rundad profil från en låg hylla ned under ytan, och wander flyttar den in och ut längs kusten (uddar och
+  // små vikar, m). skerries: rundade skär utanför (från, till: m från kusten)
   cliff: {
-    pts: [[-30, 15], [-10, 14], [-2, 10], [0, 6], [2, -4], [6, -10], [30, -14], [80, -16]], noise: [-30, 0], crag: true,
-    ledges: [[-18, 11.5, 8], [-12.5, 8, 8], [-7, 4.5, 7], [-2.5, 1.6, 4.5]], face: 1.4,
-    under: [[0, 2], [2.5, -4], [6, -10], [30, -14], [80, -16]],
+    pts: [[-30, 15], [-10, 14], [-2, 10], [0, 6], [2, -4], [6, -10], [30, -14], [80, -16]], noise: [-30, 1], crag: true,
+    ledges: [[-18, 11.5, 8], [-12.5, 8, 8], [-7, 4.5, 7]], face: 1.4,
+    under: [[-9, 3.2], [-4, 1.8], [-1, 0.7], [2, -0.9], [5, -4], [9, -8.5], [30, -14], [80, -16]], wander: 7,
+    skerries: [6, 34],
   },
   // Äng: mjuka kullar ned mot en grön strand, med en brantare kant under vattnet
   meadow: { pts: [[-45, 12], [-22, 5], [-8, 1.4], [0, 0], [6, -1.6], [22, -4.5], [50, -11], [80, -15]], noise: [-40, -8] },
@@ -58,8 +61,28 @@ const ledgesAt = (P, d, x, z) => {
     const hh = h + 0.8 * noise(x * 0.05 - i * 3.3, z * 0.05 + i * 9.1);
     y = mix(y, Math.min(y, hh), smooth(edge - P.face / 2, edge + P.face / 2, d));
   });
-  return d <= P.under[0][0] ? y : Math.min(y, profileAt(P.under, d));
+  if (!P.under) return y;
+  const dw = d + (P.wander ?? 0) * (noise(x * 0.05 + 31, z * 0.05 - 17) * 0.75 + noise(x * 0.16 - 4, z * 0.16 + 11) * 0.35);
+  return dw <= P.under[0][0] ? y : Math.min(y, profileAt(P.under, dw));
 };
+// Skären: en grundare botten (−6 m) med rundade kupor där ett brus når över en tröskel, högst ett par meter över ytan.
+// Roten gör kuporna runda (branta sidor, flack topp) i stället för koner
+const skerryAt = (P, d, x, z, y) => {
+  const b = noise(x * 0.07 + 7, z * 0.07 + 3) * 0.8 + noise(x * 0.17 - 2, z * 0.17 + 5) * 0.2;
+  const fade = smooth(P.skerries[0], P.skerries[0] + 6, d) * smooth(P.skerries[1], P.skerries[1] - 10, d);
+  return Math.max(y, mix(y, -6 + 8.5 * Math.sqrt(smooth(0.02, 0.36, b)), fade));
+};
+// Vikar: en skåra i kusten, width bred och depth djup, med en sandstrand längst in och klippväggar på sidorna.
+// mask: 1 i viken, 0 utanför (för målningen)
+const COVE = [[-11, 12], [-6.5, 2.2], [-3.5, 0.8], [0, 0], [4, -1], [10, -4], [24, -10]];
+const coveAt = (c, x, z, r, a, d) => {
+  const da = Math.atan2(Math.sin(a - c.angle * Math.PI / 180), Math.cos(a - c.angle * Math.PI / 180));
+  if (Math.abs(da) > 1) return { y: Infinity, mask: 0 };
+  const lat = Math.abs(r * Math.sin(da)) + 1.5 * noise(x * 0.2 + 3, z * 0.2 - 9), w = c.width / 2;
+  const y = profileAt(COVE, d + c.depth) + 22 * smooth(w * 0.55, w * 1.15, lat);
+  return { y, mask: (1 - smooth(w * 0.5, w * 0.9, lat)) * smooth(-c.depth - 12, -c.depth - 6, d) };
+};
+
 const angDiff = (a, b) => { const d = ((a - b) % 360 + 540) % 360 - 180; return Math.abs(d); };
 
 const D = JSON.parse(process.argv[2] ?? '{}');
@@ -106,6 +129,8 @@ for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const amp = s.detail ?? 1.5, nz = fbm(x + q * 37, z - q * 23, 0.035);
     y += amp * nz * smooth(P.noise[1], P.noise[0], d);
     if (P.crag) y += 2.2 * Math.abs(noise(x * 0.09 + 3, z * 0.09 - 7)) * smooth(4, -6, d); // skrovliga block längs kanten
+    if (P.skerries) y = skerryAt(P, d, x, z, y);
+    for (const c of s.coves ?? []) y = Math.min(y, coveAt(c, x, z, r, a, d).y);
     if (P.pools) y -= 2.6 * Math.max(0, fbm(x * 1.7 + 5, z * 1.7 - 2, 0.05) + 0.2) * smooth(P.pools[0], P.pools[0] + 6, d) * smooth(P.pools[1], P.pools[1] - 6, d);
     h += w[q] * y;
   });
@@ -147,6 +172,11 @@ for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
       const st = (b.strength ?? 0.8) * w[si] * smooth(b.from - 4, b.from + 2, d) * smooth(b.to + 4, b.to - 2, d);
       if (st > bestS) { bestS = st; best = id; }
     }
+    // Vikens sandstrand: sand ut till vattnet, inte klippväggarna (sidorna)
+    for (const c of s.coves ?? []) {
+      const m = coveAt(c, x, z, r, a, d).mask * w[si] * smooth(-c.depth + 6, -c.depth + 2, d);
+      if (m > bestS && biomeIds.includes('beach')) { bestS = m; best = biomeIds.indexOf('beach'); }
+    }
   });
   if (best >= 0 && bestS > 0.03) { paint[q] = best + 1; paint[P * P + q] = Math.round(255 * Math.min(1, bestS)); }
   // Regionerna: sektorn som äger platsen, mjukt mot vulkanen i mitten
@@ -158,7 +188,7 @@ for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
 const recipe = { ...settings, ...G, regions, regionThemes: X.regionThemes, regionColors: X.regionColors, regionPaint, sculpt: delta, sculptN: n, channels, channelKinds: X.channelKinds };
 const t = applyEdits(base, recipe), rf = regionField(t, recipe, {}), bio = computeBiomes(t, recipe, rf);
 const W = mixPaint(bio.weights, paint, n), NB = biomeIds.length;
-const per = sectors.map((s) => ({ coast: s.coast, slope: null, biomes: new Float64Array(NB), land: 0, band: 0, ponds: 0 }));
+const per = sectors.map((s) => ({ coast: s.coast, slope: null, biomes: new Float64Array(NB), land: 0, band: 0, ponds: 0, sea: 0, skerry: 0 }));
 for (let j = 0; j < n; j += 2) for (let i = 0; i < n; i += 2) {
   const x = -half + i * cell, z = -half + j * cell, r = Math.hypot(x, z), k = j * n + i;
   if (r < core) continue;
@@ -166,6 +196,7 @@ for (let j = 0; j < n; j += 2) for (let i = 0; i < n; i += 2) {
   if (w[si] < 0.8) continue;
   // Gölar: andelen under vattnet i bandet 3–22 m innanför kusten
   const d = r - coastR(a);
+  if (d > 8 && d < 34) { per[si].sea++; if (t.heights[k] > (settings.seaLevel ?? 0)) per[si].skerry++; }
   if (d > -22 && d < -3) { per[si].band++; if (t.heights[k] <= (settings.seaLevel ?? 0)) per[si].ponds++; }
   if (t.heights[k] <= (settings.seaLevel ?? 0)) continue;
   per[si].land++;
@@ -177,7 +208,7 @@ sectors.forEach((s, si) => {
   per[si].slope = +(-t.heightAt(sx, sz)).toFixed(1);
 });
 const report = per.map((p) => ({
-  coast: p.coast, depthAt6m: p.slope, pondsPct: Math.round(100 * p.ponds / Math.max(1, p.band)),
+  coast: p.coast, depthAt6m: p.slope, pondsPct: Math.round(100 * p.ponds / Math.max(1, p.band)), skerryPct: +(100 * p.skerry / Math.max(1, p.sea)).toFixed(1),
   biomes: Object.fromEntries([...p.biomes].map((v, b) => [biomeIds[b], Math.round(100 * v / Math.max(1, p.land))]).filter(([, v]) => v >= 5)),
 }));
 // Naturen som Populate-steget lägger ut den med receptets inställningar: antal per lager

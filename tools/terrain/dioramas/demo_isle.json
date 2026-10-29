@@ -89,8 +89,8 @@
       "paint": [
         {
           "biome": "rock",
-          "from": -5,
-          "to": 4,
+          "from": -4,
+          "to": 6,
           "strength": 0.75
         },
         {
@@ -98,6 +98,19 @@
           "from": -40,
           "to": -6,
           "strength": 0.8
+        },
+        {
+          "biome": "rock",
+          "from": 6,
+          "to": 38,
+          "strength": 0.95
+        }
+      ],
+      "coves": [
+        {
+          "angle": 14,
+          "width": 14,
+          "depth": 14
         }
       ]
     },
@@ -128,7 +141,7 @@
   ],
   "checks": {
     "beachMaxDepth": 1.2,
-    "cliffMinDepth": 8,
+    "cliffMinDepth": 4,
     "marshMinPonds": 8
   },
   "populate": {
