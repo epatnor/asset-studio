@@ -21,6 +21,7 @@ Genereras av `tools/import/make_credits.py` från importrecepten och `third_part
 |---|---|---|---|
 | `third_party/makehuman` | MakeHuman-data (basmesh hm08, targets, skelett) | CC0, CC0 1.0 | <https://github.com/makehumancommunity/mpfb2> ([SOURCE.md](../third_party/makehuman/SOURCE.md)) |
 | `third_party/polyhaven_hdri` | HDRI från Poly Haven | CC0 1.0 | <https://polyhaven.com> ([SOURCE.md](../third_party/polyhaven_hdri/SOURCE.md)) |
+| `third_party/ultra-water` | Ultra-Water (brytande vågor och spetsskum) | MIT | <https://github.com/Humpalumps/Ultra-Water> ([SOURCE.md](../third_party/ultra-water/SOURCE.md)) |
 
 ## Saknar licensuppgifter
 

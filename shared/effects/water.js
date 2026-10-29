@@ -20,15 +20,24 @@
 //   scene.add(water.mesh); water.set(vals, sun); water.update(time);
 //   ground.colorNode = water.groundColor(baseColor, levelNode)
 //
-// Geometrin har hörnen i världens koordinater (y = ytans nivå i vila) och tre attribut: bed (markens höjd under hörnet,
-// för dämpning och sköljning), bedSlope (markens lutning, för vågryggarna mot stranden) och flow (strömmens fart i xz,
-// m/s vid Current = 1). bedAndFlow() fyller dem.
+// Geometrin har hörnen i världens koordinater (y = ytans nivå i vila) och fyra attribut: bed (markens höjd under hörnet,
+// för dämpning och sköljning), bedSlope (markens lutning, för vågryggarna mot stranden), flow (strömmens fart i xz,
+// m/s vid Current = 1) och shore (gångtiden från stranden, riktningen in mot land och frontens samstämmighet, för de
+// brytande vågorna). bedAndFlow() fyller dem.
+//
+// Brytande vågor och spetsskum (Breakers och Lace foam, båda av som standard, så att vattnet annars är som förut) är
+// efter Ultra-Water (github.com/Humpalumps/Ultra-Water, MIT, © 2026 Humpalumps): vågfronter som går på gångtiden från
+// stranden (shore.js), så att de saktar in, packas och böjer sig efter botten; Greens lag och brytgränsen 0,42 × djupet;
+// krön som bryts tidigt på vissa sträckor och sent på andra (peeling); vitvatten som rider med vågen och nöts ned till
+// spetsar med åldern; spetsar som ligger kvar i bränningen; sköljningen i takt med vågorna och en våt linje som torkar.
 import * as THREE from 'three/webgpu';
 import {
   Fn, uniform, uniformArray, attribute, varying, float, vec2, vec3, vec4, sin, cos, exp, pow, max, min, mix, abs, fract, floor,
   smoothstep, normalize, dot, reflect, length, select, saturate, positionWorld, cameraPosition, screenUV, texture,
   viewportSharedTexture, viewportDepthTexture, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, reflector,
+  sqrt, clamp, acos, mx_noise_float,
 } from 'three/tsl';
+import { travelField } from './shore.js';
 
 const G = 9.81, DEG = Math.PI / 180;
 // De fyra vågorna i förhållande till den största: längd, vinkel mot huvudriktningen och höjd
@@ -92,8 +101,41 @@ function textures() {
     misc[i + 2] = 255 * Math.pow(1 - smoothN(0, 0.2, k2 - k1), 2.2);
     misc[i + 3] = 255;
   }
-  TEX = { slope: dataTex(slope, N), misc: dataTex(misc, N) };
+  TEX = { slope: dataTex(slope, N), misc: dataTex(misc, N), foam: foamTex(512) };
   return TEX;
+}
+// Spetsskummet (efter Ultra-Water, bakeTextures.js): R = spetsmönstret (cellkanter i två storlekar och små bubblor),
+// som skummet nöts ned till med åldern; G = vitvattnets bulor ("blomkål": varje cell en kupol, veckad där cellerna
+// möts, i tre storlekar); BA = bulornas lutning per ruta (0,5 + d/duv / 64)
+function foamTex(N) {
+  const cells = (n, seed) => { const r = rng(seed); return { n, p: Float32Array.from({ length: n * n * 2 }, r) }; };
+  const vor = ({ n, p }, u, v) => {
+    const x = u * n, y = v * n, cx = Math.floor(x), cy = Math.floor(y);
+    let f1 = 9, f2 = 9;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      const gx = cx + i, gy = cy + j, k = ((((gy % n) + n) % n) * n + (((gx % n) + n) % n)) * 2;
+      const dx = gx + p[k] - x, dy = gy + p[k + 1] - y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d < f1) { f2 = f1; f1 = d; } else if (d < f2) f2 = d;
+    }
+    return [f1, f2];
+  };
+  const A = cells(9, 21), B = cells(23, 22), C = cells(61, 23), BA = cells(7, 24), BB = cells(17, 25), BC = cells(41, 26);
+  const data = new Uint8Array(N * N * 4), bil = new Float32Array(N * N);
+  const dome = ([f1, f2]) => Math.sqrt(Math.min(1, Math.max(0, (f2 - f1) * 2.2)));
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const u = (x + 0.5) / N, v = (y + 0.5) / N, i = y * N + x;
+    const a = vor(A, u, v), b = vor(B, u, v), c = vor(C, u, v);
+    const lace = 1 - smoothN(0, 0.22, a[1] - a[0]), fine = 1 - smoothN(0, 0.16, b[1] - b[0]), bubbles = 1 - smoothN(0.15, 0.55, c[0]);
+    data[i * 4] = 255 * Math.min(1, (lace * 0.55 + fine * 0.3 + bubbles * 0.25 + (1 - a[0]) * 0.25) * 0.85);
+    bil[i] = 0.5 * dome(vor(BA, u, v)) + 0.32 * dome(vor(BB, u, v)) + 0.18 * dome(vor(BC, u, v));
+  }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const i = y * N + x, gx = (bil[y * N + ((x + 1) % N)] - bil[y * N + ((x + N - 1) % N)]) * N / 2, gy = (bil[((y + 1) % N) * N + x] - bil[((y + N - 1) % N) * N + x]) * N / 2;
+    data[i * 4 + 1] = 255 * Math.min(1, bil[i]);
+    data[i * 4 + 2] = 255 * Math.min(1, Math.max(0, 0.5 + gx / 64));
+    data[i * 4 + 3] = 255 * Math.min(1, Math.max(0, 0.5 + gy / 64));
+  }
+  return dataTex(data, N);
 }
 function smoothN(a, b, x) { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
 
@@ -110,6 +152,19 @@ export function bedAndFlow(geometry, bedAt, flowAt = null) {
   geometry.setAttribute('bed', new THREE.BufferAttribute(bed, 1));
   geometry.setAttribute('bedSlope', new THREE.BufferAttribute(grad, 2));
   geometry.setAttribute('flow', new THREE.BufferAttribute(flow, 2));
+  // De brytande vågorna (Breakers): gångtiden från stranden, riktningen in mot land och frontens samstämmighet, ur ett
+  // eikonalfält över geometrins ruta (shore.js). Inte i strömmande vatten (bäckar och åar)
+  const shore = new Float32Array(n * 4);
+  if (!flowAt && n) {
+    // Bara över grundet (vågorna finns inte där det är djupare än 8 m), så att rutorna blir små nog även när havet når
+    // horisonten
+    const L = p.getY(0);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < n; i++) if (bed[i] > L - 12) { const x = p.getX(i), z = p.getZ(i); x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    const field = x0 < x1 ? travelField(bedAt, L, x0 - 20, x1 + 20, z0 - 20, z1 + 20) : null;
+    if (field) for (let i = 0; i < n; i++) shore.set(field.at(p.getX(i), p.getZ(i)), i * 4);
+  }
+  geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 4));
   return geometry;
 }
 
@@ -125,6 +180,7 @@ export function createWater({ geometry, level = 0, sky }) {
     shoreFoam: uniform(0.35), foamWidth: uniform(0.25), crestFoam: uniform(0), foamScale: uniform(1),
     edge: uniform(0.06), wetShore: uniform(0.6), wetBand: uniform(0.12), surge: uniform(0), surgePeriod: uniform(7),
     flowSpeed: uniform(0.8), flowFoam: uniform(0.4), caustics: uniform(0.8), causticScale: uniform(1.5),
+    breakers: uniform(0), lace: uniform(0), swellDir: uniform(new THREE.Vector2(0, 1)),
     sunDir: uniform(new THREE.Vector3(0, 1, 0)), sunColor: uniform(new THREE.Color('#ffffff')), sunI: uniform(1), ambient: uniform(new THREE.Color('#8090a0')),
     level: uniform(level), rain: uniform(0),
     splash: uniformArray(Array.from({ length: RIPPLES }, () => new THREE.Vector4(0, 0, -99, 0)), 'vec4'), // x, z, start, styrka
@@ -180,8 +236,64 @@ export function createWater({ geometry, level = 0, sky }) {
     return { d: vec3(dx, dy, dz), n: normalize(vec3(nx.negate(), float(1).sub(ny), nz.negate())), pinch };
   };
   const g = gerstner();
-  const surgeNow = surgeAt(u.time, P0.x).mul(shoreW);
-  const vNormal = varying(normalize(g.n.add(bore.n))), vPinch = varying(g.pinch), vFlow = varying(flowA), vBore = varying(bore.foam);
+
+  // Brytande vågor (Breakers, efter Ultra-Water): två vågtåg på gångtiden från stranden, fas ω(τ + t). När de är på
+  // ersätter de vågryggen ovan, och sköljningen går i takt med dem
+  const shoreA = attribute('shore', 'vec4'), brOn = select(u.breakers.greaterThan(0), 1, 0);
+  const TAU = Math.PI * 2;
+  const vn = (p) => mx_noise_float(vec3(p.x, p.y, 0)).mul(0.5).add(0.5);
+  const shorePhase = (xz) => vn(xz.mul(0.009)).mul(9).add(vn(xz.mul(0.023).add(7)).mul(2.5)); // fasen längs stranden
+  const shoreGroup = (xz) => vn(xz.mul(0.008).add(vec2(u.time.mul(0.021), u.time.mul(-0.017)))).mul(0.55).add(0.45); // seten
+  const omega = float(TAU).div(u.surgePeriod);
+  // Sköljningen: vågen når strandlinjen (τ = 0) vid s = 0, springer upp till R på en knapp tredjedel och rinner tillbaka
+  const swashS = (xz) => fract(u.time.mul(omega).add(shorePhase(xz)).div(TAU));
+  const swashEta = (s, R) => R.mul(select(s.lessThan(0.3), sin(s.div(0.3).mul(Math.PI / 2)), cos(s.sub(0.3).div(0.7).mul(Math.PI / 2))));
+  const br = (() => {
+    const tau = shoreA.x, dir = shoreA.yz, coh = shoreA.w, depth = depth0;
+    const env = float(1).sub(smoothstep(3, 8, depth)).mul(smoothstep(-0.9, 0.5, depth)).mul(coh).mul(brOn);
+    const expo = mix(0.25, 1, smoothstep(-0.3, 0.7, dot(dir, u.swellDir))); // kuster mot dyningen får de stora seten
+    const shoal = pow(clamp(max(depth, 0.6).div(8), 0.04, 1), -0.25); // Greens lag
+    const cel = sqrt(clamp(depth, 0.3, 14).mul(G));
+    const amax = max(depth, 0).mul(0.42).add(u.breakers.mul(0.3));
+    const np = shorePhase(P0.xz), grp = shoreGroup(P0.xz), lean = max(u.steep, 0.2);
+    let pinch = float(0.85); // all hoptryckning i sidled tillsammans (ytan viks aldrig över sig själv)
+    let disp = vec3(0), slope = vec2(0), foam = float(0), lip = float(0), residual = float(0);
+    for (let i = 0; i < 2; i++) {
+      const w = omega.mul(i ? 1.28 : 1), k = w.div(cel);
+      const a = min(u.breakers.mul(i ? 0.45 : 1).mul(env).mul(expo).mul(shoal).mul(grp), amax.mul(i ? 0.5 : 1));
+      const ph = w.mul(tau.add(u.time)).add(np.mul(i ? 1.37 : 1)).add(i * 2.1);
+      const c = max(cos(ph).mul(0.5).add(0.5), 1e-4), s = sin(ph), cp = pow(c, 0.6); // smalare krön, flackare dalar
+      const rel = a.div(max(depth, 0.05));
+      // Varje krön bryts tidigt på vissa sträckor och sent på andra, med en ny fördelning för varje våg
+      const cycle = floor(ph.add(Math.PI).div(TAU));
+      const early = vn(P0.xz.mul(0.03).add(vec2(cycle.mul(7.3), cycle.mul(3.1).add(i * 31))));
+      const breaking = smoothstep(early.mul(0.14).add(0.12), early.mul(0.2).add(0.3), rel);
+      // Kammen lutar fram där den bryts (bara kring brytpunkten; längre in går den som en bränning)
+      let pitch = float(0);
+      if (i === 0) pitch = min(a.mul(2).mul(lean).mul(smoothstep(0.16, 0.28, rel)).mul(float(1).sub(smoothstep(0.4, 0.6, rel))), float(0.35).div(k.mul(1.08)));
+      pinch = pinch.sub(pitch.mul(k).mul(1.08));
+      const qak = max(min(pinch, lean.mul(a).mul(k).mul(8)), 0);
+      pinch = pinch.sub(qak);
+      const c5 = c.mul(c).mul(c).mul(c).mul(c);
+      disp = disp.add(vec3(dir.x, 0, dir.y).mul(qak.div(k).mul(s).add(pitch.mul(c5).mul(c)))).add(vec3(0, a.mul(cp.mul(c).mul(2).sub(0.78)), 0));
+      slope = slope.add(dir.mul(a.mul(k).mul(1.6).mul(cp).mul(s).div(max(float(1).sub(qak.mul(cos(ph))).add(pitch.mul(k).mul(3).mul(c5).mul(s)), 0.2))));
+      // Vitvatten på krönet och efter det, när vågen bryts
+      const psi = fract(ph.add(Math.PI).div(TAU)).mul(TAU).sub(Math.PI);
+      foam = foam.add(breaking.mul(smoothstep(-0.45, 0, psi)).mul(exp(max(psi, 0).mul(-0.8))));
+      if (i === 0) {
+        lip = breaking.mul(c5).mul(smoothstep(0.6, -0.2, psi));
+        residual = smoothstep(0.18, 0.4, rel).mul(exp(fract(ph.div(TAU)).mul(TAU).mul(-0.4)).mul(0.45).add(0.3)); // spetsarna som blir kvar
+      }
+    }
+    // Skummet i sköljningens framkant medan den springer upp
+    const uprush = float(1).sub(smoothstep(0.25, 0.45, swashS(P0.xz))).mul(float(1).sub(smoothstep(0.3, 1.2, depth))).mul(brOn);
+    return { disp, slope, foam, lip, residual, uprush, dir, cel, swash: swashEta(swashS(P0.xz), u.surge.mul(grp)) };
+  })();
+  const surgeNow = mix(surgeAt(u.time, P0.x), br.swash, brOn).mul(shoreW);
+  const brNormal = vec3(br.slope.x.negate(), 0, br.slope.y.negate());
+  const vNormal = varying(normalize(g.n.add(bore.n.mul(float(1).sub(brOn))).add(brNormal))), vPinch = varying(g.pinch), vFlow = varying(flowA);
+  const vBore = varying(mix(bore.foam, max(br.foam, br.residual.mul(0.5)), brOn));
+  const vBr = varying(vec4(br.foam, br.residual, br.lip, br.uprush)), vDir = varying(br.dir), vCel = varying(br.cel);
   const vSlope = varying(bedSlope); // bottnens lutning: skummet sträcks längs strandlinjen
 
   // ---------- Pixlarna ----------
@@ -282,17 +394,66 @@ export function createWater({ geometry, level = 0, sky }) {
     // Mjuk kant: skummet blir runda fläckar som tonar ut, inte vassa trådar, och tonar bort mot strandlinjen
     const edge0 = float(1).sub(mask);
     const foam = smoothstep(edge0.sub(0.1), edge0.add(0.4), noise).mul(saturate(mask.mul(2))).mul(smoothstep(0, u.edge.mul(3).add(0.02), dv));
+    // Den brytande kammen är tunn och lyser igenom (turkos) innan den slår över
+    col = col.add(u.shallow.mul(lightAmt).mul(vBr.z).mul(0.6));
     // Lite genomskinligt skum (0,85), så att vattnet skymtar igenom och kanten blandas mjukt
-    col = mix(col, vec3(0.92, 0.95, 0.96).mul(lightAmt.add(u.sunColor.mul(u.sunI).mul(max(u.sunDir.y, 0).mul(0.3)))), foam.mul(0.85));
-    // Mot stranden tonar ytan ut (inget hårt snitt där vattnet möter marken)
-    return vec4(col, smoothstep(0, u.edge.mul(1.8), dv));
+    const colBlob = mix(col, vec3(0.92, 0.95, 0.96).mul(lightAmt.add(u.sunColor.mul(u.sunI).mul(max(u.sunDir.y, 0).mul(0.3)))), foam.mul(0.85));
+
+    // Spetsskummet (Lace foam, efter Ultra-Water): tätt skum är nästan helt vitt och nöts med åldern ned till ett nät
+    // av spetsar (tröskel i mönstret). Varje källa ger också bulornas höjd och lutning och en täthet för ljuset
+    const fsc = u.foamScale, ft = (uv) => texture(T.foam, uv);
+    const t0 = ft(Pw.xz.mul(float(0.11).div(fsc)));
+    // Vid stranden och på krönen, och en rand i sköljningens framkant medan den springer upp. Taket 0,85: på en flack
+    // strand är vattnet tunt långt upp, och då skulle allt bli vitt
+    const fStat = min(max(shore, crest).add(vBr.w.mul(float(1).sub(smoothstep(0.02, 0.12, dv))).mul(0.6)), 0.85);
+    const pat0 = t0.r.mul(0.65).add(ft(Pw.xz.mul(float(0.031).div(fsc)).add(0.37)).r.mul(0.35));
+    let cover = smoothstep(float(1.05).sub(fStat), float(1.3).sub(fStat), pat0).mul(sqrt(fStat));
+    let pat = pat0, fh = t0.g, fg = t0.ba.sub(0.5).mul(float(64 * 0.11).div(fsc)), dens = fStat;
+    // Vitvattnet rider med vågen in mot land: flödeskarta i vågens fart, två faser som vägs ihop (det kärnar också)
+    const ww = min(vBr.x.mul(u.shoreFoam), 0.8), vel = vDir.mul(vCel), FT = 2.5;
+    const f0 = fract(t.div(FT)), f1 = fract(t.div(FT).add(0.5)), wbl = abs(f0.mul(2).sub(1));
+    const ws = float(0.15).div(fsc);
+    const b0 = ft(Pw.xz.sub(vel.mul(f0.mul(FT))).mul(ws)), b1 = ft(Pw.xz.sub(vel.mul(f1.mul(FT))).mul(ws).add(0.43));
+    const sh = mix(b0.g, b1.g, wbl);
+    const sPat = mix(b0.r, b1.r, wbl).mul(0.3).add(sh.mul(0.45)).add(ft(Pw.xz.mul(float(0.023).div(fsc)).add(0.5)).r.mul(0.25));
+    const sCover = smoothstep(float(1).sub(ww.mul(1.1)), float(1.2).sub(ww.mul(1.1)), sPat).mul(sqrt(ww));
+    const sWin = sCover.greaterThanEqual(cover);
+    pat = select(sWin, sPat, pat); fh = select(sWin, sh, fh); dens = select(sWin, ww, dens);
+    fg = select(sWin, mix(b0.ba, b1.ba, wbl).sub(0.5).mul(ws.mul(64)), fg);
+    cover = max(cover, sCover);
+    // Spetsarna som blir kvar i bränningen och driver in mot land
+    const res = saturate(vBr.y.mul(u.shoreFoam).mul(1.2)), fp = fract(t.div(8)), drift = vDir.mul(2.8), rs = float(0.06).div(fsc);
+    const rp = mix(ft(Pw.xz.sub(drift.mul(fp)).mul(rs)).r, ft(Pw.xz.sub(drift.mul(fract(fp.add(0.5)))).mul(rs).add(0.5)).r, abs(fp.mul(2).sub(1)));
+    const rCover = smoothstep(float(1.2).sub(res), float(1.35).sub(res), rp).mul(res);
+    const rWin = rCover.greaterThanEqual(cover);
+    pat = select(rWin, rp, pat); fh = select(rWin, float(0.5), fh); dens = select(rWin, res.mul(0.5), dens); fg = select(rWin, vec2(0), fg);
+    cover = max(cover, rCover);
+    // Forsskummet som förut (det följer strömmen)
+    const rapM = saturate(rapids).mul(0.8), rapE = float(1).sub(rapM);
+    cover = max(cover, smoothstep(rapE.sub(0.1), rapE.add(0.4), noise).mul(saturate(rapM.mul(2))));
+    cover = cover.mul(smoothstep(0, u.edge.mul(1.5).add(0.01), dv));
+    // Ljuset: bulorna buktar normalen och skuggar vecken; tunt skum är en bubbelhinna i vattnets färg, tätt skum vitt med
+    // lite glans på bubbeltopparna; solen bakom krönet lyser igenom det tunna
+    const fN = normalize(N.sub(vec3(fg.x, 0, fg.y).mul(dens.mul(0.12).add(0.03))));
+    const ao = mix(0.45, 1, smoothstep(0.15, 0.75, fh)), solid = smoothstep(0.2, 0.9, dens.mul(fh.mul(0.7).add(0.55)));
+    const albedo = mix(u.shallow.mul(0.45).add(0.45), vec3(0.95), max(solid, smoothstep(0.3, 0.9, pat).mul(0.6)));
+    const sunL = u.sunColor.mul(u.sunI).mul(0.42);
+    const lit = sunL.mul(saturate(dot(fN, u.sunDir).mul(0.8).add(0.2))).mul(mix(ao, 1, 0.4)).add(u.ambient.mul(ao).mul(1.1))
+      .add(sunL.mul(pow(saturate(dot(u.sunDir, V.negate())), 4)).mul(0.4).mul(float(1).sub(solid)));
+    const Hs = normalize(u.sunDir.add(V));
+    const foamCol = albedo.mul(lit).add(sunL.mul(pow(max(dot(fN, Hs), 0), 90)).mul(0.5).mul(smoothstep(0.55, 0.85, fh)).mul(solid));
+    const colLace = mix(col, foamCol, cover.mul(mix(0.8, 1, solid)));
+    col = mix(colBlob, colLace, u.lace);
+    // Mot stranden tonar ytan ut (inget hårt snitt där vattnet möter marken); spetsskummet håller sin kant lite längre
+    const alpha = smoothstep(0, u.edge.mul(1.8), dv);
+    return vec4(col, mix(alpha, max(alpha, cover.mul(0.9).mul(smoothstep(0, 0.015, dv))), u.lace));
   })();
 
   // Speglingen av scenen: ett plan i ytans nivå som ritar scenen spegelvänd (halv upplösning), byggt först när det behövs
   let mirrorNode = null;
   function material(mirror) {
     const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: true, side: THREE.FrontSide });
-    m.positionNode = P0.add(g.d).add(vec3(0, surgeNow.add(bore.h), 0));
+    m.positionNode = P0.add(g.d).add(br.disp).add(vec3(0, surgeNow.add(bore.h.mul(float(1).sub(brOn))), 0));
     if (mirror) {
       mirrorNode = reflector({ resolutionScale: 0.5 });
       mirrorNode.target.rotation.x = -Math.PI / 2;
@@ -329,7 +490,15 @@ export function createWater({ geometry, level = 0, sky }) {
     const prof = select(s.lessThan(0.2), smoothstep(0, 0.2, s), float(1).sub(s.sub(0.2).mul(0.45)));
     const line = max(prof.mul(waveStrength(n)), waveStrength(n.sub(1)).mul(float(0.7).sub(s.mul(0.25)))).mul(u.surge);
     const washed = float(1).sub(smoothstep(line.sub(0.1), line.add(0.01), above)).mul(0.75).add(float(1).sub(smoothstep(line.sub(0.01), line.add(0.03), above)).mul(0.25));
-    return saturate(max(band, washed.mul(select(u.surge.greaterThan(0), 1, 0)))).mul(u.wetShore);
+    // Med de brytande vågorna (efter Ultra-Water): sanden under sköljningen är våt, och torkar sedan några sekunder från
+    // det att vattnet drog sig tillbaka därifrån; de större seten når högre och lämnar en svagare fuktig rand
+    const xz = positionWorld.xz, R = max(u.surge.mul(shoreGroup(xz)), 0.005), sw = swashS(xz);
+    const sPass = acos(clamp(above.div(R), 0, 1)).div(Math.PI / 2).mul(0.7).add(0.3);
+    const dry = select(sw.greaterThan(sPass), sw.sub(sPass), sw.add(1).sub(sPass)).mul(u.surgePeriod);
+    const film = select(swashEta(sw, R).sub(above).greaterThan(0), float(1), exp(dry.div(-5)));
+    const washedBr = select(above.greaterThan(R), smoothstep(R.mul(1.5), R, above).mul(0.5), film);
+    const washedAll = mix(washed, washedBr, brOn).mul(select(u.surge.greaterThan(0), 1, 0));
+    return saturate(max(band, washedAll)).mul(u.wetShore);
   }
   return {
     mesh, uniforms: u,
@@ -345,7 +514,7 @@ export function createWater({ geometry, level = 0, sky }) {
     set(v, sun, { light = 3, ambient = 1 } = {}) {
       vals = v;
       u.shallow.value.set(v.shallow); u.deep.value.set(v.deep);
-      for (const k of ['clarity', 'deepAt', 'ripples', 'rippleScale', 'reflections', 'distortion', 'refraction', 'glitter', 'glitterSize', 'shoreFoam', 'foamWidth', 'crestFoam', 'foamScale', 'edge', 'wetShore', 'wetBand', 'surge', 'surgePeriod', 'flowSpeed', 'flowFoam', 'caustics', 'causticScale']) u[k].value = v[k];
+      for (const k of ['clarity', 'deepAt', 'ripples', 'rippleScale', 'reflections', 'distortion', 'refraction', 'glitter', 'glitterSize', 'shoreFoam', 'foamWidth', 'crestFoam', 'foamScale', 'edge', 'wetShore', 'wetBand', 'surge', 'surgePeriod', 'flowSpeed', 'flowFoam', 'caustics', 'causticScale', 'breakers', 'lace']) u[k].value = v[k] ?? 0;
       u.steep.value = v.choppiness;
       const H = v.waveHeight * 0.5, n = WAVES.length;
       WAVES.forEach(([len, ang, amp], i) => {
@@ -355,6 +524,7 @@ export function createWater({ geometry, level = 0, sky }) {
       });
       const wa = v.waveDir * DEG;
       u.wind.value.set(Math.sin(wa), -Math.cos(wa));
+      u.swellDir.value.set(Math.sin(wa), -Math.cos(wa));
       if (sun) {
         u.sunDir.value.copy(sun.dir); u.sunColor.value.copy(sun.color);
         u.sunI.value = light * sun.strength;
