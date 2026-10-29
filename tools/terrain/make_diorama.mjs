@@ -34,8 +34,14 @@ const PROFILES = {
   beach: { pts: [[-40, 10], [-24, 4.5], [-12, 1.6], [0, 0], [8, -0.7], [30, -2.6], [55, -9], [80, -15]], noise: [-30, -10] },
   // Låg, flack myr strax över havet, med gölar där bruset går under ytan, och ett grunt, gyttjigt hav utanför
   marsh: { pts: [[-56, 19], [-40, 9], [-28, 3.5], [-19, 1.2], [-6, 0.4], [2, -0.4], [24, -1.4], [55, -7], [80, -15]], noise: [-54, -28], pools: [-21, -3] },
-  // Klippkust: en platå som slutar tvärt och faller 15 m ned i djupt vatten
-  cliff: { pts: [[-30, 15], [-10, 14], [-2, 10], [0, 6], [2, -4], [6, -10], [30, -14], [80, -16]], noise: [-30, 0], crag: true },
+  // Klippkust: en platå som går ned i hyllor till djupt vatten. ledges: [kant (m från kusten), höjden nedanför, hur långt
+  // kanten vandrar längs kusten (m)]; kanterna vandrar var för sig, så att hyllorna ligger omlott: en hylla smalnar av och
+  // tar slut, och där två kanter möts blir det en hög vägg. face: väggens bredd (m); under: botten utanför klippan
+  cliff: {
+    pts: [[-30, 15], [-10, 14], [-2, 10], [0, 6], [2, -4], [6, -10], [30, -14], [80, -16]], noise: [-30, 0], crag: true,
+    ledges: [[-18, 11.5, 8], [-12.5, 8, 8], [-7, 4.5, 7], [-2.5, 1.6, 4.5]], face: 1.4,
+    under: [[0, 2], [2.5, -4], [6, -10], [30, -14], [80, -16]],
+  },
   // Äng: mjuka kullar ned mot en grön strand, med en brantare kant under vattnet
   meadow: { pts: [[-45, 12], [-22, 5], [-8, 1.4], [0, 0], [6, -1.6], [22, -4.5], [50, -11], [80, -15]], noise: [-40, -8] },
 };
@@ -43,6 +49,16 @@ const profileAt = (pts, d) => {
   if (d <= pts[0][0]) return pts[0][1];
   for (let q = 1; q < pts.length; q++) if (d <= pts[q][0]) return pts[q - 1][1] + (pts[q][1] - pts[q - 1][1]) * smooth(pts[q - 1][0], pts[q][0], d);
   return pts.at(-1)[1];
+};
+// Hyllorna: platån och sedan ett steg per hylla, med kanter som vandrar i ett brus (stort längs kusten, smått i kanten)
+const ledgesAt = (P, d, x, z) => {
+  let y = profileAt(P.pts, Math.min(d, -10));
+  P.ledges.forEach(([e, h, J], i) => {
+    const edge = e + J * noise(x * 0.055 + i * 13.1, z * 0.055 - i * 7.7) + 0.8 * noise(x * 0.18 - i * 5.3, z * 0.18 + i * 3.9);
+    const hh = h + 0.8 * noise(x * 0.05 - i * 3.3, z * 0.05 + i * 9.1);
+    y = mix(y, Math.min(y, hh), smooth(edge - P.face / 2, edge + P.face / 2, d));
+  });
+  return d <= P.under[0][0] ? y : Math.min(y, profileAt(P.under, d));
 };
 const angDiff = (a, b) => { const d = ((a - b) % 360 + 540) % 360 - 180; return Math.abs(d); };
 
@@ -86,7 +102,7 @@ for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     // Vulkanens egen sluttning tonar över i profilen från foten ut till 18 m bortom profilens första punkt, så att foten
     // inte blir en mur
     const start = P.pts[0][0];
-    let y = mix(b0, profileAt(P.pts, d), smooth(core - Rc, start + 18, d));
+    let y = mix(b0, P.ledges ? ledgesAt(P, d, x, z) : profileAt(P.pts, d), smooth(core - Rc, start + 18, d));
     const amp = s.detail ?? 1.5, nz = fbm(x + q * 37, z - q * 23, 0.035);
     y += amp * nz * smooth(P.noise[1], P.noise[0], d);
     if (P.crag) y += 2.2 * Math.abs(noise(x * 0.09 + 3, z * 0.09 - 7)) * smooth(4, -6, d); // skrovliga block längs kanten
