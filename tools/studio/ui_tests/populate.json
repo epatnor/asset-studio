@@ -6,7 +6,7 @@
   "steps": [
     {"until": "window.__studio?.terrain?.popResult && window.__studio.terrain.natureStats() && document.querySelector('#tfoot .msg')?.textContent.includes('orbit')", "timeout": 180000},
     {"expect": "__studio.terrain.step === 'populate' && document.querySelector('#kinds button.on')?.textContent === 'Populate'", "label": "the Populate step opens with its tab highlighted"},
-    {"expect": "document.querySelectorAll('#tdrawer .wprof[data-layer]').length === 12", "label": "the drawer lists the twelve layers"},
+    {"expect": "document.querySelectorAll('#tdrawer .wprof[data-layer]').length === 14", "label": "the drawer lists the fourteen layers"},
     {"expect": "__studio.terrain.popResult.total > 10000 && __studio.terrain.popResult.layers.find((l) => l.id === 'broadleaf').count > 300", "label": "the island fills with nature by the rules"},
     {"wait": 3000},
     {"eval": "({ stats: __studio.terrain.natureStats(), fps: __studio.terrain.fps, ms: __studio.terrain.popResult.ms })"},

@@ -19,13 +19,15 @@ import { createWater, bedAndFlow } from '../shared/effects/water.js';
 import { antiTiled } from '../shared/effects/antitile.js';
 import { axis, buildField } from '../shared/terrain/field.js';
 import { worldGrid } from '../shared/terrain/generate.js';
-import { PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../shared/terrain/biomes.js';
+import { BIOMES, PAINT_SIZE, mixPaint, paintStroke, encodePaint, decodePaint } from '../shared/terrain/biomes.js';
 import { removeFromPaint } from '../shared/terrain/regions.js';
 import { brushDab, rampStroke, encodeDelta, decodeDelta, resampleDelta, falloff } from '../shared/terrain/sculpt.js';
 import { createStamp, createLandform, placeLandform } from '../shared/terrain/stamps.js';
 import { SLOTS, paintDab, coverage as paintCoverage, resampleWeights, encodeWeights, decodeWeights } from '../shared/terrain/paint.js';
 import { populate } from '../shared/terrain/populate.js';
 import { createNature } from './populate3d.js';
+import { createGrass, groundSampler } from '../shared/effects/grass.js';
+import { createWind } from '../shared/effects/wind.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 
@@ -84,6 +86,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // --- Atmosfären (shared/effects/weather.js), med solen långt bort så att skuggorna räcker över hela platsen ---
   const atm = createAtmosphere({ scene, shadowSize: 4096, shadowRange: half * 1.25, lightDistance: half * 2.2 });
   const sky = atm.sky;
+  // Vinden för gräset (shared/effects/wind.js), med styrka och riktning ur vädret
+  const wind = createWind({ strength: 0.5, dir: 60 * DEG });
   const pipeline = new THREE.RenderPipeline(renderer);
   const scenePass = pass(scene, camera, { samples: 4 });
   const raw0 = scenePass.getTextureNode('output');
@@ -258,6 +262,54 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   // Utplaceringen: naturen som ritas (studio/populate3d.js, skapas första gången), senaste resultatet, om världen
   // ändrats sedan dess, det valda lagret och bibliotekets katalog (familjernas mått och varianter)
   let nature = null, natureDirty = true, natureT = 0, popResult = null, popSel = info.populate.layers[0]?.id ?? null, library = null;
+  // Det täta gräset runt kameran (shared/effects/grass.js med follow, inställt i populate.grass i terrain.json): det
+  // växer efter biomerna, glesnar av de målade marklagren (deras grass eller plant) och undviker branter och stranden
+  let grassField = null, grassEffects = [];
+  const grassRoot = new THREE.Group();
+  scene.add(grassRoot);
+  const grassBiome = BIOMES.map((id) => info.populate.grass?.biomes?.[id] ?? 0);
+  const ease = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // Mjukt brus (0..1) för gräsets fläckar: där biomen har lite gräs växer det i gläntor och fläckar, inte jämnt glest
+  const hash = (i, j) => { const v = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return v - Math.floor(v); };
+  const vnoise = (x, z) => {
+    const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+    return (hash(i, j) * (1 - u) + hash(i + 1, j) * u) * (1 - v) + (hash(i, j + 1) * (1 - u) + hash(i + 1, j + 1) * u) * v;
+  };
+  function grassAt(x, z) {
+    if (!field || !final || Math.abs(x) >= half || Math.abs(z) >= half) return 0;
+    const cfg = info.populate.grass, { n, cell, heights } = field;
+    const i = Math.min(n - 2, Math.max(1, Math.round((x + half) / cell))), j = Math.min(n - 2, Math.max(1, Math.round((z + half) / cell))), k = j * n + i;
+    let g = 0;
+    for (let b = 0; b < 8; b++) g += final[k * 8 + b] * grassBiome[b];
+    g /= 255;
+    if (g <= 0.01) return 0;
+    const dx = (heights[k + 1] - heights[k - 1]) / (2 * cell), dz = (heights[k + n] - heights[k - n]) / (2 * cell);
+    g *= 1 - ease(cfg.slope - 8, cfg.slope, Math.atan(Math.hypot(dx, dz)) / DEG);
+    if (vals.sea) g *= ease(vals.seaLevel + cfg.above, vals.seaLevel + cfg.above + 0.5, bedAt(x, z));
+    if (groundW && groundN === n && grassEffects.some((e) => e != null)) {
+      let sum = 0, eff = 0;
+      for (let si = 0; si < SLOTS; si++) { const e = grassEffects[si]; if (e == null) continue; const w = groundW[k * SLOTS + si] / 255; sum += w; eff += w * e; }
+      g *= Math.max(0, 1 - Math.min(1, sum)) + eff;
+    }
+    const patch = 0.5 + (vnoise(x / 9, z / 9) * 0.65 + vnoise(x / 3.5 + 17, z / 3.5 - 5) * 0.35 - 0.5) * 1.8;
+    g = Math.min(1, g);
+    return ease(patch - 0.25, patch + 0.15, g) * ease(0.03, 0.2, g); // lite gräs (strand, berg) blir inget, inte fläckar
+  }
+  async function ensureGrass() {
+    if (grassField || !info.populate.grass) return;
+    const G = await api('/api/grass'), cfg = info.populate.grass;
+    const settings = { ...Object.fromEntries(G.params.map((q) => [q.key, q.default])), ...stripLabel(G.presets[cfg.preset] ?? {}), ...cfg.settings };
+    grassField = createGrass(wind, { ...cfg.field, follow: true, heightAt: bedAt, densityAt: grassAt }, settings);
+    grassField.baseDensity = settings.density ?? 1;
+    grassField.setGroundTexture(groundSampler(raw(settings.ground ?? 'ground_meadow')));
+    grassField.uniforms.sun.value.copy(atm.keyDir);
+    grassRoot.add(grassField.group);
+  }
+  // Gräsets spak (Grass under Nature) och om det syns: bara i steget Populate
+  function showGrass() {
+    grassRoot.visible = step === 'populate' && vals.populate.grass > 0;
+    grassField?.set({ density: (grassField.baseDensity ?? 1) * vals.populate.grass });
+  }
   const recipe = (kind) => ({
     ...Object.fromEntries(recipeKeys.map((k) => [k, vals[k]])), ...worldGrid(sizeOf()),
     regions: vals.regions, regionThemes: info.regionThemes, regionColors: info.regionColors, regionPaint,
@@ -427,6 +479,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     atm.set(w);
     atm.moveTo(new THREE.Vector3(0, 0, 0));
     sun = atm.sun;
+    wind.set({ strength: Math.min(1, 0.3 + (w.wind ?? 2) / 10), dir: (w.windDir ?? 60) * DEG });
+    grassField?.uniforms.sun.value.copy(atm.keyDir);
     renderer.toneMappingExposure = vals.exposure * (w.exposure ?? 1) * atm.exposure;
     const S = sky.uniforms;
     water.set(waterVals, { dir: atm.keyDir, color: atm.key.color, strength: 1, zenith: S.zenith.value, horizon: S.horizon.value }, { light: atm.key.intensity, ambient: atm.hemi.intensity });
@@ -791,6 +845,10 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     };
     popResult = populate(world, info.populate, { seed: vals.populate.seed, density: vals.populate.density, layers: vals.populate.layers });
     natureDirty = false;
+    await ensureGrass();
+    grassEffects = effects.map((e) => (e ? e.grass ?? e.plant ?? 1 : null));
+    grassField?.refresh();
+    showGrass();
     await nature.set(popResult);
     nature.visible = step === 'populate';
     nature.update(camera.position, vals.populate.detail);
@@ -805,6 +863,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
       body.append(cards.rowFor(q)({ ...q, rebuild: true }, get, set, () => {
         mark(null);
         if (q.key === 'detail') nature?.update(camera.position, vals.populate.detail);
+        else if (q.key === 'grass') showGrass();
         else runPopulate();
       }));
     }
@@ -965,6 +1024,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     updatePopCard();
     // Naturen syns i Populate; den sprids ut igen om världen ändrats sedan sist
     if (nature) nature.visible = s === 'populate';
+    showGrass();
     if (s === 'populate' && (natureDirty || !popResult)) runPopulate();
     renderDrawer();
     apply();
@@ -1324,6 +1384,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function tick(dt) {
     time += dt;
     water.update(time);
+    wind.update(dt);
+    if (grassField && grassRoot.visible) grassField.update(camera);
     riverWater?.update(time);
     controls.update();
     moveLabels();
@@ -1341,7 +1403,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     if (now - fpsT > 500) {
       fps = Math.round((frames * 1000) / (now - fpsT)); frames = 0; fpsT = now;
       const ns = nature && step === 'populate' ? nature.stats : null;
-      block(fStats, 'View', `${Math.round((stats.triangles + (ns?.triangles ?? 0)) / 1000)}k triangles · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · ${clock(vals.hour)}${ns ? ` · near ${ns.near}, mid ${ns.mid}, far ${ns.proxy}` : ''}`);
+      block(fStats, 'View', `${Math.round((stats.triangles + (ns?.triangles ?? 0)) / 1000)}k triangles · ${fps} fps · ${renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · ${clock(vals.hour)}${ns ? ` · near ${ns.near}, mid ${ns.mid}, far ${ns.proxy}` : ''}${grassField && grassRoot.visible && grassField.group.visible ? ` · ${Math.round(grassField.visibleBlades() / 1000)}k blades` : ''}`);
     }
   }
 
@@ -1373,7 +1435,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     get delta() { return delta; }, get channelInfo() { return channelInfo; }, get field() { return field; }, get sculptTool() { return sculptTool; }, setTool,
     sculptSettings: () => S(),
     get groundW() { return groundW; }, get paintCov() { return paintCov; }, get paintChoice() { return paintChoice; },
-    get popResult() { return popResult; }, natureStats: () => nature?.stats ?? null, get fps() { return fps; }, runPopulate,
+    get popResult() { return popResult; }, natureStats: () => nature?.stats ?? null,
+    grassAt, grassStats: () => (grassField ? { blades: grassField.blades, drawn: grassField.visibleBlades(), shown: grassRoot.visible && grassField.group.visible } : null), get fps() { return fps; }, runPopulate,
     // Var en punkt i världen hamnar i fönstret (för UI-testerna): [x, y] i bildpunkter
     screenOf(x, z) { const v = new THREE.Vector3(x, bedAt(x, z), z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height]; },
     stats: () => ({ ...stats, fps, backend: renderer.backend.isWebGPUBackend ? 'webgpu' : 'webgl' }),

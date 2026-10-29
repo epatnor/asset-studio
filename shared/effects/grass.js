@@ -13,6 +13,11 @@
 //
 //   const grass = createGrass(wind, { radius: 30, exclude: [{ x, z, r }] }, settings);
 //   scene.add(grass.group); varje bild: grass.update(camera)
+//
+// Över en hel värld (Kartrummet): follow: true lägger rutorna i ett fast rutnät runt kameran i stället för runt
+// origo, bygger nya rutor när kameran flyttar sig (några per bild) och släpper dem som hamnat utanför. heightAt(x, z)
+// ställer stråna på marken och densityAt(x, z) (0..1) säger hur mycket gräs som växer där (glesare gräs är också
+// kortare); i kanten av fältet glesnar det ut, och över maxHeight meter ovanför marken ritas inget gräs.
 import { RESPONSE } from './wind.js';
 import { InstancedBufferGeometry, InstancedBufferAttribute, Float32BufferAttribute, Mesh, Group, Sphere, Vector3, Color, DoubleSide, MeshLambertNodeMaterial, DataTexture, SRGBColorSpace, RepeatWrapping, LinearFilter, LinearMipmapLinearFilter } from 'three/webgpu';
 import {
@@ -59,7 +64,7 @@ export function colorTexture(hex) {
   t.needsUpdate = true;
   return t;
 }
-export const GRASS_FIELD = { radius: 30, inner: 13, counts: [280, 70], chunk: 5, seed: 11, lod: [12, 30] };
+export const GRASS_FIELD = { radius: 30, inner: 13, counts: [280, 70], chunk: 5, seed: 11, lod: [12, 30], follow: false, fade: 8, maxHeight: 80, budget: 6 };
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -85,11 +90,18 @@ export function createGrass(wind, field = {}, settings = {}) {
   const sh = overallShift(s0.overall);
   Object.assign(u, { overallHue: uniform(sh.hue), overallSat: uniform(sh.sat), overallBright: uniform(sh.bright) });
   Object.assign(u, { sun: uniform(new Vector3(0.5, 0.7, 0.4).normalize()), lodNear: uniform(f.lod[0]), lodFar: uniform(f.lod[1]) });
+  // Fältets kant (bara med follow): stråna glesnar ut mellan edgeNear och edgeFar meter från kameran
+  Object.assign(u, { edgeNear: uniform(f.follow ? f.radius - f.fade : 1e5), edgeFar: uniform(f.follow ? f.radius : 1e5 + 1) });
   let clumpSize = s0.clumpSize, exclude = f.exclude ?? [];
 
   // --- Stråna, på processorn: läge, riktning, tuva och slumptal; höjd, form och färg räknas i shadern ---
-  function bladesFor() {
-    const r = rng(f.seed), C = clumpSize;
+  // Andelen strån som ska synas på ett avstånd från kameran (samma kurva som gallringen i shadern)
+  const keepAt = (d) => Math.min(1, Math.max(0.28, 1 - ((d - f.lod[0]) / (f.lod[1] - f.lod[0])) * 0.72));
+  // En ruta med hörnet x0, z0: varje kandidat drar alltid lika många slumptal, så att en glesare ruta (level < 1) är
+  // de första stråna i en tätare. Ordningstalet räknas mot den fulla rutan, så att gallringen tar samma strån.
+  // densAt(x, z): andelen kandidater som blir strån (Väderkvarnens fält glesnar ut från mitten), clip: utanför fältet
+  function chunkBlades(x0, z0, r, level, densAt, clip) {
+    const C = clumpSize;
     const clumpAt = (x, z) => {
       const cx = Math.floor(x / C), cz = Math.floor(z / C);
       let best = null;
@@ -108,25 +120,34 @@ export function createGrass(wind, field = {}, settings = {}) {
       const d = Math.sqrt((x - e.x) ** 2 + (z - e.z) ** 2) / e.r;
       return d < 1 ? Math.min(m, e.h + (1 - e.h) * d * d) : m;
     }, 1);
-    const n = Math.ceil((2 * f.radius) / f.chunk), out = [];
+    const P = [], S = [], V = [], R = [], full = Math.round(f.counts[0] * f.chunk * f.chunk);
+    let y0 = Infinity, y1 = -Infinity;
+    for (let k = 0, count = Math.ceil(full * level); k < count; k++) {
+      const x = x0 + r() * f.chunk, z = z0 + r() * f.chunk, keep = r(), yaw = r(), s0 = r(), s2 = r(), s3 = r(), v1 = r(), v2 = r();
+      if (keep > densAt(x, z) || clip(x, z) || excluded(x, z)) continue;
+      const g = f.densityAt ? f.densityAt(x, z) : 1;
+      if (g < 1 && hash2(x * 1.7 + 3.1, z * 1.3 - 5.7) >= g) continue;
+      const y = f.heightAt ? f.heightAt(x, z) : 0, c = clumpAt(x, z);
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      P.push(x, y, z, Math.atan2(z - c.pz, x - c.px) + (yaw - 0.5) * 1.1);
+      S.push(s0, shorter(x, z) * (0.5 + 0.5 * g), s2, s3); // höjdslump, kortare-faktor (glest gräs är kortare), breddslump, böjslump
+      V.push(c.h, v1, v2 * TAU, Math.sqrt(c.d)); // tuvans ton, styvhetsslump, fas, avstånd till tuvans mitt
+      R.push((k + 0.5) / full); // ordningstal 0..1 i slumpad ordning: gallringen på avstånd tar bort de högsta först
+    }
+    const n = P.length / 4, cx = x0 + f.chunk / 2, cz = z0 + f.chunk / 2;
+    return n ? { c: new Vector3(cx, (y0 + y1) / 2, cz), spread: (y1 - y0) / 2, P, S, V, R: new Float32Array(R), n, level } : null;
+  }
+  // Väderkvarnens fält: rutorna runt origo, med ett gemensamt frö; tätheten följer varje strås avstånd från mitten
+  // (inte rutans), så att rutorna inte syns som trappsteg
+  function bladesFor() {
+    const r = rng(f.seed), n = Math.ceil((2 * f.radius) / f.chunk), out = [];
+    const densAt = (x, z) => { const d = Math.hypot(x, z); return d < f.inner ? 1 : (f.counts[0] + (f.counts[1] - f.counts[0]) * Math.min(1, (d - f.inner) / (f.radius - f.inner))) / f.counts[0]; };
+    const clip = (x, z) => Math.hypot(x, z) > f.radius * (0.92 + 0.08 * hash2(x, z));
     for (let ci = 0; ci < n; ci++) for (let cj = 0; cj < n; cj++) {
       const x0 = -f.radius + ci * f.chunk, z0 = -f.radius + cj * f.chunk;
-      const cx = x0 + f.chunk / 2, cz = z0 + f.chunk / 2, cd = Math.hypot(cx, cz);
-      if (cd > f.radius + f.chunk) continue;
-      // Tätheten följer varje strås avstånd från mitten (inte rutans), så att rutorna inte syns som trappsteg
-      const densAt = (d) => (d < f.inner ? 1 : (f.counts[0] + (f.counts[1] - f.counts[0]) * Math.min(1, (d - f.inner) / (f.radius - f.inner))) / f.counts[0]);
-      const P = [], S = [], V = [];
-      for (let k = 0, count = Math.round(f.counts[0] * f.chunk * f.chunk); k < count; k++) {
-        const x = x0 + r() * f.chunk, z = z0 + r() * f.chunk, d = Math.hypot(x, z);
-        if (r() > densAt(d) || d > f.radius * (0.92 + 0.08 * hash2(x, z)) || excluded(x, z)) continue;
-        const c = clumpAt(x, z);
-        P.push(x, 0, z, Math.atan2(z - c.pz, x - c.px) + (r() - 0.5) * 1.1);
-        S.push(r(), shorter(x, z), r(), r()); // höjdslump, kortare-faktor, breddslump, böjslump
-        V.push(c.h, r(), r() * TAU, Math.sqrt(c.d)); // tuvans ton, styvhetsslump, fas, avstånd till tuvans mitt
-      }
-      // Ordningstal 0..1 i slumpad ordning: gallringen på avstånd tar bort stråna med högst tal först
-      const n = P.length / 4, R = Float32Array.from({ length: n }, (_, i) => (i + 0.5) / n);
-      if (n) out.push({ c: new Vector3(cx, 0, cz), P, S, V, R, n });
+      if (Math.hypot(x0 + f.chunk / 2, z0 + f.chunk / 2) > f.radius + f.chunk) continue;
+      const ch = chunkBlades(x0, z0, r, 1, densAt, clip);
+      if (ch) out.push(ch);
     }
     return out;
   }
@@ -156,7 +177,8 @@ export function createGrass(wind, field = {}, settings = {}) {
   const wave = max(w1, w2).mul(smoothstep(0.0, 0.25, S).mul(0.7).add(S.mul(0.5))); // syns redan i en bris, starkare i blåst
   // Gallring på avstånd, per strå (inte per ruta): strån vars ordningstal ligger över andelen som ska synas krymper bort
   const distC = length(root.xz.sub(cameraPosition.xz));
-  const keep = min(max(float(0.28), float(1).sub(distC.sub(u.lodNear).div(u.lodFar.sub(u.lodNear)).mul(0.72))), 1).mul(u.density);
+  const keep = min(max(float(0.28), float(1).sub(distC.sub(u.lodNear).div(u.lodFar.sub(u.lodNear)).mul(0.72))), 1).mul(u.density)
+    .mul(float(1).sub(smoothstep(u.edgeNear, u.edgeFar, distC))); // fältets kant (follow)
   const thin = float(1).sub(smoothstep(keep.sub(0.06), keep, attribute('iRank', 'float')));
   const h = mix(u.heightMin, u.heightMax, clumpH.mul(0.35).add(patchN.mul(0.65))).mul(float(0.78).add(iShape.x.mul(0.4))).mul(iShape.y).mul(thin);
   // Vinden: kraften vid roten (byarna), en svängning med stråets egen fas och vågen; mjuka strån böjer mer.
@@ -218,29 +240,74 @@ export function createGrass(wind, field = {}, settings = {}) {
   const hi = bladeGeometry(6), lo = bladeGeometry(3);
   const group = new Group();
   let chunks = [], total = 0;
-  function build() {
-    for (const ch of chunks) for (const m of [ch.hi, ch.lo]) { m.geometry.dispose(); group.remove(m); }
-    chunks = bladesFor();
-    total = 0;
-    for (const ch of chunks) {
-      const attrs = { iPos: new InstancedBufferAttribute(new Float32Array(ch.P), 4), iShape: new InstancedBufferAttribute(new Float32Array(ch.S), 4),
-        iVar: new InstancedBufferAttribute(new Float32Array(ch.V), 4), iRank: new InstancedBufferAttribute(ch.R, 1) };
-      const make = (g) => {
-        const geo = new InstancedBufferGeometry();
-        geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
-        geo.setIndex(g.idx);
-        for (const [k, v] of Object.entries(attrs)) geo.setAttribute(k, v);
-        geo.instanceCount = ch.n;
-        geo.boundingSphere = new Sphere(ch.c.clone().setY(0.4), f.chunk * 0.75 + 1.5);
-        const m = new Mesh(geo, mat);
-        m.receiveShadow = true; m.castShadow = false;
-        group.add(m);
-        return m;
-      };
-      ch.hi = make(hi); ch.lo = make(lo);
-      total += ch.n;
-    }
+  function addMeshes(ch) {
+    const attrs = { iPos: new InstancedBufferAttribute(new Float32Array(ch.P), 4), iShape: new InstancedBufferAttribute(new Float32Array(ch.S), 4),
+      iVar: new InstancedBufferAttribute(new Float32Array(ch.V), 4), iRank: new InstancedBufferAttribute(ch.R, 1) };
+    const make = (g) => {
+      const geo = new InstancedBufferGeometry();
+      geo.setAttribute('position', new Float32BufferAttribute(g.pos, 3));
+      geo.setIndex(g.idx);
+      for (const [k, v] of Object.entries(attrs)) geo.setAttribute(k, v);
+      geo.instanceCount = ch.n;
+      geo.boundingSphere = new Sphere(ch.c.clone().setY(ch.c.y + 0.4), f.chunk * 0.75 + 1.5 + ch.spread);
+      const m = new Mesh(geo, mat);
+      m.receiveShadow = true; m.castShadow = false;
+      group.add(m);
+      return m;
+    };
+    ch.hi = make(hi); ch.lo = make(lo);
+    total += ch.n;
   }
+  function drop(ch) {
+    if (!ch.hi) return;
+    for (const m of [ch.hi, ch.lo]) { m.geometry.dispose(); group.remove(m); }
+    total -= ch.n;
+  }
+  // follow: rutorna i ett fast rutnät ("i,j" → ruta, eller { level } för en ruta utan gräs), rutan kameran står i och
+  // rutorna som väntar på att byggas (närmast först)
+  const cells = new Map();
+  let at = null, todo = [];
+  function build() {
+    for (const ch of chunks) drop(ch);
+    total = 0; cells.clear(); at = null; todo = [];
+    chunks = f.follow ? [] : bladesFor();
+    for (const ch of chunks) addMeshes(ch);
+  }
+  // En rutas täthet efter avståndet till dess närmaste hörn, i några steg (uppåt), så att den inte byggs om hela tiden
+  const LEVELS = [1, 0.7, 0.45, 0.28];
+  const levelAt = (d) => { const k = keepAt(Math.max(0, d - f.chunk * 1.7)); return LEVELS.findLast((l) => l >= k - 1e-6) ?? 1; };
+  function buildCell(w) {
+    const key = `${w.i},${w.j}`, old = cells.get(key);
+    if (old) drop(old);
+    const r = rng((Math.imul(f.seed, 73856093) ^ Math.imul(w.i, 19349663) ^ Math.imul(w.j, 83492791)) >>> 0);
+    const ch = chunkBlades(w.i * f.chunk, w.j * f.chunk, r, w.level, () => 1, () => false);
+    if (ch) addMeshes(ch);
+    cells.set(key, ch ?? { level: w.level });
+  }
+  // Rutorna runt kameran: de som saknas eller har fel täthet byggs (inom budget millisekunder per bild), de som
+  // hamnat utanför släpps
+  function follow(camera) {
+    const p = camera.position;
+    group.visible = p.y - (f.heightAt ? f.heightAt(p.x, p.z) : 0) < f.maxHeight;
+    if (!group.visible) return;
+    const ci = Math.floor(p.x / f.chunk), cj = Math.floor(p.z / f.chunk);
+    if (!at || at[0] !== ci || at[1] !== cj) {
+      at = [ci, cj];
+      const R = Math.ceil(f.radius / f.chunk) + 1, want = new Map();
+      for (let i = ci - R; i <= ci + R; i++) for (let j = cj - R; j <= cj + R; j++) {
+        const d = Math.hypot((i + 0.5) * f.chunk - p.x, (j + 0.5) * f.chunk - p.z);
+        if (d - f.chunk * 0.71 < f.radius) want.set(`${i},${j}`, { i, j, d, level: levelAt(d) });
+      }
+      for (const [key, ch] of cells) if (!want.has(key)) { drop(ch); cells.delete(key); }
+      todo = [...want.entries()].filter(([key, w]) => cells.get(key)?.level !== w.level).map(([, w]) => w).sort((a, b) => a.d - b.d);
+    }
+    if (!todo.length && chunks.length === cells.size) return;
+    const t0 = performance.now();
+    while (todo.length && performance.now() - t0 < f.budget) buildCell(todo.shift());
+    chunks = [...cells.values()].filter((ch) => ch.hi);
+  }
+  // Hur många strån (i ordningstalets ordning) som har ett tal under keep
+  const countBelow = (R, keep) => { let lo2 = 0, hi2 = R.length; while (lo2 < hi2) { const m = (lo2 + hi2) >> 1; if (R[m] < keep) lo2 = m + 1; else hi2 = m; } return lo2; };
   build();
   const tmp = new Vector3();
   return {
@@ -261,16 +328,20 @@ export function createGrass(wind, field = {}, settings = {}) {
     groundNode: groundTexW.rgb.mul(u.groundBright),
     // Nya fria ytor (till exempel runt utslumpade blommor): stråna byggs om
     setExclude(list) { exclude = list; build(); },
+    // Marken eller tätheten har ändrats (heightAt, densityAt): stråna byggs om
+    refresh: build,
     // Varje bild: närmaste rutorna med den fina geometrin, glesare längre bort
     update(camera) {
+      if (f.follow) { follow(camera); if (!group.visible) return; }
       for (const ch of chunks) {
         const d = tmp.copy(ch.c).sub(camera.position).setY(0).length();
         const near = d < f.lod[0], dMin = Math.max(0, d - f.chunk * 0.71); // rutans närmaste hörn
-        const keep = Math.min(1, Math.max(0.28, 1 - ((dMin - f.lod[0]) / (f.lod[1] - f.lod[0])) * 0.72)) * u.density.value;
-        ch.hi.visible = near; ch.lo.visible = !near;
-        (near ? ch.hi : ch.lo).geometry.instanceCount = Math.max(1, Math.ceil(ch.n * Math.min(1, keep + 0.02)));
+        const edge = 1 - Math.min(1, Math.max(0, (dMin - u.edgeNear.value) / (u.edgeFar.value - u.edgeNear.value)));
+        const k = countBelow(ch.R, Math.min(1, keepAt(dMin) * u.density.value * edge + 0.02));
+        ch.hi.visible = near && k > 0; ch.lo.visible = !near && k > 0;
+        (near ? ch.hi : ch.lo).geometry.instanceCount = Math.max(1, k);
       }
     },
-    visibleBlades() { return chunks.reduce((s, ch) => s + (ch.hi.visible ? ch.hi : ch.lo).geometry.instanceCount, 0); },
+    visibleBlades() { return group.visible ? chunks.reduce((s, ch) => s + (ch.hi.visible ? ch.hi.geometry.instanceCount : ch.lo.visible ? ch.lo.geometry.instanceCount : 0), 0) : 0; },
   };
 }

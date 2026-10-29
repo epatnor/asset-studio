@@ -2684,7 +2684,52 @@
         "step": 0.05,
         "default": 1,
         "help": "How far out the full models are drawn (the LOD distances): lower is faster, higher is finer"
+      },
+      {
+        "key": "grass",
+        "label": "Grass",
+        "min": 0,
+        "max": 1,
+        "step": 0.01,
+        "default": 1,
+        "help": "The dense grass field around the camera (0 is off). It grows where the biomes have grass and thins out on beaches, steep slopes and rock"
       }
-    ]
+    ],
+    "grass": {
+      "_doc": "Det täta gräsfältet runt kameran (shared/effects/grass.js med follow): gräset ur Väderkvarnen (preset i tools/grass/grass.json, settings ovanpå), hur mycket gräs varje biom har (0..1), brantast lutning i grader, lägsta höjd över havet i meter och fältets storlek",
+      "preset": "meadow",
+      "settings": {
+        "groundScale": 3,
+        "groundBright": 0.8,
+        "width": 0.042
+      },
+      "biomes": {
+        "beach": 0,
+        "meadow": 1,
+        "forest": 0.7,
+        "pine": 0.4,
+        "marsh": 0.6,
+        "heath": 0.75,
+        "rock": 0,
+        "snow": 0
+      },
+      "slope": 36,
+      "above": 0.25,
+      "field": {
+        "radius": 34,
+        "counts": [
+          180,
+          50
+        ],
+        "chunk": 6,
+        "lod": [
+          12,
+          30
+        ],
+        "fade": 9,
+        "maxHeight": 70,
+        "budget": 5
+      }
+    }
   }
 }
