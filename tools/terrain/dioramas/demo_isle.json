@@ -1,0 +1,143 @@
+{
+  "name": "demo_isle",
+  "from": "volcano",
+  "settings": {
+    "worldSize": "256",
+    "seed": 5,
+    "height": 42,
+    "scale": 60,
+    "warp": 10,
+    "talus": 40,
+    "snowline": 500,
+    "treeline": 42,
+    "rainfall": 0.6,
+    "forestCover": 0.5,
+    "marshes": 0.5,
+    "cliffAngle": 42,
+    "sandBand": 1.4,
+    "grassTone": 0.65
+  },
+  "radius": 90,
+  "core": 36,
+  "wobble": 5,
+  "spread": 30,
+  "center": {
+    "name": "Emberpeak",
+    "theme": "ashland"
+  },
+  "sectors": [
+    {
+      "angle": 180,
+      "coast": "beach",
+      "detail": 1.2,
+      "region": {
+        "name": "Sunstrand",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "beach",
+          "from": -16,
+          "to": 6,
+          "strength": 0.9
+        },
+        {
+          "biome": "meadow",
+          "from": -34,
+          "to": -16,
+          "strength": 0.5
+        }
+      ]
+    },
+    {
+      "angle": 270,
+      "coast": "marsh",
+      "detail": 0.8,
+      "region": {
+        "name": "Fenmire",
+        "theme": "wetland"
+      },
+      "paint": [
+        {
+          "biome": "marsh",
+          "from": -36,
+          "to": 2,
+          "strength": 0.85
+        }
+      ]
+    },
+    {
+      "angle": 0,
+      "coast": "cliff",
+      "detail": 2.5,
+      "region": {
+        "name": "Pinecliffs",
+        "theme": "pinewood"
+      },
+      "paint": [
+        {
+          "biome": "rock",
+          "from": -5,
+          "to": 4,
+          "strength": 0.75
+        },
+        {
+          "biome": "pine",
+          "from": -30,
+          "to": -6,
+          "strength": 0.55
+        }
+      ]
+    },
+    {
+      "angle": 90,
+      "coast": "meadow",
+      "detail": 1.8,
+      "stream": true,
+      "region": {
+        "name": "Bloomfield",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "meadow",
+          "from": -40,
+          "to": -2,
+          "strength": 0.75
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "beachMaxDepth": 1.2,
+    "cliffMinDepth": 8,
+    "marshMinPonds": 8
+  },
+  "populate": {
+    "seed": 3,
+    "density": 1.6,
+    "detail": 1.5,
+    "layers": {
+      "reeds": {
+        "on": true,
+        "density": 2
+      },
+      "wetland_trees": {
+        "on": true,
+        "density": 2
+      },
+      "broadleaf": {
+        "on": true,
+        "density": 1.8
+      },
+      "flowers": {
+        "on": true,
+        "density": 1.4
+      },
+      "shore": {
+        "on": true,
+        "density": 1.5
+      }
+    }
+  }
+}
