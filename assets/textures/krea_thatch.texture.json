@@ -1,0 +1,31 @@
+{
+  "name": "krea_thatch",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_thatch.png",
+    "normal": "assets/textures/krea_thatch_normal.png",
+    "height": "assets/textures/krea_thatch_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "roof",
+    "straw"
+  ],
+  "recipe": "assets/textures/krea_thatch.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:01+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_thatch"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

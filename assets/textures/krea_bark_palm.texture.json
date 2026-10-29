@@ -1,0 +1,31 @@
+{
+  "name": "krea_bark_palm",
+  "profile": "bark",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_bark_palm.png",
+    "normal": "assets/textures/krea_bark_palm_normal.png",
+    "height": "assets/textures/krea_bark_palm_height.png"
+  },
+  "meters": 1,
+  "tags": [
+    "bark",
+    "tropical"
+  ],
+  "recipe": "assets/textures/krea_bark_palm.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:05+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_bark_palm"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 1
+  }
+}

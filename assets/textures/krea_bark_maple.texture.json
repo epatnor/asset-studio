@@ -1,0 +1,30 @@
+{
+  "name": "krea_bark_maple",
+  "profile": "bark",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_bark_maple.png",
+    "normal": "assets/textures/krea_bark_maple_normal.png",
+    "height": "assets/textures/krea_bark_maple_height.png"
+  },
+  "meters": 1,
+  "tags": [
+    "bark"
+  ],
+  "recipe": "assets/textures/krea_bark_maple.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:04+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_bark_maple"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 1
+  }
+}

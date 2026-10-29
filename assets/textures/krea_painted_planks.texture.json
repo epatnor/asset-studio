@@ -1,0 +1,31 @@
+{
+  "name": "krea_painted_planks",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_painted_planks.png",
+    "normal": "assets/textures/krea_painted_planks_normal.png",
+    "height": "assets/textures/krea_painted_planks_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "wood",
+    "wall"
+  ],
+  "recipe": "assets/textures/krea_painted_planks.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:59+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_painted_planks"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "krea_basalt_columns",
+  "profile": "rock",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_basalt_columns.png",
+    "normal": "assets/textures/krea_basalt_columns_normal.png",
+    "height": "assets/textures/krea_basalt_columns_height.png"
+  },
+  "meters": 3,
+  "tags": [
+    "stone"
+  ],
+  "recipe": "assets/textures/krea_basalt_columns.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:53+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_basalt_columns"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 3
+  }
+}

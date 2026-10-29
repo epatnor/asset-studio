@@ -1,0 +1,31 @@
+{
+  "name": "krea_dry_mud",
+  "profile": "terrain",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_dry_mud.png",
+    "normal": "assets/textures/krea_dry_mud_normal.png",
+    "height": "assets/textures/krea_dry_mud_height.png"
+  },
+  "meters": 4,
+  "tags": [
+    "ground",
+    "dry"
+  ],
+  "recipe": "assets/textures/krea_dry_mud.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:46+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_dry_mud"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 4
+  }
+}

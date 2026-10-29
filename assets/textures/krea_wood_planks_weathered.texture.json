@@ -1,0 +1,31 @@
+{
+  "name": "krea_wood_planks_weathered",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_wood_planks_weathered.png",
+    "normal": "assets/textures/krea_wood_planks_weathered_normal.png",
+    "height": "assets/textures/krea_wood_planks_weathered_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "wood",
+    "wall"
+  ],
+  "recipe": "assets/textures/krea_wood_planks_weathered.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:58+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_wood_planks_weathered"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

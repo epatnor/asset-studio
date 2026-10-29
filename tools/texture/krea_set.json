@@ -616,6 +616,342 @@
     "color": "assets/textures/surface_bld_cyber_trim.png",
     "normal": "assets/textures/surface_bld_cyber_trim_normal.png"
    }
+  },
+  "autumn_floor": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "forest floor covered in fallen autumn leaves in orange, red and yellow lying flat, a few twigs and dark earth between",
+   "normal": 0.8,
+   "library": {
+    "profile": "terrain",
+    "meters": 4,
+    "tags": [
+     "ground",
+     "autumn"
+    ]
+   }
+  },
+  "dry_mud": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "dry cracked mud ground of flat polygonal plates with curled edges and dark cracks, warm light brown",
+   "normal": 1.3,
+   "library": {
+    "profile": "terrain",
+    "meters": 4,
+    "tags": [
+     "ground",
+     "dry"
+    ]
+   }
+  },
+  "swamp_mud": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "dark wet swamp mud with small puddles, rotting leaves and green algae patches",
+   "normal": 0.9,
+   "library": {
+    "profile": "terrain",
+    "meters": 4,
+    "tags": [
+     "ground",
+     "wet"
+    ]
+   }
+  },
+  "rocky_ground": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "rocky dirt ground with scattered flat stones half buried in brown soil and small pebbles",
+   "normal": 1.2,
+   "library": {
+    "profile": "terrain",
+    "meters": 4,
+    "tags": [
+     "ground",
+     "stone"
+    ]
+   }
+  },
+  "clover": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "dense clover patch seen from above, round three-leaf clovers in fresh greens with a few white clover flowers",
+   "normal": 0.7,
+   "library": {
+    "profile": "terrain",
+    "meters": 3,
+    "tags": [
+     "ground",
+     "grass"
+    ]
+   }
+  },
+  "dry_grass": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "dry trampled straw-colored grass lying flat over pale dusty soil",
+   "normal": 0.6,
+   "library": {
+    "profile": "terrain",
+    "meters": 3,
+    "tags": [
+     "ground",
+     "dry"
+    ]
+   }
+  },
+  "beach_pebbles": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "beach of smooth rounded pebbles in warm grays, beige and slate blue packed tightly",
+   "normal": 1.3,
+   "library": {
+    "profile": "terrain",
+    "meters": 3,
+    "tags": [
+     "ground",
+     "stone",
+     "shore"
+    ]
+   }
+  },
+  "lava_crust": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "cooled black lava crust with cracked plates and glowing orange molten lava in the cracks",
+   "normal": 1.4,
+   "library": {
+    "profile": "rock",
+    "meters": 3,
+    "tags": [
+     "stone",
+     "lava"
+    ]
+   }
+  },
+  "cracked_ice": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "frozen lake ice, pale blue-white with long thin white cracks and frosted patches",
+   "normal": 0.6,
+   "library": {
+    "profile": "terrain",
+    "meters": 4,
+    "tags": [
+     "ice",
+     "winter"
+    ]
+   }
+  },
+  "basalt_columns": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "tops of hexagonal basalt columns seen from above, dark blue-gray stone with fine cracks",
+   "normal": 1.4,
+   "library": {
+    "profile": "rock",
+    "meters": 3,
+    "tags": [
+     "stone"
+    ]
+   }
+  },
+  "mossy_cobble": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "old cobblestone pavement of rounded gray stones with soft green moss growing in the joints",
+   "normal": 1.4,
+   "library": {
+    "profile": "terrain",
+    "meters": 3,
+    "tags": [
+     "stone",
+     "moss",
+     "road"
+    ]
+   }
+  },
+  "flagstones": {
+   "group": "library",
+   "view": "surface",
+   "prompt": "large square paving flagstones in warm gray with worn edges and thin dark joints",
+   "normal": 1.2,
+   "library": {
+    "profile": "terrain",
+    "meters": 3,
+    "tags": [
+     "stone",
+     "road"
+    ]
+   }
+  },
+  "temple_tiles": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "ancient temple floor tiles of carved pale sandstone squares with worn engraved geometric patterns",
+   "normal": 1.2,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "stone",
+     "tiles"
+    ]
+   }
+  },
+  "castle_wall": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "castle wall of large rectangular gray ashlar stone blocks in even courses with thin light mortar",
+   "normal": 1.5,
+   "library": {
+    "profile": "building",
+    "meters": 3,
+    "tags": [
+     "stone",
+     "wall"
+    ]
+   }
+  },
+  "red_bricks": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "old red brick wall in running bond with slightly uneven bricks and light gray mortar",
+   "normal": 1.4,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "brick",
+     "wall"
+    ]
+   }
+  },
+  "wood_planks_weathered": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "weathered gray wooden planks running horizontally with soft grain, nail holes and dark gaps",
+   "normal": 1.3,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "wood",
+     "wall"
+    ]
+   }
+  },
+  "painted_planks": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "horizontal wooden planks painted soft teal blue with worn chipped paint showing warm wood underneath",
+   "normal": 1.2,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "wood",
+     "wall"
+    ]
+   }
+  },
+  "wood_shingles": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "roof of overlapping cedar wood shingles in staggered horizontal rows, warm brown and silver-gray",
+   "normal": 1.4,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "roof",
+     "wood"
+    ]
+   }
+  },
+  "terracotta_tiles": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "roof of curved terracotta clay tiles in horizontal rows, warm orange with soft weathering",
+   "normal": 1.4,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "roof",
+     "clay"
+    ]
+   }
+  },
+  "thatch": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "thick straw thatch roof with bundled golden straw strands running downward, layered in soft bands",
+   "normal": 1.2,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "roof",
+     "straw"
+    ]
+   }
+  },
+  "plaster_old": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "old lime plaster wall, warm off-white with soft stains and a few small patches where stones show through",
+   "normal": 0.9,
+   "library": {
+    "profile": "building",
+    "meters": 2,
+    "tags": [
+     "plaster",
+     "wall"
+    ]
+   }
+  },
+  "timber_dark": {
+   "group": "library",
+   "view": "facade",
+   "prompt": "dark oak timber with long straight wood grain running horizontally and a few knots",
+   "normal": 1.2,
+   "library": {
+    "profile": "building",
+    "meters": 1,
+    "tags": [
+     "wood",
+     "trim"
+    ]
+   }
+  },
+  "bark_maple": {
+   "group": "library",
+   "view": "tile",
+   "prompt": "maple tree bark, gray-brown with long shallow vertical ridges and soft flaky strips, bark grain running vertically",
+   "normal": 1.3,
+   "library": {
+    "profile": "bark",
+    "meters": 1,
+    "tags": [
+     "bark"
+    ]
+   }
+  },
+  "bark_palm": {
+   "group": "library",
+   "view": "tile",
+   "prompt": "palm tree trunk with stacked overlapping crescent-shaped leaf base scars in warm tan and brown, rows running horizontally",
+   "normal": 1.4,
+   "library": {
+    "profile": "bark",
+    "meters": 1,
+    "tags": [
+     "bark",
+     "tropical"
+    ]
+   }
   }
  }
 }

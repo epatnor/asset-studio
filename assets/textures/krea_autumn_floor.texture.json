@@ -1,0 +1,31 @@
+{
+  "name": "krea_autumn_floor",
+  "profile": "terrain",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_autumn_floor.png",
+    "normal": "assets/textures/krea_autumn_floor_normal.png",
+    "height": "assets/textures/krea_autumn_floor_height.png"
+  },
+  "meters": 4,
+  "tags": [
+    "ground",
+    "autumn"
+  ],
+  "recipe": "assets/textures/krea_autumn_floor.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:45+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_autumn_floor"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 4
+  }
+}

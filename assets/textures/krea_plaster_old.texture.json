@@ -1,0 +1,31 @@
+{
+  "name": "krea_plaster_old",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_plaster_old.png",
+    "normal": "assets/textures/krea_plaster_old_normal.png",
+    "height": "assets/textures/krea_plaster_old_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "plaster",
+    "wall"
+  ],
+  "recipe": "assets/textures/krea_plaster_old.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:02+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_plaster_old"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

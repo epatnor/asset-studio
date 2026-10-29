@@ -1,0 +1,31 @@
+{
+  "name": "krea_flagstones",
+  "profile": "terrain",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_flagstones.png",
+    "normal": "assets/textures/krea_flagstones_normal.png",
+    "height": "assets/textures/krea_flagstones_height.png"
+  },
+  "meters": 3,
+  "tags": [
+    "stone",
+    "road"
+  ],
+  "recipe": "assets/textures/krea_flagstones.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:54+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_flagstones"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 3
+  }
+}

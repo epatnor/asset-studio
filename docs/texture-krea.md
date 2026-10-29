@@ -99,4 +99,53 @@ Kandidaterna ligger i `build/krea/<namn>/v<i>*.png`, och kontaktarket visar varj
 
 ## Resultat 2026-10-29
 
-(fylls i när satsen är klar)
+**Genererat.** 57 ersättningsmaterial med 3 varianter vardera, plus omkörningar, ungefär 190 bilder på cirka 3,5 timmar. Alla har `seam_raw` 0,3–2,8. Värden över 1,5 gäller bara material med fogar eller panellinjer som råkar ligga i kanten, och sömmen syns inte i 2 × 2.
+
+**Installerat.** 57 material, valda på kontaktark (2 × 2 för sömmen) och på måtten:
+
+| Grupp | Material |
+|---|---|
+| Bark | ek, björk, tall, gran, körsbär, slät, fårad och väderbiten (alla med normal, höjd, AO, ruffighet och ORM), samt `bark_stylized` och `bark_mossy` |
+| Sten och mossa | `rock_stylized`, `stone_painted`, `moss_stylized` och `moss_painted` |
+| Byggsatsen | `kit_masonry` och `kit_slate` |
+| Mark | alla 15 `surface_*` och `cobblestone` |
+| Marken under gräset | `ground_lawn`, `ground_lush`, `ground_meadow`, `ground_pampas` och `ground_steppe` |
+| Hus | alla 20 `surface_bld_*` i sex stilar |
+
+Vilken variant som valdes står i `assets/textures/krea_installed.json`.
+
+**24 nya material i biblioteket** (gruppen `library`, filer `krea_<namn>*.png`, egna rader i katalogen och därmed i Ateljén). Varje material har 3 varianter, och det tog cirka 75 minuter:
+
+| Grupp | Material |
+|---|---|
+| Mark | höstskog, torkad lera, träskdy, stenig jord, klöver, torrt gräs, strandsten, lava, sprucken is och basalt |
+| Sten | mossig kullersten, stenplattor, tempelplattor och borgmur |
+| Väggar | rött tegel, väderbitna plankor, målade plankor, gammal kalkputs och mörkt timmer |
+| Tak | träspån, tegelpannor och halm |
+| Bark | lönn och palm |
+
+Svagheter:
+
+- Höstskogen har diagonala stråk som syns när den upprepas.
+- Basaltpelarna blev runda, inte sexkantiga.
+- Takpannorna och spånen är små vid 2 m per upprepning, så de behöver större skala (`meters`).
+
+**Det här lärde vi oss:**
+
+- **Barkens skala** stämmer med referenserna utan justering. Ekens fåror ligger 6,5 cm isär mot referensens 7 cm, vid 1 m per upprepning. Den procedurella barken behövde `fit_reference.py` för att komma dit.
+- **Prompterna** behövde rättas tre gånger. Den släta barken blev himmelsblå med "blue-gray", och "neutral gray with a faint cool tint" rättade det. Tallen blev för orange tills prompten sa "muted". Mossig bark blev lövliknande fläckar tills prompten sa "moss filling the furrows, no leaves".
+- **"Rock surface"** i närbild ger Krea plattor med fogar, som en stenläggning. Även med "no tiles, no paving" blev det stora fasetterade plattor, och variant 4, som är mest lik berg, valdes. `stone_painted`, med diagonala skikt, är bäst som bergyta.
+- **Struktur:** med denoise 0,68 ritade Krea egna, mindre stenar och struntade i murverkets skift. Med 0,5 följs skiften (samma antal skift som layouten), och stenarna blir ändå målade. Takets skiffer följde raderna redan vid 0,65.
+- **Förhandsvisningen** i Blender visar trädens lövkulor vita. Det beror inte på texturerna: kulorna färgas i klientens shader.
+
+**Ateljén:**
+
+- En ersatt texturs katalograd öppnas nu som Krea-bilden (källan `image`), med samma materialinställningar.
+- Det procedurella receptet ligger kvar som `<namn>.procedural.texture.json`, och raden har `recipe_procedural`.
+- Nya biblioteksmaterial (gruppen `library` i `krea_set.json`, med `library: {profile, meters, tags}`) får egna filer, `krea_<namn>.png`, och en egen rad i katalogen.
+
+**Kvar att göra:**
+
+- Lövark och andra sprites med alfa: kräver en egen väg, med vit bakgrund och `cutout`. Kortbollarnas procedurella lövark är den look Patrik gillade, så de är inte bytta.
+- Stilreferens: `TextEncodeKrea2Reference` och LoRA:n `krea2_style_reference` finns i ComfyUI. Med en bild ur Apparition som stil skulle alla material kunna få samma hand.
+- Ateljéns Krea-källa visar inte varianter sida vid sida. Det gör kontaktarket i `krea_tex.py`.

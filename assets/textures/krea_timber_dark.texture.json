@@ -1,0 +1,31 @@
+{
+  "name": "krea_timber_dark",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_timber_dark.png",
+    "normal": "assets/textures/krea_timber_dark_normal.png",
+    "height": "assets/textures/krea_timber_dark_height.png"
+  },
+  "meters": 1,
+  "tags": [
+    "wood",
+    "trim"
+  ],
+  "recipe": "assets/textures/krea_timber_dark.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:03+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_timber_dark"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 1
+  }
+}

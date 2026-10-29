@@ -596,5 +596,269 @@
    "color": "assets/textures/moss_painted.png"
   },
   "installed": "2026-10-29 03:19"
+ },
+ "autumn_floor": {
+  "variant": 2,
+  "seed": 16615,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, forest floor covered in fallen autumn leaves in orange, red and yellow lying flat, a few twigs and dark earth between, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_autumn_floor.png",
+   "normal": "assets/textures/krea_autumn_floor_normal.png",
+   "height": "assets/textures/krea_autumn_floor_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "dry_mud": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dry cracked mud ground of flat polygonal plates with curled edges and dark cracks, warm light brown, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_dry_mud.png",
+   "normal": "assets/textures/krea_dry_mud_normal.png",
+   "height": "assets/textures/krea_dry_mud_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "swamp_mud": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dark wet swamp mud with small puddles, rotting leaves and green algae patches, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_swamp_mud.png",
+   "normal": "assets/textures/krea_swamp_mud_normal.png",
+   "height": "assets/textures/krea_swamp_mud_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "rocky_ground": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, rocky dirt ground with scattered flat stones half buried in brown soil and small pebbles, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_rocky_ground.png",
+   "normal": "assets/textures/krea_rocky_ground_normal.png",
+   "height": "assets/textures/krea_rocky_ground_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "clover": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dense clover patch seen from above, round three-leaf clovers in fresh greens with a few white clover flowers, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_clover.png",
+   "normal": "assets/textures/krea_clover_normal.png",
+   "height": "assets/textures/krea_clover_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "dry_grass": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, dry trampled straw-colored grass lying flat over pale dusty soil, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_dry_grass.png",
+   "normal": "assets/textures/krea_dry_grass_normal.png",
+   "height": "assets/textures/krea_dry_grass_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "beach_pebbles": {
+  "variant": 2,
+  "seed": 16615,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, beach of smooth rounded pebbles in warm grays, beige and slate blue packed tightly, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_beach_pebbles.png",
+   "normal": "assets/textures/krea_beach_pebbles_normal.png",
+   "height": "assets/textures/krea_beach_pebbles_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "lava_crust": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, cooled black lava crust with cracked plates and glowing orange molten lava in the cracks, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_lava_crust.png",
+   "normal": "assets/textures/krea_lava_crust_normal.png",
+   "height": "assets/textures/krea_lava_crust_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "cracked_ice": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, frozen lake ice, pale blue-white with long thin white cracks and frosted patches, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_cracked_ice.png",
+   "normal": "assets/textures/krea_cracked_ice_normal.png",
+   "height": "assets/textures/krea_cracked_ice_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "basalt_columns": {
+  "variant": 2,
+  "seed": 16615,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, tops of hexagonal basalt columns seen from above, dark blue-gray stone with fine cracks, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_basalt_columns.png",
+   "normal": "assets/textures/krea_basalt_columns_normal.png",
+   "height": "assets/textures/krea_basalt_columns_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "mossy_cobble": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, old cobblestone pavement of rounded gray stones with soft green moss growing in the joints, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_mossy_cobble.png",
+   "normal": "assets/textures/krea_mossy_cobble_normal.png",
+   "height": "assets/textures/krea_mossy_cobble_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "flagstones": {
+  "variant": 2,
+  "seed": 16615,
+  "prompt": "orthographic top-down view looking straight down at the ground like a drone photo pointed straight down, everything seen from directly above as flat shapes, no side view, no horizon, no perspective, no depth of field, large square paving flagstones in warm gray with worn edges and thin dark joints, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_flagstones.png",
+   "normal": "assets/textures/krea_flagstones_normal.png",
+   "height": "assets/textures/krea_flagstones_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "temple_tiles": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, ancient temple floor tiles of carved pale sandstone squares with worn engraved geometric patterns, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_temple_tiles.png",
+   "normal": "assets/textures/krea_temple_tiles_normal.png",
+   "height": "assets/textures/krea_temple_tiles_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "castle_wall": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, castle wall of large rectangular gray ashlar stone blocks in even courses with thin light mortar, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_castle_wall.png",
+   "normal": "assets/textures/krea_castle_wall_normal.png",
+   "height": "assets/textures/krea_castle_wall_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "red_bricks": {
+  "variant": 2,
+  "seed": 16615,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, old red brick wall in running bond with slightly uneven bricks and light gray mortar, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_red_bricks.png",
+   "normal": "assets/textures/krea_red_bricks_normal.png",
+   "height": "assets/textures/krea_red_bricks_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "wood_planks_weathered": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, weathered gray wooden planks running horizontally with soft grain, nail holes and dark gaps, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_wood_planks_weathered.png",
+   "normal": "assets/textures/krea_wood_planks_weathered_normal.png",
+   "height": "assets/textures/krea_wood_planks_weathered_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "painted_planks": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, horizontal wooden planks painted soft teal blue with worn chipped paint showing warm wood underneath, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_painted_planks.png",
+   "normal": "assets/textures/krea_painted_planks_normal.png",
+   "height": "assets/textures/krea_painted_planks_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "wood_shingles": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, roof of overlapping cedar wood shingles in staggered horizontal rows, warm brown and silver-gray, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_wood_shingles.png",
+   "normal": "assets/textures/krea_wood_shingles_normal.png",
+   "height": "assets/textures/krea_wood_shingles_height.png"
+  },
+  "installed": "2026-10-29 04:34"
+ },
+ "terracotta_tiles": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, roof of curved terracotta clay tiles in horizontal rows, warm orange with soft weathering, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_terracotta_tiles.png",
+   "normal": "assets/textures/krea_terracotta_tiles_normal.png",
+   "height": "assets/textures/krea_terracotta_tiles_height.png"
+  },
+  "installed": "2026-10-29 04:35"
+ },
+ "thatch": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, thick straw thatch roof with bundled golden straw strands running downward, layered in soft bands, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_thatch.png",
+   "normal": "assets/textures/krea_thatch_normal.png",
+   "height": "assets/textures/krea_thatch_height.png"
+  },
+  "installed": "2026-10-29 04:35"
+ },
+ "plaster_old": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, old lime plaster wall, warm off-white with soft stains and a few small patches where stones show through, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_plaster_old.png",
+   "normal": "assets/textures/krea_plaster_old_normal.png",
+   "height": "assets/textures/krea_plaster_old_height.png"
+  },
+  "installed": "2026-10-29 04:35"
+ },
+ "timber_dark": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "flat orthographic front elevation of a building surface seen straight on, the material fills the entire frame edge to edge, no perspective, no horizon, no sky, no ground, no windows, no doors, no edges of the building, dark oak timber with long straight wood grain running horizontally and a few knots, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_timber_dark.png",
+   "normal": "assets/textures/krea_timber_dark_normal.png",
+   "height": "assets/textures/krea_timber_dark_height.png"
+  },
+  "installed": "2026-10-29 04:35"
+ },
+ "bark_maple": {
+  "variant": 1,
+  "seed": 8696,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, maple tree bark, gray-brown with long shallow vertical ridges and soft flaky strips, bark grain running vertically, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_bark_maple.png",
+   "normal": "assets/textures/krea_bark_maple_normal.png",
+   "height": "assets/textures/krea_bark_maple_height.png"
+  },
+  "installed": "2026-10-29 04:35"
+ },
+ "bark_palm": {
+  "variant": 0,
+  "seed": 777,
+  "prompt": "flat orthographic close-up of the material surface seen straight on, filling the entire frame edge to edge, no perspective, no background, palm tree trunk with stacked overlapping crescent-shaped leaf base scars in warm tan and brown, rows running horizontally, stylized hand-painted game texture, painterly brush strokes, low-frequency detail, large calm color areas, saturated but controlled colors, even flat lighting, seamless tileable texture, flat orthographic view filling the entire frame, even diffuse lighting, no cast shadows, no perspective, uniform density across the whole image, no vignette, no focal point, no text",
+  "targets": {
+   "color": "assets/textures/krea_bark_palm.png",
+   "normal": "assets/textures/krea_bark_palm_normal.png",
+   "height": "assets/textures/krea_bark_palm_height.png"
+  },
+  "installed": "2026-10-29 04:35"
  }
 }

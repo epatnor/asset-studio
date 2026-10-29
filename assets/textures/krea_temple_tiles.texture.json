@@ -1,0 +1,31 @@
+{
+  "name": "krea_temple_tiles",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_temple_tiles.png",
+    "normal": "assets/textures/krea_temple_tiles_normal.png",
+    "height": "assets/textures/krea_temple_tiles_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "stone",
+    "tiles"
+  ],
+  "recipe": "assets/textures/krea_temple_tiles.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:55+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_temple_tiles"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

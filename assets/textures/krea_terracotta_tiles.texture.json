@@ -1,0 +1,31 @@
+{
+  "name": "krea_terracotta_tiles",
+  "profile": "building",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_terracotta_tiles.png",
+    "normal": "assets/textures/krea_terracotta_tiles_normal.png",
+    "height": "assets/textures/krea_terracotta_tiles_height.png"
+  },
+  "meters": 2,
+  "tags": [
+    "roof",
+    "clay"
+  ],
+  "recipe": "assets/textures/krea_terracotta_tiles.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:35:00+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_terracotta_tiles"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 2
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "krea_beach_pebbles",
+  "profile": "terrain",
+  "maps": [
+    "color",
+    "normal",
+    "height"
+  ],
+  "files": {
+    "color": "assets/textures/krea_beach_pebbles.png",
+    "normal": "assets/textures/krea_beach_pebbles_normal.png",
+    "height": "assets/textures/krea_beach_pebbles_height.png"
+  },
+  "meters": 3,
+  "tags": [
+    "ground",
+    "stone",
+    "shore"
+  ],
+  "recipe": "assets/textures/krea_beach_pebbles.texture.json",
+  "size": 1024,
+  "saved": "2026-10-29T03:34:50+00:00",
+  "source": {
+    "type": "image",
+    "name": "krea_beach_pebbles"
+  },
+  "steps": [],
+  "inputs": {},
+  "material": {
+    "meters": 3
+  }
+}

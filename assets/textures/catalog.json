@@ -532,6 +532,654 @@
         "seed": 20268948
       },
       "recipe_procedural": "assets/textures/bark_birch_stylized.procedural.texture.json"
+    },
+    {
+      "name": "krea_autumn_floor",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_autumn_floor.png",
+        "normal": "assets/textures/krea_autumn_floor_normal.png",
+        "height": "assets/textures/krea_autumn_floor_height.png"
+      },
+      "meters": 4,
+      "tags": [
+        "ground",
+        "autumn"
+      ],
+      "recipe": "assets/textures/krea_autumn_floor.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:45+00:00",
+      "krea": {
+        "material": "autumn_floor",
+        "variant": 2,
+        "seed": 16615
+      }
+    },
+    {
+      "name": "krea_dry_mud",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_dry_mud.png",
+        "normal": "assets/textures/krea_dry_mud_normal.png",
+        "height": "assets/textures/krea_dry_mud_height.png"
+      },
+      "meters": 4,
+      "tags": [
+        "ground",
+        "dry"
+      ],
+      "recipe": "assets/textures/krea_dry_mud.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:46+00:00",
+      "krea": {
+        "material": "dry_mud",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_swamp_mud",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_swamp_mud.png",
+        "normal": "assets/textures/krea_swamp_mud_normal.png",
+        "height": "assets/textures/krea_swamp_mud_height.png"
+      },
+      "meters": 4,
+      "tags": [
+        "ground",
+        "wet"
+      ],
+      "recipe": "assets/textures/krea_swamp_mud.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:47+00:00",
+      "krea": {
+        "material": "swamp_mud",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_rocky_ground",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_rocky_ground.png",
+        "normal": "assets/textures/krea_rocky_ground_normal.png",
+        "height": "assets/textures/krea_rocky_ground_height.png"
+      },
+      "meters": 4,
+      "tags": [
+        "ground",
+        "stone"
+      ],
+      "recipe": "assets/textures/krea_rocky_ground.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:48+00:00",
+      "krea": {
+        "material": "rocky_ground",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_clover",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_clover.png",
+        "normal": "assets/textures/krea_clover_normal.png",
+        "height": "assets/textures/krea_clover_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "ground",
+        "grass"
+      ],
+      "recipe": "assets/textures/krea_clover.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:48+00:00",
+      "krea": {
+        "material": "clover",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_dry_grass",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_dry_grass.png",
+        "normal": "assets/textures/krea_dry_grass_normal.png",
+        "height": "assets/textures/krea_dry_grass_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "ground",
+        "dry"
+      ],
+      "recipe": "assets/textures/krea_dry_grass.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:49+00:00",
+      "krea": {
+        "material": "dry_grass",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_beach_pebbles",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_beach_pebbles.png",
+        "normal": "assets/textures/krea_beach_pebbles_normal.png",
+        "height": "assets/textures/krea_beach_pebbles_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "ground",
+        "stone",
+        "shore"
+      ],
+      "recipe": "assets/textures/krea_beach_pebbles.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:50+00:00",
+      "krea": {
+        "material": "beach_pebbles",
+        "variant": 2,
+        "seed": 16615
+      }
+    },
+    {
+      "name": "krea_lava_crust",
+      "profile": "rock",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_lava_crust.png",
+        "normal": "assets/textures/krea_lava_crust_normal.png",
+        "height": "assets/textures/krea_lava_crust_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "stone",
+        "lava"
+      ],
+      "recipe": "assets/textures/krea_lava_crust.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:51+00:00",
+      "krea": {
+        "material": "lava_crust",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_cracked_ice",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_cracked_ice.png",
+        "normal": "assets/textures/krea_cracked_ice_normal.png",
+        "height": "assets/textures/krea_cracked_ice_height.png"
+      },
+      "meters": 4,
+      "tags": [
+        "ice",
+        "winter"
+      ],
+      "recipe": "assets/textures/krea_cracked_ice.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:52+00:00",
+      "krea": {
+        "material": "cracked_ice",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_basalt_columns",
+      "profile": "rock",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_basalt_columns.png",
+        "normal": "assets/textures/krea_basalt_columns_normal.png",
+        "height": "assets/textures/krea_basalt_columns_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "stone"
+      ],
+      "recipe": "assets/textures/krea_basalt_columns.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:53+00:00",
+      "krea": {
+        "material": "basalt_columns",
+        "variant": 2,
+        "seed": 16615
+      }
+    },
+    {
+      "name": "krea_mossy_cobble",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_mossy_cobble.png",
+        "normal": "assets/textures/krea_mossy_cobble_normal.png",
+        "height": "assets/textures/krea_mossy_cobble_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "stone",
+        "moss",
+        "road"
+      ],
+      "recipe": "assets/textures/krea_mossy_cobble.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:53+00:00",
+      "krea": {
+        "material": "mossy_cobble",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_flagstones",
+      "profile": "terrain",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_flagstones.png",
+        "normal": "assets/textures/krea_flagstones_normal.png",
+        "height": "assets/textures/krea_flagstones_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "stone",
+        "road"
+      ],
+      "recipe": "assets/textures/krea_flagstones.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:54+00:00",
+      "krea": {
+        "material": "flagstones",
+        "variant": 2,
+        "seed": 16615
+      }
+    },
+    {
+      "name": "krea_temple_tiles",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_temple_tiles.png",
+        "normal": "assets/textures/krea_temple_tiles_normal.png",
+        "height": "assets/textures/krea_temple_tiles_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "stone",
+        "tiles"
+      ],
+      "recipe": "assets/textures/krea_temple_tiles.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:55+00:00",
+      "krea": {
+        "material": "temple_tiles",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_castle_wall",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_castle_wall.png",
+        "normal": "assets/textures/krea_castle_wall_normal.png",
+        "height": "assets/textures/krea_castle_wall_height.png"
+      },
+      "meters": 3,
+      "tags": [
+        "stone",
+        "wall"
+      ],
+      "recipe": "assets/textures/krea_castle_wall.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:56+00:00",
+      "krea": {
+        "material": "castle_wall",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_red_bricks",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_red_bricks.png",
+        "normal": "assets/textures/krea_red_bricks_normal.png",
+        "height": "assets/textures/krea_red_bricks_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "brick",
+        "wall"
+      ],
+      "recipe": "assets/textures/krea_red_bricks.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:57+00:00",
+      "krea": {
+        "material": "red_bricks",
+        "variant": 2,
+        "seed": 16615
+      }
+    },
+    {
+      "name": "krea_wood_planks_weathered",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_wood_planks_weathered.png",
+        "normal": "assets/textures/krea_wood_planks_weathered_normal.png",
+        "height": "assets/textures/krea_wood_planks_weathered_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "wood",
+        "wall"
+      ],
+      "recipe": "assets/textures/krea_wood_planks_weathered.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:58+00:00",
+      "krea": {
+        "material": "wood_planks_weathered",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_painted_planks",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_painted_planks.png",
+        "normal": "assets/textures/krea_painted_planks_normal.png",
+        "height": "assets/textures/krea_painted_planks_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "wood",
+        "wall"
+      ],
+      "recipe": "assets/textures/krea_painted_planks.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:59+00:00",
+      "krea": {
+        "material": "painted_planks",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_wood_shingles",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_wood_shingles.png",
+        "normal": "assets/textures/krea_wood_shingles_normal.png",
+        "height": "assets/textures/krea_wood_shingles_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "roof",
+        "wood"
+      ],
+      "recipe": "assets/textures/krea_wood_shingles.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:34:59+00:00",
+      "krea": {
+        "material": "wood_shingles",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_terracotta_tiles",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_terracotta_tiles.png",
+        "normal": "assets/textures/krea_terracotta_tiles_normal.png",
+        "height": "assets/textures/krea_terracotta_tiles_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "roof",
+        "clay"
+      ],
+      "recipe": "assets/textures/krea_terracotta_tiles.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:00+00:00",
+      "krea": {
+        "material": "terracotta_tiles",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_thatch",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_thatch.png",
+        "normal": "assets/textures/krea_thatch_normal.png",
+        "height": "assets/textures/krea_thatch_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "roof",
+        "straw"
+      ],
+      "recipe": "assets/textures/krea_thatch.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:01+00:00",
+      "krea": {
+        "material": "thatch",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_plaster_old",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_plaster_old.png",
+        "normal": "assets/textures/krea_plaster_old_normal.png",
+        "height": "assets/textures/krea_plaster_old_height.png"
+      },
+      "meters": 2,
+      "tags": [
+        "plaster",
+        "wall"
+      ],
+      "recipe": "assets/textures/krea_plaster_old.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:02+00:00",
+      "krea": {
+        "material": "plaster_old",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_timber_dark",
+      "profile": "building",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_timber_dark.png",
+        "normal": "assets/textures/krea_timber_dark_normal.png",
+        "height": "assets/textures/krea_timber_dark_height.png"
+      },
+      "meters": 1,
+      "tags": [
+        "wood",
+        "trim"
+      ],
+      "recipe": "assets/textures/krea_timber_dark.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:03+00:00",
+      "krea": {
+        "material": "timber_dark",
+        "variant": 0,
+        "seed": 777
+      }
+    },
+    {
+      "name": "krea_bark_maple",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_bark_maple.png",
+        "normal": "assets/textures/krea_bark_maple_normal.png",
+        "height": "assets/textures/krea_bark_maple_height.png"
+      },
+      "meters": 1,
+      "tags": [
+        "bark"
+      ],
+      "recipe": "assets/textures/krea_bark_maple.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:04+00:00",
+      "krea": {
+        "material": "bark_maple",
+        "variant": 1,
+        "seed": 8696
+      }
+    },
+    {
+      "name": "krea_bark_palm",
+      "profile": "bark",
+      "maps": [
+        "color",
+        "normal",
+        "height"
+      ],
+      "files": {
+        "color": "assets/textures/krea_bark_palm.png",
+        "normal": "assets/textures/krea_bark_palm_normal.png",
+        "height": "assets/textures/krea_bark_palm_height.png"
+      },
+      "meters": 1,
+      "tags": [
+        "bark",
+        "tropical"
+      ],
+      "recipe": "assets/textures/krea_bark_palm.texture.json",
+      "size": 1024,
+      "saved": "2026-10-29T03:35:05+00:00",
+      "krea": {
+        "material": "bark_palm",
+        "variant": 0,
+        "seed": 777
+      }
     }
   ]
 }
