@@ -16,18 +16,12 @@ Tricket: AI:n gör inga tunga lyft. Den skickar små recept till verktyg (egna e
 
 ## Plattform och arkitektur
 
-- **Renderare:** [Three.js](https://threejs.org). Visningssidorna och studion bygger direkt på den; editorn och spelläget byggs i Tinkertown. Ingen egen renderare.
-- **Mål 1, webbläsaren:** spelet och editorn körs i en vanlig webbläsare.
-- **Mål 2, desktopapp:** samma kod paketeras senare med [Electron](https://www.electronjs.org). Electron har med sig en egen Chromium, så WebGPU och WebGL beter sig likadant överallt. (Tauri valdes bort: på Linux använder det WebKitGTK, med svagare WebGPU- och WebGL-stöd.)
+- **Spelmotor: [Godot 4](https://godotengine.org)** (beslut 2026-11-01). Godot är öppen källkod, och scener och shaders är textfiler, så att AI-agenter kan arbeta i dem. Provet `../godot-lab` ritar Kartrummets världar i Godot med marken, havet, bäckarna, naturen, gräset, vinden, budgetar för geometri och rendering, och en spelare som går på ön. Där kör samma ö ungefär dubbelt så fort som i webbläsaren. Spelen ska inte köras i en webbläsare; det har aldrig varit ett mål.
+- **Generatorerna är motoroberoende:** JSON-recept in, glTF ut och en rad JSON som svar. De fortsätter som de är (Node, Python, Blender, ComfyUI), med MCP-servern för AI-agenter.
+- **Export till motorn:** `tools/terrain/export_world.mjs` gör en sparad värld till rådata och modeller som Godot läser direkt. Budgeten (`godot-lab/budgets.json`) och generatorernas `detail` styr hur fint det ritas.
+- **Asset Studio i dag:** en Three.js-app i webbläsaren (`studio/`) och en lokal Node-server (`tools/studio/server.mjs`) som sparar recept och kör verktygen. Studion ska flyttas till Godot. Arbetet börjar 2026-11-02, och planen blir ett eget dokument.
 
-Koden delas från början i två delar, så att båda målen fungerar utan omskrivning:
-
-| Del | Gör | I webbläsaren | I desktopappen |
-|---|---|---|---|
-| Klient | Three.js-spel och editor, spelaren och UI | Webbsida | Electron-fönster |
-| Lokal server (Node) | Sparar världsrecept, kör verktygen (trädgeneratorn, Blender, ComfyUI), MCP-server för AI-agenter | Separat process på `localhost` | Electrons Node-del |
-
-Klienten pratar bara med servern via ett eget API. Den anropar aldrig verktyg direkt.
+Klienten pratar bara med verktygen genom servern eller deras recept, aldrig direkt. Det gäller också när klienten blir Godot.
 
 ## Status
 
@@ -42,8 +36,8 @@ Hela planen, med alla generatorer, biblioteket, terrängredigering, spelsystem o
 | Texturer | Krea-2 Turbo via lokal ComfyUI | Fungerar: bark (sömlös), lövsprite (alfa) |
 | MCP-server | `tools/mcp/server.py` | Fungerar: `create_tree`, `generate_texture`, `generate_leaf_atlas`, `list_assets` |
 | Terräng, vatten, vegetation, props, karaktärer | – | Ej påbörjat |
-| Editor/runtime | Three.js | Ej påbörjat (motor vald) |
-| Desktopapp | Electron | Senare |
+| Spel och runtime | Godot 4 (`../godot-lab`) | Prov: Kartrummets värld med natur, gräs, vatten, vind, kvalitetsväxlar och en spelare |
+| Asset Studio i Godot | Godot 4 | Planeras, start 2026-11-02 (i dag Three.js i webbläsaren) |
 
 ## Struktur
 

@@ -6,7 +6,7 @@ Läs README.md för visionen. Det viktigaste här är tokenekonomin: **låt verk
 
 ## Arkitektur
 
-Three.js-klient (spel och editor) och en lokal Node-server (världsrecept, verktyg, MCP), som kopplas ihop via ett eget API. Målet är först webbläsaren, sedan en desktopapp med Electron. Klientkod får inte förutsätta Node eller Electron, och serverkod får inte förutsätta en webbläsare. Se "Plattform och arkitektur" i README.md.
+Spelen görs i Godot 4 (beslut 2026-11-01; provet i `../godot-lab`). Webbläsaren är inget mål för spelen. Generatorerna är motoroberoende och förblir det: JSON-recept in, glTF ut, en rad JSON som svar, och de nås via MCP-servern eller kommandoraden. `tools/terrain/export_world.mjs` för över världar till Godot. Asset Studio är i dag en Three.js-app i webbläsaren med en lokal Node-server (recept, verktyg). Den ska flyttas till Godot, med start 2026-11-02. Klienten, i dag Three.js och sedan Godot, pratar bara med verktygen genom servern eller recepten. Se "Plattform och arkitektur" i README.md.
 
 ## Stil
 
