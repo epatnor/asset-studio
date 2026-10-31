@@ -121,6 +121,12 @@ Referensens ordning: först en övertygande testplats på 256 × 256 m, sedan en
 - naturen per modell, med nivåernas avstånd;
 - modellerna uppackade utan meshopt, med bilderna kvar i `assets/textures`.
 
+Halvöar och målade lager i dioramorna (2026-10-31): `make_diorama` kan lägga ut tungor av land (`peninsulas`) med egen kustprofil, biomer och region. Halvöns mark målas i fläckar med upp till åtta marklager (`paintLayers` och `groundPaint`, som penseln i steget Paint).
+- Ett målat lager kan ha egna regler för naturen (`populate`, till exempel `{"tree": 0, "plant": 3}`). Reglerna läggs ovanpå texturens och gäller i Populate, i exporten och när världen sparas.
+- Föremål som står på bestämda platser (`placed`: träd, flaggor) sparas med världen. Kartrummet ritar dem inte än (det blir steget Explore), men de följer med när världen sparas.
+- Flag isle (`tools/terrain/dioramas/flag_isle.json`) är Demo isle på 512 m med en halvö i sydost: äng utan skog, fläckar av frodigt gräs, äng, blomsteräng, pampas, stäpp och gräsmatta, två träd och en svensk flagga.
+- I exporten blir gräsets sort per hörn (`grasskind_a/b.u8`) den gräspreset vars marktextur är målad där.
+
 Provet i `../godot-lab` ritar Demo isle i Godot 4.7 med marken, havet, bäcken, naturen och gräset, för att jämföra med Kartrummet innan motorn för spelen väljs.
 
 ## Kontroller (`checks`)

@@ -652,7 +652,20 @@ function cleanChannels(list, X) {
 function cleanPaintLayers(list, X) {
   if (!Array.isArray(list) || !list.some(Boolean)) return null;
   const known = new Map((X.groundTextures ?? []).map((t) => [t.id, t]));
-  return list.slice(0, 8).map((p) => (p && known.has(p.texture) ? { texture: p.texture, metres: Math.min(20, Math.max(0.5, Number(p.metres) || known.get(p.texture).metres)) } : null));
+  // populate: lagrets egna regler för naturen (make_diorama), ovanpå texturens; tal 0–5 per sort
+  const kinds = ['tree', 'bush', 'plant', 'rock', 'prop', 'grass'];
+  const rules = (o) => { if (!o || typeof o !== 'object') return null; const r = Object.fromEntries(kinds.filter((k) => Number.isFinite(Number(o[k]))).map((k) => [k, Math.min(5, Math.max(0, Number(o[k])))])); return Object.keys(r).length ? r : null; };
+  return list.slice(0, 8).map((p) => { if (!p || !known.has(p.texture)) return null; const r = rules(p.populate); return { texture: p.texture, metres: Math.min(20, Math.max(0.5, Number(p.metres) || known.get(p.texture).metres)), ...(r ? { populate: r } : {}) }; });
+}
+// Utplacerade föremål (make_diorama; senare steget Explore): högst 256, en modell under assets/ eller en flagga
+function cleanPlaced(list) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const num = (x, lo, hi, d) => (Number.isFinite(Number(x)) ? Math.min(hi, Math.max(lo, Number(x))) : d);
+  return list.slice(0, 256).map((o) => {
+    const at = { x: num(o?.x, -4096, 4096, 0), z: num(o?.z, -4096, 4096, 0), rot: num(o?.rot, -360, 360, 0), scale: num(o?.scale, 0.1, 10, 1) };
+    if (o?.flag) return { flag: { texture: String(o.flag.texture ?? 'flag_sweden').replace(/[^a-z0-9_]/gi, '').slice(0, 60), pole: num(o.flag.pole, 1, 20, 5.5), length: num(o.flag.length, 0.3, 6, 1.9) }, ...at };
+    return /^(trees|props|plants|imported)\/[a-z0-9_]{1,60}$/.test(o?.model ?? '') ? { model: o.model, ...at } : null;
+  }).filter(Boolean);
 }
 // Kartrummets utplacering (steget Populate): frö, täthet och detaljavstånd, och per lager på/av och täthet
 function cleanPopulate(v, X) {
@@ -665,7 +678,7 @@ function cleanPopulate(v, X) {
   const G = X.populate?.global;
   return { seed: Math.round(spak(G, 'seed', v.seed, 1)), density: spak(G, 'density', v.density, 1), detail: spak(G, 'detail', v.detail, 1), grass: spak(G, 'grass', v.grass, 1), layers };
 }
-const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers, populate: cleanPopulate } }); // Kartrummet: docs/terrain.md
+const weatherStore = recipeStore('weather'), waterStore = recipeStore('water'), terrainStore = recipeStore('terrain', { extra: { regions: cleanRegions, channels: cleanChannels, paintLayers: cleanPaintLayers, populate: cleanPopulate, placed: cleanPlaced } }); // Kartrummet: docs/terrain.md
 let gladeBusy = null;
 async function windGlade() {
   const W = await readJson(WIND_JSON), lib = await libraryView(), newest = await newestSource();

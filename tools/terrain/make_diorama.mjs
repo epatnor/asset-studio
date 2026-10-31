@@ -13,12 +13,20 @@
 // havet), populate (Populate-stegets inställningar) och checks (beachMaxDepth, cliffMinDepth: djupet 6 m ut från kusten;
 // marshMinPonds: procent gölar i myren). Ut: en rad JSON med fil och kontroller (kustens djup, gölar och biomernas andel
 // per sektor).
+//
+// peninsulas: tungor av land ut från kusten: angle, length och width (m, vid roten), tip (bredden ytterst, andel), bend
+// (sväng i radianer), coast (kustprofilen) och detail, region, paint (biomerna som i sektorerna, relativt tungans kust),
+// ground (målade marklager i fläckar: [{texture, metres, weight, populate}], zone = fläckarnas storlek i m; populate
+// ändrar hur naturen växer på lagret, t.ex. {"tree": 0}) och place (föremål längs tungan: {model, at: [t, s], rot,
+// scale}, t = 0 vid roten till 1 ytterst, s = −1 till 1 tvärs över; {flag: {texture, pole, length}, at} är en flagga).
+// De målade lagren och föremålen sparas som paintLayers, groundPaint och placed.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateTerrain, worldGrid, createNoise } from '../../shared/terrain/generate.js';
 import { applyEdits, encodeDelta } from '../../shared/terrain/sculpt.js';
 import { computeBiomes, mixPaint, encodePaint, PAINT_SIZE } from '../../shared/terrain/biomes.js';
+import { SLOTS, encodeWeights } from '../../shared/terrain/paint.js';
 import { regionField } from '../../shared/terrain/regions.js';
 import { populate } from '../../shared/terrain/populate.js';
 
@@ -105,6 +113,44 @@ const weightsAt = (deg) => {
   return w.map((v) => v / sum);
 };
 const coastR = (a) => Rc + wobble * (Math.sin(3 * a + 1.1) * 0.6 + Math.sin(7 * a + 2.3) * 0.3 + Math.sin(13 * a + 0.4) * 0.15);
+// Halvöarna: en mittlinje från en bit innanför kusten och ut, med en svag sväng
+const penins = (D.peninsulas ?? []).map((p, pi) => {
+  const a0 = p.angle * Math.PI / 180, r0 = coastR(a0) - 12, L = p.length ?? 60, pts = [];
+  for (let q = 0; q <= 32; q++) { const t = q / 32, a = a0 + (p.bend ?? 0) * t * t, r = r0 + (L + 12) * t; pts.push([Math.sin(a) * r, -Math.cos(a) * r, t]); }
+  return { ...p, pts, L, pi };
+});
+// Avståndet till tungans kant (m, negativt inne på den), var längs den punkten ligger (t, 0 vid roten) och tvärs över (s)
+function peninsulaAt(P, x, z) {
+  let best = Infinity, bt = 0, side = 1;
+  for (let q = 0; q < P.pts.length - 1; q++) {
+    const [ax, az, ta] = P.pts[q], [bx, bz, tb] = P.pts[q + 1], dx = bx - ax, dz = bz - az;
+    const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+    const dist = Math.hypot(x - ax - dx * u, z - az - dz * u);
+    if (dist < best) { best = dist; bt = ta + (tb - ta) * u; side = Math.sign((x - ax) * dz - (z - az) * dx) || 1; }
+  }
+  const w = (P.width / 2) * (1 - (1 - (P.tip ?? 0.6)) * bt * bt) + wobble * 0.8 * noise(x * 0.06 + 11 * P.pi, z * 0.06 - 5);
+  return { d: best - w, t: bt, s: (side * best) / w };
+}
+// En punkt längs tungan (t, s) i världen
+function peninsulaPoint(P, t, s) {
+  const q = Math.min(P.pts.length - 2, Math.floor(t * (P.pts.length - 1))), [ax, az] = P.pts[q], [bx, bz] = P.pts[q + 1];
+  const f = t * (P.pts.length - 1) - q, x = ax + (bx - ax) * f, z = az + (bz - az) * f, l = Math.hypot(bx - ax, bz - az);
+  const w = (P.width / 2) * (1 - (1 - (P.tip ?? 0.6)) * t * t);
+  return [x + ((bz - az) / l) * s * w, z - ((bx - ax) / l) * s * w];
+}
+const sminD = (a, b, k) => { const h = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - h * h * k * 0.25; };
+// Kustavståndet med halvöarna: det minsta av öns och tungornas, mjukt, så att halsen rundas. own: tungan som äger platsen
+function coastAt(x, z, r, a) {
+  const di = r - coastR(a);
+  let d = di, own = null, ownW = 0, pen = null;
+  for (const P of penins) {
+    const q = peninsulaAt(P, x, z);
+    d = sminD(d, q.d, 14);
+    const w = smooth(6, -6, q.d - di);
+    if (w > ownW) { ownW = w; own = P; pen = q; }
+  }
+  return { d, own, ownW, pen };
+}
 // Vulkanens fot: medelhöjden i ringen där sektorerna tar över, så att de börjar i samma höjd
 let footSum = 0, footN = 0;
 for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
@@ -116,7 +162,7 @@ const foot = footN ? footSum / footN : 10;
 const delta = new Float32Array(n * n);
 for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
   const x = -half + i * cell, z = -half + j * cell, r = Math.hypot(x, z), a = Math.atan2(x, -z), deg = (a * 180 / Math.PI + 360) % 360;
-  const d = r - coastR(a), w = weightsAt(deg), k = j * n + i;
+  const C = coastAt(x, z, r, a), d = C.d, w = weightsAt(deg), k = j * n + i;
   const b0 = base.heights[k];
   let h = 0;
   sectors.forEach((s, q) => {
@@ -134,6 +180,12 @@ for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     if (P.pools) y -= 2.6 * Math.max(0, fbm(x * 1.7 + 5, z * 1.7 - 2, 0.05) + 0.2) * smooth(P.pools[0], P.pools[0] + 6, d) * smooth(P.pools[1], P.pools[1] - 6, d);
     h += w[q] * y;
   });
+  // På en halvö: tungans egen kustprofil och brus
+  if (C.own) {
+    const P = PROFILES[C.own.coast] ?? PROFILES.meadow, nz = fbm(x + 71, z - 13, 0.035);
+    const y = profileAt(P.pts, d) + (C.own.detail ?? 1) * nz * smooth(P.noise[1], P.noise[0], d);
+    h = mix(h, y, C.ownW);
+  }
   // Vulkanen står kvar inom core; utanför tar sektorerna över
   const keep = 1 - smooth(core * 0.75, core * 1.15, r);
   delta[k] = (keep * base.heights[k] + (1 - keep) * h) - base.heights[k];
@@ -161,10 +213,26 @@ sectors.forEach((s) => {
   const a = s.angle * Math.PI / 180, r = (core + Rc) / 2 / size;
   regions.push({ name: s.region.name, theme: s.region.theme, at: [+(Math.sin(a) * r).toFixed(3), +(-Math.cos(a) * r).toFixed(3)] });
 });
+for (const Pn of penins) {
+  if (!Pn.region) continue;
+  const [px, pz] = peninsulaPoint(Pn, 0.6, 0);
+  regions.push({ name: Pn.region.name, theme: Pn.region.theme, at: [+(px / size).toFixed(3), +(pz / size).toFixed(3)] });
+}
 for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
   const x = -half + (i + 0.5) * cellP, z = -half + (j + 0.5) * cellP, r = Math.hypot(x, z), a = Math.atan2(x, -z), deg = (a * 180 / Math.PI + 360) % 360;
-  const d = r - coastR(a), w = weightsAt(deg), q = j * P + i;
+  const C = coastAt(x, z, r, a), d = C.d, w = weightsAt(deg), q = j * P + i;
   let best = -1, bestS = 0;
+  if (C.own) {
+    for (const b of C.own.paint ?? []) {
+      const id = biomeIds.indexOf(b.biome);
+      const st = (b.strength ?? 0.8) * C.ownW * smooth(b.from - 4, b.from + 2, d) * smooth(b.to + 4, b.to - 2, d);
+      if (id >= 0 && st > bestS) { bestS = st; best = id; }
+    }
+    if (C.own.region && C.ownW > 0.3) {
+      const ri = regions.findIndex((g) => g.name === C.own.region.name);
+      regionPaint[q] = ri + 1; regionPaint[P * P + q] = Math.round(255 * C.ownW);
+    }
+  }
   sectors.forEach((s, si) => {
     for (const b of s.paint ?? []) {
       const id = biomeIds.indexOf(b.biome);
@@ -181,7 +249,37 @@ for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
   if (best >= 0 && bestS > 0.03) { paint[q] = best + 1; paint[P * P + q] = Math.round(255 * Math.min(1, bestS)); }
   // Regionerna: sektorn som äger platsen, mjukt mot vulkanen i mitten
   const si = w.indexOf(Math.max(...w)), rs = smooth(core * 0.7, core * 1.1, r);
-  if (sectors[si]?.region && rs > 0.05) { const ri = regions.findIndex((g) => g.name === sectors[si].region.name); regionPaint[q] = ri + 1; regionPaint[P * P + q] = Math.round(200 * rs * w[si]); }
+  if (sectors[si]?.region && rs > 0.05 && !(C.own?.region && C.ownW > 0.3)) { const ri = regions.findIndex((g) => g.name === sectors[si].region.name); regionPaint[q] = ri + 1; regionPaint[P * P + q] = Math.round(200 * rs * w[si]); }
+}
+
+// Halvöarnas målade marklager: fläckar (zone m stora) där en textur i taget tar över, mjukt mot grannarna, och inåt
+// från kusten; lagren blir paintLayers och vikterna groundPaint (som penseln i steget Paint)
+const paintLayers = [], groundW = new Uint8Array(n * n * SLOTS);
+for (const Pn of penins) {
+  const g = (Pn.ground ?? []).slice(0, SLOTS - paintLayers.length);
+  if (!g.length) continue;
+  const slot0 = paintLayers.length, zone = Pn.zone ?? 16;
+  for (const L of g) paintLayers.push({ texture: L.texture, metres: L.metres ?? X.groundTextures.find((t) => t.id === L.texture)?.metres ?? 3, ...(L.populate ? { populate: L.populate } : {}) });
+  const sc = new Float32Array(g.length);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell, r = Math.hypot(x, z), a = Math.atan2(x, -z), C = coastAt(x, z, r, a);
+    if (C.own !== Pn) continue;
+    const m = C.ownW * smooth(-1, -6, C.d) * (Pn.groundStrength ?? 1);
+    if (m <= 0) continue;
+    let mx = -Infinity;
+    g.forEach((L, q) => { sc[q] = (L.weight ?? 1) * (noise(x / zone + q * 17.3, z / zone - q * 9.1) * 0.7 + noise(x / (zone * 0.4) - q * 5.7, z / (zone * 0.4) + q * 3.3) * 0.3); mx = Math.max(mx, sc[q]); });
+    let sum = 0;
+    g.forEach((_, q) => { sc[q] = Math.exp((sc[q] - mx) * 12); sum += sc[q]; });
+    const k = (j * n + i) * SLOTS;
+    g.forEach((_, q) => { groundW[k + slot0 + q] = Math.round(255 * m * sc[q] / sum); });
+  }
+}
+const groundEffects = paintLayers.map((L) => ({ ...(X.groundTextures.find((t) => t.id === L.texture)?.populate ?? {}), ...(L.populate ?? {}) }));
+// Föremålen på halvöarna (träd, flaggor): världens läge; höjden sätts av den som ritar dem
+const placed = [];
+for (const Pn of penins) for (const o of Pn.place ?? []) {
+  const [x, z] = peninsulaPoint(Pn, o.at?.[0] ?? 0.5, o.at?.[1] ?? 0);
+  placed.push({ ...(o.flag ? { flag: o.flag } : { model: o.model }), x: +x.toFixed(2), z: +z.toFixed(2), rot: o.rot ?? 0, scale: o.scale ?? 1 });
 }
 
 // Kontroller: hela kedjan som i Kartrummet (det formade, regionerna, biomerna med det målade)
@@ -195,7 +293,8 @@ for (let j = 0; j < n; j += 2) for (let i = 0; i < n; i += 2) {
   const a = Math.atan2(x, -z), deg = (a * 180 / Math.PI + 360) % 360, w = weightsAt(deg), si = w.indexOf(Math.max(...w));
   if (w[si] < 0.8) continue;
   // Gölar: andelen under vattnet i bandet 3–22 m innanför kusten
-  const d = r - coastR(a);
+  const d = coastAt(x, z, r, a).d;
+  if (coastAt(x, z, r, a).own) continue; // halvöarna räknas inte i sektorernas kontroller
   if (d > 8 && d < 34) { per[si].sea++; if (t.heights[k] > (settings.seaLevel ?? 0)) per[si].skerry++; }
   if (d > -22 && d < -3) { per[si].band++; if (t.heights[k] <= (settings.seaLevel ?? 0)) per[si].ponds++; }
   if (t.heights[k] <= (settings.seaLevel ?? 0)) continue;
@@ -214,7 +313,7 @@ const report = per.map((p) => ({
 // Naturen som Populate-steget lägger ut den med receptets inställningar: antal per lager
 let nature = null;
 if (D.populate) {
-  const world = { ...t, biomes: W, sea: settings.seaLevel ?? 0, regions: { P: rf.P, count: rf.count, weights: rf.weights, themes: regions.map((g) => g.theme) } };
+  const world = { ...t, biomes: W, sea: settings.seaLevel ?? 0, ground: paintLayers.length ? { W: groundW, effects: groundEffects } : null, regions: { P: rf.P, count: rf.count, weights: rf.weights, themes: regions.map((g) => g.theme) } };
   const pop = populate(world, X.populate, D.populate);
   nature = { total: pop.total, ...Object.fromEntries(pop.layers.filter((l) => l.count).map((l) => [l.id, l.count])) };
 }
@@ -235,8 +334,8 @@ for (const q of X.params) {
   else if (q.type === 'choice') clean[q.key] = q.options.some((o) => o.id === v) ? v : q.default;
   else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
 }
-const layers = Object.fromEntries(Object.entries({ biomePaint: encodePaint(paint), regionPaint: encodePaint(regionPaint), sculpt: encodeDelta(delta, n) }).filter(([, v]) => v));
-const entry = { name, settings: clean, regions, ...(channels.length ? { channels } : {}), ...(D.populate ? { populate: D.populate } : {}), layers, ...(D.from ? { from: D.from } : {}), saved: new Date().toISOString() };
+const layers = Object.fromEntries(Object.entries({ biomePaint: encodePaint(paint), regionPaint: encodePaint(regionPaint), sculpt: encodeDelta(delta, n), groundPaint: paintLayers.length ? encodeWeights(groundW, n) : null }).filter(([, v]) => v));
+const entry = { name, settings: clean, regions, ...(channels.length ? { channels } : {}), ...(D.populate ? { populate: D.populate } : {}), ...(paintLayers.length ? { paintLayers } : {}), ...(placed.length ? { placed } : {}), layers, ...(D.from ? { from: D.from } : {}), saved: new Date().toISOString() };
 const file = `assets/terrain/${name}.terrain.json`;
 mkdirSync(path.join(ROOT, 'assets/terrain'), { recursive: true });
 writeFileSync(path.join(ROOT, file), JSON.stringify(entry, null, 2) + '\n');

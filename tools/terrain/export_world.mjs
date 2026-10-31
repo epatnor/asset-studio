@@ -15,9 +15,12 @@
 //   nature.json   utplaceringen (shared/terrain/populate.js, världens egna lager och frö): per modell instanserna
 //                 [x, y, z, vridning, storlek, lutning x, lutning z] och nivåernas avstånd (lod gånger Detail range), och
 //                 modellerna uppackade (utan meshopt) i models/
-//   world.json    rutnätet, havet, texturerna per biom och lager, gräsets och vattnets inställningar
+//   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
+//                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
+//   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar och flaggorna
+// Föremål som står utplacerade i världen (placed: träd ur make_diorama) följer med i nature.json, flaggorna i world.json.
 // Svarar med en rad JSON.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateTerrain, worldGrid } from '../../shared/terrain/generate.js';
@@ -64,7 +67,9 @@ if (gp && paintLayers.some(Boolean)) paint = gp.n === n ? gp.weights : resampleW
 
 // Gräsets täthet: biomerna, lutningen, höjden över havet, de målade lagrens grass (eller plant) och fläckarna
 const G = T.populate.grass, grassBiome = BIOMES.map((id) => G.biomes?.[id] ?? 0);
-const effects = paintLayers.map((p) => (p ? (T.groundTextures.find((x) => x.id === p.texture)?.populate ?? {}) : null)).map((e) => (e ? e.grass ?? e.plant ?? 1 : null));
+// Ett målat lager kan ha egna regler (populate) ovanpå texturens
+const layerEffects = paintLayers.map((p) => (p ? { ...(T.groundTextures.find((x) => x.id === p.texture)?.populate ?? {}), ...(p.populate ?? {}) } : null));
+const effects = layerEffects.map((e) => (e ? e.grass ?? e.plant ?? 1 : null));
 const ease = (a, b, x) => { const s = Math.min(1, Math.max(0, (x - a) / (b - a))); return s * s * (3 - 2 * s); };
 const hash = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
 const vnoise = (x, z) => {
@@ -130,7 +135,7 @@ write('streams.f32', streams);
 const pop = saved.populate ?? {};
 const popWorld = {
   n, cell, half, size, heights, wet: t.wet, biomes, sea: v.sea ? v.seaLevel : null,
-  ground: paint ? { W: paint, effects: paintLayers.map((p) => (p ? (T.groundTextures.find((x) => x.id === p.texture)?.populate ?? {}) : null)) } : null,
+  ground: paint ? { W: paint, effects: layerEffects } : null,
   regions: rf.weights ? { P: rf.P, count: rf.count, weights: rf.weights, themes: regions.map((r) => r.theme) } : null,
 };
 const P = populate(popWorld, T.populate, { seed: pop.seed, density: pop.density, layers: pop.layers });
@@ -144,6 +149,16 @@ for (const L of P.layers) {
     const d = L.data;
     byModel.get(key).instances.push(...[d[o], d[o + 1], d[o + 2], d[o + 3], d[o + 4], d[o + 6], d[o + 7]].map((x) => Math.round(x * 1000) / 1000));
   }
+}
+// Utplacerade föremål (placed): träd och buskar med full detalj på alla avstånd; flaggorna går till world.json
+const flags = [];
+for (const o of saved.placed ?? []) {
+  const y = t.heightAt(o.x, o.z);
+  if (o.flag) { flags.push({ ...o.flag, x: o.x, y, z: o.z }); continue; }
+  if (!o.model || !existsSync(path.join(ROOT, 'assets', o.model))) continue;
+  const key = `placed:${o.model}`, kind = /\/bush/.test(o.model) ? 'bush' : o.model.startsWith('trees/') ? 'tree' : 'prop';
+  if (!byModel.has(key)) byModel.set(key, { layer: 'placed', kind, model: o.model, align: 0, near: 1000, mid: 0, shadow: true, instances: [] });
+  byModel.get(key).instances.push(o.x, y, o.z, ((o.rot ?? 0) * Math.PI) / 180, o.scale ?? 1, 0, 0);
 }
 // Modellerna utan meshopt (Godot läser inte EXT_meshopt_compression): geometrin inbäddad, texturerna kvar i asset-studio
 const nio = await io(), rigs = {};
@@ -188,18 +203,31 @@ writeFileSync(path.join(out, 'nature.json'), JSON.stringify(nature));
 const Gr = json('tools/grass/grass.json'), Wa = json('tools/water/water.json');
 const strip = (o) => Object.fromEntries(Object.entries(o ?? {}).filter(([k]) => k !== 'label'));
 const metres = (id) => T.groundTextures.find((x) => x.id === id)?.metres ?? 3;
+// Gräsets sorter: standard (populate.grass i terrain.json) och varje preset vars marktextur är målad
+const grassDefaults = Object.fromEntries(Gr.params.map((q) => [q.key, q.default]));
+const kindIds = [G.preset, ...Object.keys(Gr.presets).filter((id) => id !== G.preset && paintLayers.some((p) => p && p.texture === Gr.presets[id].ground))].slice(0, 8);
+const grassKinds = kindIds.map((id) => ({ id, ...grassDefaults, ...strip(Gr.presets[id]), ...(id === G.preset ? G.settings : {}) }));
+const kindOfSlot = paintLayers.map((p) => (p ? kindIds.findIndex((id, q) => q > 0 && Gr.presets[id].ground === p.texture) : -1));
+const kinds = new Uint8Array(n * n * 8);
+for (let k = 0; k < n * n; k++) {
+  let rest = 255;
+  if (paint) for (let s = 0; s < SLOTS; s++) { const q = kindOfSlot[s], w = paint[k * SLOTS + s]; if (q > 0 && w) { kinds[k * 8 + q] += w; rest -= w; } }
+  kinds[k * 8] = Math.max(0, rest);
+}
+planes(kinds, 'grasskind');
 let lo = Infinity, hi = -Infinity;
 for (const h of heights) { lo = Math.min(lo, h); hi = Math.max(hi, h); }
 const world = {
   name, n, size, cell, half, seaFloor: recipe.seaFloor, sea: !!v.sea, seaLevel: v.seaLevel, cliffAngle: v.cliffAngle, grassTone: v.grassTone,
   low: lo, high: hi, biomes: T.biomes.map((b) => ({ id: b.id, color: b.color })),
   paintLayers: paintLayers.map((p) => (p ? { texture: p.texture, metres: p.metres ?? metres(p.texture) } : null)),
-  grass: { ...Object.fromEntries(Gr.params.map((q) => [q.key, q.default])), ...strip(Gr.presets[G.preset]), ...G.settings, field: G.field },
+  grass: { ...grassDefaults, ...strip(Gr.presets[G.preset]), ...G.settings, field: G.field },
+  grassKinds, flags,
   water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets.tropical_lagoon) },
   streamWater: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets[T.channelKinds.stream?.water]) },
-  files: ['heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
+  files: ['heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'grasskind_a.u8', 'grasskind_b.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
 };
 writeFileSync(path.join(out, 'world.json'), JSON.stringify(world, null, 1));
 let grassy = 0;
 for (const g of grass) if (g > 25) grassy++;
-console.log(JSON.stringify({ ok: true, name, out: path.relative(ROOT, out), n, size, cell, low: +lo.toFixed(1), high: +hi.toFixed(1), painted: !!paint, streams: t.channels.filter((c) => !c.sea).length, nature: P.total, models: nature.length, grassPct: +(100 * grassy / grass.length).toFixed(1), ms: Math.round(performance.now() - t0) }));
+console.log(JSON.stringify({ ok: true, name, out: path.relative(ROOT, out), n, size, cell, low: +lo.toFixed(1), high: +hi.toFixed(1), painted: !!paint, streams: t.channels.filter((c) => !c.sea).length, nature: P.total, placed: (saved.placed ?? []).length, grassKinds: kindIds, models: nature.length, grassPct: +(100 * grassy / grass.length).toFixed(1), ms: Math.round(performance.now() - t0) }));

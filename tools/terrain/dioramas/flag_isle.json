@@ -1,0 +1,330 @@
+{
+  "name": "flag_isle",
+  "from": "volcano",
+  "settings": {
+    "worldSize": "512",
+    "seed": 5,
+    "height": 42,
+    "scale": 60,
+    "warp": 10,
+    "talus": 40,
+    "snowline": 500,
+    "treeline": 42,
+    "rainfall": 0.85,
+    "forestCover": 0.8,
+    "marshes": 0.5,
+    "cliffAngle": 42,
+    "sandBand": 1.4,
+    "grassTone": 0.65
+  },
+  "radius": 90,
+  "core": 36,
+  "wobble": 5,
+  "spread": 30,
+  "center": {
+    "name": "Emberpeak",
+    "theme": "ashland"
+  },
+  "sectors": [
+    {
+      "angle": 180,
+      "coast": "beach",
+      "detail": 1.2,
+      "region": {
+        "name": "Sunstrand",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "beach",
+          "from": -16,
+          "to": 6,
+          "strength": 0.9
+        },
+        {
+          "biome": "meadow",
+          "from": -28,
+          "to": -16,
+          "strength": 0.5
+        },
+        {
+          "biome": "forest",
+          "from": -48,
+          "to": -26,
+          "strength": 0.6
+        }
+      ]
+    },
+    {
+      "angle": 270,
+      "coast": "marsh",
+      "detail": 0.8,
+      "region": {
+        "name": "Fenmire",
+        "theme": "wetland"
+      },
+      "paint": [
+        {
+          "biome": "marsh",
+          "from": -36,
+          "to": 2,
+          "strength": 0.85
+        },
+        {
+          "biome": "forest",
+          "from": -56,
+          "to": -36,
+          "strength": 0.5
+        }
+      ]
+    },
+    {
+      "angle": 0,
+      "coast": "cliff",
+      "detail": 2.5,
+      "region": {
+        "name": "Pinecliffs",
+        "theme": "pinewood"
+      },
+      "paint": [
+        {
+          "biome": "rock",
+          "from": -4,
+          "to": 6,
+          "strength": 0.75
+        },
+        {
+          "biome": "pine",
+          "from": -40,
+          "to": -6,
+          "strength": 0.8
+        },
+        {
+          "biome": "rock",
+          "from": 6,
+          "to": 38,
+          "strength": 0.95
+        }
+      ],
+      "coves": [
+        {
+          "angle": 14,
+          "width": 14,
+          "depth": 14
+        }
+      ]
+    },
+    {
+      "angle": 90,
+      "coast": "meadow",
+      "detail": 1.8,
+      "stream": true,
+      "region": {
+        "name": "Bloomfield",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "meadow",
+          "from": -24,
+          "to": -2,
+          "strength": 0.75
+        },
+        {
+          "biome": "forest",
+          "from": -50,
+          "to": -22,
+          "strength": 0.6
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "beachMaxDepth": 1.2,
+    "cliffMinDepth": 4,
+    "marshMinPonds": 8
+  },
+  "populate": {
+    "seed": 3,
+    "density": 4,
+    "detail": 1.5,
+    "layers": {
+      "broadleaf": {
+        "on": true,
+        "density": 2
+      },
+      "autumn": {
+        "on": true,
+        "density": 2
+      },
+      "conifers": {
+        "on": true,
+        "density": 2
+      },
+      "wetland_trees": {
+        "on": true,
+        "density": 3
+      },
+      "dead_trees": {
+        "on": true,
+        "density": 3
+      },
+      "boulders": {
+        "on": true,
+        "density": 1.5
+      },
+      "bushes": {
+        "on": true,
+        "density": 3
+      },
+      "forest_floor": {
+        "on": true,
+        "density": 3
+      },
+      "flowers": {
+        "on": true,
+        "density": 4
+      },
+      "grasses": {
+        "on": true,
+        "density": 4
+      },
+      "reeds": {
+        "on": true,
+        "density": 1.5
+      },
+      "shore": {
+        "on": true,
+        "density": 1.5
+      },
+      "lilies": {
+        "on": true,
+        "density": 3
+      },
+      "pondweed": {
+        "on": true,
+        "density": 2
+      }
+    }
+  },
+  "peninsulas": [
+    {
+      "angle": 135,
+      "length": 78,
+      "width": 48,
+      "tip": 0.6,
+      "bend": 0.3,
+      "coast": "meadow",
+      "detail": 0.8,
+      "region": {
+        "name": "Flag Point",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "beach",
+          "from": -5,
+          "to": 8,
+          "strength": 0.9
+        },
+        {
+          "biome": "meadow",
+          "from": -200,
+          "to": -4,
+          "strength": 1
+        }
+      ],
+      "zone": 13,
+      "ground": [
+        {
+          "texture": "ground_lush",
+          "populate": {
+            "tree": 0,
+            "bush": 0.1,
+            "plant": 1.6,
+            "rock": 0.3
+          }
+        },
+        {
+          "texture": "ground_meadow",
+          "populate": {
+            "tree": 0,
+            "bush": 0.1,
+            "plant": 2.2,
+            "rock": 0.3
+          }
+        },
+        {
+          "texture": "surface_meadow",
+          "weight": 1.1,
+          "populate": {
+            "tree": 0,
+            "bush": 0,
+            "plant": 3,
+            "rock": 0.2
+          }
+        },
+        {
+          "texture": "ground_pampas",
+          "weight": 1.1,
+          "populate": {
+            "tree": 0,
+            "bush": 0,
+            "plant": 0.8,
+            "rock": 0.3
+          }
+        },
+        {
+          "texture": "ground_steppe",
+          "populate": {
+            "tree": 0,
+            "bush": 0.2,
+            "plant": 1.2,
+            "rock": 0.5
+          }
+        },
+        {
+          "texture": "ground_lawn",
+          "weight": 0.8,
+          "populate": {
+            "tree": 0,
+            "bush": 0,
+            "plant": 0.5,
+            "rock": 0.2
+          }
+        }
+      ],
+      "place": [
+        {
+          "model": "trees/oak",
+          "at": [
+            0.5,
+            0.3
+          ],
+          "rot": 40,
+          "scale": 1.15
+        },
+        {
+          "model": "trees/birch",
+          "at": [
+            0.74,
+            -0.35
+          ],
+          "rot": 120,
+          "scale": 1
+        },
+        {
+          "flag": {
+            "texture": "flag_sweden",
+            "pole": 6,
+            "length": 1.9
+          },
+          "at": [
+            0.9,
+            0.05
+          ]
+        }
+      ]
+    }
+  ]
+}

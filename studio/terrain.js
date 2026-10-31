@@ -588,7 +588,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     const from = current?.startsWith('saved:') ? info.saved.find((x) => `saved:${x.name}` === current)?.from : current;
     // De målade lagren (biomer och regioner) och regionerna följer med receptet
     const layers = { biomePaint: encodePaint(paint) ?? '', regionPaint: encodePaint(regionPaint) ?? '', sculpt: encodeDelta(delta, deltaN) ?? '', sculptOver: encodeDelta(over, deltaN) ?? '', groundPaint: encodeWeights(groundW, groundN) ?? '' };
-    const extra = { regions: vals.regions, channels: vals.channels, paintLayers: vals.paintLayers, populate: vals.populate };
+    const extra = { regions: vals.regions, channels: vals.channels, paintLayers: vals.paintLayers, populate: vals.populate, placed: vals.placed };
     let r = await api('/api/terrain/save', { name, settings: vals, from, layers, ...extra });
     if (r.exists && confirm(`${name} already exists. Overwrite?`)) r = await api('/api/terrain/save', { name, settings: vals, from, layers, ...extra, overwrite: true });
     saveMsg.textContent = r.error ? `Not saved: ${r.error}` : r.file ? `Saved: ${r.file}` : '';
@@ -633,6 +633,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     undoStack = [];
     vals.paintLayers = slotsOf(v.paintLayers);
     vals.populate = popOf(v.populate);
+    vals.placed = structuredClone(v.placed ?? []); // utplacerade föremål (make_diorama): följer med när världen sparas
     const gp = decodeWeights(layers?.groundPaint);
     groundW = gp?.weights ?? null; groundN = gp?.n ?? 0;
     paintUndo = [];
@@ -786,7 +787,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     headTitle.textContent = 'Worlds';
     headNote.textContent = 'Click a world to start from it. Save your own in the Save card.';
     sec('Ready-made', Object.entries(info.presets).map(([id, p]) => tile(id, p.label, p, id)));
-    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions, channels: x.channels, paintLayers: x.paintLayers, populate: x.populate }, x.from, x.layers)));
+    sec('Saved', info.saved.map((x) => tile(`saved:${x.name}`, x.name, { ...x.settings, regions: x.regions, channels: x.channels, paintLayers: x.paintLayers, populate: x.populate, placed: x.placed }, x.from, x.layers)));
   }
   // En region i lådan: väljer den för kortet och penseln (Erase suddar); klick igen släpper penseln
   function regionTile(r, i) {
@@ -871,7 +872,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     nature ??= createNature({ scene, rules: info.populate, library, manager });
     note.textContent = 'Placing the nature…';
     await painted();
-    const effects = vals.paintLayers.map((L) => (L ? info.groundTextures.find((t) => t.id === L.texture)?.populate ?? {} : null));
+    const effects = vals.paintLayers.map((L) => (L ? { ...(info.groundTextures.find((t) => t.id === L.texture)?.populate ?? {}), ...(L.populate ?? {}) } : null)); // lagrets egna regler ovanpå texturens
     const world = {
       n: field.n, cell: field.cell, half, size: sizeOf(), heights: field.heights, wet: field.wet, biomes: final, sea: vals.sea ? vals.seaLevel : null,
       ground: groundW && vals.paintLayers.some(Boolean) ? { W: groundW, effects } : null,
