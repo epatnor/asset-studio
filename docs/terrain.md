@@ -111,6 +111,18 @@ Referensens ordning: först en övertygande testplats på 256 × 256 m, sedan en
 - **Texturer i stor skala:** världskoordinater för texturerna (samma täthet överallt), storskalig ton mot upprepning, och virtuell texturering först om det verkligen behövs.
 - **Kontroller:** sömmar från alla fyra håll och vid varje LOD-övergång, 100+ cykler av strömning utan läckor (minne, geometrier, texturer), tider per chunk och `renderer.info` loggat.
 
+### 8. Export till andra motorer (Godot-provet, 2026-10-31)
+
+`tools/terrain/export_world.mjs` kör samma kod som Kartrummet (generatorn, det formade, regionerna, biomerna med det målade lagret och utplaceringen) på en sparad värld. Resultatet är rådata per hörn, som en annan motor läser direkt som texturer:
+- höjderna;
+- biomernas och de målade lagrens vikter, i två RGBA-plan vardera;
+- regionens färgton, fukten och gräsets täthet, efter samma regler som `grassAt`;
+- bäckarnas vattenyta med flödets riktning;
+- naturen per modell, med nivåernas avstånd;
+- modellerna uppackade utan meshopt, med bilderna kvar i `assets/textures`.
+
+Provet i `../godot-lab` ritar Demo isle i Godot 4.7 med marken, havet, bäcken, naturen och gräset, för att jämföra med Kartrummet innan motorn för spelen väljs.
+
 ## Kontroller (`checks`)
 
 Kontrollerna räknas i Node utan bilder, som `checks.ok` i generatorerna:
