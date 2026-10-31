@@ -18,6 +18,7 @@
 //   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
 //                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
 //   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar och flaggorna
+//   (models: en mapp med slimmade modeller, t.ex. "build/slim", som används där de finns)
 //   (budget: ett namn ur motorns budgetar, t.ex. "lean"; följer med i world.json)
 // Föremål som står utplacerade i världen (placed: träd ur make_diorama) följer med i nature.json, flaggorna i world.json.
 // Svarar med en rad JSON.
@@ -166,10 +167,13 @@ for (const o of saved.placed ?? []) {
   byModel.get(key).instances.push(o.x, y, o.z, ((o.rot ?? 0) * Math.PI) / 180, o.scale ?? 1, 0, 0);
 }
 // Modellerna utan meshopt (Godot läser inte EXT_meshopt_compression): geometrin inbäddad, texturerna kvar i asset-studio
-const nio = await io(), rigs = {};
+const nio = await io(), rigs = {}, slim = [], full = [];
 mkdirSync(path.join(out, 'models'), { recursive: true });
 for (const m of new Set([...byModel.values()].map((x) => x.model))) {
-  const id = m.split('/').pop(), src = path.join(ROOT, 'assets', m, `${id}.gltf`);
+  // models: en mapp med slimmade modeller (t.ex. build/slim, med trees/, plants/ ... som i assets); de som finns där används
+  const id = m.split('/').pop(), alt = args.models && path.join(ROOT, args.models, m, `${id}.gltf`);
+  const src = alt && existsSync(alt) ? alt : path.join(ROOT, 'assets', m, `${id}.gltf`);
+  if (alt) (existsSync(alt) ? slim : full).push(m);
   const doc = await nio.read(src);
   for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === 'EXT_meshopt_compression') ext.dispose();
   // Vindriggen (tools/wind/rig.mjs) som Godot kan läsa: egna attribut tas inte med, men TEXCOORD_2 och _3 blir CUSTOM0.
@@ -237,4 +241,4 @@ const world = {
 writeFileSync(path.join(out, 'world.json'), JSON.stringify(world, null, 1));
 let grassy = 0;
 for (const g of grass) if (g > 25) grassy++;
-console.log(JSON.stringify({ ok: true, name, out: path.relative(ROOT, out), n, size, cell, low: +lo.toFixed(1), high: +hi.toFixed(1), painted: !!paint, streams: t.channels.filter((c) => !c.sea).length, nature: P.total, placed: (saved.placed ?? []).length, grassKinds: kindIds, models: nature.length, grassPct: +(100 * grassy / grass.length).toFixed(1), ms: Math.round(performance.now() - t0) }));
+console.log(JSON.stringify({ ok: true, name, out: path.relative(ROOT, out), n, size, cell, low: +lo.toFixed(1), high: +hi.toFixed(1), painted: !!paint, streams: t.channels.filter((c) => !c.sea).length, nature: P.total, placed: (saved.placed ?? []).length, grassKinds: kindIds, models: nature.length, ...(args.models ? { slim: slim.length, notSlim: full } : {}), grassPct: +(100 * grassy / grass.length).toFixed(1), ms: Math.round(performance.now() - t0) }));

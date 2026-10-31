@@ -108,7 +108,10 @@ export function buildConiferFoliage(sk, o) {
   // Toppen: en hatt av små uppåtriktade kransar och en spets (se nedan)
   const trunk = sk.branches[0];
   const top = trunk.nodes[trunk.nodes.length - 1].p;
-  const lodDefs = [{ segL: 8, segW: 6, keep: 1 }, { segL: 5, segW: 4, keep: 0.8 }, { segL: 3, segW: 2, keep: 0.6 }];
+  // detail < 1 (receptets detaljnivå): barrgrenarna närmast får färre led på längden och tvären
+  const d = o.detail ?? 1;
+  const lodDefs = [{ segL: Math.round(3 + 5 * d), segW: Math.round(2 + 4 * d), keep: 1 }, { segL: 5, segW: 4, keep: 0.8 }, { segL: 3, segW: 2, keep: 0.6 }]
+    .map((l, i, a) => i ? { ...l, segL: Math.min(l.segL, a[0].segL), segW: Math.min(l.segW, a[0].segW) } : l);
   const lods = lodDefs.map(({ segL, segW, keep }) => {
     const g = empty();
     fronds.forEach((f, fid) => {

@@ -57,7 +57,8 @@ def main():
         textures[role] = str(gray_version(path) if tinted else path)
 
     gen = {"name": name, "preset": preset, "seed": recipe.get("seed", 0), "out": str(glb), "textures": textures,
-           "params": recipe.get("params", {}), "stoneTint": recipe.get("stone_tint"), "mossTint": recipe.get("moss_tint")}
+           "params": recipe.get("params", {}), "stoneTint": recipe.get("stone_tint"), "mossTint": recipe.get("moss_tint"),
+           "detail": recipe.get("detail", 1)}
     run = subprocess.run(["node", str(TOOL / "gen_prop.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))

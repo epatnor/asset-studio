@@ -59,6 +59,9 @@ if (!forked) scaleSkeleton(sk, height, fronds ? 0 : 0.12);
 // Ålder (age 0–1, Smedjans spak Growth): trädet växer ut längs grenarna från roten (growSkeleton), och den kala
 // stammen är lika mycket kortare. Kvistarna räknas före och efter, så att lövkronan kan följa den minsta grenklassen
 const age = Math.max(0, Math.min(1, recipe.age ?? 1));
+// Detaljnivå (detail 0.25–1, 1 = som förut): färre varv runt grenarna, lövkort med färre rutor, grövre skuggform och
+// barrgrenar med färre led. Silhuetten och antalet kort är desamma, så trädet ser ut som förut med färre trianglar
+const detail = Math.max(0.25, Math.min(1, recipe.detail ?? 1));
 const lift = sp.stemless || forked ? 0 : setBoleHeight(sk, (recipe.bole ?? 0) * age); // gaffelträdet har stammen i höjden
 const twigsFull = sk.twigs.length;
 const grown = growSkeleton(sk, age);
@@ -73,7 +76,7 @@ const makeBark = () => [
   { maxLevel: Math.max(1, sk.maxLevel - 1), segScale: 0.7 },
   { maxLevel: 1, segScale: 0.5 },
 ].map((l) => barkMesh(sk, {
-  ...l, barkRepeat, uv: recipe.barkUV, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height, top,
+  ...l, segScale: Math.min(l.segScale, detail), barkRepeat, uv: recipe.barkUV, flare: sp.trunk.flare, roots: sp.trunk.roots, rootAmp: sp.trunk.rootAmp, flareHeight: sp.trunk.flareHeight, height, top,
   lobes: sp.trunk.lobes, lobeAmp: sp.trunk.lobeAmp, twist: sp.trunk.twist, bulge: sp.trunk.bulge,
   // Gran: barrgrenen ÄR grenen, så bara stammen får bark (annars sticker kala grenar ut ur barren)
   // stemless (bollbuskar): skelettet styr var bullarna sitter, men ingen bark renderas
@@ -93,7 +96,7 @@ let foliage;
 if (fronds) {
   const pal = STYLE.palette;
   foliage = buildConiferFoliage(sk, {
-    seed: seedEff, height, normalBlend: 0.5, ...sp.foliage, ...(recipe.conifer ?? {}),
+    seed: seedEff, height, detail, normalBlend: 0.5, ...sp.foliage, ...(recipe.conifer ?? {}),
     textured: !!recipe.frondTexture,
     // Paletten kan väljas per art (palm: lövträdens grönt), standard är granens
     palette: Object.fromEntries(Object.entries({ light: 'conifer_light', mid: 'conifer_mid', dark: 'conifer_dark', ...(sp.foliage.palette ?? {}) })
@@ -131,7 +134,7 @@ if (fronds) {
   foliage = sk.twigs.length < 6 && age < 1
     ? { lods: [0, 1, 2].map(() => ({ positions: [], normals: [], uvs: [], colors: [], wind: [], cluster: [], indices: [] })), clusters: [], uncovered: 0, tipBalls: 0, cards: 0 }
     // Gaffelträd: bollarnas minsta storlek räknas mot kronans höjd, inte trädets, så att en högre stam inte ger större bollar
-    : buildCardBalls(sk.twigs, { ...cb, seed: seedEff, height: (forked ? sk.crownHeight : height) * (age < 1 ? Math.max(0.3, age) : 1), tips, ground: !!sp.stemless, skeleton: sk });
+    : buildCardBalls(sk.twigs, { ...cb, detail, seed: seedEff, height: (forked ? sk.crownHeight : height) * (age < 1 ? Math.max(0.3, age) : 1), tips, ground: !!sp.stemless, skeleton: sk });
   checks.age = age;
   checks.tip_balls = foliage.tipBalls;
   checks.clusters = foliage.clusters.length;

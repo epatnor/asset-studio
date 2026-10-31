@@ -255,7 +255,8 @@ export function buildCardBalls(twigs, o) {
 
   // Klasen i atlasen fyller ungefär 85 % av cellens halva bredd
   // cardGrid: hörn per kortsida (4 = 3x3 rutor). Små kort klarar sig med 3, eftersom de inte går genom centrum.
-  const g0 = o.cardGrid ?? 4;
+  // detail < 1 (receptets detaljnivå): färre rutor per kort; korten och deras normaler är desamma
+  const g0 = Math.max(2, Math.round(((o.cardGrid ?? 4) - 1) * (o.detail ?? 1)) + 1);
   const lodSpec = [{ grid: g0, keep: 1 }, { grid: Math.max(2, g0 - 1), keep: 0.7 }, { grid: 2, keep: 0.5 }];
   // normalSource "crown": normalerna (och djupet för färgen) tas från en mjuk union av alla bollar i stället
   // för från varje boll. Kort som korsar varandra på samma ställe får då samma ljus, och bollarna skuggas
@@ -351,7 +352,7 @@ export function buildCardBalls(twigs, o) {
   // Korten kastar inga skuggor (de avslöjar skärningarna); formen kastar i stället en mjuk kronskugga på
   // marken och stammen och syns aldrig själv. LOD2 har grövre sfärer.
   const shadow = [1, 1, 0].map((sub) => {
-    const g = empty(), ico = icosphere(sub);
+    const g = empty(), ico = icosphere((o.detail ?? 1) < 1 ? 0 : sub); // skuggan är mjuk: 20 sidor räcker vid lägre detalj
     balls.forEach((b, bi) => {
       const base = g.positions.length / 3, rr = b.radii[0] * (o.shadowScale ?? 0.85);
       for (const v of ico.verts) {

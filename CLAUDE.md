@@ -66,14 +66,15 @@ Kommandoradsvarianter:
 
 | Kommando | Gör |
 |---|---|
-| `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.gltf` (+ .bin) |
-| `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin) |
-| `python3 -I tools/plants/make_plant.py '<recept>'` | Växt → `assets/plants/<name>/<name>.gltf` (+ .bin) |
+| `python3 -I tools/tree/make_tree.py '<recept>'` | Träd → `assets/trees/<name>/<name>.gltf` (+ .bin). `detail` (0.25–1) slimmar: färre varv runt grenarna, färre rutor per lövkort, samma silhuett |
+| `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin); `detail` som för träden |
+| `python3 -I tools/plants/make_plant.py '<recept>'` | Växt → `assets/plants/<name>/<name>.gltf` (+ .bin); `detail` som för träden |
 | `python3 -I tools/character/make_character.py '<recept>'` | Karaktär → `assets/characters/<name>/<name>.gltf` (+ .bin), under arbete |
 | `python3 -I tools/building/make_building.py '<recept>'` | Byggnad → `assets/buildings/<name>/<name>.gltf` (+ .bin), texturer genereras vid behov |
 | `node tools/building/gen_kit.mjs '{"assembly": "cottage", "out": "build/kit/cottage.gltf"}'` | Byggsatsen ([docs/building-kit.md](docs/building-kit.md)): en modul (`module`, `ends`), katalogen (`catalog`) eller ett hus av moduler (`assembly`) med kontroller av sockets, överlapp, glipor och svävande stenar. Vanliga murar och takfall är plattor med bakad relief (`kit/bake.mjs`, `{"bake": true}` bakar om); bilder med `tools/building/kit_sheet.py` |
 | `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
-| `python3 -I tools/tree/make_templates.py ['{"only": ["oak"]}']` | Smedjans mallar: ett träd eller en buske per familj ur `tools/tree/templates.json` → `assets/trees/<id>/` |
+| `python3 -I tools/tree/make_templates.py ['{"only": ["oak"]}']` | Smedjans mallar: ett träd eller en buske per familj ur `tools/tree/templates.json` → `assets/trees/<id>/` (`{"detail": 0.5, "out_root": "build/slim/trees"}` slimmade, någon annanstans) |
+| `node tools/mesh/check_normals.mjs '{"paths": ["assets/trees"]}'` | Vända ytor och normaler i modellerna, utan bilder: trianglar vars lindning går mot normalerna (`flipped`) och slutna delar som är ut och in (`inside_out`, strålar från ytan). Lövkort, strån och tvåsidiga par räknas inte; `{"world": "<export>"}` kollar en exports modeller |
 | `python3 -I tools/texture/make_leafsheet.py '<recept>'` | Procedurellt lövark (2x2, runda lövklasar för kortbollar): white, painted eller color |
 | `python3 -I tools/texture/workshop.py '<recept>'` | Material från recept (källa, steg, ingredienser) → kartor (färg, normal, höjd, ruffighet …) som förhandsvisning eller `assets/textures/<namn>*.png` + recept + katalograd |
 | `python3 -I tools/texture/krea2.py "<prompt>" W H <ut.png> [seed] [--seamless]` | Bild från Krea-2 (`--seamless`: sömlös redan i genereringen) |
@@ -84,6 +85,6 @@ Kommandoradsvarianter:
 | `python3 -I tools/texture/fit_reference.py '<recept>'` | Barkrecept styrt mot en referens (färger ur paletten, skala × exaggerate), sparas som vanligt material |
 | `node tools/terrain/check_terrain.mjs ['{"scene": "landscapes"}']` | Terrängens kontroller utan bilder: bäckscenen (veck, sågtänder i strandlinjen, vattenkanten under marken), Kartrummets landskap (spetsar och gropar, kanten under havet, regioner och biomer) `sculpt` (penslar, mönster, landformer, å, bäck, vik och målning) eller `populate` (utplaceringen); marken byggs med `shared/terrain/` ([docs/terrain.md](docs/terrain.md)) |
 | `node tools/terrain/make_diorama.mjs "$(cat tools/terrain/dioramas/demo_isle.json)"` | Diorama-ö för Kartrummet: vulkanen i mitten och kustsektorer (strand, träsk, klippkust, äng) som det formade, målade biomer, regioner och bäckar → `assets/terrain/<namn>.terrain.json`, med kontroller (djup vid kusten, gölar, biomer per sektor) |
-| `node tools/terrain/export_world.mjs '{"name": "demo_isle", "out": "../godot-lab/worlds/demo_isle"}'` | En sparad värld ur Kartrummet som rådata för en annan motor (Godot-provet i `../godot-lab`): höjder, biomer, målade lager, fukt, gräsets täthet, bäckarnas yta, utplaceringen och modellerna utan meshopt; `"budget": "lean"` väljer motorns stramare budget (`godot-lab/budgets.json`) |
+| `node tools/terrain/export_world.mjs '{"name": "demo_isle", "out": "../godot-lab/worlds/demo_isle"}'` | En sparad värld ur Kartrummet som rådata för en annan motor (Godot-provet i `../godot-lab`): höjder, biomer, målade lager, fukt, gräsets täthet, bäckarnas yta, utplaceringen och modellerna utan meshopt; `"budget": "lean"` väljer motorns stramare budget (`godot-lab/budgets.json`), `"models": "build/slim"` de slimmade modellerna där de finns |
 | `python3 -I tools/studio/ui_test.py "$(cat tools/studio/ui_tests/smoke.json)"` | UI-test i Chrome utan fönster på RTX-kortet (CDP): klickar, drar i spakar, svarar på dialoger, läser konsolen och tar skärmdumpar av hela gränssnittet, även med låst skärm. `smoke.json` går igenom alla avdelningar, `maproom.json`, `regions.json`, `biomes.json`, `sculpt.json`, `paint.json` och `populate.json` Kartrummet, `house.json` Smedjans husflik. Studioservern måste vara igång |
 | `post_textures.py tile\|cutout <in> <ut>` | Sömlös textur (`tile`: snitt där bitarna är lika, inte toning) / sprite med alfa |

@@ -15,6 +15,9 @@ const PROPS = JSON.parse(fs.readFileSync(new URL('./props.json', import.meta.url
 const recipe = JSON.parse(process.argv[2] ?? '{}');
 const { preset = 'stone', seed = 0, out, textures = {} } = recipe;
 const sp = { ...PROPS[preset], ...(recipe.params ?? {}) };
+// detail (receptets detaljnivå 0.25–1, 1 = som förut): LOD0 får grövre stenytor och färre varv runt stubbar, stockar
+// och rankor; formen och antalet delar är desamma, och de grövre nivåerna blir aldrig finare än LOD0
+const detail = Math.max(0.25, Math.min(1, recipe.detail ?? 1));
 if (!PROPS[preset] || preset.startsWith('_')) {
   console.error(`unknown preset ${preset}; available: ${Object.keys(PROPS).filter((k) => !k.startsWith('_')).join(', ')}`);
   process.exit(1);
@@ -236,7 +239,7 @@ function rockLods() {
     const off = hex ? [hex[i][0], 0, hex[i][1]] : [Math.cos(a) * d, 0, Math.sin(a) * d];
     return { s, off, seed: Math.floor(r() * 2 ** 31) };
   });
-  return [1, 1.6, 2.6].map((cs) => {
+  return [1, 1.6, 2.6].map((cs) => Math.max(cs, 1 / Math.sqrt(detail))).map((cs) => {
     const parts = { stone: empty(), moss: empty() };
     for (const pl of placements) {
       const g = buildRock(pl.s, { ...sp, unified: true }, rng(pl.seed), pl.off, cs);
@@ -330,7 +333,7 @@ function stumpLods() {
   // Täta ringar nedtill, där rötterna sväller ut
   const nodes = Array.from({ length: 12 }, (_, i) => { const t = (i / 11) ** 1.6; return { p: [lean[0] * t * H, -0.05 + (H + 0.05) * t, lean[2] * t * H], r: R0 * (1 - 0.1 * t) }; });
   const sk = { branches: [{ level: 0, nodes, segments: 16, phase: r() * 6.28 }] };
-  const lods = [1, 0.7, 0.5].map((segScale) => {
+  const lods = [1, 0.7, 0.5].map((s) => Math.min(s, detail)).map((segScale) => {
     const g = barkMesh(sk, { maxLevel: 0, segScale, barkRepeat: 0.6, flare: sp.flare, roots: sp.roots, rootAmp: sp.rootAmp, flareHeight: 0.45,
       height: H, lobes: sp.lobes, lobeAmp: sp.lobeAmp, twist: 0.4, bulge: 0.03, flatTop: true, sinkDepth: 0.35 });
     const parts = { bark: { ...g, cap: undefined }, cap: g.cap };
@@ -363,7 +366,7 @@ function logLods() {
     return { branches: [{ level: 0, nodes, segments: 14, phase: ph }] };
   };
   const halves = [half(1), half(-1)];
-  const lods = [1, 0.7, 0.5].map((segScale) => {
+  const lods = [1, 0.7, 0.5].map((s) => Math.min(s, detail)).map((segScale) => {
     const parts = { bark: empty(), cap: empty() };
     for (const sk of halves) {
       const g = barkMesh(sk, { maxLevel: 0, segScale, barkRepeat: 0.6, flare: 0, roots: 0, rootAmp: 0, flareHeight: 0.1,
@@ -437,7 +440,7 @@ function creeperLods() {
     });
   }
   const vineC = lin(sp.vine);
-  return [[1, 1], [0.6, 0.7], [0.35, 0.5]].map(([keep, segScale]) => {
+  return [[1, 1], [0.6, 0.7], [0.35, 0.5]].map(([keep, s]) => [keep, Math.min(s, detail)]).map(([keep, segScale]) => {
     const g = { ...empty(), cluster: [] };
     leaves.forEach((l, id) => { if (l.prio < keep) pushLeaf(g, l.base, l.axis, l.side, l.len, l.len * 0.65, 0.25, sp.leafShape, l.col, id, 0.5, UP); });
     const stems = barkMesh({ branches: vines }, { maxLevel: 9, segScale, barkRepeat: 0.3, height: 1 });

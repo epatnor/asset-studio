@@ -31,7 +31,7 @@ def main():
     out_dir = (ROOT / recipe.get("out_root", "assets/plants")).resolve() / name  # out_root: t.ex. bibliotekets variantpool
     out_dir.mkdir(parents=True, exist_ok=True)
     model = out_dir / f"{name}.gltf"
-    gen = {"name": name, "preset": preset, "seed": recipe.get("seed", 0), "out": str(model), "params": recipe.get("params", {})}
+    gen = {"name": name, "preset": preset, "seed": recipe.get("seed", 0), "out": str(model), "params": recipe.get("params", {}), "detail": recipe.get("detail", 1)}
     run = subprocess.run(["node", str(TOOL / "gen_plant.mjs"), json.dumps(gen)], cwd=TOOL, capture_output=True, text=True)
     if run.returncode:
         sys.exit(json.dumps({"error": run.stderr.strip()[-600:]}))

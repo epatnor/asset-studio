@@ -28,7 +28,12 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lin = (hex) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255) ** 2.2);
 const colorOf = (key) => { const c = sp.colors[key] ?? key; return STYLE.palette[c] ?? c; };
 const SINK = 0.03; // strån och stjälkar börjar under marken, så att roten aldrig syns som ett snitt
-const LODS = [{ step: 1, seg: 1, sides: 6, ell: [5, 4] }, { step: 2, seg: 0.6, sides: 4, ell: [4, 3] }, { step: 4, seg: 0.4, sides: 3, ell: [3, 2] }];
+// detail (receptets detaljnivå 0.25–1, 1 = som förut): LOD0 får färre led i strån, kronblad och stjälkar och färre sidor
+// på rör och kärnor, men lika många strån och blommor; de grövre nivåerna blir aldrig finare än LOD0
+const detail = clamp(recipe.detail ?? 1, 0.25, 1);
+const LODS = [{ step: 1, seg: 1, sides: 6, ell: [5, 4] }, { step: 2, seg: 0.6, sides: 4, ell: [4, 3] }, { step: 4, seg: 0.4, sides: 3, ell: [3, 2] }]
+  .map((l, i) => i ? l : { ...l, seg: detail, sides: Math.round(2 + 4 * detail), ell: l.ell.map((x) => Math.max(3, Math.round(x * (0.5 + 0.5 * detail)))) })
+  .map((l, i, a) => i ? { ...l, seg: Math.min(l.seg, a[0].seg), sides: Math.min(l.sides, a[0].sides), ell: l.ell.map((x, k) => Math.min(x, a[0].ell[k])) } : l);
 
 // ---------- Kurvan: vinkeln från lodlinjen växer mot spetsen, som ett strå som böjer sig av sin egen tyngd ----------
 function curve(o, th0, phi, L, bend, n) {

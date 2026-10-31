@@ -20,6 +20,8 @@ Receptfält (alla utom name är valfria):
                            "tip": {"texture", "from" 0–1 längs grenen, "level", "strength", "tint", "scale"}}
   age                     ålder 0–1 (standard 1 = fullvuxen): trädet växer ut längs grenarna från roten, tjocknar och
                           får lövbollar när den minsta grenklassen växer fram
+  detail                  detaljnivå 0.25–1 (standard 1): färre varv runt grenarna, färre rutor per lövkort, grövre
+                          skuggform och barrgrenar med färre led; samma silhuett och lika många kort (0.5 = slimmad)
   canopy                  överstyr lövkronan: clusters, cards, flattenY, fill, union, normalBlend
   conifer                 överstyr granens barr: width, lobes, lobeDepth, chunk, asymmetry, dryShare
   frond_texture           för granar: målad barratlas (standard enligt arten), false = solida grenar utan alfa
@@ -133,7 +135,7 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     glb = out_dir / f"{name}.gltf"
 
-    gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "bole", "age", "species", "canopy", "conifer")}
+    gen = {k: v for k, v in recipe.items() if k in ("preset", "seed", "height", "bole", "age", "detail", "species", "canopy", "conifer")}
     # Lövmassan till kronans volymer: <atlas utan _atlas>_mass om den finns, annars leaf_mass
     mass = recipe.get("leaf_mass") or next((m for m in (sp.get("mass"), leaves.replace("_atlas", "") + "_mass", "leaf_mass") if m and (TEX / f"{m}.png").exists()), None)
     if mass:

@@ -2,6 +2,7 @@
 
   python3 -I tools/tree/make_templates.py                      alla mallar
   python3 -I tools/tree/make_templates.py '{"only": ["oak"]}'  bara några
+  python3 -I tools/tree/make_templates.py '{"detail": 0.5, "out_root": "build/slim/trees"}'   slimmade, någon annanstans
 
 Svarar med en rad JSON: {"built": [...], "failed": [...]} där varje rad har id, tris och checks.ok.
 """
@@ -33,6 +34,9 @@ def main():
             r = t["recipe"]
             recipe = merge(data["defaults"].get(r["preset"], {}), r)
             recipe["name"] = t["id"]
+            for k in ("detail", "out_root"):
+                if k in req:
+                    recipe[k] = req[k]
             out = subprocess.run([sys.executable, "-I", str(ROOT / "tools/tree/make_tree.py"), json.dumps(recipe)],
                                  capture_output=True, text=True, cwd=ROOT)
             try:

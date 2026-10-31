@@ -122,6 +122,7 @@ Referensens ordning: först en övertygande testplats på 256 × 256 m, sedan en
 - modellerna uppackade utan meshopt, med bilderna kvar i `assets/textures`;
 - rutorna om 32 m där det finns bäckar (`streamChunks`), så att motorn bara behöver bäckarnas yta där;
 - motorns budget (`{"budget": "lean"}`), ett namn ur `godot-lab/budgets.json`: hur fint marken, gräset och naturen ritas och hur stora texturerna är.
+- slimmade modeller (`{"models": "build/slim"}`): en mapp med samma indelning som `assets` (trees, plants, props). Modeller som finns där används i stället; svaret säger hur många (`slim`) och vilka som saknas (`notSlim`). Generatorerna gör dem med `detail` (0,5 halverar ungefär trianglarna med samma silhuett, se generatorernas recept).
 
 Halvöar och målade lager i dioramorna (2026-10-31): `make_diorama` kan lägga ut tungor av land (`peninsulas`) med egen kustprofil, biomer och region. Halvöns mark målas i fläckar med upp till åtta marklager (`paintLayers` och `groundPaint`, som penseln i steget Paint).
 - Ett målat lager kan ha egna regler för naturen (`populate`, till exempel `{"tree": 0, "plant": 3}`). Reglerna läggs ovanpå texturens och gäller i Populate, i exporten och när världen sparas.
