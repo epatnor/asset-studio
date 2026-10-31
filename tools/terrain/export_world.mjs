@@ -18,6 +18,7 @@
 //   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
 //                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
 //   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar och flaggorna
+//   (budget: ett namn ur motorns budgetar, t.ex. "lean"; följer med i world.json)
 // Föremål som står utplacerade i världen (placed: träd ur make_diorama) följer med i nature.json, flaggorna i world.json.
 // Svarar med en rad JSON.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -130,6 +131,10 @@ for (const c of t.channels) {
   }
 }
 write('streams.f32', streams);
+// Rutorna om CHUNK meter där det finns bäckar: motorn behöver bara bäckarnas yta där (ruta i, j med hörnet −half + i · CHUNK)
+const CHUNK = 32, cn = Math.ceil(size / CHUNK), wet = new Set();
+for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if (streams[(j * n + i) * 3] > -9999) wet.add(Math.min(cn - 1, Math.floor(j * cell / CHUNK)) * cn + Math.min(cn - 1, Math.floor(i * cell / CHUNK)));
+const streamChunks = [...wet].sort((a, b) => a - b).map((k) => [k % cn, Math.floor(k / cn)]);
 
 // Naturen: samma utplacering som Kartrummet (runPopulate i studio/terrain.js), modellerna per lager och familj
 const pop = saved.populate ?? {};
@@ -222,7 +227,9 @@ const world = {
   low: lo, high: hi, biomes: T.biomes.map((b) => ({ id: b.id, color: b.color })),
   paintLayers: paintLayers.map((p) => (p ? { texture: p.texture, metres: p.metres ?? metres(p.texture) } : null)),
   grass: { ...grassDefaults, ...strip(Gr.presets[G.preset]), ...G.settings, field: G.field },
-  grassKinds, flags,
+  grassKinds, flags, streamChunk: CHUNK, streamChunks,
+  // Motorns budget (namn i godot-lab/budgets.json): hur fint marken, gräset och naturen ritas och hur stora texturerna är
+  budget: args.budget ?? 'full',
   water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets.tropical_lagoon) },
   streamWater: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets[T.channelKinds.stream?.water]) },
   files: ['heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'grasskind_a.u8', 'grasskind_b.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
