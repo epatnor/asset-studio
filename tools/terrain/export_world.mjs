@@ -146,12 +146,29 @@ for (const L of P.layers) {
   }
 }
 // Modellerna utan meshopt (Godot läser inte EXT_meshopt_compression): geometrin inbäddad, texturerna kvar i asset-studio
-const nio = await io();
+const nio = await io(), rigs = {};
 mkdirSync(path.join(out, 'models'), { recursive: true });
 for (const m of new Set([...byModel.values()].map((x) => x.model))) {
   const id = m.split('/').pop(), src = path.join(ROOT, 'assets', m, `${id}.gltf`);
   const doc = await nio.read(src);
   for (const ext of doc.getRoot().listExtensionsUsed()) if (ext.extensionName === 'EXT_meshopt_compression') ext.dispose();
+  // Vindriggen (tools/wind/rig.mjs) som Godot kan läsa: egna attribut tas inte med, men TEXCOORD_2 och _3 blir CUSTOM0.
+  // TEXCOORD_2 = (_PART, _PT) och TEXCOORD_3 = (_WIND, _CLUSTER); utan rigg är delen −1. Tabellen följer i nature.json.
+  const rig = doc.getRoot().listNodes().map((nd) => nd.getExtras()?.wind).find(Boolean) ?? null;
+  if (rig) rigs[m] = rig;
+  for (const mesh of doc.getRoot().listMeshes()) for (const prim of mesh.listPrimitives()) {
+    const wind = prim.getAttribute('_WIND');
+    if (!wind) continue;
+    const cnt = wind.getCount(), part = prim.getAttribute('_PART'), pt = prim.getAttribute('_PT'), cl = prim.getAttribute('_CLUSTER');
+    const a = new Float32Array(cnt * 2), b = new Float32Array(cnt * 2);
+    for (let i = 0; i < cnt; i++) {
+      a[i * 2] = rig && part ? part.getScalar(i) : -1; a[i * 2 + 1] = pt ? pt.getScalar(i) : 0;
+      b[i * 2] = wind.getScalar(i); b[i * 2 + 1] = cl ? cl.getScalar(i) : 0;
+    }
+    const buf = doc.getRoot().listBuffers()[0];
+    prim.setAttribute('TEXCOORD_2', doc.createAccessor().setType('VEC2').setArray(a).setBuffer(buf));
+    prim.setAttribute('TEXCOORD_3', doc.createAccessor().setType('VEC2').setArray(b).setBuffer(buf));
+  }
   const { json: J, resources } = await nio.writeJSON(doc, { basename: id });
   for (const b of J.buffers ?? []) b.uri = `data:application/octet-stream;base64,${Buffer.from(resources[b.uri]).toString('base64')}`;
   // Bilderna pekar på asset-studios egna filer, relativt till den uppackade modellen
@@ -165,7 +182,7 @@ for (const m of new Set([...byModel.values()].map((x) => x.model))) {
   }
   writeFileSync(path.join(out, 'models', `${id}.gltf`), JSON.stringify(J));
 }
-const nature = [...byModel.values()].map((x) => ({ ...x, file: `models/${x.model.split('/').pop()}.gltf` }));
+const nature = [...byModel.values()].map((x) => ({ ...x, file: `models/${x.model.split('/').pop()}.gltf`, rig: rigs[x.model] ?? null }));
 writeFileSync(path.join(out, 'nature.json'), JSON.stringify(nature));
 
 const Gr = json('tools/grass/grass.json'), Wa = json('tools/water/water.json');
