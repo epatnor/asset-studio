@@ -5,6 +5,9 @@ __pycache__/
 # Tredjepartsdata som hämtas enligt sin SOURCE.md (för stort för git)
 third_party/*/*
 !third_party/*/SOURCE.md
+!third_party/makehuman/MANIFEST.md
+!third_party/makehuman/LICENSE_SOURCE.md
+*.zip
 
 # Hemliga nycklar (Tripo m.fl.)
 .env
