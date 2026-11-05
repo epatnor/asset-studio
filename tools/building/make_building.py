@@ -20,7 +20,6 @@ står på marken, budget, LOD) och vilka texturer som genererades.
 import json
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,11 +29,10 @@ ROLES = ("base", "wall", "roof", "trim", "door")
 
 
 def comfy_up() -> bool:
-    try:
-        urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=3)
-        return True
-    except OSError:
-        return False
+    # Laptopens ComfyUI eller Darrowmere, enligt tools/comfy.json
+    sys.path.insert(0, str(ROOT / "tools"))
+    from comfy_target import comfy_url
+    return comfy_url() is not None
 
 
 def ensure_texture(spec: dict, allow_generate: bool, log: list) -> Path | None:
@@ -70,7 +68,7 @@ def main():
     log = []
     if allow and not comfy_up():
         allow = False
-        log.append({"warning": "ComfyUI svarar inte på 127.0.0.1:8188; saknade texturer blir enfärgade"})
+        log.append({"warning": "ingen ComfyUI svarar (laptopen eller Darrowmere); saknade texturer blir enfärgade"})
 
     textures = {}
     for role in ROLES:

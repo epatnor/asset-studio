@@ -4,9 +4,15 @@
 --base gör bild till bild: bilden laddas upp till ComfyUI och Krea målar om den, så mycket som denoise säger (0..1).
 --seamless gör bilden sömlös redan i genereringen (Krea2SeamlessRoll rullar latenten mellan stegen, VAEDecodeSeamless
 avkodar över kanten), så att den inte behöver tonas eller lagas efteråt."""
-import json, random, re, sys, time, urllib.parse, urllib.request, uuid
+import json, os, random, re, sys, time, urllib.parse, urllib.request, uuid
 
-COMFY = "http://127.0.0.1:8188"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from comfy_target import comfy_url, describe  # noqa: E402
+
+COMFY = comfy_url()
+if not COMFY:
+    print(json.dumps({"ok": False, "error": f"ingen ComfyUI svarar: {describe()}"}))
+    sys.exit(1)
 args = sys.argv[1:]
 base = denoise = None
 seamless = "--seamless" in args

@@ -30,7 +30,10 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
-COMFY = "http://127.0.0.1:8188"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from comfy_target import comfy_url  # noqa: E402
+
+COMFY = comfy_url() or "http://127.0.0.1:8188"
 STYLE = json.loads((ROOT / "tools" / "style.json").read_text())["prompt"]
 SURFACES = json.loads((Path(__file__).parent / "surfaces.json").read_text())
 MODELS = {"unet": "krea2_turbo_int8_convrot.safetensors", "clip": "qwen3vl_4b_fp8_scaled.safetensors", "vae": "qwen_image_vae.safetensors"}

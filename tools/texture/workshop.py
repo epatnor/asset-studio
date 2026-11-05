@@ -459,11 +459,10 @@ def src_image(n, p, rng):
 
 
 def comfy_up():
-    try:
-        urllib.request.urlopen("http://127.0.0.1:8188/system_stats", timeout=2).read()
-        return True
-    except Exception:
-        return False
+    # Laptopens ComfyUI eller Darrowmere, enligt tools/comfy.json
+    sys.path.insert(0, str(ROOT / "tools"))
+    from comfy_target import comfy_url
+    return comfy_url() is not None
 
 
 def src_krea(n, p, rng, ctx):
@@ -479,7 +478,7 @@ def src_krea(n, p, rng, ctx):
     out = CACHE / "krea" / f"{h}.png"
     if not out.exists():
         if not comfy_up():
-            raise RuntimeError("ComfyUI is not running (127.0.0.1:8188). Start it and try again.")
+            raise RuntimeError("ComfyUI is not running, neither on this machine nor on Darrowmere. Start one and try again.")
         out.parent.mkdir(parents=True, exist_ok=True)
         cmd = [sys.executable, "-I", str(ROOT / "tools/texture/krea2.py"), prompt, "1024", "1024", str(out), str(int(p.get("seed", 1)))]
         if seamless:
