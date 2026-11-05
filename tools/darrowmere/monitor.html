@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Monitor</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --line: #e1e4e8; --text: #1d2125; --muted: #6a737d;
+    --accent: #3b6fd4; --ok: #2f9e5a; --warn: #d08a10; --bad: #d13c3c; --track: #e9ecef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171b; --panel: #1c2026; --line: #2b3038; --text: #e6e8eb; --muted: #8b949e;
+            --accent: #6b9bff; --ok: #4cc27a; --warn: #e3a43a; --bad: #f06464; --track: #2a2f37; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+  .meta { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .big { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .row { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+  .row span:first-child { color: var(--muted); }
+  .bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 8px; }
+  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+  .bar.warn > div { background: var(--warn); } .bar.bad > div { background: var(--bad); }
+  .cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 4px; margin: 8px 0; }
+  .core { height: 34px; background: var(--track); border-radius: 3px; position: relative; overflow: hidden; }
+  .core > div { position: absolute; bottom: 0; left: 0; right: 0; background: var(--accent); }
+  canvas { width: 100%; height: 70px; display: block; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; background: var(--track); }
+  .tag.ok { color: var(--ok); } .tag.bad { color: var(--bad); } .tag.run { color: var(--accent); }
+  pre { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.45 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.armed { border-color: var(--bad); color: var(--bad); }
+  .msg { color: var(--muted); font-size: 13px; margin-top: 8px; min-height: 1.2em; }
+  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 4px; }
+  .error { color: var(--bad); }
+  @media (max-width: 640px) { main { padding: 12px 16px; } header { padding: 12px 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>Darrowmere</h1>
+  <span class="meta" id="hostline">connecting…</span>
+  <span class="meta" id="updated" style="margin-left:auto"></span>
+</header>
+<main>
+  <section class="card wide">
+    <h2>Jobs</h2>
+    <div id="current"></div>
+    <div class="actions">
+      <button data-action="interrupt">Stop current job</button>
+      <button data-action="clear">Clear queue</button>
+      <button data-action="restart">Restart ComfyUI</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="card">
+    <h2>CPU</h2>
+    <div class="big" id="cpu">–</div>
+    <div class="cores" id="cores"></div>
+    <div class="row"><span>Load (1/5/15 min)</span><span id="load">–</span></div>
+    <div id="cputemps"></div>
+  </section>
+
+  <section class="card">
+    <h2>Memory</h2>
+    <div class="row"><span>RAM</span><span id="ramtxt">–</span></div>
+    <div class="bar" id="rambar"><div></div></div>
+    <div class="row"><span>Swap</span><span id="swaptxt">–</span></div>
+    <div class="bar" id="swapbar"><div></div></div>
+    <div id="procs"></div>
+  </section>
+
+  <section class="card" id="gpucard">
+    <h2>GPU</h2>
+    <div id="gpus">–</div>
+  </section>
+
+  <section class="card">
+    <h2>Disks and network</h2>
+    <div id="disks"></div>
+    <div id="net"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Last 10 minutes</h2>
+    <canvas id="chart"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>CPU</span>
+      <span><i style="background:var(--ok)"></i>GPU</span>
+      <span><i style="background:var(--warn)"></i>RAM</span>
+      <span><i style="background:var(--bad)"></i>VRAM</span>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Recent jobs</h2>
+    <table><thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Files</th></tr></thead><tbody id="history"></tbody></table>
+  </section>
+
+  <section class="card wide">
+    <h2>ComfyUI log</h2>
+    <pre id="log"></pre>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const fmtB = b => b >= 1e12 ? (b / 1e12).toFixed(2) + " TB" : b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : (b / 1e6).toFixed(0) + " MB";
+const fmtRate = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " MB/s" : (b / 1e3).toFixed(0) + " kB/s";
+const fmtDur = s => s == null ? "–" : s < 60 ? s.toFixed(0) + " s" : s < 3600 ? Math.floor(s / 60) + " min " + Math.round(s % 60) + " s" : (s / 3600).toFixed(1) + " h";
+const clock = t => t ? new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function bar(el, pct) {
+  el.className = "bar" + (pct > 90 ? " bad" : pct > 75 ? " warn" : "");
+  el.firstElementChild.style.width = Math.min(100, Math.max(0, pct)) + "%";
+}
+function barHtml(pct) {
+  const cls = pct > 90 ? " bad" : pct > 75 ? " warn" : "";
+  return `<div class="bar${cls}"><div style="width:${Math.min(100, pct)}%"></div></div>`;
+}
+
+function render(s) {
+  const p = s.probe, c = s.comfy;
+  const age = s.now - s.updated;
+  const online = s.online && age < 15;
+  $("dot").className = "dot " + (online ? (p && p.service === "active" ? "ok" : "warn") : "bad");
+  $("updated").textContent = s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
+  if (!p) { $("hostline").innerHTML = `<span class="error">${esc(s.probe_error || "no data yet")}</span>`; return; }
+  const up = p.uptime;
+  $("hostline").innerHTML = `${esc(p.host)} (${esc(s.host)}) · up ${fmtDur(up)} · ComfyUI ${esc(p.service)}${c ? " " + esc(c.version || "") : ""}`
+    + (s.probe_error ? ` · <span class="error">${esc(s.probe_error)}</span>` : "");
+
+  // CPU
+  $("cpu").textContent = p.cpu.toFixed(0) + " %";
+  $("cores").innerHTML = p.cores.map(v => `<div class="core" title="${v.toFixed(0)} %"><div style="height:${v}%"></div></div>`).join("");
+  $("load").textContent = p.load.join(" / ");
+  $("cputemps").innerHTML = p.temps.map(t => `<div class="row"><span>${esc(t.chip)} ${esc(t.label)}</span><span>${t.c.toFixed(0)} °C</span></div>`).join("");
+
+  // Minne
+  const m = p.mem, used = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
+  $("ramtxt").textContent = `${fmtB(used)} of ${fmtB(m.total)}`;
+  bar($("rambar"), 100 * used / m.total);
+  $("swaptxt").textContent = `${fmtB(swUsed)} of ${fmtB(m.swap_total)}`;
+  bar($("swapbar"), m.swap_total ? 100 * swUsed / m.swap_total : 0);
+  $("procs").innerHTML = `<table><thead><tr><th>Process</th><th>CPU</th><th>RAM</th></tr></thead><tbody>`
+    + p.procs.slice(0, 5).map(x => `<tr><td>${esc(x.name)}</td><td>${x.cpu.toFixed(0)} %</td><td>${fmtB(x.rss_mb * 1e6)}</td></tr>`).join("") + "</tbody></table>";
+
+  // GPU
+  $("gpus").innerHTML = p.gpus.length ? p.gpus.map(g => `
+    <div class="row"><span>${esc(g.name)}</span><span class="big" style="font-size:20px">${g.util ?? "–"} %</span></div>
+    ${barHtml(g.util || 0)}
+    <div class="row"><span>VRAM</span><span>${(g.mem_used / 1024).toFixed(1)} of ${(g.mem_total / 1024).toFixed(1)} GB</span></div>
+    ${barHtml(100 * g.mem_used / g.mem_total)}
+    <div class="row"><span>Temperature</span><span>${g.temp ?? "–"} °C</span></div>
+    <div class="row"><span>Power</span><span>${g.power != null ? g.power.toFixed(0) + " W" : "n/a"}${g.power_limit ? " of " + g.power_limit.toFixed(0) + " W" : ""}</span></div>
+    <div class="row"><span>Fan</span><span>${g.fan != null ? g.fan + " %" : "n/a"}</span></div>
+    <div class="row"><span>Clock</span><span>${g.clock ?? "–"} MHz</span></div>`).join("<hr style='border:0;border-top:1px solid var(--line)'>")
+    : "No NVIDIA GPU found";
+
+  // Diskar och nät
+  $("disks").innerHTML = p.disks.map(d => {
+    const u = d.total - d.free;
+    return `<div class="row"><span>${esc(d.mount)}</span><span>${fmtB(d.free)} free of ${fmtB(d.total)}</span></div>${barHtml(100 * u / d.total)}`;
+  }).join("");
+  $("net").innerHTML = Object.entries(s.rates || {}).filter(([n]) => p.net[n]).map(([n, r]) =>
+    `<div class="row"><span>${esc(n)}</span><span>↓ ${fmtRate(r.rx)} · ↑ ${fmtRate(r.tx)}</span></div>`).join("");
+
+  // Jobb
+  if (c) {
+    let html = "";
+    if (c.running.length) {
+      const j = c.running[0], pr = c.progress;
+      html += `<div class="row"><span>Running</span><span><b>${esc(j.name)}</b></span></div>`;
+      if (pr) html += `${barHtml(pr.pct)}<div class="row"><span>Current stage: ${pr.done} of ${pr.total}</span><span>${esc(pr.timing)}</span></div>`;
+      else html += `<div class="meta">Loading models or between steps…</div>`;
+    } else html += `<div class="big" style="font-size:20px">Idle</div>`;
+    html += `<div class="row"><span>Waiting in queue</span><span>${c.pending.length ? c.pending.map(x => esc(x.name)).join(", ") : "none"}</span></div>`;
+    $("current").innerHTML = html;
+    const runIds = new Set(c.running.map(r => r.id));
+    $("history").innerHTML = c.running.map(r => `<tr><td>${clock(r.queued_at)}</td><td>${esc(r.name)}</td><td><span class="tag run">running</span></td><td>–</td><td>–</td></tr>`).join("")
+      + c.history.filter(h => !runIds.has(h.id)).map(h => `<tr>
+        <td>${clock(h.start)}</td><td>${esc(h.name)}${h.error ? `<div class="error" style="font-size:12px">${esc(h.error)}</div>` : ""}</td>
+        <td><span class="tag ${h.status === "success" ? "ok" : h.status === "error" ? "bad" : ""}">${esc(h.status)}</span></td>
+        <td>${fmtDur(h.seconds)}</td><td>${h.outputs}</td></tr>`).join("");
+  } else if (s.comfy_error) {
+    $("current").innerHTML = `<span class="error">ComfyUI does not answer: ${esc(s.comfy_error)}</span>`;
+  }
+  const logEl = $("log"), atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 20;
+  logEl.textContent = p.log.join("\n");
+  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
+  drawChart(s.history || []);
+}
+
+function drawChart(h) {
+  const cv = $("chart"), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, ht = cv.clientHeight;
+  cv.width = w * dpr; cv.height = ht * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, w, ht);
+  const css = getComputedStyle(document.documentElement);
+  g.strokeStyle = css.getPropertyValue("--line"); g.lineWidth = 1;
+  [0, 50, 100].forEach(v => { const y = ht - 2 - (ht - 4) * v / 100; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); });
+  if (h.length < 2) return;
+  const t0 = h[h.length - 1].t - 600;
+  const series = [["cpu", "--accent"], ["gpu", "--ok"], ["ram", "--warn"], ["vram", "--bad"]];
+  for (const [k, col] of series) {
+    g.strokeStyle = css.getPropertyValue(col); g.lineWidth = 1.5; g.beginPath(); let started = false;
+    for (const pt of h) {
+      if (pt[k] == null) continue;
+      const x = w * (pt.t - t0) / 600, y = ht - 2 - (ht - 4) * Math.min(100, pt[k]) / 100;
+      started ? g.lineTo(x, y) : g.moveTo(x, y); started = true;
+    }
+    g.stroke();
+  }
+}
+
+// Knapparna kräver två klick inom fyra sekunder, i stället för en dialogruta
+let armed = null, armTimer = null;
+document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener("click", async () => {
+  if (armed !== b) {
+    if (armed) armed.classList.remove("armed");
+    armed = b; b.classList.add("armed"); $("msg").textContent = "Click again to confirm.";
+    clearTimeout(armTimer); armTimer = setTimeout(() => { b.classList.remove("armed"); armed = null; $("msg").textContent = ""; }, 4000);
+    return;
+  }
+  b.classList.remove("armed"); armed = null; clearTimeout(armTimer);
+  $("msg").textContent = "Working…";
+  try {
+    const r = await fetch("/api/action/" + b.dataset.action, { method: "POST" });
+    $("msg").textContent = (await r.json()).message;
+  } catch (e) { $("msg").textContent = "Failed: " + e; }
+}));
+
+async function tick() {
+  try { render(await (await fetch("/api/status")).json()); }
+  catch (e) { $("dot").className = "dot bad"; $("hostline").textContent = "monitor server not reachable"; }
+}
+tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>
