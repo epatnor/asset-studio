@@ -32,7 +32,8 @@ COMFY = os.environ.get("DARROWMERE_COMFY", _default).rstrip("/")
 HOST = os.environ.get("DARROWMERE_HOST", urllib.parse.urlparse(COMFY).hostname)
 LOCAL = HOST in ("localhost", "127.0.0.1")
 # Kommandon körs direkt när panelen körs på Darrowmere, annars över en delad SSH-anslutning
-SSH = [] if LOCAL else ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ControlMaster=auto",
+SSH = [] if LOCAL else ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=3",
+                        "-o", "ServerAliveCountMax=2", "-o", "ControlMaster=auto",
                         "-o", f"ControlPath={Path.home()}/.ssh/cm-darrowmere-%C", "-o", "ControlPersist=120",
                         *(["-i", os.environ["MONITOR_SSH_KEY"]] if os.environ.get("MONITOR_SSH_KEY") else []), f"epatnor@{HOST}"]
 POLL = 3.0
@@ -155,12 +156,23 @@ def merge_jobs(history):
         save_jobs()
 
 
+DELIVERED = STORE.with_name("delivered.json")  # skrivs av deliver.py på Andorhal: jobb-id -> mapp, antal filer, tid
+
+
+def delivered_map():
+    try:
+        return json.loads(DELIVERED.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
 def job_list(include_acked=False, limit=50):
-    out = [j for j in jobs.values() if include_acked or not j.get("acked")]
+    dmap = delivered_map()
+    out = [{**j, "delivered": dmap.get(j["id"])} for j in jobs.values() if include_acked or not j.get("acked")]
     return sorted(out, key=lambda j: j.get("start") or 0, reverse=True)[:limit]
 
 
-def get_json(path, timeout=5):
+def get_json(path, timeout=4):
     return json.load(urllib.request.urlopen(f"{COMFY}{path}", timeout=timeout))
 
 
@@ -429,7 +441,7 @@ def poller():
         t0 = time.time()
         probe = perr = comfy = cerr = None
         try:
-            r = subprocess.run(SSH + ["python3", "-"], input=PROBE, capture_output=True, text=True, timeout=20)
+            r = subprocess.run(SSH + ["python3", "-"], input=PROBE, capture_output=True, text=True, timeout=10)
             if r.returncode:
                 perr = (r.stderr or "ssh failed").strip()[-300:]
             else:
@@ -461,12 +473,16 @@ def poller():
             if comfy is not None:
                 merge_jobs(comfy["history"])
                 comfy["history"] = job_list()
-            state.update(probe=probe or state["probe"], probe_error=perr, comfy=comfy or state["comfy"], comfy_error=cerr,
-                         rates=rates or state["rates"], updated=time.time(), online=probe is not None)
-            if probe:
-                hist.append(point)
-                if len(hist) % 5 == 0:
-                    save_metrics()
+            if probe is None and state.get("online", True):
+                state["offline_since"] = time.time()  # Darrowmere slutade svara
+            elif probe is not None:
+                state["offline_since"] = None
+            state.update(probe=probe or state["probe"], probe_error=perr, comfy=comfy if probe else (comfy or state["comfy"]),
+                         comfy_error=cerr, rates=rates if probe else {}, updated=time.time(), online=probe is not None)
+            # Diagrammet fortsätter även när Darrowmere är borta: då ligger alla kurvor på noll
+            hist.append(point if probe else {"t": time.time(), "cpu": 0, "ram": 0, "swap": 0, "gpu": 0, "vram": 0, "net": 0, "off": True})
+            if len(hist) % 5 == 0:
+                save_metrics()
         time.sleep(max(0.5, POLL - (time.time() - t0)))
 
 

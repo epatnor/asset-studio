@@ -21,6 +21,8 @@
   th, td { height: 30px; padding: 0 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 11.5px; }
   tr.acked td { color: var(--muted); }
+  .dlv { display: inline-block; width: 14px; color: #4b5563; font-weight: 700; }
+  .dlv.ok { color: var(--green); }
   tr.info td.msg { white-space: normal; height: auto; padding: 4px 12px 10px; }
   tr.info .p { white-space: pre-wrap; font: 11.5px/1.5 ui-monospace, Menlo, Consolas, monospace; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 4px 0; color: var(--text); }
   tr.info .s { color: var(--muted); font-size: 11.5px; }
@@ -64,7 +66,7 @@ function show() {
       <td>${when(j.start)}</td><td title="${esc(j.title || "")}">${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
       <td><span class="tag ${j.status === "success" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
       <td>${fmtDur(j.seconds)}</td>
-      <td>${j.outputs} files${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
+      <td>${j.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(j.delivered.path)}">⇣</span>` : (((j.images || []).length + (j.models || []).length) && j.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${j.outputs} files${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
         || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}${(j.details?.prompts || []).length ? ` <button data-p="${esc(j.id)}">Prompt</button>` : ""}</td>
       <td><button data-ack="${esc(j.id)}" data-state="${j.acked ? "unack" : "ack"}">${j.acked ? "Restore" : "✓ Ack"}</button></td>
     </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}${popen.has(j.id) ? `<tr class="info"><td></td><td class="msg" colspan="5">${details(j)}</td></tr>` : ""}`).join("")

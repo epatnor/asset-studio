@@ -153,6 +153,8 @@
   pre { margin: 0; height: 262px; overflow: auto; padding: 8px 12px; font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); white-space: pre; }
   .error { color: var(--red); }
   .sub { color: var(--muted); font-weight: 400; }
+  .dlv { display: inline-block; width: 14px; color: var(--dim); font-weight: 700; }
+  .dlv.ok { color: var(--green); }
   body.offline main { opacity: .45; filter: grayscale(1); pointer-events: none; transition: opacity .4s; }
   body.offline .steps i.now, body.offline .spin { animation: none; }
   .jobcell { cursor: pointer; }
@@ -354,8 +356,20 @@ document.addEventListener("click", async e => {
 });
 function render(s) {
   const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 15;
-  pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Offline"}</b>`);
+  pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Darrowmere offline"}</b>`);
   $("age").textContent = s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
+  // Panelen svarar men Darrowmere gör det inte: tona ned, visa sedan när, töm rattarna och låt diagrammet flatlina
+  document.body.classList.toggle("offline", !online);
+  if (!online) {
+    const since = s.offline_since ? new Date(s.offline_since * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
+    pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">offline since ${since} · retrying</span>`);
+    if (s.offline_since) $("age").textContent = `no answer for ${fmtDur(s.now - s.offline_since)}`;
+    GROUPS.forEach(([, dials]) => dials.forEach(([k]) => setGauge(k, null, "", "–", "", "--muted")));
+    $("g_swap").setAttribute("stroke-dasharray", `0 ${C2}`);
+    $("netRate").textContent = "–";
+    drawSparks(s.history || []);
+    return;
+  }
   if (!p) { pill("netPill", "bad", `<span class="dot"></span><b class="ell" style="max-width:300px">${esc(s.probe_error || "no data yet")}</b>`); return; }
   $("uptime").textContent = fmtDur(p.uptime);
 
@@ -394,7 +408,7 @@ function render(s) {
         const tag = h.error ? `<span class="tag bad btn" data-err="${esc(h.id)}" title="Show the error">${esc(h.status)} ▾</span>`
                             : `<span class="tag ${bad ? "bad" : "ok"}">${esc(h.status)}</span>`;
         return `<tr><td>${clock(h.start)}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
-          <td>${h.outputs} files${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
+          <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.outputs} files${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
           <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
       }));
     $("ackAll").hidden = !c.history.length;
