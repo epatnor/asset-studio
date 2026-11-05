@@ -139,10 +139,14 @@ def comfy_status():
         start = msgs.get("execution_start", {}).get("timestamp")
         end = (msgs.get("execution_success") or msgs.get("execution_error") or msgs.get("execution_interrupted") or {}).get("timestamp")
         err = msgs.get("execution_error")
-        outs = sum(len(v) for o in h.get("outputs", {}).values() for v in o.values() if isinstance(v, list))
+        files = [f for o in h.get("outputs", {}).values() for v in o.values() if isinstance(v, list) for f in v
+                 if isinstance(f, dict) and f.get("filename")]
+        models = [{"filename": f["filename"], "subfolder": f.get("subfolder", ""), "type": f.get("type", "output")}
+                  for f in files if f["filename"].lower().endswith((".glb", ".gltf"))]
         jobs.append({"id": pid, "name": job_name(h["prompt"][2]), "status": h.get("status", {}).get("status_str", "?"),
                      "start": start / 1000 if start else None, "seconds": (end - start) / 1000 if start and end else None,
-                     "outputs": outs, "error": f"{err.get('node_type', '')}: {err.get('exception_message', '')}"[:300] if err else None})
+                     "outputs": len(files), "models": models,
+                     "error": f"{err.get('node_type', '')}: {err.get('exception_message', '')}"[:300] if err else None})
     jobs.sort(key=lambda j: j["start"] or 0, reverse=True)
     running = [{"id": r[1], "name": job_name(r[2]), "queued_at": r[3].get("create_time", 0) / 1000 if isinstance(r[3], dict) else None}
                for r in q.get("queue_running", [])]
@@ -223,11 +227,36 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
             return self.send(200, (HERE / "monitor.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path.startswith("/viewer"):
+            return self.send(200, (HERE / "viewer.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path.startswith("/api/file?"):
+            return self.proxy_file()
         if self.path == "/api/status":
             with lock:
                 body = {**state, "history": list(hist), "host": HOST, "comfy_url": COMFY, "now": time.time()}
             return self.send(200, json.dumps(body), "application/json")
         self.send(404, "not found", "text/plain")
+
+    def proxy_file(self):
+        # En fil från ComfyUI:s /view, så att 3D-visaren kan läsa den från samma adress som sidan
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        name = q.get("filename", [""])[0]
+        if not name or "/" in name or "\\" in name or name.startswith("."):
+            return self.send(400, "bad filename", "text/plain")
+        params = urllib.parse.urlencode({"filename": name, "subfolder": q.get("subfolder", [""])[0], "type": q.get("type", ["output"])[0]})
+        try:
+            r = urllib.request.urlopen(f"{COMFY}/view?{params}", timeout=120)
+        except Exception as e:
+            return self.send(502, f"ComfyUI: {e}", "text/plain")
+        ctype = "model/gltf-binary" if name.lower().endswith(".glb") else r.headers.get("Content-Type", "application/octet-stream")
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Cache-Control", "max-age=3600")
+        if r.headers.get("Content-Length"):
+            self.send_header("Content-Length", r.headers["Content-Length"])
+        self.end_headers()
+        while chunk := r.read(1 << 20):
+            self.wfile.write(chunk)
 
     def do_POST(self):
         m = re.match(r"^/api/action/(\w+)$", self.path)

@@ -44,6 +44,7 @@
   button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button.armed { border-color: var(--bad); color: var(--bad); }
+  button.view { padding: 2px 9px; font-size: 12px; margin-left: 6px; }
   .msg { color: var(--muted); font-size: 13px; margin-top: 8px; min-height: 1.2em; }
   .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
   .legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 4px; }
@@ -197,7 +198,8 @@ function render(s) {
       + c.history.filter(h => !runIds.has(h.id)).map(h => `<tr>
         <td>${clock(h.start)}</td><td>${esc(h.name)}${h.error ? `<div class="error" style="font-size:12px">${esc(h.error)}</div>` : ""}</td>
         <td><span class="tag ${h.status === "success" ? "ok" : h.status === "error" ? "bad" : ""}">${esc(h.status)}</span></td>
-        <td>${fmtDur(h.seconds)}</td><td>${h.outputs}</td></tr>`).join("");
+        <td>${fmtDur(h.seconds)}</td><td>${h.outputs}${(h.models || []).map(m =>
+          ` <button class="view" data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}" title="${esc(m.filename)}">View</button>`).join("")}</td></tr>`).join("");
   } else if (s.comfy_error) {
     $("current").innerHTML = `<span class="error">ComfyUI does not answer: ${esc(s.comfy_error)}</span>`;
   }
@@ -244,6 +246,14 @@ document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener
     $("msg").textContent = (await r.json()).message;
   } catch (e) { $("msg").textContent = "Failed: " + e; }
 }));
+
+// View öppnar 3D-visaren i ett eget fönster
+document.addEventListener("click", e => {
+  const b = e.target.closest("button.view");
+  if (!b) return;
+  const q = new URLSearchParams({ filename: b.dataset.file, subfolder: b.dataset.sub, type: b.dataset.type });
+  window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
+});
 
 async function tick() {
   try { render(await (await fetch("/api/status")).json()); }
