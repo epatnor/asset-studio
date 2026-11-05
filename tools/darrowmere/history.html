@@ -21,6 +21,9 @@
   th, td { height: 30px; padding: 0 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 11.5px; }
   tr.acked td { color: var(--muted); }
+  tr.info td.msg { white-space: normal; height: auto; padding: 4px 12px 10px; }
+  tr.info .p { white-space: pre-wrap; font: 11.5px/1.5 ui-monospace, Menlo, Consolas, monospace; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin: 4px 0; color: var(--text); }
+  tr.info .s { color: var(--muted); font-size: 11.5px; }
   tr.err td.msg { white-space: normal; height: auto; padding: 4px 12px 8px; color: var(--red); font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace; }
   .tag { display: inline-block; height: 18px; line-height: 18px; padding: 0 7px; border-radius: 4px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
   .tag.ok { color: var(--green); } .tag.bad { color: var(--red); cursor: pointer; }
@@ -47,7 +50,12 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtDur = s => s == null ? "–" : s < 60 ? s.toFixed(0) + " s" : s < 3600 ? Math.floor(s / 60) + " min " + String(Math.round(s % 60)).padStart(2, "0") + " s" : (s / 3600).toFixed(1) + " h";
 const when = t => t ? new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "–";
-let jobs = [], open = new Set(), last = "";
+let jobs = [], open = new Set(), popen = new Set(), last = "";
+function details(j) {
+  const d = j.details || {};
+  return (d.prompts || []).map(t => `<div class="p">${esc(t)}</div>`).join("")
+    + `<div class="s">${Object.entries(d.params || {}).map(([k, v]) => `${esc(k)} ${esc(v)}`).join(" · ")}${(d.models || []).length ? " · " + d.models.map(esc).join(", ") : ""}</div>`;
+}
 function show() {
   const f = $("filter").value.toLowerCase();
   const list = jobs.filter(j => !f || `${j.name} ${j.status}`.toLowerCase().includes(f));
@@ -57,9 +65,9 @@ function show() {
       <td><span class="tag ${j.status === "success" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
       <td>${fmtDur(j.seconds)}</td>
       <td>${j.outputs} files${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
-        || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}</td>
+        || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}${(j.details?.prompts || []).length ? ` <button data-p="${esc(j.id)}">Prompt</button>` : ""}</td>
       <td><button data-ack="${esc(j.id)}" data-state="${j.acked ? "unack" : "ack"}">${j.acked ? "Restore" : "✓ Ack"}</button></td>
-    </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}`).join("")
+    </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}${popen.has(j.id) ? `<tr class="info"><td></td><td class="msg" colspan="5">${details(j)}</td></tr>` : ""}`).join("")
     || `<tr><td colspan="6" style="color:var(--muted)">No jobs recorded yet</td></tr>`;
   if (html !== last) { $("rows").innerHTML = html; last = html; }
   $("info").textContent = `${list.length} jobs · ${jobs.filter(j => !j.acked).length} not acknowledged`;
@@ -67,8 +75,10 @@ function show() {
 document.addEventListener("click", async e => {
   const t = e.target.closest("[data-open]");
   if (t) { open.has(t.dataset.open) ? open.delete(t.dataset.open) : open.add(t.dataset.open); show(); return; }
+  const pp = e.target.closest("[data-p]");
+  if (pp) { popen.has(pp.dataset.p) ? popen.delete(pp.dataset.p) : popen.add(pp.dataset.p); show(); return; }
   const a = e.target.closest("button[data-ack]");
-  if (a) { await fetch(`/api/${a.dataset.state}/${a.dataset.ack}`, { method: "POST" }); tick(); return; }
+  if (a) { await fetch(`/api/${a.dataset.state}/${a.dataset.ack}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); tick(); return; }
   const im = e.target.closest("button[data-job]");
   if (im) { window.open("/images?id=" + encodeURIComponent(im.dataset.job), "darrowmere-images", "width=1200,height=900"); return; }
   const v = e.target.closest("button[data-file]");
@@ -76,8 +86,8 @@ document.addEventListener("click", async e => {
 });
 $("filter").oninput = show;
 async function tick() {
-  try { jobs = (await (await fetch("/api/jobs")).json()).jobs; show(); }
-  catch (e) { $("info").textContent = "monitor server not reachable"; }
+  try { const r = await fetch("/api/jobs"); if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; } jobs = (await r.json()).jobs; show(); }
+  catch (e) { $("info").textContent = "Darrowmere offline · retrying"; }
 }
 tick(); setInterval(tick, 5000);
 </script>

@@ -77,9 +77,14 @@
   .steps { display: flex; gap: 3px; height: 12px; overflow: hidden; align-items: center; }
   .steps i { flex: 0 1 12px; min-width: 3px; height: 12px; border-radius: 2px; background: var(--track); }
   /* Solida färger per slags steg; den pågående blinkar */
-  .steps i.k-load { background: #8b97a8; } .steps i.k-text { background: var(--violet); } .steps i.k-sample { background: var(--blue); }
+  .steps i.k-load { background: #f472b6; } .steps i.k-text { background: var(--violet); } .steps i.k-sample { background: var(--blue); }
   .steps i.k-vae { background: var(--amber); } .steps i.k-mesh { background: var(--teal); } .steps i.k-save { background: var(--green); }
-  .steps i.k-other { background: #c8ced6; } .steps i.k-cached { background: var(--dim); }
+  .steps i.k-other { background: #c8ced6; } .steps i.k-cached { background: var(--track); }
+  /* Cachade steg: grå fyllning med en kant i stegets färg */
+  .steps i.b-load { box-shadow: inset 0 0 0 1px #f472b6; } .steps i.b-text { box-shadow: inset 0 0 0 1px var(--violet); }
+  .steps i.b-sample { box-shadow: inset 0 0 0 1px var(--blue); } .steps i.b-vae { box-shadow: inset 0 0 0 1px var(--amber); }
+  .steps i.b-mesh { box-shadow: inset 0 0 0 1px var(--teal); } .steps i.b-save { box-shadow: inset 0 0 0 1px var(--green); }
+  .steps i.b-other { box-shadow: inset 0 0 0 1px #c8ced6; }
   .steps i.now { animation: blink 1s steps(1, end) infinite; }
   @keyframes blink { 50% { background: var(--track); } }
   .legend2 { display: flex; gap: 10px; color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; }
@@ -92,7 +97,7 @@
   .prog > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--blue)); transition: width .5s; }
   .msgline { height: 0; color: var(--muted); padding: 0 12px; font-size: 11.5px; transition: height .2s; }
   .msgline.show { height: 22px; line-height: 22px; }
-  .jobs .tablebox { height: auto; max-height: 254px; }
+  .jobs .tablebox { height: auto; overflow: hidden; }  /* högst 5 rader, resten finns i History */
   .actions { display: flex; gap: 8px; align-items: center; }
   .tag.btn { cursor: pointer; }
   .tag.btn:hover { border-color: var(--red); }
@@ -148,6 +153,13 @@
   pre { margin: 0; height: 262px; overflow: auto; padding: 8px 12px; font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); white-space: pre; }
   .error { color: var(--red); }
   .sub { color: var(--muted); font-weight: 400; }
+  body.offline main { opacity: .45; filter: grayscale(1); pointer-events: none; transition: opacity .4s; }
+  body.offline .steps i.now, body.offline .spin { animation: none; }
+  .jobcell { cursor: pointer; }
+  .jobcell:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+  .pop.info.wide { width: 520px; }
+  .ptext { white-space: pre-wrap; word-break: break-word; font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text);
+           background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; user-select: text; }
   .spin { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; border-radius: 50%;
           border: 2px solid color-mix(in srgb, var(--blue) 30%, transparent); border-top-color: var(--blue); animation: spin .8s linear infinite; }
   .spin.big { width: 13px; height: 13px; margin-right: 9px; vertical-align: 0; }
@@ -181,6 +193,8 @@
   <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
   <span class="spacer"></span>
   <span class="num" id="age"></span>
+  <button id="acctBtn" title="Accounts and password"><span id="meName">Account</span></button>
+  <button id="outBtn" title="Log out">Log out</button>
   <button id="histBtn" title="All jobs, also acknowledged ones">History</button>
   <button id="logBtn" title="Open the ComfyUI log in its own window">Log</button>
 </header>
@@ -200,13 +214,13 @@
     <div class="msgline ell" id="msg"></div>
     <div class="cur" id="cur">
       <div class="cur1"><span id="curIcon"></span><span class="ell" id="curName">Idle</span>
-        <span class="legend2" title="Colour of each step"><span><i style="background:#8b97a8"></i>load</span><span><i style="background:var(--violet)"></i>prompt</span><span><i style="background:var(--blue)"></i>sampling</span><span><i style="background:var(--amber)"></i>VAE</span><span><i style="background:var(--teal)"></i>3D</span><span><i style="background:var(--green)"></i>save</span><span><i style="background:var(--dim)"></i>cached</span></span>
+        <span class="legend2" title="Colour of each step"><span><i style="background:#f472b6"></i>load</span><span><i style="background:var(--violet)"></i>prompt</span><span><i style="background:var(--blue)"></i>sampling</span><span><i style="background:var(--amber)"></i>VAE</span><span><i style="background:var(--teal)"></i>3D</span><span><i style="background:var(--green)"></i>save</span><span><i style="background:var(--track);box-shadow:inset 0 0 0 1px var(--muted)"></i>cached</span></span>
         <span class="num curtime" id="curTime"></span></div>
       <div class="cur2"><span class="ell curphase num" id="curPhase"></span><span class="steps" id="curSteps"></span><span class="num curtiming ell" id="curTiming"></span></div>
     </div>
     <div class="tablebox">
       <table>
-        <colgroup><col style="width:70px"><col><col style="width:96px"><col style="width:96px"><col style="width:190px"><col style="width:40px"></colgroup>
+        <colgroup><col style="width:70px"><col><col style="width:96px"><col style="width:96px"><col style="width:200px"><col style="width:40px"></colgroup>
         <thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
         <tbody id="history"></tbody>
       </table>
@@ -327,12 +341,15 @@ const jobLabel = x => `${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
 $("logBtn").onclick = () => window.open("/log", "darrowmere-log", "width=1100,height=720");
+$("acctBtn").onclick = () => window.open("/accounts", "darrowmere-accounts", "width=720,height=640");
+$("outBtn").onclick = async () => { await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); location.href = "/login"; };
+fetch("/api/auth-state").then(r => r.json()).then(a => { if (a.user) $("meName").textContent = a.user; }).catch(() => {});
 $("histBtn").onclick = () => window.open("/history", "darrowmere-history", "width=1000,height=720");
 document.addEventListener("click", async e => {
   const b = e.target.closest("button.ack");
   if (!b) return;
   b.disabled = true;
-  await fetch("/api/ack/" + (b.id === "ackAll" ? "all" : b.dataset.ack), { method: "POST" });
+  await fetch("/api/ack/" + (b.id === "ackAll" ? "all" : b.dataset.ack), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   tick();
 });
 function render(s) {
@@ -367,19 +384,25 @@ function render(s) {
     $("queueInfo").textContent = run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle";
     const runIds = new Set(c.running.map(x => x.id));
     errors.clear();
+    c.running.concat(c.pending).forEach(x => infos.set(x.id, x));
     renderCurrent(run, pr, c, s);
     const rows = c.pending.map(x => `<tr><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(c.history.filter(h => !runIds.has(h.id)).map(h => {
         const bad = h.status !== "success";
         if (h.error) errors.set(h.id, h.error);
+        infos.set(h.id, h);
         const tag = h.error ? `<span class="tag bad btn" data-err="${esc(h.id)}" title="Show the error">${esc(h.status)} ▾</span>`
                             : `<span class="tag ${bad ? "bad" : "ok"}">${esc(h.status)}</span>`;
         return `<tr><td>${clock(h.start)}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
-          <td>${h.outputs} files${viewBtn(h)}</td>
+          <td>${h.outputs} files${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
           <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
       }));
     $("ackAll").hidden = !c.history.length;
-    const html = rows.join("") || `<tr><td colspan="6" style="color:var(--muted)">No unacknowledged jobs · see History for older ones</td></tr>`;
+    // Högst fem rader här; äldre jobb finns i History
+    const more = Math.max(0, rows.length - 5);
+    $("queueInfo").textContent = (run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle")
+      + (more ? ` · ${more} older in History` : "");
+    const html = rows.slice(0, 5).join("") || `<tr><td colspan="6" style="color:var(--muted)">No unacknowledged jobs · see History for older ones</td></tr>`;
     if (html !== lastRows) { $("history").innerHTML = html; lastRows = html; }
   } else if (s.comfy_error) {
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI not answering</span>`);
@@ -429,13 +452,27 @@ function drawSparks(h) {
 }
 
 // Felrutan: klick på ett "error"-märke visar hela meddelandet under märket
-const errors = new Map();
+const errors = new Map(), infos = new Map();
+function infoHtml(x) {
+  const d = x.details || {}, p = d.params || {};
+  return `<b>${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</b>`
+    + (d.prompts || []).map((t, i) => `<div class="dsub">Prompt${d.prompts.length > 1 ? " " + (i + 1) : ""}</div><div class="ptext">${esc(t)}</div>`).join("")
+    + (Object.keys(p).length ? `<div class="dsub">Settings</div>${Object.entries(p).map(([k, v]) => row(esc(k), esc(v))).join("")}` : "")
+    + ((d.models || []).length ? `<div class="dsub">Models</div>${d.models.map(m => `<div class="ptext">${esc(m)}</div>`).join("")}` : "");
+}
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-err]"), pop = $("pop");
-  if (!t) { if (!e.target.closest("#pop")) pop.hidden = true; return; }
-  const msg = errors.get(t.dataset.err);
-  if (!msg) return;
-  pop.innerHTML = `<b>Error</b>${esc(msg)}`;
+  const t = e.target.closest("[data-err], [data-info]"), pop = $("pop");
+  if (!t) { if (!e.target.closest("#pop") && !e.target.closest(".gauge[data-k]")) { pop.hidden = true; openDial = null; } return; }
+  openDial = null;
+  if (t.dataset.info) {
+    const x = infos.get(t.dataset.info);
+    if (!x) return;
+    pop.className = "pop info wide"; pop.innerHTML = infoHtml(x);
+  } else {
+    const msg = errors.get(t.dataset.err);
+    if (!msg) return;
+    pop.className = "pop"; pop.innerHTML = `<b>Error</b>${esc(msg)}`;
+  }
   pop.hidden = false;
   const r = t.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
   pop.style.left = Math.max(16, Math.min(innerWidth - pw - 16, r.left)) + "px";
@@ -455,7 +492,7 @@ document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener
   }
   b.classList.remove("armed"); armed = null; clearTimeout(armTimer);
   showMsg("Working…");
-  try { showMsg((await (await fetch("/api/action/" + b.dataset.action, { method: "POST" })).json()).message); }
+  try { showMsg((await (await fetch("/api/action/" + b.dataset.action, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json()).message); }
   catch (e) { showMsg("Failed: " + e); }
   setTimeout(() => showMsg(""), 6000);
 }));
@@ -464,7 +501,7 @@ function showMsg(t) { const el = $("msg"); el.textContent = t; el.classList.togg
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
-  if (!b) return;
+  if (!b || b.dataset.info) return;  // Prompt-knappen hanteras av rutan för promptar
   if (b.dataset.job) { window.open("/images?id=" + encodeURIComponent(b.dataset.job), "darrowmere-images", "width=1200,height=900"); return; }
   const q = new URLSearchParams({ filename: b.dataset.file, subfolder: b.dataset.sub, type: b.dataset.type });
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
@@ -480,7 +517,7 @@ function renderCurrent(run, pr, c, s) {
     return;
   }
   set("curIcon", `<i class="spin big"></i>`, true);
-  set("curName", jobLabel(run), true);
+  set("curName", `${jobLabel(run)} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
   set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
@@ -488,7 +525,7 @@ function renderCurrent(run, pr, c, s) {
   let cells = "";
   if (pr?.plan) {
     const cell = (k, n, extra = "") => `<i class="k-${k}${extra}" title="${esc(n)}"></i>`;
-    const parts = pr.cells.map(c => cell(c.k, c.n));
+    const parts = pr.cells.map(c => cell(c.k, c.n, c.c ? ` b-${c.c}` : ""));
     const cur = pr.cur;
     for (let i = 0; i < cur.w; i++) parts.push(i < cur.v ? cell(cur.k, cur.n) : i === cur.v ? cell(cur.k, cur.n, " now") : `<i title="${esc(cur.n)}"></i>`);
     while (parts.length < pr.plan) parts.push("<i></i>");
@@ -507,10 +544,25 @@ function viewBtn(h) {
   return "";
 }
 
-let lastStatus = null;
+// När Darrowmere är avstängd eller flyttas: sidan står kvar med senaste värdena nedtonade och försöker igen,
+// och fortsätter som vanligt så fort datorn svarar (ComfyUI och panelen startar av sig själva vid uppstart).
+let lastStatus = null, lastOk = 0, failCount = 0;
 async function tick() {
-  try { lastStatus = await (await fetch("/api/status")).json(); render(lastStatus); }
-  catch (e) { pill("netPill", "bad", `<span class="dot"></span><b>monitor server not reachable</b>`); }
+  try {
+    const r = await fetch("/api/status", { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
+    lastStatus = await r.json();
+    if (failCount) document.body.classList.remove("offline");
+    failCount = 0; lastOk = Date.now();
+    render(lastStatus);
+  } catch (e) {
+    failCount++;
+    document.body.classList.add("offline");
+    const since = lastOk ? new Date(lastOk).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
+    pill("netPill", "bad", `<span class="dot"></span><b>Darrowmere offline</b>`);
+    pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">last seen ${since} · retrying</span>`);
+    $("age").textContent = lastOk ? `no answer for ${fmtDur((Date.now() - lastOk) / 1000)}` : "";
+  }
 }
 addEventListener("resize", () => lastStatus && drawSparks(lastStatus.history || []));
 tick(); setInterval(tick, 3000);

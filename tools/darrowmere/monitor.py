@@ -33,7 +33,8 @@ HOST = os.environ.get("DARROWMERE_HOST", urllib.parse.urlparse(COMFY).hostname)
 LOCAL = HOST in ("localhost", "127.0.0.1")
 # Kommandon körs direkt när panelen körs på Darrowmere, annars över en delad SSH-anslutning
 SSH = [] if LOCAL else ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "-o", "ControlMaster=auto",
-                        "-o", f"ControlPath={Path.home()}/.ssh/cm-darrowmere-%C", "-o", "ControlPersist=120", f"epatnor@{HOST}"]
+                        "-o", f"ControlPath={Path.home()}/.ssh/cm-darrowmere-%C", "-o", "ControlPersist=120",
+                        *(["-i", os.environ["MONITOR_SSH_KEY"]] if os.environ.get("MONITOR_SSH_KEY") else []), f"epatnor@{HOST}"]
 POLL = 3.0
 
 # Körs på Darrowmere med python3 -, skriver en rad JSON
@@ -145,6 +146,11 @@ def merge_jobs(history):
         if old != new:
             jobs[j["id"]] = new
             changed = True
+    # Huvudsidan visar högst fem jobb; de äldre läggs i History (kvitteras automatiskt), så de inte kommer tillbaka
+    open_jobs = sorted((j for j in jobs.values() if not j.get("acked")), key=lambda j: j.get("start") or 0, reverse=True)
+    for j in open_jobs[5:]:
+        j["acked"] = True
+        changed = True
     if changed:
         save_jobs()
 
@@ -156,6 +162,29 @@ def job_list(include_acked=False, limit=50):
 
 def get_json(path, timeout=5):
     return json.load(urllib.request.urlopen(f"{COMFY}{path}", timeout=timeout))
+
+
+def job_details(graph):
+    # Det som behövs för att förstå eller göra om jobbet: prompter, frö, steg, storlek och modeller
+    d = {"prompts": [], "params": {}, "models": []}
+    for n in graph.values():
+        if not isinstance(n, dict):
+            continue
+        inp, ct = n.get("inputs", {}), n.get("class_type", "")
+        t = inp.get("text")
+        if isinstance(t, str) and t.strip() and t.strip() not in d["prompts"]:
+            d["prompts"].append(t.strip())
+        for k in ("seed", "noise_seed", "steps", "cfg", "denoise", "sampler_name", "scheduler", "guidance"):
+            v = inp.get(k)
+            if isinstance(v, (int, float, str)) and not isinstance(v, bool) and k not in d["params"]:
+                d["params"][k] = v
+        if ct in ("EmptyLatentImage", "EmptySD3LatentImage", "EmptyFlux2LatentImage") and isinstance(inp.get("width"), int):
+            d["params"].setdefault("size", f"{inp['width']}×{inp['height']}")
+        for k in ("unet_name", "ckpt_name", "clip_name", "lora_name"):
+            v = inp.get(k)
+            if isinstance(v, str) and v not in d["models"]:
+                d["models"].append(v)
+    return d
 
 
 def job_title(item):
@@ -323,7 +352,8 @@ def live_progress(prompt_id, graph):
             st = states[running[-1]]
             if st.get("max"):
                 live["value"], live["max"] = st.get("value"), st.get("max")
-    cells = [{"k": "cached", "n": nodes[n]["class_type"]} for n in cached for _ in range(node_weight(nodes[n]))]
+    cells = [{"k": "cached", "c": node_kind(nodes[n]["class_type"]), "n": nodes[n]["class_type"] + " (cached)"}
+             for n in cached for _ in range(node_weight(nodes[n]))]
     cells += [{"k": node_kind(nodes[n]["class_type"]), "n": nodes[n]["class_type"]} for n in done for _ in range(node_weight(nodes[n]))]
     plan = sum(node_weight(n) for n in nodes.values())
     cur = nodes.get(str(live.get("node"))) if live.get("node") is not None else None
@@ -377,13 +407,13 @@ def comfy_status():
                   for f in files if f["filename"].lower().endswith((".glb", ".gltf"))]
         images = [{"filename": f["filename"], "subfolder": f.get("subfolder", ""), "type": f.get("type", "output")}
                   for f in files if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp")) and f.get("type", "output") == "output"]
-        jobs.append({"id": pid, "name": job_name(h["prompt"][2]), "title": job_title(h["prompt"]),
+        jobs.append({"id": pid, "name": job_name(h["prompt"][2]), "title": job_title(h["prompt"]), "details": job_details(h["prompt"][2]),
                      "status": h.get("status", {}).get("status_str", "?"),
                      "start": start / 1000 if start else None, "seconds": (end - start) / 1000 if start and end else None,
                      "outputs": len(files), "models": models, "images": images[:60],
                      "error": f"{err.get('node_type', '')}: {err.get('exception_message', '')}"[:300] if err else None})
     jobs.sort(key=lambda j: j["start"] or 0, reverse=True)
-    running = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r),
+    running = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r), "details": job_details(r[2]),
                 "queued_at": r[3].get("create_time", 0) / 1000 if isinstance(r[3], dict) else None}
                for r in q.get("queue_running", [])]
     pending = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r)} for r in q.get("queue_pending", [])]
@@ -456,20 +486,84 @@ def action(name):
     raise ValueError(f"unknown action {name}")
 
 
+sys.path.insert(0, str(HERE))
+from auth import COOKIE, Auth, is_private  # noqa: E402
+
+AUTH = Auth(STORE.parent)
+PUBLIC_GET = {"/login", "/api/auth-state", "/favicon.ico"}
+PUBLIC_POST = {"/api/login", "/api/setup"}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def send(self, code, body, ctype):
+    def send(self, code, body, ctype, headers=None):
         data = body if isinstance(body, bytes) else body.encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
+    # Inloggning
+    def client_ip(self):
+        return (self.headers.get("Cf-Connecting-Ip") or (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+                or self.client_address[0])
+
+    def from_home_network(self):
+        # Direkt från hemmanätet, inte via Cloudflare eller en annan proxy
+        return not self.headers.get("Cf-Connecting-Ip") and not self.headers.get("X-Forwarded-For") and is_private(self.client_address[0])
+
+    def token(self):
+        from http.cookies import SimpleCookie
+        c = SimpleCookie(self.headers.get("Cookie") or "")
+        return c[COOKIE].value if COOKIE in c else None
+
+    def user(self):
+        return AUTH.session_user(self.token())
+
+    def cookie(self, value, max_age):
+        secure = self.headers.get("X-Forwarded-Proto") == "https" or "https" in (self.headers.get("Cf-Visitor") or "")
+        return f"{COOKIE}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}" + ("; Secure" if secure else "")
+
+    def body_json(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        if n > 100_000:
+            raise ValueError("too large")
+        return json.loads(self.rfile.read(n) or b"{}") if n else {}
+
+    def same_origin(self):
+        # Skydd mot förfalskade anrop från andra sidor: kräv JSON och, om webbläsaren skickar Origin, samma värd
+        if not (self.headers.get("Content-Type") or "").startswith("application/json"):
+            return False
+        origin = self.headers.get("Origin")
+        return not origin or urllib.parse.urlparse(origin).netloc == self.headers.get("Host")
+
+    def deny(self):
+        if self.path.startswith("/api/"):
+            return self.send(401, json.dumps({"ok": False, "login": True}), "application/json")
+        return self.send(302, "", "text/plain", {"Location": "/login?next=" + urllib.parse.quote(self.path)})
+
     def do_GET(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/login":
+            return self.send(200, (HERE / "login.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/api/auth-state":
+            return self.send(200, json.dumps({"user": self.user(), "setup_needed": not AUTH.has_users(),
+                                              "setup_allowed": self.from_home_network()}), "application/json")
+        if path == "/favicon.ico":
+            return self.send(204, b"", "image/x-icon")
+        me = self.user()
+        if not me:
+            return self.deny()
+        if path == "/accounts":
+            return self.send(200, (HERE / "accounts.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/api/accounts":
+            return self.send(200, json.dumps({"me": me, "users": AUTH.list_users()}), "application/json")
         if self.path in ("/", "/index.html"):
             return self.send(200, (HERE / "monitor.html").read_bytes(), "text/html; charset=utf-8")
         if self.path.startswith("/viewer"):
@@ -519,6 +613,59 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(chunk)
 
     def do_POST(self):
+        if not self.same_origin():
+            return self.send(403, json.dumps({"ok": False, "message": "rejected"}), "application/json")
+        try:
+            data = self.body_json()
+        except ValueError:
+            return self.send(400, json.dumps({"ok": False, "message": "bad request"}), "application/json")
+        ok = lambda msg="": self.send(200, json.dumps({"ok": True, "message": msg}), "application/json")
+        bad = lambda code, msg: self.send(code, json.dumps({"ok": False, "message": msg}), "application/json")
+        ip = self.client_ip()
+        if self.path == "/api/setup":
+            # Första kontot, bara när inga konton finns och bara från hemmanätet
+            if AUTH.has_users() or not self.from_home_network():
+                return bad(403, "Setup is closed.")
+            try:
+                AUTH.add_user(data.get("username", ""), data.get("password", ""))
+            except ValueError as e:
+                return bad(400, str(e))
+            t = AUTH.new_session(data["username"])
+            return self.send(200, json.dumps({"ok": True}), "application/json", {"Set-Cookie": self.cookie(t, 30 * 86400)})
+        if self.path == "/api/login":
+            if AUTH.blocked(ip):
+                return bad(429, "Too many attempts. Try again in a few minutes.")
+            if not AUTH.verify(data.get("username", ""), data.get("password", "")):
+                AUTH.failed(ip)
+                time.sleep(0.8)
+                return bad(401, "Wrong name or password.")
+            t = AUTH.new_session(data["username"])
+            return self.send(200, json.dumps({"ok": True}), "application/json", {"Set-Cookie": self.cookie(t, 30 * 86400)})
+        me = self.user()
+        if not me:
+            return self.deny()
+        if self.path == "/api/logout":
+            AUTH.end_session(self.token())
+            return self.send(200, json.dumps({"ok": True}), "application/json", {"Set-Cookie": self.cookie("", 0)})
+        if self.path.startswith("/api/accounts/"):
+            try:
+                if self.path == "/api/accounts/add":
+                    AUTH.add_user(data.get("username", ""), data.get("password", ""))
+                    return ok("Account created.")
+                if self.path == "/api/accounts/delete":
+                    if data.get("username") == me:
+                        return bad(400, "You cannot remove your own account while logged in.")
+                    AUTH.delete_user(data.get("username", ""))
+                    return ok("Account removed.")
+                if self.path == "/api/accounts/password":
+                    if not AUTH.verify(me, data.get("old", "")):
+                        AUTH.failed(ip)
+                        return bad(401, "The current password is wrong.")
+                    AUTH.set_password(me, data.get("new", ""))
+                    return ok("Password changed.")
+            except ValueError as e:
+                return bad(400, str(e))
+            return bad(404, "not found")
         a = re.match(r"^/api/(ack|unack)/([\w-]+)$", self.path)
         if a:
             with lock:

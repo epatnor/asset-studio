@@ -65,7 +65,8 @@ addEventListener("keydown", e => {
 });
 (async () => {
   try {
-    const job = (await (await fetch("/api/jobs")).json()).jobs.find(j => j.id === id);
+    const res = await fetch("/api/jobs"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
+    const job = (await res.json()).jobs.find(j => j.id === id);
     if (!job) { $("msg").textContent = "The job was not found."; return; }
     imgs = job.images || [];
     $("title").textContent = `${job.name}${job.title ? " · " + job.title : ""}`;

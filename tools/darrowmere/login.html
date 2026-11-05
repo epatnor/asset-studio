@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Login</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --blue: #4f8dff; --red: #ef4f5f; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --blue: #2563eb; --red: #dc2626; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+  form { width: min(340px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 22px 18px; display: grid; gap: 12px; }
+  h1 { margin: 0 0 2px; font-size: 14px; letter-spacing: .14em; }
+  p { margin: 0; color: var(--muted); }
+  label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+  input { font: inherit; height: 34px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  input:focus { outline: none; border-color: var(--blue); }
+  button { font: inherit; height: 34px; border-radius: 6px; border: 1px solid var(--blue); background: var(--blue); color: #fff; cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: .6; cursor: default; }
+  #err { color: var(--red); min-height: 1.2em; font-size: 12px; }
+</style>
+</head>
+<body>
+<form id="f" autocomplete="on">
+  <h1>DARROWMERE</h1>
+  <p id="lead">Sign in to the control panel.</p>
+  <label>Name <input id="u" name="username" autocomplete="username" required autofocus></label>
+  <label>Password <input id="p" name="password" type="password" autocomplete="current-password" required></label>
+  <label id="p2l" hidden>Repeat password <input id="p2" type="password" autocomplete="new-password"></label>
+  <button id="go">Sign in</button>
+  <div id="err"></div>
+</form>
+<script>
+const $ = id => document.getElementById(id);
+const next = new URLSearchParams(location.search).get("next") || "/";
+let setup = false;
+fetch("/api/auth-state").then(r => r.json()).then(s => {
+  if (s.user) { location.href = next; return; }
+  if (s.setup_needed) {
+    if (!s.setup_allowed) { $("lead").textContent = "No account exists yet. Create the first one from the home network."; $("go").disabled = true; return; }
+    setup = true;
+    $("lead").textContent = "Create the first account. You can add more later under Account.";
+    $("p2l").hidden = false; $("p").autocomplete = "new-password"; $("go").textContent = "Create account";
+  }
+});
+$("f").onsubmit = async e => {
+  e.preventDefault(); $("err").textContent = "";
+  if (setup && $("p").value !== $("p2").value) { $("err").textContent = "The passwords do not match."; return; }
+  $("go").disabled = true;
+  try {
+    const r = await fetch(setup ? "/api/setup" : "/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ username: $("u").value.trim(), password: $("p").value }) });
+    const d = await r.json();
+    if (d.ok) { location.href = next; return; }
+    $("err").textContent = d.message || "Could not sign in.";
+  } catch (e2) { $("err").textContent = "The panel does not answer."; }
+  $("go").disabled = false;
+};
+</script>
+</body>
+</html>

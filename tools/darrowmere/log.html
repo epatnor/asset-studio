@@ -55,9 +55,9 @@ function show() {
 }
 async function tick() {
   try {
-    const r = await (await fetch("/api/log")).json();
+    const res = await fetch("/api/log"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; } const r = await res.json();
     lines = r.lines || []; show();
-  } catch (e) { $("info").textContent = "monitor server not reachable"; }
+  } catch (e) { $("info").textContent = "Darrowmere offline · retrying"; }
 }
 tick(); setInterval(tick, 3000);
 </script>
