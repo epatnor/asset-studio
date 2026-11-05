@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Log</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --red: #ef4f5f; --amber: #f2a93b; --blue: #4f8dff; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f4f5f7; --panel: #ffffff; --line: #dde1e6; --text: #1d2228; --muted: #687280; --red: #dc2626; --amber: #b45309; --blue: #2563eb; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 12.5px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template-rows: 44px minmax(0, 1fr); }
+  header { display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header b { letter-spacing: .12em; font-size: 13px; margin-right: 8px; }
+  input { font: inherit; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 240px; }
+  button { font: inherit; height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+  button.on { border-color: var(--blue); color: var(--blue); }
+  #info { margin-left: auto; color: var(--muted); white-space: nowrap; }
+  pre { margin: 0; overflow: auto; padding: 10px 16px; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre; }
+  pre.wrap { white-space: pre-wrap; word-break: break-word; }
+  .e { color: var(--red); } .w { color: var(--amber); } .m { color: var(--muted); }
+  @media (max-width: 560px) { input { width: 120px; } #info { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <b>COMFYUI LOG</b>
+  <input id="filter" placeholder="Filter lines" spellcheck="false">
+  <button id="follow" class="on" title="Keep scrolled to the newest line">Follow</button>
+  <button id="wrap" title="Wrap long lines">Wrap</button>
+  <span id="info"></span>
+</header>
+<pre id="log">Loading…</pre>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+let lines = [], last = "";
+const toggle = id => $(id).onclick = () => { $(id).classList.toggle("on"); if (id === "wrap") $("log").classList.toggle("wrap"); show(); };
+toggle("follow"); toggle("wrap");
+$("filter").oninput = show;
+function show() {
+  const f = $("filter").value.toLowerCase();
+  const shown = f ? lines.filter(l => l.toLowerCase().includes(f)) : lines;
+  const html = shown.map(l => {
+    const cls = /error|traceback|exception|out of memory/i.test(l) ? "e" : /warn/i.test(l) ? "w" : /^\s/.test(l) ? "m" : "";
+    return cls ? `<span class="${cls}">${esc(l)}</span>` : esc(l);
+  }).join("\n");
+  if (html === last) return;
+  const el = $("log"), atEnd = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+  el.innerHTML = html; last = html;
+  if ($("follow").classList.contains("on") && (atEnd || !f)) el.scrollTop = el.scrollHeight;
+  $("info").textContent = `${shown.length} of ${lines.length} lines · updated ${new Date().toLocaleTimeString()}`;
+}
+async function tick() {
+  try {
+    const r = await (await fetch("/api/log")).json();
+    lines = r.lines || []; show();
+  } catch (e) { $("info").textContent = "monitor server not reachable"; }
+}
+tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>

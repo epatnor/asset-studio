@@ -41,6 +41,18 @@ def comfy_url() -> str | None:
     return _cache["url"]
 
 
+def job_extra(graph: dict, tool: str) -> dict:
+    """Extra data till ComfyUI:s /prompt med en kort beskrivning av jobbet, som Darrowmeres kontrollpanel visar.
+    COMFY_JOB_TITLE överstyr; annars verktygets namn och början av prompten."""
+    title = os.environ.get("COMFY_JOB_TITLE")
+    if not title:
+        text = next((str(n["inputs"]["text"]) for n in graph.values()
+                     if isinstance(n, dict) and isinstance(n.get("inputs", {}).get("text"), str) and n["inputs"]["text"].strip()), "")
+        text = " ".join(text.split())
+        title = f"{tool}: {text[:80]}{'…' if len(text) > 80 else ''}" if text else tool
+    return {"extra_data": {"job_title": title, "job_tool": tool, "job_host": os.uname().nodename}}
+
+
 def describe() -> str:
     """De provade målen som text, till felmeddelanden."""
     return ", ".join(f"{n} ({u})" for n, u in targets())

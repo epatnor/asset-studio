@@ -6,259 +6,513 @@
 <title>Darrowmere Monitor</title>
 <style>
   :root {
-    --bg: #f4f5f7; --panel: #ffffff; --line: #e1e4e8; --text: #1d2125; --muted: #6a737d;
-    --accent: #3b6fd4; --ok: #2f9e5a; --warn: #d08a10; --bad: #d13c3c; --track: #e9ecef;
+    --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4b5563;
+    --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #14171b; --panel: #1c2026; --line: #2b3038; --text: #e6e8eb; --muted: #8b949e;
-            --accent: #6b9bff; --ok: #4cc27a; --warn: #e3a43a; --bad: #f06464; --track: #2a2f37; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
+      --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
-  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; }
-  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
-  .meta { color: var(--muted); font-size: 13px; }
-  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 16px 20px; max-width: 1500px; margin: 0 auto; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
-  .card.wide { grid-column: 1 / -1; }
-  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-  .big { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .row { display: flex; justify-content: space-between; gap: 8px; margin: 4px 0; font-variant-numeric: tabular-nums; }
-  .row span:first-child { color: var(--muted); }
-  .bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin: 4px 0 8px; }
-  .bar > div { height: 100%; background: var(--accent); width: 0; transition: width .4s; }
-  .bar.warn > div { background: var(--warn); } .bar.bad > div { background: var(--bad); }
-  .cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)); gap: 4px; margin: 8px 0; }
-  .core { height: 34px; background: var(--track); border-radius: 3px; position: relative; overflow: hidden; }
-  .core > div { position: absolute; bottom: 0; left: 0; right: 0; background: var(--accent); }
-  canvas { width: 100%; height: 70px; display: block; }
-  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; }
-  .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; background: var(--track); }
-  .tag.ok { color: var(--ok); } .tag.bad { color: var(--bad); } .tag.run { color: var(--accent); }
-  pre { margin: 0; max-height: 260px; overflow: auto; font: 12px/1.45 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
-  button:hover { border-color: var(--accent); }
-  button.armed { border-color: var(--bad); color: var(--bad); }
-  button.view { padding: 2px 9px; font-size: 12px; margin-left: 6px; }
-  .msg { color: var(--muted); font-size: 13px; margin-top: 8px; min-height: 1.2em; }
-  .legend { display: flex; gap: 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 4px; }
-  .error { color: var(--bad); }
-  @media (max-width: 640px) { main { padding: 12px 16px; } header { padding: 12px 16px; } }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 12.5px/1.35 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+  header { height: 46px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  .brand { font-weight: 700; letter-spacing: .12em; font-size: 13px; }
+  .pill { height: 24px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 6px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .pill b { color: var(--text); font-weight: 600; }
+  .pill.ok { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, var(--line)); }
+  .pill.run { color: var(--blue); border-color: color-mix(in srgb, var(--blue) 40%, var(--line)); }
+  .pill.bad { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, var(--line)); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+  .pill.run .dot { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .spacer { flex: 1; }
+  #age { width: 104px; text-align: right; color: var(--muted); }
+
+  main { padding: 12px 16px 20px; display: grid; gap: 10px; max-width: 1600px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+  .ph { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+  .ph .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .pb { padding: 10px 12px; }
+
+  /* Mätare */
+  .gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
+  .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
+  .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+  .dial .arc { transition: stroke-dasharray .6s cubic-bezier(.3, .7, .3, 1), stroke .4s; }
+  .dial .face { position: absolute; inset: 27px; border-radius: 50%; display: grid; grid-template-rows: 18px 34px 16px 15px 15px; align-content: center; justify-items: center;
+                background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--panel2) 70%, transparent), transparent 70%); }
+  .dial .lbl { color: var(--muted); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+  .dial .big { font-size: 29px; font-weight: 700; line-height: 34px; letter-spacing: -.02em; }
+  .dial .big small { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 2px; letter-spacing: 0; }
+  .dial .unit { color: var(--muted); font-size: 10px; }
+  .dial .m1 { font-size: 11.5px; color: var(--text); max-width: 108px; }
+  .dial .m2 { font-size: 11px; color: var(--muted); max-width: 108px; }
+
+  /* Jobb */
+  .ph .phinfo { margin-left: 10px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .ph .actions { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; gap: 6px; }
+  .ph .actions button { height: 24px; padding: 0 10px; font-size: 11.5px; }
+  .rowprog { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; align-items: center; }
+  .rowprog .prog { height: 6px; }
+  .rowprog span { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; }
+  /* Pågående jobb: ett kort med två rader ovanför listan, fast höjd */
+  .cur { height: 62px; margin: 10px 12px 4px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--panel2); display: grid; grid-template-rows: 22px 20px; gap: 4px; }
+  .cur.on { border-color: color-mix(in srgb, var(--muted) 45%, var(--line)); }
+  .cur1, .cur2 { display: grid; align-items: center; gap: 12px; min-width: 0; }
+  .cur1 { grid-template-columns: auto minmax(0, 1fr) auto auto; font-size: 14px; font-weight: 650; }
+  @media (max-width: 900px) { .legend2 { display: none; } }
+  .cur2 { grid-template-columns: 170px minmax(0, 1fr) 150px; }
+  .curtime { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  .curphase, .curtiming { color: var(--muted); font-size: 11.5px; }
+  .curtiming { text-align: right; }
+  .steps { display: flex; gap: 3px; height: 12px; overflow: hidden; align-items: center; }
+  .steps i { flex: 0 1 12px; min-width: 3px; height: 12px; border-radius: 2px; background: var(--track); }
+  /* Solida färger per slags steg; den pågående blinkar */
+  .steps i.k-load { background: #8b97a8; } .steps i.k-text { background: var(--violet); } .steps i.k-sample { background: var(--blue); }
+  .steps i.k-vae { background: var(--amber); } .steps i.k-mesh { background: var(--teal); } .steps i.k-save { background: var(--green); }
+  .steps i.k-other { background: #c8ced6; } .steps i.k-cached { background: var(--dim); }
+  .steps i.now { animation: blink 1s steps(1, end) infinite; }
+  @keyframes blink { 50% { background: var(--track); } }
+  .legend2 { display: flex; gap: 10px; color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; }
+  .legend2 i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .nowname { font-size: 16px; font-weight: 650; }
+  .nowprog { display: grid; grid-template-rows: 8px 16px; gap: 5px; min-width: 0; }
+  .nowstage { color: var(--muted); font-size: 11.5px; }
+  .nowtime { color: var(--muted); text-align: right; }
+  .prog { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .prog > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--blue)); transition: width .5s; }
+  .msgline { height: 0; color: var(--muted); padding: 0 12px; font-size: 11.5px; transition: height .2s; }
+  .msgline.show { height: 22px; line-height: 22px; }
+  .jobs .tablebox { height: auto; max-height: 254px; }
+  .actions { display: flex; gap: 8px; align-items: center; }
+  .tag.btn { cursor: pointer; }
+  .tag.btn:hover { border-color: var(--red); }
+  .pop { position: fixed; z-index: 10; max-width: min(560px, calc(100vw - 32px)); max-height: 260px; overflow: auto; padding: 10px 12px;
+         background: var(--panel2); border: 1px solid color-mix(in srgb, var(--red) 45%, var(--line)); border-radius: 8px;
+         box-shadow: 0 10px 30px rgba(0, 0, 0, .45); font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+  .pop b { display: block; font-family: system-ui, sans-serif; font-size: 12px; color: var(--red); margin-bottom: 6px; }
+
+  /* Diagrammet */
+  .chartwrap { height: 168px; padding: 8px 12px 4px; display: grid; grid-template-rows: minmax(0, 1fr) 18px; gap: 2px; }
+  .legend { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 11px; overflow: hidden; white-space: nowrap; }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  .legend b { color: var(--text); font-weight: 600; display: inline-block; min-width: 30px; text-align: right; }
+  .spark .cv { position: relative; min-height: 0; overflow: hidden; }
+  button { font: inherit; height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--blue); }
+  button.armed { border-color: var(--red); color: var(--red); }
+  #msg { color: var(--muted); margin-left: 4px; }
+
+  .gauge[data-k] { cursor: pointer; border-radius: 8px; }
+  .gauge[data-k]:hover { background: color-mix(in srgb, var(--panel2) 60%, transparent); }
+  .pop.info { border-color: var(--line); font-family: inherit; white-space: normal; width: 300px; font-size: 12px; max-height: min(460px, calc(100vh - 24px)); }
+  td:last-child { padding: 0 6px; text-overflow: clip; }
+  .pop.info b { color: var(--text); font-size: 13px; }
+  .drow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; height: 22px; align-items: center; border-bottom: 1px dashed var(--line); }
+  .drow span:first-child { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dsub { margin: 10px 0 4px; color: var(--muted); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+  .dbars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 3px; height: 34px; }
+  .dbars > div { position: relative; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .dbars > div > div { position: absolute; left: 0; right: 0; bottom: 0; background: var(--teal); }
+  .hwrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; height: 20px; align-items: center; border-bottom: 1px dashed var(--line); }
+  .hwrow span:first-child { color: var(--muted); }
+  .cores { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; height: 30px; margin-top: 6px; }
+  .core { position: relative; background: var(--track); border-radius: 3px; overflow: hidden; }
+  .core > div { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--teal); transition: height .5s; }
+
+  /* Diagram */
+  .cv { position: relative; min-height: 0; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* Nederst */
+  .tablebox { height: 262px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { height: 28px; padding: 0 10px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 11.5px; z-index: 1; }
+  td.err { color: var(--red); font-size: 11.5px; }
+  .tag { display: inline-block; height: 18px; line-height: 18px; padding: 0 7px; border-radius: 4px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
+  .tag.ok { color: var(--green); } .tag.bad { color: var(--red); } .tag.run { color: var(--blue); }
+  button.view { height: 20px; padding: 0 8px; font-size: 11px; margin-left: 6px; }
+  button.ack { height: 20px; padding: 0 7px; font-size: 11px; color: var(--muted); }
+  button.ack:hover { color: var(--green); border-color: var(--green); }
+  .ph button.ack { margin-left: 10px; text-transform: none; letter-spacing: 0; }
+  pre { margin: 0; height: 262px; overflow: auto; padding: 8px 12px; font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); white-space: pre; }
+  .error { color: var(--red); }
+  .sub { color: var(--muted); font-weight: 400; }
+  .spin { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; border-radius: 50%;
+          border: 2px solid color-mix(in srgb, var(--blue) 30%, transparent); border-top-color: var(--blue); animation: spin .8s linear infinite; }
+  .spin.big { width: 13px; height: 13px; margin-right: 9px; vertical-align: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 1100px) {
+    .gauges { grid-template-columns: minmax(0, 1fr); }
+    .sparks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .hwgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hw { height: auto; }
+    .now { grid-template-columns: minmax(0, 1fr) 90px; height: auto; padding: 10px 12px; row-gap: 8px; }
+    .now .nowprog { grid-column: 1 / -1; grid-row: 2; }
+    .now .actions { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 10px 16px; }
+    header { padding: 0 16px; overflow: hidden; }
+    .sparks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #uptimePill, #age { display: none; }
+    .hwgrid { grid-template-columns: minmax(0, 1fr); }
+    .hw { height: auto; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <span class="dot" id="dot"></span>
-  <h1>Darrowmere</h1>
-  <span class="meta" id="hostline">connecting…</span>
-  <span class="meta" id="updated" style="margin-left:auto"></span>
+  <span class="brand">DARROWMERE</span>
+  <span class="pill" id="netPill"><span class="dot"></span><b>connecting</b></span>
+  <span class="pill" id="comfyPill"><span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI</span></span>
+  <span class="pill" id="uptimePill">up <b id="uptime">–</b></span>
+  <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
+  <span class="spacer"></span>
+  <span class="num" id="age"></span>
+  <button id="histBtn" title="All jobs, also acknowledged ones">History</button>
+  <button id="logBtn" title="Open the ComfyUI log in its own window">Log</button>
 </header>
+
 <main>
-  <section class="card wide">
-    <h2>Jobs</h2>
-    <div id="current"></div>
-    <div class="actions">
-      <button data-action="interrupt">Stop current job</button>
-      <button data-action="clear">Clear queue</button>
-      <button data-action="restart">Restart ComfyUI</button>
+  <section class="gauges" id="gauges"></section>
+
+  <section class="panel jobs">
+    <div class="ph">Jobs<span class="phinfo num" id="queueInfo"></span>
+      <span class="actions">
+        <button data-action="interrupt" title="Stop the running job">Stop</button>
+        <button data-action="clear" title="Remove waiting jobs">Clear queue</button>
+        <button data-action="restart" title="Restart the ComfyUI service">Restart</button>
+        <button class="ack" id="ackAll" title="Acknowledge every finished job" hidden>✓ all</button>
+      </span>
     </div>
-    <div class="msg" id="msg"></div>
-  </section>
-
-  <section class="card">
-    <h2>CPU</h2>
-    <div class="big" id="cpu">–</div>
-    <div class="cores" id="cores"></div>
-    <div class="row"><span>Load (1/5/15 min)</span><span id="load">–</span></div>
-    <div id="cputemps"></div>
-  </section>
-
-  <section class="card">
-    <h2>Memory</h2>
-    <div class="row"><span>RAM</span><span id="ramtxt">–</span></div>
-    <div class="bar" id="rambar"><div></div></div>
-    <div class="row"><span>Swap</span><span id="swaptxt">–</span></div>
-    <div class="bar" id="swapbar"><div></div></div>
-    <div id="procs"></div>
-  </section>
-
-  <section class="card" id="gpucard">
-    <h2>GPU</h2>
-    <div id="gpus">–</div>
-  </section>
-
-  <section class="card">
-    <h2>Disks and network</h2>
-    <div id="disks"></div>
-    <div id="net"></div>
-  </section>
-
-  <section class="card wide">
-    <h2>Last 10 minutes</h2>
-    <canvas id="chart"></canvas>
-    <div class="legend">
-      <span><i style="background:var(--accent)"></i>CPU</span>
-      <span><i style="background:var(--ok)"></i>GPU</span>
-      <span><i style="background:var(--warn)"></i>RAM</span>
-      <span><i style="background:var(--bad)"></i>VRAM</span>
+    <div class="msgline ell" id="msg"></div>
+    <div class="cur" id="cur">
+      <div class="cur1"><span id="curIcon"></span><span class="ell" id="curName">Idle</span>
+        <span class="legend2" title="Colour of each step"><span><i style="background:#8b97a8"></i>load</span><span><i style="background:var(--violet)"></i>prompt</span><span><i style="background:var(--blue)"></i>sampling</span><span><i style="background:var(--amber)"></i>VAE</span><span><i style="background:var(--teal)"></i>3D</span><span><i style="background:var(--green)"></i>save</span><span><i style="background:var(--dim)"></i>cached</span></span>
+        <span class="num curtime" id="curTime"></span></div>
+      <div class="cur2"><span class="ell curphase num" id="curPhase"></span><span class="steps" id="curSteps"></span><span class="num curtiming ell" id="curTiming"></span></div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <colgroup><col style="width:70px"><col><col style="width:96px"><col style="width:96px"><col style="width:190px"><col style="width:40px"></colgroup>
+        <thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
     </div>
   </section>
 
-  <section class="card wide">
-    <h2>Recent jobs</h2>
-    <table><thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Files</th></tr></thead><tbody id="history"></tbody></table>
-  </section>
 
-  <section class="card wide">
-    <h2>ComfyUI log</h2>
-    <pre id="log"></pre>
+  <section class="panel">
+    <div class="ph">Last 10 minutes<span class="right">percent of capacity</span></div>
+    <div class="chartwrap">
+      <div class="cv"><canvas id="chart"></canvas></div>
+      <div class="legend" id="legend"></div>
+    </div>
   </section>
 </main>
+<div class="pop" id="pop" hidden></div>
+
 <script>
 const $ = id => document.getElementById(id);
+const css = () => getComputedStyle(document.documentElement);
 const fmtB = b => b >= 1e12 ? (b / 1e12).toFixed(2) + " TB" : b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : (b / 1e6).toFixed(0) + " MB";
 const fmtRate = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " MB/s" : (b / 1e3).toFixed(0) + " kB/s";
-const fmtDur = s => s == null ? "–" : s < 60 ? s.toFixed(0) + " s" : s < 3600 ? Math.floor(s / 60) + " min " + Math.round(s % 60) + " s" : (s / 3600).toFixed(1) + " h";
+const fmtDur = s => s == null ? "–" : s < 60 ? s.toFixed(0) + " s" : s < 3600 ? Math.floor(s / 60) + " min " + String(Math.round(s % 60)).padStart(2, "0") + " s" : (s / 3600).toFixed(1) + " h";
 const clock = t => t ? new Date(t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function bar(el, pct) {
-  el.className = "bar" + (pct > 90 ? " bad" : pct > 75 ? " warn" : "");
-  el.firstElementChild.style.width = Math.min(100, Math.max(0, pct)) + "%";
-}
-function barHtml(pct) {
-  const cls = pct > 90 ? " bad" : pct > 75 ? " warn" : "";
-  return `<div class="bar${cls}"><div style="width:${Math.min(100, pct)}%"></div></div>`;
+const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
+
+// Rattarna byggs en gång och uppdateras sedan på plats, så att ingenting byter storlek.
+// En båge på 270 grader med öppning nedåt; RAM har en inre tunn båge för växlingsutrymmet.
+const GROUPS = [["Processor and memory", [["cpu", "CPU", "--teal"], ["ram", "RAM", "--amber"]]],
+                ["Graphics", [["gpu", "GPU", "--green"], ["vram", "VRAM", "--violet"]]],
+                ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]]];
+const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
+$("gauges").innerHTML = GROUPS.map(([title, dials]) => `
+  <div class="panel group" title="${title}"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`).join("");
+function dialHtml([k, label, col]) { return `
+  <div class="gauge" data-k="${k}" title="Click for details">
+    <div class="dial">
+      <svg viewBox="0 0 164 164">
+        <defs><linearGradient id="gr_${k}" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" id="gs0_${k}" stop-color="var(${col})" stop-opacity=".55"/><stop offset="1" id="gs1_${k}" stop-color="var(${col})"/>
+        </linearGradient></defs>
+        <g transform="rotate(135 82 82)">
+          <circle cx="82" cy="82" r="${R}" fill="none" stroke="var(--track)" stroke-width="11" stroke-linecap="round" stroke-dasharray="${ARC} ${C}"/>
+          <circle class="arc" id="g_${k}" cx="82" cy="82" r="${R}" fill="none" stroke="url(#gr_${k})" stroke-width="11" stroke-linecap="round"
+                  stroke-dasharray="0 ${C}" style="filter: drop-shadow(0 0 5px color-mix(in srgb, var(${col}) 45%, transparent))"/>
+          ${k === "ram" ? `<circle cx="82" cy="82" r="${R2}" fill="none" stroke="var(--track)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${ARC2} ${C2}"/>
+          <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
+        </g>
+      </svg>
+      <div class="face">
+        <div class="lbl">${label}</div>
+        <div class="big num"><span id="gv_${k}">–</span><small>%</small></div>
+        <div class="unit ell" id="gu_${k}"></div>
+        <div class="m1 ell num" id="gm1_${k}">–</div>
+        <div class="m2 ell num" id="gm2_${k}"></div>
+      </div>
+    </div>
+  </div>`; }
+function setGauge(k, pct, unit, m1, m2, colorVar) {
+  const p = pct == null || isNaN(pct) ? null : Math.max(0, Math.min(100, pct));
+  $("g_" + k).setAttribute("stroke-dasharray", `${p == null ? 0 : ARC * p / 100} ${C}`);
+  const col = `var(${level(p) || colorVar})`;
+  $("gs0_" + k).setAttribute("stop-color", col); $("gs1_" + k).setAttribute("stop-color", col);
+  $("gv_" + k).textContent = p == null ? "–" : p.toFixed(0);
+  $("gu_" + k).textContent = unit; $("gm1_" + k).textContent = m1; $("gm2_" + k).textContent = m2;
 }
 
+// Klick på en ratt öppnar en ruta med mer om just den delen; den uppdateras så länge den är öppen
+let openDial = null;
+const row = (a, b) => `<div class="drow"><span>${a}</span><span class="num">${b}</span></div>`;
+const bars = vals => `<div class="dbars">${vals.map((v, i) => `<div title="thread ${i}: ${v.toFixed(0)} %"><div style="height:${v}%"></div></div>`).join("")}</div>`;
+function detailHtml(k, s) {
+  const p = s.probe, g = p.gpus[0] || {}, m = p.mem, procs = p.procs.filter(x => x.name !== "ps");
+  const gb = b => (b / 1073741824).toFixed(1) + " GB";
+  const procRows = (by) => [...procs].sort((a, b) => b[by] - a[by]).slice(0, 4)
+    .map(x => row(esc(x.name), by === "cpu" ? `${x.cpu.toFixed(0)} % · ${fmtB(x.rss_mb * 1e6)}` : `${fmtB(x.rss_mb * 1e6)} · ${x.cpu.toFixed(0)} %`)).join("");
+  if (k === "cpu") return `<b>CPU</b>${row("Load", p.cpu.toFixed(0) + " %")}${row("Load average 1/5/15", p.load.join(" / "))}
+    <div class="dsub">Threads</div>${bars(p.cores)}
+    <div class="dsub">Temperatures</div>${p.temps.filter(t => t.chip === "coretemp").map(t => row(esc(t.label), t.c.toFixed(0) + " °C")).join("")}
+    <div class="dsub">Busiest processes</div>${procRows("cpu")}`;
+  if (k === "ram") return `<b>RAM</b>${row("Used", `${gb(m.total - m.avail)} of ${gb(m.total)}`)}${row("Available", gb(m.avail))}
+    ${row("Swap used", `${gb(m.swap_total - m.swap_free)} of ${gb(m.swap_total)}`)}
+    <div class="dsub">Largest processes</div>${procRows("rss_mb")}`;
+  if (k === "gpu") return `<b>${esc(g.name || "GPU")}</b>${row("Load", (g.util ?? "–") + " %")}${row("Temperature", (g.temp ?? "–") + " °C")}
+    ${row("Fan", g.fan != null ? g.fan + " %" : "n/a")}${row("Clock", (g.clock ?? "–") + " MHz")}
+    ${row("Power", g.power != null ? g.power.toFixed(0) + " W" : "not reported")}${row("Power limit", (g.power_limit ?? "–") + " W")}`;
+  if (k === "vram") return `<b>VRAM</b>${row("Used", `${(g.mem_used / 1024).toFixed(2)} GB`)}${row("Free", `${((g.mem_total - g.mem_used) / 1024).toFixed(2)} GB`)}
+    ${row("Total", `${(g.mem_total / 1024).toFixed(1)} GB`)}${(s.comfy?.devices || []).map(dv => row("ComfyUI sees", `${gb(dv.vram_free)} free`)).join("")}`;
+  const d = p.disks.find(x => x.mount === (k === "root" ? "/" : "/data"));
+  if (!d) return "<b>Disk</b>no data";
+  const temp = k === "disk" ? p.temps.filter(t => t.chip === "nvme").map(t => row("Temperature " + esc(t.label), t.c.toFixed(0) + " °C")).join("") : "";
+  return `<b>${k === "root" ? "System disk · 840 EVO" : "Data disk · NVMe"}</b>${row("Mounted at", d.mount)}
+    ${row("Used", `${fmtB(d.total - d.free)} of ${fmtB(d.total)}`)}${row("Free", fmtB(d.free))}${temp}`;
+}
+function showDetail(k, s) {
+  const pop = $("pop"), card = document.querySelector(`.gauge[data-k="${k}"]`);
+  pop.className = "pop info"; pop.innerHTML = detailHtml(k, s); pop.hidden = false;
+  const r = card.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(16, Math.min(innerWidth - pw - 16, r.left + r.width / 2 - pw / 2)) + "px";
+  pop.style.top = (r.bottom + 6 + ph > innerHeight ? Math.max(8, r.top - ph - 6) : r.bottom + 6) + "px";
+}
+document.addEventListener("click", e => {
+  const card = e.target.closest(".gauge[data-k]");
+  if (!card) return;
+  e.stopPropagation();
+  if (openDial === card.dataset.k) { openDial = null; $("pop").hidden = true; return; }
+  openDial = card.dataset.k;
+  if (lastStatus?.probe) showDetail(openDial, lastStatus);
+}, true);
+
+// Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
+const SERIES = [["cpu", "CPU", "--teal"], ["ram", "RAM", "--amber"], ["swap", "Swap", "--blue"], ["gpu", "GPU", "--green"], ["vram", "VRAM", "--violet"]];
+$("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
+
+let lastRows = "";
+const jobLabel = x => `${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
+function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
+
+$("logBtn").onclick = () => window.open("/log", "darrowmere-log", "width=1100,height=720");
+$("histBtn").onclick = () => window.open("/history", "darrowmere-history", "width=1000,height=720");
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button.ack");
+  if (!b) return;
+  b.disabled = true;
+  await fetch("/api/ack/" + (b.id === "ackAll" ? "all" : b.dataset.ack), { method: "POST" });
+  tick();
+});
 function render(s) {
-  const p = s.probe, c = s.comfy;
-  const age = s.now - s.updated;
-  const online = s.online && age < 15;
-  $("dot").className = "dot " + (online ? (p && p.service === "active" ? "ok" : "warn") : "bad");
-  $("updated").textContent = s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
-  if (!p) { $("hostline").innerHTML = `<span class="error">${esc(s.probe_error || "no data yet")}</span>`; return; }
-  const up = p.uptime;
-  $("hostline").innerHTML = `${esc(p.host)} (${esc(s.host)}) · up ${fmtDur(up)} · ComfyUI ${esc(p.service)}${c ? " " + esc(c.version || "") : ""}`
-    + (s.probe_error ? ` · <span class="error">${esc(s.probe_error)}</span>` : "");
+  const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 15;
+  pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Offline"}</b>`);
+  $("age").textContent = s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
+  if (!p) { pill("netPill", "bad", `<span class="dot"></span><b class="ell" style="max-width:300px">${esc(s.probe_error || "no data yet")}</b>`); return; }
+  $("uptime").textContent = fmtDur(p.uptime);
 
-  // CPU
-  $("cpu").textContent = p.cpu.toFixed(0) + " %";
-  $("cores").innerHTML = p.cores.map(v => `<div class="core" title="${v.toFixed(0)} %"><div style="height:${v}%"></div></div>`).join("");
-  $("load").textContent = p.load.join(" / ");
-  $("cputemps").innerHTML = p.temps.map(t => `<div class="row"><span>${esc(t.chip)} ${esc(t.label)}</span><span>${t.c.toFixed(0)} °C</span></div>`).join("");
+  const m = p.mem, g = p.gpus[0] || {}, d = p.disks.find(x => x.mount === "/data"), root = p.disks.find(x => x.mount === "/");
+  const ramUsed = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
+  const cpuT = p.temps.filter(t => t.chip === "coretemp").map(t => t.c);
+  const gb = mb => (mb / 1024).toFixed(1);
+  setGauge("cpu", p.cpu, `${p.cores.length} threads`, cpuT.length ? `${Math.max(...cpuT).toFixed(0)} °C` : "–", `load ${p.load[0]}`, "--teal");
+  setGauge("gpu", g.util, g.name ? g.name.replace("NVIDIA ", "") : "no GPU", g.temp != null ? `${g.temp} °C · fan ${g.fan ?? "–"} %` : "–", g.clock != null ? `${g.clock} MHz` : "", "--green");
+  setGauge("ram", 100 * ramUsed / m.total, "inner ring: swap", `${gb(ramUsed / 1048576)} / ${gb(m.total / 1048576)} GB`,
+           m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${gb(m.swap_total / 1048576)} GB` : "no swap", "--amber");
+  const sp = m.swap_total ? Math.min(100, 100 * swUsed / m.swap_total) : 0;
+  $("g_swap").setAttribute("stroke-dasharray", `${ARC2 * sp / 100} ${C2}`);
+  $("g_swap").setAttribute("stroke", `var(${level(sp) || "--blue"})`);
+  setGauge("vram", g.mem_total ? 100 * g.mem_used / g.mem_total : null, "graphics memory", g.mem_total ? `${gb(g.mem_used)} / ${gb(g.mem_total)} GB` : "–", "", "--violet");
+  setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--blue");
+  setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--teal");
+  const r = Object.entries(s.rates || {}).reduce((a, [, v]) => ({ rx: a.rx + v.rx, tx: a.tx + v.tx }), { rx: 0, tx: 0 });
+  $("netRate").textContent = `↓ ${fmtRate(r.rx)}  ↑ ${fmtRate(r.tx)}`;
+  if (openDial) showDetail(openDial, s);
 
-  // Minne
-  const m = p.mem, used = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
-  $("ramtxt").textContent = `${fmtB(used)} of ${fmtB(m.total)}`;
-  bar($("rambar"), 100 * used / m.total);
-  $("swaptxt").textContent = `${fmtB(swUsed)} of ${fmtB(m.swap_total)}`;
-  bar($("swapbar"), m.swap_total ? 100 * swUsed / m.swap_total : 0);
-  $("procs").innerHTML = `<table><thead><tr><th>Process</th><th>CPU</th><th>RAM</th></tr></thead><tbody>`
-    + p.procs.slice(0, 5).map(x => `<tr><td>${esc(x.name)}</td><td>${x.cpu.toFixed(0)} %</td><td>${fmtB(x.rss_mb * 1e6)}</td></tr>`).join("") + "</tbody></table>";
-
-  // GPU
-  $("gpus").innerHTML = p.gpus.length ? p.gpus.map(g => `
-    <div class="row"><span>${esc(g.name)}</span><span class="big" style="font-size:20px">${g.util ?? "–"} %</span></div>
-    ${barHtml(g.util || 0)}
-    <div class="row"><span>VRAM</span><span>${(g.mem_used / 1024).toFixed(1)} of ${(g.mem_total / 1024).toFixed(1)} GB</span></div>
-    ${barHtml(100 * g.mem_used / g.mem_total)}
-    <div class="row"><span>Temperature</span><span>${g.temp ?? "–"} °C</span></div>
-    <div class="row"><span>Power</span><span>${g.power != null ? g.power.toFixed(0) + " W" : "n/a"}${g.power_limit ? " of " + g.power_limit.toFixed(0) + " W" : ""}</span></div>
-    <div class="row"><span>Fan</span><span>${g.fan != null ? g.fan + " %" : "n/a"}</span></div>
-    <div class="row"><span>Clock</span><span>${g.clock ?? "–"} MHz</span></div>`).join("<hr style='border:0;border-top:1px solid var(--line)'>")
-    : "No NVIDIA GPU found";
-
-  // Diskar och nät
-  $("disks").innerHTML = p.disks.map(d => {
-    const u = d.total - d.free;
-    return `<div class="row"><span>${esc(d.mount)}</span><span>${fmtB(d.free)} free of ${fmtB(d.total)}</span></div>${barHtml(100 * u / d.total)}`;
-  }).join("");
-  $("net").innerHTML = Object.entries(s.rates || {}).filter(([n]) => p.net[n]).map(([n, r]) =>
-    `<div class="row"><span>${esc(n)}</span><span>↓ ${fmtRate(r.rx)} · ↑ ${fmtRate(r.tx)}</span></div>`).join("");
-
-  // Jobb
   if (c) {
-    let html = "";
-    if (c.running.length) {
-      const j = c.running[0], pr = c.progress;
-      html += `<div class="row"><span>Running</span><span><b>${esc(j.name)}</b></span></div>`;
-      if (pr) html += `${barHtml(pr.pct)}<div class="row"><span>Current stage: ${pr.done} of ${pr.total}</span><span>${esc(pr.timing)}</span></div>`;
-      else html += `<div class="meta">Loading models or between steps…</div>`;
-    } else html += `<div class="big" style="font-size:20px">Idle</div>`;
-    html += `<div class="row"><span>Waiting in queue</span><span>${c.pending.length ? c.pending.map(x => esc(x.name)).join(", ") : "none"}</span></div>`;
-    $("current").innerHTML = html;
-    const runIds = new Set(c.running.map(r => r.id));
-    $("history").innerHTML = c.running.map(r => `<tr><td>${clock(r.queued_at)}</td><td>${esc(r.name)}</td><td><span class="tag run">running</span></td><td>–</td><td>–</td></tr>`).join("")
-      + c.history.filter(h => !runIds.has(h.id)).map(h => `<tr>
-        <td>${clock(h.start)}</td><td>${esc(h.name)}${h.error ? `<div class="error" style="font-size:12px">${esc(h.error)}</div>` : ""}</td>
-        <td><span class="tag ${h.status === "success" ? "ok" : h.status === "error" ? "bad" : ""}">${esc(h.status)}</span></td>
-        <td>${fmtDur(h.seconds)}</td><td>${h.outputs}${(h.models || []).map(m =>
-          ` <button class="view" data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}" title="${esc(m.filename)}">View</button>`).join("")}</td></tr>`).join("");
+    const run = c.running[0], pr = c.progress;
+    pill("comfyPill", p.service !== "active" ? "bad" : run ? "run" : "ok",
+         `<span class="dot"></span><span class="ell" style="max-width:260px">${p.service !== "active" ? "ComfyUI " + esc(p.service) : run ? "Running " + esc(run.name) : "ComfyUI idle"}</span>`);
+    $("queueInfo").textContent = run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle";
+    const runIds = new Set(c.running.map(x => x.id));
+    errors.clear();
+    renderCurrent(run, pr, c, s);
+    const rows = c.pending.map(x => `<tr><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
+      .concat(c.history.filter(h => !runIds.has(h.id)).map(h => {
+        const bad = h.status !== "success";
+        if (h.error) errors.set(h.id, h.error);
+        const tag = h.error ? `<span class="tag bad btn" data-err="${esc(h.id)}" title="Show the error">${esc(h.status)} ▾</span>`
+                            : `<span class="tag ${bad ? "bad" : "ok"}">${esc(h.status)}</span>`;
+        return `<tr><td>${clock(h.start)}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
+          <td>${h.outputs} files${viewBtn(h)}</td>
+          <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
+      }));
+    $("ackAll").hidden = !c.history.length;
+    const html = rows.join("") || `<tr><td colspan="6" style="color:var(--muted)">No unacknowledged jobs · see History for older ones</td></tr>`;
+    if (html !== lastRows) { $("history").innerHTML = html; lastRows = html; }
   } else if (s.comfy_error) {
-    $("current").innerHTML = `<span class="error">ComfyUI does not answer: ${esc(s.comfy_error)}</span>`;
+    pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI not answering</span>`);
   }
-  const logEl = $("log"), atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 20;
-  logEl.textContent = p.log.join("\n");
-  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
-  drawChart(s.history || []);
+
+  drawSparks(s.history || []);
 }
 
-function drawChart(h) {
+function drawSparks(h) {
+  const st = css(), last = h[h.length - 1] || {}, tEnd = last.t || 0;
+  SERIES.forEach(([k]) => $("lg_" + k).textContent = last[k] == null ? "–" : last[k].toFixed(0) + " %");
   const cv = $("chart"), dpr = window.devicePixelRatio || 1, w = cv.clientWidth, ht = cv.clientHeight;
-  cv.width = w * dpr; cv.height = ht * dpr;
-  const g = cv.getContext("2d"); g.scale(dpr, dpr); g.clearRect(0, 0, w, ht);
-  const css = getComputedStyle(document.documentElement);
-  g.strokeStyle = css.getPropertyValue("--line"); g.lineWidth = 1;
-  [0, 50, 100].forEach(v => { const y = ht - 2 - (ht - 4) * v / 100; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); });
-  if (h.length < 2) return;
-  const t0 = h[h.length - 1].t - 600;
-  const series = [["cpu", "--accent"], ["gpu", "--ok"], ["ram", "--warn"], ["vram", "--bad"]];
-  for (const [k, col] of series) {
-    g.strokeStyle = css.getPropertyValue(col); g.lineWidth = 1.5; g.beginPath(); let started = false;
-    for (const pt of h) {
-      if (pt[k] == null) continue;
-      const x = w * (pt.t - t0) / 600, y = ht - 2 - (ht - 4) * Math.min(100, pt[k]) / 100;
-      started ? g.lineTo(x, y) : g.moveTo(x, y); started = true;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(ht * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(ht * dpr); }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, ht);
+  const padL = 34, padB = 15, pw = w - padL, ph = ht - padB - 4;
+  g.font = "10px system-ui, sans-serif"; g.fillStyle = st.getPropertyValue("--dim"); g.strokeStyle = st.getPropertyValue("--line"); g.lineWidth = 1;
+  [0, 25, 50, 75, 100].forEach(v => {
+    const y = Math.round(4 + ph - ph * v / 100) + .5;
+    g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
+    g.fillText(v + "%", 0, y + 3.5);
+  });
+  ["10 min ago", "5 min", "now"].forEach((l, i) => {
+    const tw = g.measureText(l).width, x = padL + pw * i / 2 - tw / 2;
+    g.fillText(l, Math.min(w - tw, Math.max(padL, x)), ht - 2);
+  });
+  const X = t => padL + pw * (1 - (tEnd - t) / 600), Y = v => 4 + ph - ph * Math.min(100, Math.max(0, v)) / 100;
+  for (const [k, , col] of SERIES) {
+    const raw = h.filter(pt => pt[k] != null && tEnd - pt.t <= 600);
+    if (raw.length < 2) continue;
+    // Mjukare kurva: glidande medel över fem mätpunkter och kvadratiska kurvor genom mittpunkterna
+    const pts = raw.map((pt, i) => {
+      const win = raw.slice(Math.max(0, i - 2), i + 3);
+      return [X(pt.t), Y(win.reduce((a, q) => a + q[k], 0) / win.length)];
+    });
+    const color = st.getPropertyValue(col).trim();
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length - 1; i++) {
+      g.quadraticCurveTo(pts[i][0], pts[i][1], (pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2);
     }
-    g.stroke();
+    g.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    g.strokeStyle = color; g.lineWidth = 1.8; g.lineJoin = "round"; g.lineCap = "round"; g.stroke();
+    g.lineTo(pts[pts.length - 1][0], Y(0)); g.lineTo(pts[0][0], Y(0)); g.closePath();
+    const grad = g.createLinearGradient(0, 4, 0, 4 + ph);
+    grad.addColorStop(0, color + "2a"); grad.addColorStop(1, color + "00");
+    g.fillStyle = grad; g.fill();
   }
 }
+
+// Felrutan: klick på ett "error"-märke visar hela meddelandet under märket
+const errors = new Map();
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-err]"), pop = $("pop");
+  if (!t) { if (!e.target.closest("#pop")) pop.hidden = true; return; }
+  const msg = errors.get(t.dataset.err);
+  if (!msg) return;
+  pop.innerHTML = `<b>Error</b>${esc(msg)}`;
+  pop.hidden = false;
+  const r = t.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  pop.style.left = Math.max(16, Math.min(innerWidth - pw - 16, r.left)) + "px";
+  pop.style.top = (r.bottom + 6 + ph > innerHeight ? r.top - ph - 6 : r.bottom + 6) + "px";
+});
+addEventListener("keydown", e => { if (e.key === "Escape") $("pop").hidden = true; });
+addEventListener("scroll", () => $("pop").hidden = true, { passive: true });
 
 // Knapparna kräver två klick inom fyra sekunder, i stället för en dialogruta
 let armed = null, armTimer = null;
 document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener("click", async () => {
   if (armed !== b) {
     if (armed) armed.classList.remove("armed");
-    armed = b; b.classList.add("armed"); $("msg").textContent = "Click again to confirm.";
-    clearTimeout(armTimer); armTimer = setTimeout(() => { b.classList.remove("armed"); armed = null; $("msg").textContent = ""; }, 4000);
+    armed = b; b.classList.add("armed"); showMsg("Click again to confirm");
+    clearTimeout(armTimer); armTimer = setTimeout(() => { b.classList.remove("armed"); armed = null; showMsg(""); }, 4000);
     return;
   }
   b.classList.remove("armed"); armed = null; clearTimeout(armTimer);
-  $("msg").textContent = "Working…";
-  try {
-    const r = await fetch("/api/action/" + b.dataset.action, { method: "POST" });
-    $("msg").textContent = (await r.json()).message;
-  } catch (e) { $("msg").textContent = "Failed: " + e; }
+  showMsg("Working…");
+  try { showMsg((await (await fetch("/api/action/" + b.dataset.action, { method: "POST" })).json()).message); }
+  catch (e) { showMsg("Failed: " + e); }
+  setTimeout(() => showMsg(""), 6000);
 }));
+function showMsg(t) { const el = $("msg"); el.textContent = t; el.classList.toggle("show", !!t); }
 
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
   if (!b) return;
+  if (b.dataset.job) { window.open("/images?id=" + encodeURIComponent(b.dataset.job), "darrowmere-images", "width=1200,height=900"); return; }
   const q = new URLSearchParams({ filename: b.dataset.file, subfolder: b.dataset.sub, type: b.dataset.type });
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
 });
-
-async function tick() {
-  try { render(await (await fetch("/api/status")).json()); }
-  catch (e) { $("dot").className = "dot bad"; $("hostline").textContent = "monitor server not reachable"; }
+// Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
+function renderCurrent(run, pr, c, s) {
+  const set = (id, v, html) => { const el = $(id); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
+  $("cur").classList.toggle("on", !!run);
+  if (!run) {
+    set("curIcon", "", true);
+    set("curName", c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running");
+    set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
+    return;
+  }
+  set("curIcon", `<i class="spin big"></i>`, true);
+  set("curName", jobLabel(run), true);
+  set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
+  const total = pr?.total || 0, done = pr?.done || 0;
+  set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
+  // En ruta per nod i flödet (en per steg för provtagare): klara i sin färg, den pågående blinkar, resten grå
+  let cells = "";
+  if (pr?.plan) {
+    const cell = (k, n, extra = "") => `<i class="k-${k}${extra}" title="${esc(n)}"></i>`;
+    const parts = pr.cells.map(c => cell(c.k, c.n));
+    const cur = pr.cur;
+    for (let i = 0; i < cur.w; i++) parts.push(i < cur.v ? cell(cur.k, cur.n) : i === cur.v ? cell(cur.k, cur.n, " now") : `<i title="${esc(cur.n)}"></i>`);
+    while (parts.length < pr.plan) parts.push("<i></i>");
+    cells = parts.join("");
+  }
+  set("curSteps", cells, true);
+  const t = (pr?.timing || "").split(",");
+  set("curTiming", total && done < total && t[0].includes("<") ? `${t[0].split("<")[1]} left · ${(t[1] || "").trim()}` : "");
 }
+
+// View: 3D-visaren för jobb med en modell, bildvisaren för jobb med bilder
+function viewBtn(h) {
+  const md = (h.models || [])[0];
+  if (md) return ` <button class="view" data-file="${esc(md.filename)}" data-sub="${esc(md.subfolder)}" data-type="${esc(md.type)}" title="Open ${esc(md.filename)} in the 3D viewer">3D</button>`;
+  if ((h.images || []).length) return ` <button class="view" data-job="${esc(h.id)}" title="Open the images">View</button>`;
+  return "";
+}
+
+let lastStatus = null;
+async function tick() {
+  try { lastStatus = await (await fetch("/api/status")).json(); render(lastStatus); }
+  catch (e) { pill("netPill", "bad", `<span class="dot"></span><b>monitor server not reachable</b>`); }
+}
+addEventListener("resize", () => lastStatus && drawSparks(lastStatus.history || []));
 tick(); setInterval(tick, 3000);
 </script>
 </body>

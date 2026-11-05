@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Images</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --blue: #4f8dff; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --blue: #2563eb; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 12.5px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template-rows: 44px minmax(0, 1fr) 96px; }
+  header { display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; }
+  header b { letter-spacing: .12em; font-size: 13px; white-space: nowrap; }
+  #title { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+  #count { color: var(--muted); white-space: nowrap; }
+  button, a.btn { font: inherit; height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; white-space: nowrap; }
+  button:hover, a.btn:hover { border-color: var(--blue); }
+  button.on { border-color: var(--blue); color: var(--blue); }
+  #stage { position: relative; overflow: auto; display: grid; place-items: center; background:
+           repeating-conic-gradient(color-mix(in srgb, var(--panel2) 70%, transparent) 0 25%, transparent 0 50%) 0 0 / 24px 24px; }
+  #stage img { display: block; }
+  #stage.fit img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #stage .nav { position: fixed; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; border-radius: 8px; opacity: .75; font-size: 22px; justify-content: center; }
+  #prev { left: 12px; } #next { right: 12px; }
+  #strip { display: flex; gap: 8px; padding: 10px 16px; overflow-x: auto; background: var(--panel); border-top: 1px solid var(--line); }
+  #strip img { height: 74px; width: 74px; object-fit: cover; border-radius: 6px; border: 2px solid transparent; cursor: pointer; flex: none; background: var(--panel2); }
+  #strip img.sel { border-color: var(--blue); }
+  #msg { color: var(--muted); padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <b>IMAGES</b><span id="title"></span><span id="count"></span>
+  <button id="fit" class="on" title="Fit to window or show at full size (F)">Fit</button>
+  <a class="btn" id="open" target="_blank" title="Open the full image in a new tab">Open</a>
+</header>
+<div id="stage" class="fit"><div id="msg">Loading…</div></div>
+<div id="strip"></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const id = new URLSearchParams(location.search).get("id");
+const src = f => "/api/file?" + new URLSearchParams({ filename: f.filename, subfolder: f.subfolder || "", type: f.type || "output" });
+let imgs = [], cur = 0;
+function show(i) {
+  if (!imgs.length) return;
+  cur = (i + imgs.length) % imgs.length;
+  const f = imgs[cur];
+  $("stage").innerHTML = `<img id="big" src="${src(f)}" alt="${esc(f.filename)}">`
+    + (imgs.length > 1 ? `<button class="nav" id="prev" title="Previous (←)">‹</button><button class="nav" id="next" title="Next (→)">›</button>` : "");
+  if (imgs.length > 1) { $("prev").onclick = () => show(cur - 1); $("next").onclick = () => show(cur + 1); }
+  $("big").onload = e => $("count").textContent = `${cur + 1} / ${imgs.length} · ${e.target.naturalWidth}×${e.target.naturalHeight} · ${f.filename}`;
+  $("open").href = src(f);
+  document.querySelectorAll("#strip img").forEach((t, j) => t.classList.toggle("sel", j === cur));
+  document.querySelectorAll("#strip img")[cur]?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+$("fit").onclick = () => { $("fit").classList.toggle("on"); $("stage").classList.toggle("fit"); };
+addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") show(cur - 1);
+  if (e.key === "ArrowRight") show(cur + 1);
+  if (e.key.toLowerCase() === "f") $("fit").click();
+});
+(async () => {
+  try {
+    const job = (await (await fetch("/api/jobs")).json()).jobs.find(j => j.id === id);
+    if (!job) { $("msg").textContent = "The job was not found."; return; }
+    imgs = job.images || [];
+    $("title").textContent = `${job.name}${job.title ? " · " + job.title : ""}`;
+    document.title = `${job.name} · Darrowmere Images`;
+    if (!imgs.length) { $("msg").textContent = "This job saved no images."; return; }
+    $("strip").innerHTML = imgs.map((f, i) => `<img src="${src(f)}" loading="lazy" title="${esc(f.filename)}" data-i="${i}">`).join("");
+    $("strip").onclick = e => { const t = e.target.closest("img[data-i]"); if (t) show(+t.dataset.i); };
+    show(0);
+  } catch (e) { $("msg").textContent = "Could not load the job: " + e; }
+})();
+</script>
+</body>
+</html>

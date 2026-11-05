@@ -31,7 +31,7 @@ from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from comfy_target import comfy_url  # noqa: E402
+from comfy_target import comfy_url, job_extra  # noqa: E402
 
 COMFY = comfy_url() or "http://127.0.0.1:8188"
 STYLE = json.loads((ROOT / "tools" / "style.json").read_text())["prompt"]
@@ -40,7 +40,7 @@ MODELS = {"unet": "krea2_turbo_int8_convrot.safetensors", "clip": "qwen3vl_4b_fp
 
 
 def run_graph(graph, timeout=600):
-    req = urllib.request.Request(f"{COMFY}/prompt", data=json.dumps({"prompt": graph}).encode(), headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(f"{COMFY}/prompt", data=json.dumps({"prompt": graph, **job_extra(graph, "make_surface.py")}).encode(), headers={"Content-Type": "application/json"})
     pid = json.load(urllib.request.urlopen(req, timeout=30))["prompt_id"]
     t0 = time.time()
     while time.time() - t0 < timeout:

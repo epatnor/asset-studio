@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere History</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --red: #ef4f5f; --green: #2bd46b; --blue: #4f8dff; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f4f5f7; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --red: #dc2626; --green: #16a34a; --blue: #2563eb; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 12.5px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+  body { display: grid; grid-template-rows: 44px minmax(0, 1fr); }
+  header { display: flex; align-items: center; gap: 8px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header b { letter-spacing: .12em; font-size: 13px; margin-right: 8px; }
+  input { font: inherit; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 220px; }
+  #info { margin-left: auto; color: var(--muted); white-space: nowrap; }
+  .box { overflow: auto; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { height: 30px; padding: 0 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 11.5px; }
+  tr.acked td { color: var(--muted); }
+  tr.err td.msg { white-space: normal; height: auto; padding: 4px 12px 8px; color: var(--red); font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace; }
+  .tag { display: inline-block; height: 18px; line-height: 18px; padding: 0 7px; border-radius: 4px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
+  .tag.ok { color: var(--green); } .tag.bad { color: var(--red); cursor: pointer; }
+  button { font: inherit; height: 22px; padding: 0 8px; font-size: 11.5px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--blue); }
+  @media (max-width: 560px) { input { width: 120px; } #info { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <b>JOB HISTORY</b>
+  <input id="filter" placeholder="Filter by job or status" spellcheck="false">
+  <span id="info"></span>
+</header>
+<div class="box">
+  <table>
+    <colgroup><col style="width:130px"><col><col style="width:100px"><col style="width:96px"><col style="width:140px"><col style="width:96px"></colgroup>
+    <thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtDur = s => s == null ? "–" : s < 60 ? s.toFixed(0) + " s" : s < 3600 ? Math.floor(s / 60) + " min " + String(Math.round(s % 60)).padStart(2, "0") + " s" : (s / 3600).toFixed(1) + " h";
+const when = t => t ? new Date(t * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "–";
+let jobs = [], open = new Set(), last = "";
+function show() {
+  const f = $("filter").value.toLowerCase();
+  const list = jobs.filter(j => !f || `${j.name} ${j.status}`.toLowerCase().includes(f));
+  const html = list.map(j => `
+    <tr class="${j.acked ? "acked" : ""}">
+      <td>${when(j.start)}</td><td title="${esc(j.title || "")}">${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
+      <td><span class="tag ${j.status === "success" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
+      <td>${fmtDur(j.seconds)}</td>
+      <td>${j.outputs} files${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
+        || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}</td>
+      <td><button data-ack="${esc(j.id)}" data-state="${j.acked ? "unack" : "ack"}">${j.acked ? "Restore" : "✓ Ack"}</button></td>
+    </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}`).join("")
+    || `<tr><td colspan="6" style="color:var(--muted)">No jobs recorded yet</td></tr>`;
+  if (html !== last) { $("rows").innerHTML = html; last = html; }
+  $("info").textContent = `${list.length} jobs · ${jobs.filter(j => !j.acked).length} not acknowledged`;
+}
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-open]");
+  if (t) { open.has(t.dataset.open) ? open.delete(t.dataset.open) : open.add(t.dataset.open); show(); return; }
+  const a = e.target.closest("button[data-ack]");
+  if (a) { await fetch(`/api/${a.dataset.state}/${a.dataset.ack}`, { method: "POST" }); tick(); return; }
+  const im = e.target.closest("button[data-job]");
+  if (im) { window.open("/images?id=" + encodeURIComponent(im.dataset.job), "darrowmere-images", "width=1200,height=900"); return; }
+  const v = e.target.closest("button[data-file]");
+  if (v) window.open("/viewer?" + new URLSearchParams({ filename: v.dataset.file, subfolder: v.dataset.sub, type: v.dataset.type }), "darrowmere-viewer", "width=1100,height=850");
+});
+$("filter").oninput = show;
+async function tick() {
+  try { jobs = (await (await fetch("/api/jobs")).json()).jobs; show(); }
+  catch (e) { $("info").textContent = "monitor server not reachable"; }
+}
+tick(); setInterval(tick, 5000);
+</script>
+</body>
+</html>

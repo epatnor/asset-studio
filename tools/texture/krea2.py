@@ -7,7 +7,7 @@ avkodar över kanten), så att den inte behöver tonas eller lagas efteråt."""
 import json, os, random, re, sys, time, urllib.parse, urllib.request, uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from comfy_target import comfy_url, describe  # noqa: E402
+from comfy_target import comfy_url, describe, job_extra  # noqa: E402
 
 COMFY = comfy_url()
 if not COMFY:
@@ -65,7 +65,7 @@ if re.search(r"\([^()]+:-?\d+(\.\d+)?\)", prompt):
 def get(url):
     return json.load(urllib.request.urlopen(url, timeout=30))
 
-req = urllib.request.Request(f"{COMFY}/prompt", data=json.dumps({"prompt": g}).encode(), headers={"Content-Type": "application/json"})
+req = urllib.request.Request(f"{COMFY}/prompt", data=json.dumps({"prompt": g, **job_extra(g, "krea2.py")}).encode(), headers={"Content-Type": "application/json"})
 pid = json.load(urllib.request.urlopen(req, timeout=30))["prompt_id"]
 
 for _ in range(200):
