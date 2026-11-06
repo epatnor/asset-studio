@@ -383,7 +383,7 @@ function dialHtml([k, label, col]) { return `
 function setGauge(k, pct, unit, m1, m2, colorVar) {
   const p = pct == null || isNaN(pct) ? null : Math.max(0, Math.min(100, pct));
   $("g_" + k).setAttribute("stroke-dasharray", `${p == null ? 0 : ARC * p / 100} ${C}`);
-  const col = `var(${level(p) || colorVar})`;
+  const col = `var(${colorVar})`;  // samma färg som i grafen; hur full mätaren är visar lasten
   $("gs0_" + k).setAttribute("stop-color", col); $("gs1_" + k).setAttribute("stop-color", col);
   $("gv_" + k).textContent = p == null ? "–" : p.toFixed(0);
   $("gu_" + k).textContent = unit; $("gm1_" + k).textContent = m1; $("gm2_" + k).textContent = m2;
