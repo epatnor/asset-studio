@@ -1,0 +1,14 @@
+{
+  "model": "deepseek/deepseek-v4.1-flash-1017",
+  "comfy": "http://127.0.0.1:8188",
+  "orders": "/data/orders",
+  "output": "/data/utdata",
+  "defaults": {
+    "routes": {
+      "model": {"use": "local", "cloud": "tripo-p1", "face_limit": 3000},
+      "texture": {"use": "local", "cloud": "tripo"}
+    },
+    "review": {"enabled": true, "model": "deepseek/deepseek-v4.1-flash-1017"},
+    "budget": {"tripo_credits_per_order": 200, "ask_before_cloud": true}
+  }
+}

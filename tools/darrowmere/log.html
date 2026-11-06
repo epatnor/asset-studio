@@ -26,7 +26,9 @@
 </head>
 <body>
 <header>
-  <b>COMFYUI LOG</b>
+  <b id="ttl">COMFYUI LOG</b>
+  <button id="srcComfy" class="on" title="ComfyUI service log">ComfyUI</button>
+  <button id="srcRunner" title="Order runner log: steps and DeepSeek reviews">Runner</button>
   <input id="filter" placeholder="Filter lines" spellcheck="false">
   <button id="follow" class="on" title="Keep scrolled to the newest line">Follow</button>
   <button id="wrap" title="Wrap long lines">Wrap</button>
@@ -36,7 +38,13 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-let lines = [], last = "";
+let lines = [], last = "", src = new URLSearchParams(location.search).get("src") === "runner" ? "runner" : "comfyui";
+function setSrc(v) {
+  src = v; $("srcComfy").classList.toggle("on", v === "comfyui"); $("srcRunner").classList.toggle("on", v === "runner");
+  $("ttl").textContent = v === "runner" ? "RUNNER LOG" : "COMFYUI LOG"; document.title = v === "runner" ? "Darrowmere Runner Log" : "Darrowmere Log";
+  lines = []; last = ""; tick();
+}
+$("srcComfy").onclick = () => setSrc("comfyui"); $("srcRunner").onclick = () => setSrc("runner");
 const toggle = id => $(id).onclick = () => { $(id).classList.toggle("on"); if (id === "wrap") $("log").classList.toggle("wrap"); show(); };
 toggle("follow"); toggle("wrap");
 $("filter").oninput = show;
@@ -55,11 +63,11 @@ function show() {
 }
 async function tick() {
   try {
-    const res = await fetch("/api/log"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; } const r = await res.json();
+    const res = await fetch("/api/log?src=" + src); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; } const r = await res.json();
     lines = r.lines || []; show();
   } catch (e) { $("info").textContent = "Darrowmere offline · retrying"; }
 }
-tick(); setInterval(tick, 3000);
+setSrc(src); setInterval(tick, 3000);
 </script>
 </body>
 </html>

@@ -91,7 +91,29 @@ for l in run(["ps", "-eo", "pid,pcpu,pmem,rss,comm", "--sort=-pcpu"]).splitlines
     p = l.split(None, 4)
     if len(p) == 5:
         procs.append({"pid": int(p[0]), "cpu": float(p[1]), "mem": float(p[2]), "rss_mb": int(p[3]) // 1024, "name": p[4]})
+pipes = []  # planerna som tools/pipeline.py sparar; de senaste tre dygnen
+pd = "/data/utdata/pipelines"
+if os.path.isdir(pd):
+    fs = sorted((f for f in os.listdir(pd) if f.endswith(".json") and not f.startswith(".")), key=lambda f: -os.path.getmtime(f"{pd}/{f}"))
+    for f in fs[:8]:
+        if time.time() - os.path.getmtime(f"{pd}/{f}") < 3 * 86400:
+            try:
+                pipes.append(json.load(open(f"{pd}/{f}")))
+            except Exception:
+                pass
+ai = []  # de senaste DeepSeek- och molnanropen från beställningsrunnern
+for fn in ("/data/orders/deepseek.jsonl", "/data/orders/cloud.jsonl"):
+    try:
+        with open(fn) as f:
+            for l in f.readlines()[-40:]:
+                try:
+                    ai.append(json.loads(l))
+                except Exception:
+                    pass
+    except OSError:
+        pass
 print(json.dumps({
+    "pipelines": pipes, "ai": ai,
     "t": time.time(), "host": os.uname().nodename, "uptime": float(open("/proc/uptime").read().split()[0]),
     "load": open("/proc/loadavg").read().split()[:3], "cpu": cpu[0], "cores": cpu[1:],
     "mem": {"total": mi["MemTotal"] * 1024, "avail": mi["MemAvailable"] * 1024,
@@ -203,6 +225,209 @@ def job_title(item):
     # Beskrivningen som verktyget skickade med (comfy_target.job_extra), om någon
     extra = item[3] if len(item) > 3 and isinstance(item[3], dict) else {}
     return str(extra.get("job_title") or "")[:160]
+
+
+def job_pipeline(item):
+    # Vilken pipeline och vilket steg jobbet hör till (tools/pipeline.py), om något
+    extra = item[3] if len(item) > 3 and isinstance(item[3], dict) else {}
+    p = extra.get("pipeline")
+    return {"id": str(p["id"]), "step": str(p["step"])} if isinstance(p, dict) and p.get("id") and p.get("step") else None
+
+
+# ---- Inställningar och API-nycklar ---------------------------------------------------------------------------------
+# Inställningarna och nycklarna ligger på Darrowmere, där runnern läser dem: /data/runner/settings.json och
+# /data/runner/.env (läge 600). Nycklar skickas dit över SSH på stdin och läses aldrig tillbaka till webbläsaren; sidan
+# får bara veta om en nyckel finns, dess fyra sista tecken och när den sparades.
+PROVIDERS = {
+    "openrouter": {"label": "OpenRouter", "env": "OPENROUTER_API_KEY", "used_for": "DeepSeek review",
+                   "url": "https://openrouter.ai/settings/keys"},
+    "tripo": {"label": "Tripo 3D", "env": "TRIPO_API_KEY", "used_for": "Cloud 3D models and their textures",
+              "url": "https://platform.tripo3d.ai/api-keys"},
+}
+KEYTOOL = r'''
+import json, os, sys, time, urllib.request, urllib.error
+D = "/data/runner"; ENV = D + "/.env"; META = D + "/keys_meta.json"
+req = json.load(sys.stdin)
+def read():
+    out = {}
+    if os.path.exists(ENV):
+        for l in open(ENV):
+            if "=" in l and not l.startswith("#"):
+                k, v = l.rstrip("\n").split("=", 1); out[k] = v.strip().strip('"').strip("'")
+    return out
+def meta():
+    try: return json.load(open(META))
+    except Exception: return {}
+def write(d, m):
+    fd = os.open(ENV + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f: f.write("".join(f"{k}={v}\n" for k, v in d.items() if v))
+    os.replace(ENV + ".tmp", ENV); os.chmod(ENV, 0o600)
+    json.dump(m, open(META, "w")); os.chmod(META, 0o600)
+def get(url, key):
+    r = urllib.request.Request(url, headers={"Authorization": "Bearer " + key})
+    try: return json.load(urllib.request.urlopen(r, timeout=20))
+    except urllib.error.HTTPError as e: return {"http": e.code}
+    except Exception as e: return {"error": str(e)[:120]}
+op = req["op"]; e = read(); m = meta(); out = {"ok": True}
+if op == "status":
+    out["keys"] = {k: {"set": bool(e.get(k)), **m.get(k, {})} for k in req["envs"]}
+    try: out["settings"] = json.load(open(D + "/settings.json"))
+    except Exception: out["settings"] = {}
+    try: out["defaults"] = json.load(open(D + "/runner.json")).get("defaults", {})
+    except Exception: out["defaults"] = {}
+elif op == "set":
+    v = req["value"]
+    e[req["env"]] = v; m[req["env"]] = {"hint": v[-4:], "saved": time.time(), "by": req.get("by")}; write(e, m)
+elif op == "delete":
+    e.pop(req["env"], None); m.pop(req["env"], None); write(e, m)
+elif op == "settings":
+    tmp = D + "/settings.tmp"; json.dump(req["settings"], open(tmp, "w"), indent=1); os.replace(tmp, D + "/settings.json")
+elif op == "test":
+    k = e.get(req["env"])
+    if not k: out = {"ok": False, "message": "No key saved."}
+    elif req["provider"] == "openrouter":
+        r = get("https://openrouter.ai/api/v1/key", k); d = r.get("data") or {}
+        out = {"ok": bool(d), "message": (f"Key works · used ${d.get('usage', 0):.2f}" + (f" of ${d['limit']:.2f}" if d.get("limit") else "")
+               + (f" · expires {d['expires_at'][:10]}" if d.get("expires_at") else "")) if d else f"Rejected ({r.get('http') or r.get('error')})"}
+    elif req["provider"] == "tripo":
+        for url in ("https://openapi.tripo3d.ai/v3/account/balance", "https://openapi.tripo3d.ai/v3/wallet", "https://api.tripo3d.ai/v2/openapi/user/balance"):
+            r = get(url, k)
+            if r.get("code") == 0:
+                d = r.get("data") or {}; out = {"ok": True, "message": f"Key works · balance {d.get('balance', d)}"}; break
+        else:
+            out = {"ok": False, "message": f"Rejected ({r.get('http') or r.get('error') or r.get('code')})"}
+print(json.dumps(out))
+'''
+
+
+def rcmd(args):
+    # Ett kommando på Darrowmere: direkt när panelen körs där, annars över SSH (den andra sidans skal tolkar om raden)
+    import shlex
+    return list(args) if LOCAL else SSH + [shlex.join(args)]
+
+
+def keytool(req):
+    r = subprocess.run(rcmd(["python3", "-c", KEYTOOL]), input=json.dumps(req), capture_output=True, text=True, timeout=40)
+    if r.returncode:
+        raise RuntimeError((r.stderr or "Darrowmere did not answer").strip()[-200:])
+    return json.loads(r.stdout)
+
+
+AUDIT = STORE.with_name("settings_audit.log")
+
+
+def audit(user, what):
+    # Vem ändrade vad och när (aldrig själva nyckeln)
+    with open(AUDIT, "a") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {user} {what}\n")
+
+
+def clean_settings(s, defaults):
+    # Bara kända fält, med rimliga värden
+    r = json.loads(json.dumps(defaults))
+    rt = s.get("routes", {})
+    for kind in ("model", "texture"):
+        v = rt.get(kind, {})
+        if v.get("use") in ("local", "cloud"):
+            r["routes"][kind]["use"] = v["use"]
+    if rt.get("model", {}).get("cloud") in ("tripo-p1", "tripo-p2"):
+        r["routes"]["model"]["cloud"] = rt["model"]["cloud"]
+    fl = rt.get("model", {}).get("face_limit")
+    if isinstance(fl, int) and 500 <= fl <= 20000:
+        r["routes"]["model"]["face_limit"] = fl
+    rv = s.get("review", {})
+    if isinstance(rv.get("enabled"), bool):
+        r["review"]["enabled"] = rv["enabled"]
+    if isinstance(rv.get("model"), str) and re.fullmatch(r"~?[\w.-]+/[\w.:-]+", rv["model"]):
+        r["review"]["model"] = rv["model"]
+    b = s.get("budget", {})
+    if isinstance(b.get("tripo_credits_per_order"), int) and 0 <= b["tripo_credits_per_order"] <= 5000:
+        r["budget"]["tripo_credits_per_order"] = b["tripo_credits_per_order"]
+    if isinstance(b.get("ask_before_cloud"), bool):
+        r["budget"]["ask_before_cloud"] = b["ask_before_cloud"]
+    return r
+
+
+def ai_jobs(entries):
+    # DeepSeek-granskningar som rader i jobblistan: namn "DeepSeek", godkänt eller underkänt, tid, poäng och kostnad
+    out = []
+    for e in entries or []:
+        if e.get("provider"):  # ett molnjobb (Tripo): en rad med 3D-knapp för modellen
+            files = e.get("files") or []
+            out.append({"id": f"cloud-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": str(e["provider"]).capitalize(),
+                        "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
+                                 + (f" · {e.get('credits')} credits" if e.get("credits") is not None else ""),
+                        "status": "error" if e.get("error") else "success", "start": e.get("t"), "seconds": e.get("seconds"),
+                        "outputs": len(files), "models": [f for f in files if f["filename"].lower().endswith((".glb", ".gltf"))],
+                        "images": [], "pipeline": {"id": e.get("order"), "step": e.get("step")}, "kind": "ai",
+                        "details": {"prompts": [], "params": {k: e[k] for k in ("credits", "face_limit", "texture") if e.get(k) is not None},
+                                    "models": [e.get("model")]}, "error": e.get("error")})
+            continue
+        ok = e.get("pass")
+        cost = e.get("cost_usd")
+        out.append({"id": f"ai-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": "DeepSeek",
+                    "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
+                             + (f" · {e.get('score')}/10" if e.get("score") is not None else "")
+                             + (f" · ${cost:.4f}" if isinstance(cost, (int, float)) else ""),
+                    "status": "error" if e.get("error") else "pass" if ok else "fail",
+                    "start": e.get("t"), "seconds": e.get("seconds"), "outputs": 0, "models": [], "images": [],
+                    "pipeline": {"id": e.get("order"), "step": e.get("step")}, "kind": "ai",
+                    "details": {"prompts": ["\n".join(f"- {c}" for c in e.get("criteria") or [])] + ([e["summary"]] if e.get("summary") else []),
+                                "params": {k: v for k, v in (("score", e.get("score")), ("cost_usd", cost),
+                                                             ("prompt_tokens", (e.get("tokens") or {}).get("prompt_tokens")),
+                                                             ("completion_tokens", (e.get("tokens") or {}).get("completion_tokens")))
+                                           if v is not None},
+                                "models": [e.get("model")]},
+                    "error": e.get("error") or (None if ok else "; ".join(map(str, e.get("issues") or [])) or e.get("summary"))})
+    return out
+
+
+def pipeline_views(plans, comfy):
+    """Planerna med status per steg. ComfyUI-steg får sin status från jobben (det senaste jobbet för steget gäller),
+    övriga steg från planfilen. Bara pipelines som pågår eller ändrades de senaste tolv timmarna visas."""
+    run = comfy["running"] if comfy else []
+    pend = comfy["pending"] if comfy else []
+    by_step = {}
+    for j in sorted(jobs.values(), key=lambda j: j.get("start") or 0):
+        if j.get("pipeline") and j.get("kind") != "ai":  # granskningarnas läge står i planfilen
+            by_step[(j["pipeline"]["id"], j["pipeline"]["step"])] = j
+    out = []
+    for pl in plans or []:
+        # Ett steg kan också peka ut sitt jobb direkt ("job": prompt-id), t.ex. ett jobb som skickades innan planen fanns
+        for s in pl.get("steps", []):
+            jid = s.get("job")
+            if jid:
+                ref = {"id": pl["id"], "step": s["key"]}
+                if jid in jobs:
+                    by_step[(pl["id"], s["key"])] = jobs[jid]
+                for r in run + pend:
+                    if r["id"] == jid and not r.get("pipeline"):
+                        r["pipeline"] = ref
+        steps = []
+        for s in pl.get("steps", []):
+            key = (pl["id"], s["key"])
+            v = {"key": s["key"], "label": s.get("label", s["key"]), "where": s.get("where", "darrowmere"), "kind": s.get("kind"),
+                 "status": s.get("status") or "planned", "note": s.get("note"), "start": s.get("start"), "end": s.get("end"),
+                 "estimate": s.get("estimate")}
+            j = by_step.get(key)
+            if j:
+                v.update(status="done" if j.get("status") == "success" else "failed", job=j["id"], start=j.get("start"),
+                         end=(j["start"] + j["seconds"]) if j.get("start") and j.get("seconds") is not None else None)
+            if any(p.get("pipeline") and (p["pipeline"]["id"], p["pipeline"]["step"]) == key for p in pend):
+                v.update(status="queued", end=None)
+            r = next((r for r in run if r.get("pipeline") and (r["pipeline"]["id"], r["pipeline"]["step"]) == key), None)
+            if r:
+                pr = comfy.get("progress") or {}
+                v.update(status="running", job=r["id"], start=r.get("queued_at"), end=None, pct=pr.get("pct"))
+            steps.append(v)
+        active = any(s["status"] in ("running", "queued", "approval") for s in steps)
+        if not active and time.time() - pl.get("updated", 0) > 12 * 3600 and not any(
+                (s.get("end") or 0) > time.time() - 12 * 3600 for s in steps):
+            continue
+        out.append({"id": pl["id"], "title": pl.get("title", pl["id"]), "steps": steps, "active": active,
+                    "done": sum(s["status"] in ("done", "skipped") for s in steps), "updated": pl.get("updated")})
+    out.sort(key=lambda p: (not p["active"], -(p.get("updated") or 0)))
+    return out
 
 
 def job_name(prompt):
@@ -420,15 +645,16 @@ def comfy_status():
         images = [{"filename": f["filename"], "subfolder": f.get("subfolder", ""), "type": f.get("type", "output")}
                   for f in files if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp")) and f.get("type", "output") == "output"]
         jobs.append({"id": pid, "name": job_name(h["prompt"][2]), "title": job_title(h["prompt"]), "details": job_details(h["prompt"][2]),
+                     "pipeline": job_pipeline(h["prompt"]),
                      "status": h.get("status", {}).get("status_str", "?"),
                      "start": start / 1000 if start else None, "seconds": (end - start) / 1000 if start and end else None,
                      "outputs": len(files), "models": models, "images": images[:60],
                      "error": f"{err.get('node_type', '')}: {err.get('exception_message', '')}"[:300] if err else None})
     jobs.sort(key=lambda j: j["start"] or 0, reverse=True)
-    running = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r), "details": job_details(r[2]),
+    running = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r), "details": job_details(r[2]), "pipeline": job_pipeline(r),
                 "queued_at": r[3].get("create_time", 0) / 1000 if isinstance(r[3], dict) else None}
                for r in q.get("queue_running", [])]
-    pending = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r)} for r in q.get("queue_pending", [])]
+    pending = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r), "pipeline": job_pipeline(r)} for r in q.get("queue_pending", [])]
     RUN_GRAPHS.clear()
     RUN_GRAPHS.update({r[1]: r[2] for r in q.get("queue_running", [])})
     return {"running": running, "pending": pending, "history": jobs, "version": stats["system"].get("comfyui_version"),
@@ -471,8 +697,10 @@ def poller():
                      "net": sum(r["rx"] + r["tx"] for r in rates.values()) / 1e6 if rates else None}
         with lock:
             if comfy is not None:
-                merge_jobs(comfy["history"])
+                merge_jobs(comfy["history"] + (ai_jobs(probe.get("ai")) if probe else []))
                 comfy["history"] = job_list()
+            if probe is not None:
+                state["pipelines"] = pipeline_views(probe.get("pipelines"), comfy)
             if probe is None and state.get("online", True):
                 state["offline_since"] = time.time()  # Darrowmere slutade svara
             elif probe is not None:
@@ -580,6 +808,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, (HERE / "accounts.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/api/accounts":
             return self.send(200, json.dumps({"me": me, "users": AUTH.list_users()}), "application/json")
+        if path == "/settings":
+            return self.send(200, (HERE / "settings.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/api/settings":
+            try:
+                r = keytool({"op": "status", "envs": [p["env"] for p in PROVIDERS.values()]})
+            except Exception as e:
+                return self.send(502, json.dumps({"ok": False, "message": f"Darrowmere: {e}"}), "application/json")
+            defaults = r.get("defaults") or {}
+            return self.send(200, json.dumps({
+                "ok": True, "settings": clean_settings(r.get("settings") or {}, defaults) if defaults else r.get("settings"),
+                "defaults": defaults, "keys_editable": self.from_home_network(),
+                "providers": {k: {**p, "key": r["keys"].get(p["env"], {"set": False})} for k, p in PROVIDERS.items()}}), "application/json")
         if self.path in ("/", "/index.html"):
             return self.send(200, (HERE / "monitor.html").read_bytes(), "text/html; charset=utf-8")
         if self.path.startswith("/viewer"):
@@ -593,9 +833,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/api/jobs":
             with lock:
                 return self.send(200, json.dumps({"jobs": job_list(include_acked=True, limit=500)}), "application/json")
-        if self.path == "/api/log":
-            # De senaste 400 raderna ur tjänstens logg, hämtade när loggfönstret frågar
-            r = subprocess.run(SSH + ["journalctl", "-u", "comfyui", "-n", "400", "--no-pager", "-o", "short-iso"],
+        if self.path.split("?")[0] == "/api/log":
+            # De senaste 400 raderna ur en tjänsts logg (ComfyUI eller beställningsrunnern), hämtade när loggfönstret frågar
+            src = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("src", ["comfyui"])[0]
+            unit = {"comfyui": "comfyui", "runner": "darrowmere-runner"}.get(src, "comfyui")
+            r = subprocess.run(SSH + ["journalctl", "-u", unit, "-n", "400", "--no-pager", "-o", "short-iso"],
                                capture_output=True, text=True, timeout=20)
             lines = [re.sub(r"\x1b\[[0-9;]*m", "", l) for l in r.stdout.splitlines()]
             return self.send(200, json.dumps({"lines": lines, "error": r.stderr.strip()[-200:] if r.returncode else None}), "application/json")
@@ -682,6 +924,50 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError as e:
                 return bad(400, str(e))
             return bad(404, "not found")
+        if self.path == "/api/settings":
+            try:
+                cur = keytool({"op": "status", "envs": []})
+                s = clean_settings(data.get("settings") or {}, cur.get("defaults") or {})
+                keytool({"op": "settings", "settings": s})
+            except Exception as e:
+                return bad(502, f"Could not save: {e}")
+            audit(me, "settings " + json.dumps(s, separators=(",", ":")))
+            return self.send(200, json.dumps({"ok": True, "message": "Settings saved.", "settings": s}), "application/json")
+        k = re.match(r"^/api/keys/(set|delete|test)$", self.path)
+        if k:
+            p = PROVIDERS.get(data.get("provider", ""))
+            if not p:
+                return bad(400, "Unknown service.")
+            if k.group(1) != "test" and not self.from_home_network():
+                return bad(403, "API keys can only be changed from the home network.")
+            try:
+                if k.group(1) == "set":
+                    v = str(data.get("key", "")).strip()
+                    if not re.fullmatch(r"[\x21-\x7e]{8,512}", v):
+                        return bad(400, "That does not look like an API key (8–512 characters, no spaces).")
+                    keytool({"op": "set", "env": p["env"], "value": v, "by": me})
+                    audit(me, f"key set {data['provider']}")
+                    return ok(f"{p['label']} key saved on Darrowmere.")
+                if k.group(1) == "delete":
+                    keytool({"op": "delete", "env": p["env"]})
+                    audit(me, f"key removed {data['provider']}")
+                    return ok(f"{p['label']} key removed.")
+                r = keytool({"op": "test", "env": p["env"], "provider": data["provider"]})
+                return self.send(200, json.dumps({"ok": r.get("ok", False), "message": r.get("message", "")}), "application/json")
+            except Exception as e:
+                return bad(502, f"Darrowmere: {e}")
+        ap = re.match(r"^/api/orders/([A-Za-z0-9._-]+)/approve$", self.path)
+        if ap:
+            step, credits = str(data.get("step", "")), data.get("credits")
+            if not re.fullmatch(r"[\w.-]+", step) or not isinstance(credits, int) or not 0 < credits <= 5000:
+                return bad(400, "bad approval")
+            code = ("import json,os,sys; p='/data/orders/'+sys.argv[1]+'/approved.json'; d=json.load(open(p)) if os.path.exists(p) else {}; "
+                    "d.setdefault('steps',{})[sys.argv[2]]=int(sys.argv[3]); json.dump(d,open(p,'w'))")
+            r = subprocess.run(rcmd(["python3", "-c", code, ap.group(1), step, str(credits)]), capture_output=True, text=True, timeout=20)
+            if r.returncode:
+                return bad(502, (r.stderr or "failed").strip()[-200:])
+            audit(me, f"approved {ap.group(1)}/{step} {credits} credits")
+            return ok(f"Approved ~{credits} credits; the runner continues.")
         a = re.match(r"^/api/(ack|unack)/([\w-]+)$", self.path)
         if a:
             with lock:

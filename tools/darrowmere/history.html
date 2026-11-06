@@ -42,8 +42,8 @@
 </header>
 <div class="box">
   <table>
-    <colgroup><col style="width:130px"><col><col style="width:100px"><col style="width:96px"><col style="width:140px"><col style="width:96px"></colgroup>
-    <thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
+    <colgroup><col style="width:130px"><col style="width:70px"><col><col style="width:100px"><col style="width:96px"><col style="width:140px"><col style="width:96px"></colgroup>
+    <thead><tr><th>Started</th><th>Finished</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
 </div>
@@ -63,14 +63,14 @@ function show() {
   const list = jobs.filter(j => !f || `${j.name} ${j.status}`.toLowerCase().includes(f));
   const html = list.map(j => `
     <tr class="${j.acked ? "acked" : ""}">
-      <td>${when(j.start)}</td><td title="${esc(j.title || "")}">${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
-      <td><span class="tag ${j.status === "success" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
+      <td>${when(j.start)}</td><td>${j.start && j.seconds != null ? new Date((j.start + j.seconds) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–"}</td><td title="${esc(j.title || "")}">${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
+      <td><span class="tag ${j.status === "success" || j.status === "pass" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
       <td>${fmtDur(j.seconds)}</td>
-      <td>${j.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(j.delivered.path)}">⇣</span>` : (((j.images || []).length + (j.models || []).length) && j.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${j.outputs} files${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
+      <td>${j.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(j.delivered.path)}">⇣</span>` : (((j.images || []).length + (j.models || []).length) && j.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${j.kind === "ai" ? "–" : `${j.outputs} files`}${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
         || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}${(j.details?.prompts || []).length ? ` <button data-p="${esc(j.id)}">Prompt</button>` : ""}</td>
       <td><button data-ack="${esc(j.id)}" data-state="${j.acked ? "unack" : "ack"}">${j.acked ? "Restore" : "✓ Ack"}</button></td>
-    </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}${popen.has(j.id) ? `<tr class="info"><td></td><td class="msg" colspan="5">${details(j)}</td></tr>` : ""}`).join("")
-    || `<tr><td colspan="6" style="color:var(--muted)">No jobs recorded yet</td></tr>`;
+    </tr>${j.error && open.has(j.id) ? `<tr class="err"><td></td><td></td><td class="msg" colspan="5">${esc(j.error)}</td></tr>` : ""}${popen.has(j.id) ? `<tr class="info"><td></td><td></td><td class="msg" colspan="5">${details(j)}</td></tr>` : ""}`).join("")
+    || `<tr><td colspan="7" style="color:var(--muted)">No jobs recorded yet</td></tr>`;
   if (html !== last) { $("rows").innerHTML = html; last = html; }
   $("info").textContent = `${list.length} jobs · ${jobs.filter(j => !j.acked).length} not acknowledged`;
 }

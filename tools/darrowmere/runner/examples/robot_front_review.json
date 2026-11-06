@@ -1,0 +1,23 @@
+{
+  "id": "robot-front-review-test",
+  "title": "Robot android: DeepSeek review test",
+  "project": "asset-studio",
+  "asset": "robot-android",
+  "use": "test-only",
+  "inputs": {
+    "id_front.png": "../../../../build/robot/krea_proj/id_front.png",
+    "robot_ref.png": "../../../../build/robot/edit/robot_ref.png",
+    "render_front.png": "../../../../build/robot/krea_proj/renders/front.png"
+  },
+  "steps": [
+    {"key": "review_front", "label": "Review: front texture view", "kind": "review",
+     "images": ["$in:id_front.png"], "refs": ["$in:robot_ref.png", "$in:render_front.png"],
+     "criteria": [
+       "The candidate shows the same robot as the first reference: glossy white armor plates, dark joints, small red accents, a human-like face framed by a robotic head casing, small ear pieces.",
+       "The candidate's pose, silhouette, proportions and camera match the second reference (a grey clay render of the 3D model) closely enough to project the candidate onto that model.",
+       "Plain light background, no extra objects, no broken or extra fingers, no melted details."
+     ],
+     "min_score": 7},
+    {"key": "project", "label": "Project onto UVs", "kind": "manual", "where": "andorhal"}
+  ]
+}

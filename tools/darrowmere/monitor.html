@@ -74,6 +74,23 @@
   .curtime { color: var(--muted); font-weight: 500; font-size: 12.5px; }
   .curphase, .curtiming { color: var(--muted); font-size: 11.5px; }
   .curtiming { text-align: right; }
+  /* Pipeline: en tredje rad med alla delsteg när jobbet hör till en hel tillgång (3D, texturer, rigg …) */
+  .cur.pipe { height: 90px; grid-template-rows: 22px 20px 20px; }
+  .cur3 { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: center; min-width: 0; }
+  .cur3[hidden] { display: none; }
+  .pname { color: var(--muted); font-size: 11.5px; }
+  .pchips { display: flex; gap: 4px; min-width: 0; overflow: hidden; }
+  .pchip { flex: 1 1 0; min-width: 0; height: 20px; line-height: 18px; border-radius: 4px; border: 1px solid var(--line); padding: 0 6px;
+           font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--panel); }
+  .pchip::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 0;
+                   background: var(--track); }
+  .pchip.done { color: var(--text); } .pchip.done::before { background: var(--green); }
+  .pchip.running { color: var(--text); border-color: var(--blue); }
+  .pchip.running::before { background: var(--blue); animation: blink 1s steps(1, end) infinite; }
+  .pchip.queued::before { background: none; box-shadow: inset 0 0 0 1.5px var(--amber); }
+  .pchip.failed { border-color: var(--red); } .pchip.failed::before { background: var(--red); }
+  .pchip.skipped { text-decoration: line-through; }
+  .pchip.waiting::before { background: var(--amber); }
   .steps { display: flex; gap: 3px; height: 12px; overflow: hidden; align-items: center; }
   .steps i { flex: 0 1 12px; min-width: 3px; height: 12px; border-radius: 2px; background: var(--track); }
   /* Solida färger per slags steg; den pågående blinkar */
@@ -101,7 +118,7 @@
   .actions { display: flex; gap: 8px; align-items: center; }
   .tag.btn { cursor: pointer; }
   .tag.btn:hover { border-color: var(--red); }
-  .pop { position: fixed; z-index: 10; max-width: min(560px, calc(100vw - 32px)); max-height: 260px; overflow: auto; padding: 10px 12px;
+  .pop { position: fixed; z-index: 10; max-width: min(560px, calc(100vw - 16px)); max-height: min(260px, calc(100vh - 16px)); overflow: auto; padding: 10px 12px;
          background: var(--panel2); border: 1px solid color-mix(in srgb, var(--red) 45%, var(--line)); border-radius: 8px;
          box-shadow: 0 10px 30px rgba(0, 0, 0, .45); font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
   .pop b { display: block; font-family: system-ui, sans-serif; font-size: 12px; color: var(--red); margin-bottom: 6px; }
@@ -119,7 +136,7 @@
 
   .gauge[data-k] { cursor: pointer; border-radius: 8px; }
   .gauge[data-k]:hover { background: color-mix(in srgb, var(--panel2) 60%, transparent); }
-  .pop.info { border-color: var(--line); font-family: inherit; white-space: normal; width: 300px; font-size: 12px; max-height: min(460px, calc(100vh - 24px)); }
+  .pop.info { border-color: var(--line); font-family: inherit; white-space: normal; width: 300px; font-size: 12px; max-height: calc(100vh - 16px); }
   td:last-child { padding: 0 6px; text-overflow: clip; }
   .pop.info b { color: var(--text); font-size: 13px; }
   .drow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; height: 22px; align-items: center; border-bottom: 1px dashed var(--line); }
@@ -160,6 +177,7 @@
   .jobcell { cursor: pointer; }
   .jobcell:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
   .pop.info.wide { width: 520px; }
+  .dsub button.copy { height: 18px; padding: 0 7px; font-size: 10.5px; margin-left: 6px; text-transform: none; letter-spacing: 0; vertical-align: 1px; }
   .ptext { white-space: pre-wrap; word-break: break-word; font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--text);
            background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; user-select: text; }
   .spin { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; border-radius: 50%;
@@ -197,6 +215,7 @@
   <span class="num" id="age"></span>
   <button id="acctBtn" title="Accounts and password"><span id="meName">Account</span></button>
   <button id="outBtn" title="Log out">Log out</button>
+  <button id="setBtn" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
   <button id="histBtn" title="All jobs, also acknowledged ones">History</button>
   <button id="logBtn" title="Open the ComfyUI log in its own window">Log</button>
 </header>
@@ -219,11 +238,12 @@
         <span class="legend2" title="Colour of each step"><span><i style="background:#f472b6"></i>load</span><span><i style="background:var(--violet)"></i>prompt</span><span><i style="background:var(--blue)"></i>sampling</span><span><i style="background:var(--amber)"></i>VAE</span><span><i style="background:var(--teal)"></i>3D</span><span><i style="background:var(--green)"></i>save</span><span><i style="background:var(--track);box-shadow:inset 0 0 0 1px var(--muted)"></i>cached</span></span>
         <span class="num curtime" id="curTime"></span></div>
       <div class="cur2"><span class="ell curphase num" id="curPhase"></span><span class="steps" id="curSteps"></span><span class="num curtiming ell" id="curTiming"></span></div>
+      <div class="cur3" id="curPipe" hidden><span class="ell pname num" id="pipeName"></span><span class="pchips" id="pipeSteps"></span></div>
     </div>
     <div class="tablebox">
       <table>
-        <colgroup><col style="width:70px"><col><col style="width:96px"><col style="width:96px"><col style="width:200px"><col style="width:40px"></colgroup>
-        <thead><tr><th>Started</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
+        <colgroup><col style="width:64px"><col style="width:64px"><col><col style="width:96px"><col style="width:96px"><col style="width:200px"><col style="width:40px"></colgroup>
+        <thead><tr><th>Started</th><th>Finished</th><th>Job</th><th>Status</th><th>Time</th><th>Output</th><th></th></tr></thead>
         <tbody id="history"></tbody>
       </table>
     </div>
@@ -322,8 +342,7 @@ function showDetail(k, s) {
   const pop = $("pop"), card = document.querySelector(`.gauge[data-k="${k}"]`);
   pop.className = "pop info"; pop.innerHTML = detailHtml(k, s); pop.hidden = false;
   const r = card.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
-  pop.style.left = Math.max(16, Math.min(innerWidth - pw - 16, r.left + r.width / 2 - pw / 2)) + "px";
-  pop.style.top = (r.bottom + 6 + ph > innerHeight ? Math.max(8, r.top - ph - 6) : r.bottom + 6) + "px";
+  placePop(pop, { left: r.left + r.width / 2 - pw / 2, top: r.top, bottom: r.bottom });
 }
 document.addEventListener("click", e => {
   const card = e.target.closest(".gauge[data-k]");
@@ -343,7 +362,8 @@ const jobLabel = x => `${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
 $("logBtn").onclick = () => window.open("/log", "darrowmere-log", "width=1100,height=720");
-$("acctBtn").onclick = () => window.open("/accounts", "darrowmere-accounts", "width=720,height=640");
+$("setBtn").onclick = () => window.open("/settings", "darrowmere-settings", "width=860,height=900");
+$("acctBtn").onclick =() => window.open("/accounts", "darrowmere-accounts", "width=720,height=640");
 $("outBtn").onclick = async () => { await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); location.href = "/login"; };
 fetch("/api/auth-state").then(r => r.json()).then(a => { if (a.user) $("meName").textContent = a.user; }).catch(() => {});
 $("histBtn").onclick = () => window.open("/history", "darrowmere-history", "width=1000,height=720");
@@ -400,15 +420,15 @@ function render(s) {
     errors.clear();
     c.running.concat(c.pending).forEach(x => infos.set(x.id, x));
     renderCurrent(run, pr, c, s);
-    const rows = c.pending.map(x => `<tr><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
+    const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(c.history.filter(h => !runIds.has(h.id)).map(h => {
-        const bad = h.status !== "success";
+        const bad = h.status !== "success" && h.status !== "pass";
         if (h.error) errors.set(h.id, h.error);
         infos.set(h.id, h);
         const tag = h.error ? `<span class="tag bad btn" data-err="${esc(h.id)}" title="Show the error">${esc(h.status)} ▾</span>`
                             : `<span class="tag ${bad ? "bad" : "ok"}">${esc(h.status)}</span>`;
-        return `<tr><td>${clock(h.start)}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
-          <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.outputs} files${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
+        return `<tr><td>${clock(h.start)}</td><td>${h.start && h.seconds != null ? clock(h.start + h.seconds) : "–"}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
+          <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.kind === "ai" ? "–" : `${h.outputs} files`}${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
           <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
       }));
     $("ackAll").hidden = !c.history.length;
@@ -416,7 +436,7 @@ function render(s) {
     const more = Math.max(0, rows.length - 5);
     $("queueInfo").textContent = (run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle")
       + (more ? ` · ${more} older in History` : "");
-    const html = rows.slice(0, 5).join("") || `<tr><td colspan="6" style="color:var(--muted)">No unacknowledged jobs · see History for older ones</td></tr>`;
+    const html = rows.slice(0, 5).join("") || `<tr><td colspan="7" style="color:var(--muted)">No unacknowledged jobs · see History for older ones</td></tr>`;
     if (html !== lastRows) { $("history").innerHTML = html; lastRows = html; }
   } else if (s.comfy_error) {
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI not answering</span>`);
@@ -465,12 +485,17 @@ function drawSparks(h) {
   }
 }
 
+const placePop = (pop, r) => {
+  const pw = pop.offsetWidth, ph = pop.offsetHeight, below = r.bottom + 6, above = r.top - ph - 6;
+  pop.style.left = Math.max(8, Math.min(innerWidth - pw - 8, r.left)) + "px";
+  pop.style.top = Math.max(8, Math.min(innerHeight - ph - 8, below + ph <= innerHeight - 8 ? below : above)) + "px";
+};
 // Felrutan: klick på ett "error"-märke visar hela meddelandet under märket
 const errors = new Map(), infos = new Map();
 function infoHtml(x) {
   const d = x.details || {}, p = d.params || {};
   return `<b>${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</b>`
-    + (d.prompts || []).map((t, i) => `<div class="dsub">Prompt${d.prompts.length > 1 ? " " + (i + 1) : ""}</div><div class="ptext">${esc(t)}</div>`).join("")
+    + (d.prompts || []).map((t, i) => `<div class="dsub">Prompt${d.prompts.length > 1 ? " " + (i + 1) : ""} <button class="copy" data-copy="${i}">Copy</button></div><div class="ptext">${esc(t)}</div>`).join("")
     + (Object.keys(p).length ? `<div class="dsub">Settings</div>${Object.entries(p).map(([k, v]) => row(esc(k), esc(v))).join("")}` : "")
     + ((d.models || []).length ? `<div class="dsub">Models</div>${d.models.map(m => `<div class="ptext">${esc(m)}</div>`).join("")}` : "");
 }
@@ -489,9 +514,16 @@ document.addEventListener("click", e => {
   }
   pop.hidden = false;
   const r = t.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
-  pop.style.left = Math.max(16, Math.min(innerWidth - pw - 16, r.left)) + "px";
-  pop.style.top = (r.bottom + 6 + ph > innerHeight ? r.top - ph - 6 : r.bottom + 6) + "px";
+  placePop(pop, r);
 });
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button.copy");
+  if (!b) return;
+  const text = b.closest(".dsub").nextElementSibling.textContent;
+  try { await navigator.clipboard.writeText(text); }
+  catch { const r = document.createRange(); r.selectNodeContents(b.closest(".dsub").nextElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand("copy"); }
+  b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1500);
+}, true);
 addEventListener("keydown", e => { if (e.key === "Escape") $("pop").hidden = true; });
 addEventListener("scroll", () => $("pop").hidden = true, { passive: true });
 
@@ -512,6 +544,16 @@ document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener
 }));
 function showMsg(t) { const el = $("msg"); el.textContent = t; el.classList.toggle("show", !!t); }
 
+// Approve: godkänn ett molnstegs beräknade kostnad (två klick), så att runnern fortsätter
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button[data-approve]");
+  if (!b) return;
+  e.stopPropagation();
+  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.classList.add("armed"); showMsg(`Click again to approve ~${b.dataset.credits} credits`); setTimeout(() => { b.dataset.armed = ""; b.classList.remove("armed"); }, 4000); return; }
+  const r = await fetch(`/api/orders/${encodeURIComponent(b.dataset.approve)}/approve`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ step: b.dataset.step, credits: parseInt(b.dataset.credits) }) });
+  showMsg((await r.json()).message || "Done"); setTimeout(() => showMsg(""), 6000);
+}, true);
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
@@ -523,7 +565,36 @@ document.addEventListener("click", e => {
 // Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
 function renderCurrent(run, pr, c, s) {
   const set = (id, v, html) => { const el = $(id); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
-  $("cur").classList.toggle("on", !!run);
+  // Pipelinen som det pågående jobbet hör till, annars en som pågår på en annan dator (t.ex. projicering på Andorhal)
+  const pipes = s.pipelines || [];
+  const pl = (run?.pipeline && pipes.find(p => p.id === run.pipeline.id))
+    || pipes.find(p => p.active || p.steps.some(x => x.status === "running"));
+  $("cur").classList.toggle("pipe", !!pl);
+  $("curPipe").hidden = !pl;
+  if (pl) {
+    // Ett molnsteg som väntar på godkännande får en Approve-knapp med beräknad kostnad
+    const ap = pl.steps.find(x => x.status === "approval");
+    set("pipeName", ap ? `<button class="view" data-approve="${esc(pl.id)}" data-step="${esc(ap.key)}" data-credits="${ap.estimate || 0}" title="${esc(ap.note || "")}">Approve ~${ap.estimate || "?"} credits</button> ${esc(pl.title)}`
+                       : `${esc(pl.title)} · ${pl.done}/${pl.steps.length}`, true);
+    $("pipeName").title = pl.title;
+    set("pipeSteps", pl.steps.map(x => {
+      const dur = x.start && x.end ? fmtDur(x.end - x.start) : x.start && x.status === "running" ? fmtDur(s.now - x.start) + " so far" : "";
+      const tip = [x.label, x.status + (x.status === "running" && x.pct != null ? ` ${x.pct} %` : ""), x.where !== "darrowmere" ? "on " + x.where : "", dur, x.note || ""]
+        .filter(Boolean).join(" · ");
+      return `<span class="pchip ${esc(x.status)}" title="${esc(tip)}">${esc(x.label)}</span>`;
+    }).join(""), true);
+  }
+  // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
+  const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review"));
+  $("cur").classList.toggle("on", !!run || !!local);
+  if (local) {
+    const ai = local.kind === "review";
+    set("curIcon", `<i class="spin big"></i>`, true);
+    set("curName", `${ai ? "DeepSeek" : esc(pl.title)}<span class="sub"> · ${ai ? esc(pl.title) + ": " : ""}${esc(local.label)}</span>`, true);
+    set("curTime", local.start ? fmtDur(s.now - local.start) : "");
+    set("curPhase", ai ? "Reviewing images" : `Running on ${local.where}`); set("curSteps", "", true); set("curTiming", ai ? "via OpenRouter" : local.note || "");
+    return;
+  }
   if (!run) {
     set("curIcon", "", true);
     set("curName", c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running");
