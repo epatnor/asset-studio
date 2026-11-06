@@ -7,7 +7,9 @@
 #     python -I tools/texture/project_views.py <recept.json>
 # Receptfält utöver de gamla: "align": true (standard), "two_band": true (standard), "low_radius" (meter, 0.03),
 # "detail_power" (vinkelns exponent för detaljbandet, 24), "mirror_axis" ("x"/"y"/"z": symmetrisk kropp, vänster och höger
-# görs lika över spegelplanet; "mirror_plane", "mirror_tolerance"). Svarar med en rad JSON.
+# görs lika över spegelplanet; "mirror_plane", "mirror_tolerance"), "blend": "best" (ingen blandning: varje yta tar färgen
+# från en enda vy, den som ser den rakast räknat över ett område ("best_radius", meter, 0.03), med en smal övergång
+# ("best_power", 40); behåller Krea-2:s skärpa, skarvarna hamnar mellan sammanhängande områden). Svarar med en rad JSON.
 import argparse
 import json
 import struct
@@ -281,7 +283,37 @@ def main():
     energies = np.stack([layer[2] for layer in layers])
     total = energies.sum(axis=0) + 1e-6
     mixed = sum(layers[i][1] * (energies[i] / total)[..., None] for i in range(len(layers)))
-    if recipe.get("two_band", True):
+    def make_lowpass(radius):
+        # Lågpass på ytan: viktad medelfärg inom radius kring varje punkt, på ett urval av texlar med en gles grannmatris
+        from scipy import sparse
+        pick = np.random.default_rng(0).choice(len(position), min(len(position), 30000), replace=False)
+        tree = cKDTree(position[pick])
+        pairs = tree.query_pairs(radius, output_type="ndarray")
+        n = len(pick)
+        W = sparse.coo_matrix((np.ones(len(pairs) * 2 + n, np.float32),
+                               (np.r_[pairs[:, 0], pairs[:, 1], np.arange(n)], np.r_[pairs[:, 1], pairs[:, 0], np.arange(n)])), shape=(n, n)).tocsr()
+        _, owner = tree.query(position, workers=-1)
+
+        def lowpass(values, weights):
+            wv = np.stack([np.bincount(owner, weights=values[:, c] * weights, minlength=n) for c in range(values.shape[1])], axis=1)
+            ww = np.bincount(owner, weights=weights, minlength=n)
+            return ((W @ wv) / ((W @ ww)[:, None] + 1e-6))[owner].astype(np.float32)
+        return lowpass, n, len(pairs)
+
+    best_mode = recipe.get("blend") == "best"
+    if best_mode:
+        # En vy per yta: vyernas energi (rak vinkel × bias) jämnas ut över best_radius så att valet blir sammanhängande områden,
+        # en vy som inte ser punkten (skymd eller utanför bilden) kan inte väljas, och övergången görs smal med en hög potens.
+        lowpass, n, npairs = make_lowpass(recipe.get("best_radius", 0.03))
+        smooth = np.stack([lowpass(energies[i][:, None], np.ones(len(position), np.float32))[:, 0] * (layers[i][0] > 0.3)
+                           for i in range(len(layers))])
+        top = smooth.max(axis=0) + 1e-12
+        pick_w = (smooth / top) ** recipe.get("best_power", 40)
+        mixed = (sum(layers[i][1] * pick_w[i][..., None] for i in range(len(layers))) / (pick_w.sum(axis=0)[..., None] + 1e-12)).astype(np.float32)
+        winner = smooth.argmax(axis=0)
+        report.append({"best": {"radius": recipe.get("best_radius", 0.03), "power": recipe.get("best_power", 40),
+                                "share": {recipe["views"][i]["name"]: round(float((winner == i).mean()), 3) for i in range(len(layers))}}})
+    elif recipe.get("two_band", True):
         # Lågpass på ytan: viktad medelfärg inom low_radius kring varje punkt. Räknas på ett slumpvis urval av texlar med en
         # gles grannmatris och förs över till alla texlar med närmaste urvalspunkt (lågpassad färg varierar långsamt).
         from scipy import sparse
@@ -326,7 +358,10 @@ def main():
         close = dist < recipe.get("mirror_tolerance", 0.004)
         w_self = best_weight ** 2 + 1e-6
         w_other = np.where(close, best_weight[partner] ** 2, 0)
-        mixed = ((mixed * w_self[:, None] + mixed[partner] * w_other[:, None]) / (w_self + w_other)[:, None]).astype(np.float32)
+        if best_mode:  # ingen blandning här heller: den sida som ser ytan bäst ger färgen till båda
+            mixed = np.where((w_other > w_self)[:, None], mixed[partner], mixed).astype(np.float32)
+        else:
+            mixed = ((mixed * w_self[:, None] + mixed[partner] * w_other[:, None]) / (w_self + w_other)[:, None]).astype(np.float32)
         best_weight = np.where(close, np.maximum(best_weight, best_weight[partner]), best_weight)
         report.append({"mirror": {"axis": recipe["mirror_axis"], "plane": round(float(plane), 4), "matched": round(float(close.mean()), 3)}})
     seen = (best_weight > SEEN_LEVEL) & (total > 1e-3)
