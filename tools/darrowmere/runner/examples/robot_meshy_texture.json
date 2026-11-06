@@ -1,0 +1,22 @@
+{
+  "id": "robot-meshy-texture",
+  "title": "Robot android: Meshy retexture from identity views",
+  "project": "asset-studio",
+  "asset": "robot-android",
+  "use": "test-only",
+  "inputs": {
+    "mesh.glb": "../../../../build/robot/krea_proj/robot_facing_x.glb",
+    "front.png": "../../../../build/robot/krea_proj/id_front.png",
+    "left.png": "../../../../build/robot/krea_proj/id_left.png",
+    "back.png": "../../../../build/robot/krea_proj/id_back.png",
+    "robot_ref.png": "../../../../build/robot/edit/robot_ref.png"
+  },
+  "steps": [
+    {"key": "texture", "label": "Texture (Meshy)", "kind": "texture", "force": "cloud",
+     "cloud": {"mesh": "$in:mesh.glb", "views": ["$in:front.png", "$in:left.png", "$in:back.png"]}},
+    {"key": "review", "label": "Review: texture", "kind": "review", "images": ["$step:texture"], "refs": ["$in:robot_ref.png"],
+     "criteria": ["The base color texture belongs to the same robot as the reference: glossy white armor plates, dark joints, small red accents.",
+                  "No obvious seams, smears or blurred patches in the texture atlas."]},
+    {"key": "rig", "label": "Skeleton rig", "kind": "manual", "where": "andorhal"}
+  ]
+}

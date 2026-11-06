@@ -6,9 +6,9 @@
   "defaults": {
     "routes": {
       "model": {"use": "local", "cloud": "tripo-p1", "face_limit": 3000},
-      "texture": {"use": "local", "cloud": "tripo"}
+      "texture": {"use": "local", "cloud": "meshy", "meshy": {"resolution": "2k", "pbr": true, "keep_uv": true}}
     },
     "review": {"enabled": true, "model": "deepseek/deepseek-v4.1-flash-1017"},
-    "budget": {"tripo_credits_per_order": 200, "ask_before_cloud": true}
+    "budget": {"tripo_credits_per_order": 200, "meshy_credits_per_order": 60, "ask_before_cloud": true}
   }
 }

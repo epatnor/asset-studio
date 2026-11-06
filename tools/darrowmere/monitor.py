@@ -243,6 +243,8 @@ PROVIDERS = {
                    "url": "https://openrouter.ai/settings/keys"},
     "tripo": {"label": "Tripo 3D", "env": "TRIPO_API_KEY", "used_for": "Cloud 3D models and their textures",
               "url": "https://platform.tripo3d.ai/api-keys"},
+    "meshy": {"label": "Meshy", "env": "MESHY_API_KEY", "used_for": "Cloud textures on our own meshes (Retexture)",
+              "url": "https://www.meshy.ai/settings/api"},
 }
 KEYTOOL = r'''
 import json, os, sys, time, urllib.request, urllib.error
@@ -296,6 +298,14 @@ elif op == "test":
                 d = r.get("data") or {}; out = {"ok": True, "message": f"Key works · balance {d.get('balance', d)}"}; break
         else:
             out = {"ok": False, "message": f"Rejected ({r.get('http') or r.get('error') or r.get('code')})"}
+    elif req["provider"] == "meshy":
+        r = get("https://api.meshy.ai/openapi/v1/balance", k)
+        if "balance" in r:
+            out = {"ok": True, "message": f"Key works · balance {r['balance']} credits"}
+        else:
+            r2 = get("https://api.meshy.ai/openapi/v1/retexture?page_size=1", k)
+            out = {"ok": isinstance(r2, list) or "http" not in r2,
+                   "message": "Key works" if isinstance(r2, list) or "http" not in r2 else f"Rejected ({r2.get('http') or r2.get('error')})"}
 print(json.dumps(out))
 '''
 
@@ -330,6 +340,17 @@ def clean_settings(s, defaults):
         v = rt.get(kind, {})
         if v.get("use") in ("local", "cloud"):
             r["routes"][kind]["use"] = v["use"]
+    tx = rt.get("texture", {})
+    if tx.get("cloud") in ("meshy", "tripo"):
+        r["routes"]["texture"]["cloud"] = tx["cloud"]
+    mo = tx.get("meshy") or {}
+    if mo.get("resolution") in ("2k", "4k", "8k"):
+        r["routes"]["texture"]["meshy"]["resolution"] = mo["resolution"]
+    for f in ("pbr", "keep_uv"):
+        if isinstance(mo.get(f), bool):
+            r["routes"]["texture"]["meshy"][f] = mo[f]
+    if r["routes"]["texture"]["cloud"] == "tripo" and r["routes"]["model"]["use"] != "cloud":
+        r["routes"]["texture"]["cloud"] = "meshy"  # Tripo texturerar bara sina egna modeller
     if rt.get("model", {}).get("cloud") in ("tripo-p1", "tripo-p2"):
         r["routes"]["model"]["cloud"] = rt["model"]["cloud"]
     fl = rt.get("model", {}).get("face_limit")
@@ -343,6 +364,8 @@ def clean_settings(s, defaults):
     b = s.get("budget", {})
     if isinstance(b.get("tripo_credits_per_order"), int) and 0 <= b["tripo_credits_per_order"] <= 5000:
         r["budget"]["tripo_credits_per_order"] = b["tripo_credits_per_order"]
+    if isinstance(b.get("meshy_credits_per_order"), int) and 0 <= b["meshy_credits_per_order"] <= 5000:
+        r["budget"]["meshy_credits_per_order"] = b["meshy_credits_per_order"]
     if isinstance(b.get("ask_before_cloud"), bool):
         r["budget"]["ask_before_cloud"] = b["ask_before_cloud"]
     return r

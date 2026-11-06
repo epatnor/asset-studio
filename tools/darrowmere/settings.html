@@ -78,6 +78,14 @@
         <h3>Textures</h3>
         <div class="seg" id="segTexture"><button data-v="local">Local</button><button data-v="cloud">Cloud</button></div>
         <div class="what" id="whatTexture"></div>
+        <div class="opt" id="optTexture"><label for="texCloud">Cloud service</label>
+          <select id="texCloud"><option value="meshy">Meshy Retexture · any mesh, keeps our UVs</option><option value="tripo">Tripo · together with a Tripo model</option></select>
+          <label for="meshyRes">Resolution</label>
+          <select id="meshyRes"><option value="2k">2K · 10 credits</option><option value="4k">4K · 10 credits</option><option value="8k">8K · 15 credits</option></select>
+          <label>Maps</label>
+          <span><label><input type="checkbox" id="meshyPbr"> PBR (metal, roughness, normal)</label></span>
+          <label>UVs</label>
+          <span><label><input type="checkbox" id="meshyUv"> Keep the mesh's own UV layout</label></span></div>
       </div>
     </div>
   </section>
@@ -94,6 +102,8 @@
     <h2>Cloud budget</h2>
     <div class="opt"><label for="cap">Tripo credits</label>
       <span><input id="cap" type="number" min="0" max="5000" step="10" style="width:110px"> <span class="hint">at most, per order</span></span>
+      <label for="capMeshy">Meshy credits</label>
+      <span><input id="capMeshy" type="number" min="0" max="5000" step="5" style="width:110px"> <span class="hint">at most, per order</span></span>
       <label for="ask">Approval</label>
       <span><input type="checkbox" id="ask"> <span class="hint">Ask before each cloud step spends credits (Approve on the job card)</span></span></div>
   </section>
@@ -135,11 +145,13 @@ const LOCAL_TEXT = {
   texture: "<b>UltraTex or Krea-2 projection</b> on Darrowmere · 20–40 min per view · free",
 };
 function cloudText(kind) {
-  const m = cur.routes.model;
+  const m = cur.routes.model, t = cur.routes.texture;
   if (kind === "model") return `<b>${m.cloud === "tripo-p2" ? "Tripo P2" : "Tripo P1"}</b> · about 1 min · ${m.cloud === "tripo-p2" ? "100–110" : "40–60"} credits per model · game-ready low-poly with UVs`;
-  return m.use === "cloud" ? "<b>Tripo</b> textures the model in the same task · +10 credits · PBR maps" : "";
+  if (t.cloud === "tripo") return "<b>Tripo</b> textures the model in the same task · +10 credits · PBR maps";
+  return `<b>Meshy Retexture</b> · a few minutes · ${t.meshy.resolution === "8k" ? 15 : 10} credits · paints our own mesh from up to 4 reference views${t.meshy.keep_uv ? ", keeping its UVs" : ""}`;
 }
 function needKey(provider) { return !data.providers[provider]?.key?.set; }
+const texProvider = () => cur.routes.texture.cloud === "tripo" ? "tripo" : "meshy";
 
 function render() {
   for (const [kind, seg] of [["model", "segModel"], ["texture", "segTexture"]]) {
@@ -147,11 +159,17 @@ function render() {
     $(seg).querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === use));
     $("what" + kind[0].toUpperCase() + kind.slice(1)).innerHTML = use === "local" ? LOCAL_TEXT[kind] : cloudText(kind);
   }
-  // Molntextur görs av Tripo tillsammans med modellen: kräver att modellen också görs i molnet
-  const texCloud = $("segTexture").querySelector('[data-v="cloud"]');
-  texCloud.disabled = cur.routes.model.use !== "cloud";
-  texCloud.title = texCloud.disabled ? "Cloud texturing is done by Tripo together with the model: set 3D models to Cloud first" : "";
+  // Tripo texturerar bara sina egna modeller; Meshy tar vilken modell som helst
+  const tripoOpt = $("texCloud").querySelector('[value="tripo"]');
+  tripoOpt.disabled = cur.routes.model.use !== "cloud";
+  tripoOpt.textContent = tripoOpt.disabled ? "Tripo · needs 3D models on Cloud" : "Tripo · together with a Tripo model";
   $("optModel").style.display = cur.routes.model.use === "cloud" ? "" : "none";
+  $("optTexture").style.display = cur.routes.texture.use === "cloud" ? "" : "none";
+  $("texCloud").value = cur.routes.texture.cloud;
+  const mo = cur.routes.texture.meshy, meshy = cur.routes.texture.cloud === "meshy";
+  $("meshyRes").value = mo.resolution; $("meshyPbr").checked = mo.pbr; $("meshyUv").checked = mo.keep_uv;
+  ["meshyRes", "meshyPbr", "meshyUv"].forEach(id => $(id).disabled = !meshy);
+  $("capMeshy").value = cur.budget.meshy_credits_per_order;
   $("modelCloud").value = cur.routes.model.cloud;
   $("faceLimit").value = cur.routes.model.face_limit;
   $("reviewOn").checked = cur.review.enabled;
@@ -205,16 +223,27 @@ $("dlgForm").onsubmit = async e => {
 };
 
 async function setRoute(kind, v) {
-  if (v === "cloud" && needKey("tripo")) {
-    const ok = await askKey("tripo", `Cloud ${kind === "model" ? "3D models" : "textures"} use Tripo. Paste your Tripo API key to turn this on.`);
+  const prov = kind === "model" ? "tripo" : texProvider();
+  if (v === "cloud" && needKey(prov)) {
+    const label = data.providers[prov].label;
+    const ok = await askKey(prov, `Cloud ${kind === "model" ? "3D models" : "textures"} use ${label}. Paste your ${label} API key to turn this on.`);
     if (!ok) return render();
   }
   cur.routes[kind].use = v;
-  if (kind === "model" && v === "local") cur.routes.texture.use = "local";
+  if (kind === "model" && v === "local" && cur.routes.texture.cloud === "tripo") cur.routes.texture.cloud = "meshy";
   render();
 }
+$("texCloud").onchange = async () => {
+  const v = $("texCloud").value;
+  if (needKey(v) && !(await askKey(v, `Cloud textures with ${data.providers[v].label} need its API key.`))) return render();
+  cur.routes.texture.cloud = v; render();
+};
+$("meshyRes").onchange = () => { cur.routes.texture.meshy.resolution = $("meshyRes").value; render(); };
+$("meshyPbr").onchange = () => { cur.routes.texture.meshy.pbr = $("meshyPbr").checked; render(); };
+$("meshyUv").onchange = () => { cur.routes.texture.meshy.keep_uv = $("meshyUv").checked; render(); };
+$("capMeshy").oninput = () => { cur.budget.meshy_credits_per_order = parseInt($("capMeshy").value) || 0; render(); };
 $("segModel").onclick = e => { const b = e.target.closest("button"); if (b) setRoute("model", b.dataset.v); };
-$("segTexture").onclick = e => { const b = e.target.closest("button"); if (b && !b.disabled) setRoute("texture", b.dataset.v); };
+$("segTexture").onclick = e => { const b = e.target.closest("button"); if (b) setRoute("texture", b.dataset.v); };
 $("modelCloud").onchange = () => { cur.routes.model.cloud = $("modelCloud").value; render(); };
 $("faceLimit").oninput = () => { cur.routes.model.face_limit = parseInt($("faceLimit").value) || 0; render(); };
 $("reviewOn").onchange = async () => {

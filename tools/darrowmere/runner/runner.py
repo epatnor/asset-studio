@@ -343,6 +343,109 @@ def tripo_model(o, s, texture):
     return files, f"Tripo {model} · {face_limit} faces · {credits} credits · {round(time.time() - t0)} s"
 
 
+# ---- moln: Meshy Retexture ---------------------------------------------------------------------------------------
+
+MESHY = "https://api.meshy.ai/openapi/v1"
+
+
+def meshy_cost(resolution):
+    return 15 if resolution == "8k" else 10  # Meshys prislista: 2K/4K 10 krediter, 8K 15
+
+
+def mesh_for(o, ref):
+    # En modellfil: "$in:<namn>" eller första GLB/glTF/FBX/OBJ från ett tidigare steg
+    kind, _, name = ref.partition(":")
+    if kind == "$in":
+        return o.dir / "in" / name
+    if kind == "$step":
+        for f in o.st(name).get("outputs", []):
+            if f["filename"].lower().endswith((".glb", ".gltf", ".fbx", ".obj")):
+                return out_path(f)
+        raise RuntimeError(f"step {name} has no model output")
+    raise RuntimeError(f"unknown model reference {ref}")
+
+
+def data_uri_image(path, max_side=2048):
+    from PIL import Image
+    im = Image.open(path).convert("RGB")
+    im.thumbnail((max_side, max_side))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=92)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def meshy_req(method, path, key, body=None):
+    req = urllib.request.Request(MESHY + path, data=json.dumps(body).encode() if body is not None else None, method=method,
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        return json.load(urllib.request.urlopen(req, timeout=300))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Meshy {e.code}: {e.read().decode('utf8', 'replace')[:300]}")
+
+
+def meshy_retexture(o, s):
+    """Textur på en befintlig modell med Meshy Retexture: vår UV behålls, stilen från 1–4 vyer, en stilbild eller text."""
+    opt = settings()["routes"]["texture"].get("meshy") or {}
+    c = s.get("cloud") or {}
+    key = env_key("MESHY_API_KEY")
+    mesh = mesh_for(o, c.get("mesh") or "$step:model")
+    if mesh.stat().st_size > 70 * 1024 * 1024:  # data-URI:n får vara högst 100 MB, base64 växer med en tredjedel
+        raise RuntimeError(f"{mesh.name} is {mesh.stat().st_size >> 20} MB; Meshy takes at most about 70 MB this way (use the low-poly mesh)")
+    body = {"model_url": "data:application/octet-stream;base64," + base64.b64encode(mesh.read_bytes()).decode(),
+            "enable_original_uv": bool(opt.get("keep_uv", True)), "enable_pbr": bool(opt.get("pbr", True)),
+            "texture_resolution": opt.get("resolution", "2k"), "target_formats": ["glb"]}
+    views = [p for r in (c.get("views") or []) for p in files_for(o, r)][:4]
+    if views:
+        body.update(ai_model="meshy-7", multiview_image_urls=[data_uri_image(p) for p in views])
+    elif c.get("style_image"):
+        body["image_style_url"] = data_uri_image(files_for(o, c["style_image"])[0])
+    elif c.get("prompt"):
+        body["text_style_prompt"] = str(c["prompt"])[:800]
+    else:
+        raise RuntimeError("cloud texture needs views, a style image or a prompt")
+    t0 = time.time()
+    tid = meshy_req("POST", "/retexture", key, body)["result"]
+    o.set(s["key"], note=f"Meshy retexture · task {tid[:8]}")
+    while True:
+        t = meshy_req("GET", f"/retexture/{tid}", key)
+        if t.get("status") == "SUCCEEDED":
+            break
+        if t.get("status") in ("FAILED", "CANCELED") or time.time() - t0 > 1800:
+            raise RuntimeError(f"Meshy task {t.get('status')}: {(t.get('task_error') or {}).get('message', '')}"[:300])
+        o.set(s["key"], note=f"Meshy retexture · {t.get('progress', 0)} %")
+        time.sleep(8)
+    sub_dir = f"orders/{o.id}/{s['key']}"
+    (OUTPUT / sub_dir).mkdir(parents=True, exist_ok=True)
+    stem = f"{o.order.get('asset') or o.id}_{s['key']}"
+    files = []
+    if (t.get("model_urls") or {}).get("glb"):
+        (OUTPUT / sub_dir / f"{stem}.glb").write_bytes(urllib.request.urlopen(t["model_urls"]["glb"], timeout=300).read())
+        files.append({"filename": f"{stem}.glb", "subfolder": sub_dir, "type": "output"})
+    for m, url in ((t.get("texture_urls") or [{}])[0] or {}).items():
+        if isinstance(url, str) and url.startswith("http"):
+            (OUTPUT / sub_dir / f"{stem}_{m}.png").write_bytes(urllib.request.urlopen(url, timeout=300).read())
+            files.append({"filename": f"{stem}_{m}.png", "subfolder": sub_dir, "type": "output"})
+    credits = t.get("consumed_credits")
+    ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
+            "provider": "meshy", "model": body.get("ai_model", "latest"), "seconds": round(time.time() - t0, 1), "credits": credits,
+            "files": files, "texture": True, "resolution": body["texture_resolution"], "views": len(views)}, "cloud.jsonl")
+    return files, f"Meshy {body.get('ai_model', 'latest')} · {body['texture_resolution']} · {len(views) or 'style'} views · {credits} credits · {round(time.time() - t0)} s", credits
+
+
+def cloud_gate(o, s, provider, cost):
+    # Budget per beställning och tjänst, och godkännande före varje molnsteg om det är påslaget
+    st = settings()
+    cap = int(st["budget"].get(f"{provider}_credits_per_order") or 0)
+    spent = sum(o.st(x["key"]).get("credits") or 0 for x in o.order["steps"] if o.st(x["key"]).get("provider") == provider)
+    if spent + cost > cap:
+        raise RuntimeError(f"over budget: ~{cost} {provider} credits needed, {cap - spent} left of {cap} per order (Settings → Budget)")
+    if st["budget"].get("ask_before_cloud", True) and not approved(o, s["key"], cost):
+        o.set(s["key"], status="approval", note=f"needs approval: ~{cost} {provider.capitalize()} credits", estimate=cost)
+        o.state["status"] = "approval"
+        o.save()
+        raise Paused()
+
+
 def approved(o, key, cost):
     # Godkännandet gäller ett steg och ett belopp: {"steps": {"<nyckel>": <krediter>}} (panelen eller order.py approve)
     try:
@@ -357,31 +460,31 @@ def routed_step(o, s):
     route = st["routes"][s["kind"]]
     use = s.get("force") or route["use"]
     if s["kind"] == "texture" and use == "cloud":
+        if route.get("cloud") == "meshy":
+            cost = meshy_cost((route.get("meshy") or {}).get("resolution", "2k"))
+            cloud_gate(o, s, "meshy", cost)
+            o.set(s["key"], status="running", route="cloud", provider="meshy", start=time.time(), end=None)
+            files, note, credits = meshy_retexture(o, s)
+            o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=note, credits=credits or cost)
+            return
         mk = next((x["key"] for x in o.order["steps"] if x["kind"] == "model"), None)
         if mk and o.st(mk).get("route") == "cloud":
             o.set(s["key"], status="skipped", route="cloud", note="textured by Tripo together with the model")
             return
-        raise RuntimeError("cloud texturing needs the model step on Tripo too (Settings → 3D models → Cloud)")
+        raise RuntimeError("Tripo texturing needs the model step on Tripo too (Settings → 3D models → Cloud), or pick Meshy")
     if use == "local":
         if not s.get("local"):
             raise RuntimeError("no local version of this step in the order")
         o.st(s["key"])["route"] = "local"
         comfy_step(o, {**s, **s["local"], "key": s["key"], "label": s.get("label")})
         return
-    # moln: Tripo, med textur om texturen också ska göras i molnet
-    tex = st["routes"]["texture"]["use"] == "cloud"
+    # moln: Tripo, med textur om texturen också ska göras av Tripo
+    tr = st["routes"]["texture"]
+    tex = tr["use"] == "cloud" and tr.get("cloud") == "tripo"
     model = TRIPO_MODELS.get(route["cloud"], "P1-20260311")
     cost = tripo_cost(model, tex)
-    cap = int(st["budget"].get("tripo_credits_per_order") or 0)
-    spent = sum(o.st(x["key"]).get("credits") or 0 for x in o.order["steps"])
-    if spent + cost > cap:
-        raise RuntimeError(f"over budget: ~{cost} credits needed, {cap - spent} left of {cap} per order (Settings → Budget)")
-    if st["budget"].get("ask_before_cloud", True) and not approved(o, s["key"], cost):
-        o.set(s["key"], status="approval", note=f"needs approval: ~{cost} Tripo credits ({model})", estimate=cost)
-        o.state["status"] = "approval"
-        o.save()
-        raise Paused()
-    o.set(s["key"], status="running", route="cloud", start=time.time(), end=None)
+    cloud_gate(o, s, "tripo", cost)
+    o.set(s["key"], status="running", route="cloud", provider="tripo", start=time.time(), end=None)
     files, note = tripo_model(o, s, tex)
     o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=note,
           credits=tripo_cost(model, tex))
