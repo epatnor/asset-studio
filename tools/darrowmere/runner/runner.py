@@ -220,7 +220,11 @@ def files_for(o, ref):
     if kind == "$in":
         return [o.dir / "in" / name]
     if kind == "$step":
-        return [out_path(f) for f in o.st(name).get("outputs", []) if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))][:4]
+        imgs = [f for f in o.st(name).get("outputs", []) if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
+        # Ett texturerat steg granskas på renderingen av modellen, inte på texturkartorna (en UV-atlas ser alltid sönderhackad ut)
+        previews = [f for f in imgs if "_preview" in f["filename"] or "_render" in f["filename"]]
+        maps = ("_base_color", "_metallic", "_normal", "_roughness", "_emission")
+        return [out_path(f) for f in (previews or [f for f in imgs if not any(m in f["filename"] for m in maps)] or imgs)][:4]
     raise RuntimeError(f"unknown image reference {ref}")
 
 
@@ -424,6 +428,12 @@ def meshy_retexture(o, s):
     if (t.get("model_urls") or {}).get("glb"):
         (OUTPUT / sub_dir / f"{stem}.glb").write_bytes(urllib.request.urlopen(t["model_urls"]["glb"], timeout=300).read())
         files.append({"filename": f"{stem}.glb", "subfolder": sub_dir, "type": "output"})
+    if t.get("thumbnail_url"):  # Meshys egen rendering av den texturerade modellen: det granskningen ska titta på
+        try:
+            (OUTPUT / sub_dir / f"{stem}_preview.png").write_bytes(urllib.request.urlopen(t["thumbnail_url"], timeout=120).read())
+            files.append({"filename": f"{stem}_preview.png", "subfolder": sub_dir, "type": "output"})
+        except Exception as e:
+            log(o.id, s["key"], "no Meshy preview:", e)
     for m, url in ((t.get("texture_urls") or [{}])[0] or {}).items():
         if isinstance(url, str) and url.startswith("http"):
             (OUTPUT / sub_dir / f"{stem}_{m}.png").write_bytes(urllib.request.urlopen(url, timeout=300).read())
