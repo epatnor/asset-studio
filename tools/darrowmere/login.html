@@ -13,7 +13,8 @@
   html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
   body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
   form { width: min(340px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px 22px 18px; display: grid; gap: 12px; }
-  h1 { margin: 0 0 2px; font-size: 14px; letter-spacing: .14em; }
+  h1 { margin: 0 0 6px; height: 58px; background: var(--text); font-size: 0;
+       -webkit-mask: url(/static/wordmark.png) center / contain no-repeat; mask: url(/static/wordmark.png) center / contain no-repeat; }
   p { margin: 0; color: var(--muted); }
   label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
   input { font: inherit; height: 34px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
@@ -25,7 +26,7 @@
 </head>
 <body>
 <form id="f" autocomplete="on">
-  <h1>DARROWMERE</h1>
+  <h1 aria-label="Darrowmere">DARROWMERE</h1>
   <p id="lead">Sign in to the control panel.</p>
   <label>Name <input id="u" name="username" autocomplete="username" required autofocus></label>
   <label>Password <input id="p" name="password" type="password" autocomplete="current-password" required></label>
