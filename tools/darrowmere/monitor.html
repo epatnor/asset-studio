@@ -320,14 +320,14 @@ $("gauges").innerHTML = GROUPS.map(([title, dials]) => `
 function dialHtml([k, label, col]) { return `
   <div class="gauge" data-k="${k}" title="Click for details">
     <div class="dial">
-      <svg viewBox="0 0 164 164">
+      <svg viewBox="0 0 164 164" shape-rendering="geometricPrecision">
         <defs><linearGradient id="gr_${k}" x1="0" y1="1" x2="1" y2="0">
           <stop offset="0" id="gs0_${k}" stop-color="var(${col})" stop-opacity=".55"/><stop offset="1" id="gs1_${k}" stop-color="var(${col})"/>
         </linearGradient></defs>
         <g transform="rotate(135 82 82)">
           <circle cx="82" cy="82" r="${R}" fill="none" stroke="var(--track)" stroke-width="11" stroke-linecap="round" stroke-dasharray="${ARC} ${C}"/>
           <circle class="arc" id="g_${k}" cx="82" cy="82" r="${R}" fill="none" stroke="url(#gr_${k})" stroke-width="11" stroke-linecap="round"
-                  stroke-dasharray="0 ${C}" style="filter: drop-shadow(0 0 5px color-mix(in srgb, var(${col}) 45%, transparent))"/>
+                  stroke-dasharray="0 ${C}"/>
           ${k === "ram" ? `<circle cx="82" cy="82" r="${R2}" fill="none" stroke="var(--track)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${ARC2} ${C2}"/>
           <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
         </g>
