@@ -15,6 +15,9 @@ Gjort och provat på roboten (`build/robot/`):
 - **Uppriktning** mot renderingen med optiskt flöde (bara betrodda punkter, kontroll fram och tillbaka) och **två frekvensband** i
   blandningen. Flödet räddar bara en del av Krea-2:s förskjutning (4–6 px); orsaken ligger i målningen.
 - **Nio vyer** (8 runt om + toppen): de sneda målas över renderingar av den redan texturerade modellen, med låg denoise.
+  Patriks bedömning (2026-11-06): **suddig och sneda texturer, inte bra.** Fler vyer som blandas ihop gör ytan suddigare
+  (Krea-2:s detaljer hamnar några pixlar olika i varje vy och medelvärdet smetar ut dem), och de sneda vyerna målade över
+  den redan texturerade modellen förstärker suddet.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
 ## Idéerna, i ordning
