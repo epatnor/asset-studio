@@ -566,8 +566,22 @@ def meshy3d_step(o, s):
           note=f"Meshy {p.get('ai_model', 'latest')} · {len(imgs)} view{'s' if len(imgs) > 1 else ''} · {credits} credits · {round(time.time() - t0)} s")
 
 
+def free_comfy_memory():
+    """Ber ComfyUI släppa sina modeller ur RAM och VRAM innan Blender eller projiceringen körs, men bara när kön är tom.
+    Darrowmere har 18 GB RAM, och Krea-2 ensam tar cirka 13 GB."""
+    try:
+        q = http_json(f"{COMFY}/queue", timeout=10)
+        if q.get("queue_running") or q.get("queue_pending"):
+            return False
+        http_json(f"{COMFY}/free", {"unload_models": True, "free_memory": True}, timeout=30)
+        return True
+    except Exception:
+        return False
+
+
 def run_blender_job(job, timeout=900):
     import subprocess
+    free_comfy_memory()
     blender = CONF.get("blender")
     r = subprocess.run(["nice", "-n", "15", blender, "-b", "--factory-startup", "-P", str(HERE / "render_views.py"), "--", "--json", json.dumps(job)],
                        capture_output=True, text=True, timeout=timeout)
@@ -614,6 +628,7 @@ def render_previews(o, s, files):
     glb = next((f for f in files if f["filename"].lower().endswith(".glb")), None)
     if not blender or not glb or not Path(blender).exists():
         return files
+    free_comfy_memory()
     out_dir = out_path(glb).parent
     try:
         r = subprocess.run(["nice", "-n", "15", blender, "-b", "--factory-startup", "-P", str(HERE / "render_views.py"), "--",
@@ -672,6 +687,7 @@ def script_step(o, s):
     else:
         args["out_dir"] = str(out_dir)
         cmd = [sys.executable, "-I", str(HERE / "tools" / s["script"]), json.dumps(args)]
+    free_comfy_memory()
     t0 = time.time()
     r = subprocess.run(["nice", "-n", "10"] + cmd, capture_output=True, text=True, timeout=3600, cwd=str(o.dir))
     last = next((l for l in reversed(r.stdout.splitlines()) if l.startswith("{")), "")
