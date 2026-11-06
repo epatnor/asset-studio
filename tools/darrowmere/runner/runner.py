@@ -237,12 +237,18 @@ def review(o, s):
     if not cand:
         raise RuntimeError("nothing to review")
     crit = s.get("criteria") or ["The image is clean, without artifacts, extra limbs or broken hands."]
+    # Avslappnad granskning: stilisering, små färgskillnader och lite mjukhet är okej. Bara tydliga, grova fel räknas.
     content = [{"type": "text", "text": (
-        "You review images made for a game asset pipeline. "
+        "You review images made for a stylized game asset pipeline. Be relaxed and practical: the candidate does not have to "
+        "match the reference exactly. Stylization, small colour or shade differences, slight softness, simplified details and "
+        "different lighting are all fine. Only flag clear, obvious problems that a person would notice at a glance, such as a "
+        "wrong subject, missing or extra limbs, broken or melted body parts, garbled faces or hands, large smears or holes, "
+        "clearly visible seams, or colours that are completely wrong. "
         f"The first {len(cand)} image(s) are the CANDIDATE" + (f"; the next {len(refs)} are REFERENCE images." if refs else ".")
-        + " Judge the candidate against these criteria:\n" + "\n".join(f"- {c}" for c in crit)
-        + "\nReply with JSON only: {\"pass\": true|false, \"score\": 0-10, \"issues\": [short strings], \"summary\": \"one sentence\"}. "
-        + f"Pass only if every criterion holds and the score is at least {s.get('min_score', 7)}.")}]
+        + " Things the order cares about:\n" + "\n".join(f"- {c}" for c in crit)
+        + "\nReply with JSON only: {\"level\": \"pass\" | \"warning\" | \"fail\", \"score\": 0-10, \"issues\": [short strings], "
+        "\"summary\": \"one sentence\"}. level pass: usable, at most small things. warning: usable but with a noticeable problem "
+        "worth a look. fail: a gross error that makes it unusable. When in doubt, choose pass or warning, not fail.")}]
     content += [image_part(p) for p in cand + refs]
     model = s.get("model") or settings()["review"].get("model") or CONF["model"]
     t0 = time.time()
@@ -262,14 +268,17 @@ def review(o, s):
         verdict = json.loads(text[text.find("{"): text.rfind("}") + 1])
     except ValueError:
         verdict = {"pass": False, "score": 0, "issues": ["unparseable reply"], "summary": text[:200]}
+    if verdict.get("level") not in ("pass", "warning", "fail"):  # äldre svarsform: pass true/false och poäng
+        verdict["level"] = "pass" if verdict.get("pass") else "warning" if (verdict.get("score") or 0) >= 4 else "fail"
+    verdict["pass"] = verdict["level"] == "pass"
     verdict["model"], verdict["seconds"] = r.get("model", model), round(time.time() - t0, 1)
     verdict["cost_usd"] = (r.get("usage") or {}).get("cost")
     verdict["tokens"] = {k: (r.get("usage") or {}).get(k) for k in ("prompt_tokens", "completion_tokens")}
     (o.dir / f"review_{s['key']}_{o.st(s['key'])['attempt']}.json").write_text(json.dumps(verdict, indent=1))
-    ai_log({**entry, "seconds": verdict["seconds"], "model": verdict["model"], "pass": bool(verdict.get("pass")),
+    ai_log({**entry, "seconds": verdict["seconds"], "model": verdict["model"], "pass": bool(verdict.get("pass")), "level": verdict["level"],
             "score": verdict.get("score"), "summary": verdict.get("summary"), "issues": verdict.get("issues"),
             "cost_usd": verdict["cost_usd"], "tokens": verdict["tokens"]})
-    log(o.id, s["key"], "verdict", "pass" if verdict.get("pass") else "fail", verdict.get("score"), f"{verdict['seconds']} s", verdict["cost_usd"])
+    log(o.id, s["key"], "verdict", verdict["level"], verdict.get("score"), f"{verdict['seconds']} s", verdict["cost_usd"])
     return verdict
 
 
@@ -659,12 +668,15 @@ def review_step(o, s):
         return None
     o.set(s["key"], status="running", start=time.time(), end=None)
     v = review(o, s)
-    level = "pass" if v.get("pass") else "warning" if (v.get("score") or 0) >= 4 else "fail"
+    level = v.get("level") or ("pass" if v.get("pass") else "fail")
     note = f"{level} {v.get('score')}/10: {v.get('summary', '')}"[:240]
     if v.get("issues"):
         note += " · " + "; ".join(map(str, v["issues"]))[:200]
     if v.get("pass"):
         o.set(s["key"], status="done", end=time.time(), note=note, verdict=v)
+        return None
+    if level == "warning":  # användbar men värd en titt: inget omtag, beställningen fortsätter
+        o.set(s["key"], status="warning", end=time.time(), note=note, verdict=v)
         return None
     retry = s.get("retry") or {}
     target = retry.get("step")
@@ -674,7 +686,7 @@ def review_step(o, s):
         o.set(target, status="planned", job=None)
         return target  # kör om från målsteget
     # Underkänd bild är inget tekniskt fel: "warning" när den är nära (poäng ≥ 4), annars "rejected"
-    o.set(s["key"], status="warning" if (v.get("score") or 0) >= 4 else "rejected", end=time.time(), note=note, verdict=v)
+    o.set(s["key"], status="rejected", end=time.time(), note=note, verdict=v)
     return None
 
 
@@ -717,7 +729,7 @@ def run_order(o):
                 if back:
                     i = keys.index(back)
                     continue
-                if o.st(s["key"])["status"] in ("warning", "rejected") and s.get("stop_on_fail", True):
+                if o.st(s["key"])["status"] == "rejected" and s.get("stop_on_fail", True):
                     o.state["status"] = "stopped"  # stoppad av granskningen, inte trasig
                     o.save()
                     return
