@@ -3,6 +3,7 @@
   "comfy": "http://127.0.0.1:8188",
   "orders": "/data/orders",
   "output": "/data/utdata",
+  "blender": "/data/blender/current/blender",
   "defaults": {
     "routes": {
       "model": {"use": "local", "cloud": "tripo-p1", "face_limit": 3000},

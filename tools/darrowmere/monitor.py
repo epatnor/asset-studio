@@ -392,7 +392,8 @@ def ai_jobs(entries):
                     "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
                              + (f" · {e.get('score')}/10" if e.get("score") is not None else "")
                              + (f" · ${cost:.4f}" if isinstance(cost, (int, float)) else ""),
-                    "status": "error" if e.get("error") else "pass" if ok else "fail",
+                    # Nivåer: error = tekniskt fel (nyckel, krediter, nätet), annars granskningens omdöme pass / warning / fail
+                    "status": "error" if e.get("error") else "pass" if ok else "warning" if (e.get("score") or 0) >= 4 else "fail",
                     "start": e.get("t"), "seconds": e.get("seconds"), "outputs": 0, "models": [], "images": [],
                     "pipeline": {"id": e.get("order"), "step": e.get("step")}, "kind": "ai",
                     "details": {"prompts": ["\n".join(f"- {c}" for c in e.get("criteria") or [])] + ([e["summary"]] if e.get("summary") else []),

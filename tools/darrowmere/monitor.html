@@ -91,6 +91,8 @@
   .pchip.failed { border-color: var(--red); } .pchip.failed::before { background: var(--red); }
   .pchip.skipped { text-decoration: line-through; }
   .pchip.waiting::before { background: var(--amber); }
+  .pchip.warning { border-color: color-mix(in srgb, var(--amber) 60%, var(--line)); } .pchip.warning::before { background: var(--amber); }
+  .pchip.rejected { border-color: color-mix(in srgb, #fb923c 60%, var(--line)); } .pchip.rejected::before { background: #fb923c; }
   /* Molnsteg (Meshy, Tripo, DeepSeek): streckad kant i molnfärg och ett moln före namnet; de kostar krediter */
   .pchip.cloud { border-style: dashed; border-color: color-mix(in srgb, var(--cloud) 55%, var(--line)); }
   .pchip.cloud.running { border-color: var(--cloud); border-style: dashed; }
@@ -186,6 +188,10 @@
   td.err { color: var(--red); font-size: 11.5px; }
   .tag { display: inline-block; height: 18px; line-height: 18px; padding: 0 7px; border-radius: 4px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
   .tag.ok { color: var(--green); } .tag.bad { color: var(--red); } .tag.run { color: var(--blue); }
+  /* Larmnivåer: pass grön, warning gul (nära godkänd), fail orange (underkänd), error röd (tekniskt fel) */
+  .tag.warn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+  .tag.fail { color: #fb923c; border-color: color-mix(in srgb, #fb923c 45%, var(--line)); }
+  .tag.btn.warn:hover, .tag.btn.fail:hover { border-color: currentColor; }
   button.view { height: 20px; padding: 0 8px; font-size: 11px; margin-left: 6px; }
   button.ack { height: 20px; padding: 0 7px; font-size: 11px; color: var(--muted); }
   button.ack:hover { color: var(--green); border-color: var(--green); }
@@ -386,6 +392,8 @@ const SERIES = [["cpu", "CPU", "--teal"], ["ram", "RAM", "--amber"], ["swap", "S
 $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
 
 let lastRows = "";
+// Statusens nivå: pass och success gröna, warning gul, fail orange, allt annat (error, failed) rött
+const levelClass = st => st === "success" || st === "pass" ? "ok" : st === "warning" ? "warn" : st === "fail" ? "fail" : "bad";
 const jobLabel = x => `${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
@@ -450,11 +458,11 @@ function render(s) {
     renderCurrent(run, pr, c, s);
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(c.history.filter(h => !runIds.has(h.id)).map(h => {
-        const bad = h.status !== "success" && h.status !== "pass";
+        const lvl = levelClass(h.status);
         if (h.error) errors.set(h.id, h.error);
         infos.set(h.id, h);
-        const tag = h.error ? `<span class="tag bad btn" data-err="${esc(h.id)}" title="Show the error">${esc(h.status)} ▾</span>`
-                            : `<span class="tag ${bad ? "bad" : "ok"}">${esc(h.status)}</span>`;
+        const tag = h.error ? `<span class="tag ${lvl} btn" data-err="${esc(h.id)}" title="${lvl === "bad" ? "Show the error" : "Show what the review found"}">${esc(h.status)} ▾</span>`
+                            : `<span class="tag ${lvl}">${esc(h.status)}</span>`;
         return `<tr><td>${clock(h.start)}</td><td>${h.start && h.seconds != null ? clock(h.start + h.seconds) : "–"}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
           <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.kind === "ai" ? "–" : `${h.outputs} files`}${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
           <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
@@ -538,7 +546,8 @@ document.addEventListener("click", e => {
   } else {
     const msg = errors.get(t.dataset.err);
     if (!msg) return;
-    pop.className = "pop"; pop.innerHTML = `<b>Error</b>${esc(msg)}`;
+    const st = infos.get(t.dataset.err)?.status;
+    pop.className = "pop"; pop.innerHTML = `<b>${st === "warning" ? "Review warning" : st === "fail" ? "Review failed" : "Error"}</b>${esc(msg)}`;
   }
   pop.hidden = false;
   const r = t.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;

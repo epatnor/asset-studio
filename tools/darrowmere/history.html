@@ -29,6 +29,7 @@
   tr.err td.msg { white-space: normal; height: auto; padding: 4px 12px 8px; color: var(--red); font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace; }
   .tag { display: inline-block; height: 18px; line-height: 18px; padding: 0 7px; border-radius: 4px; font-size: 11px; background: var(--panel2); border: 1px solid var(--line); }
   .tag.ok { color: var(--green); } .tag.bad { color: var(--red); cursor: pointer; }
+  .tag.warn { color: var(--amber, #f2a93b); cursor: pointer; } .tag.fail { color: #fb923c; cursor: pointer; }
   button { font: inherit; height: 22px; padding: 0 8px; font-size: 11.5px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; }
   button:hover { border-color: var(--blue); }
   @media (max-width: 560px) { input { width: 120px; } #info { display: none; } }
@@ -64,7 +65,7 @@ function show() {
   const html = list.map(j => `
     <tr class="${j.acked ? "acked" : ""}">
       <td>${when(j.start)}</td><td>${j.start && j.seconds != null ? new Date((j.start + j.seconds) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–"}</td><td title="${esc(j.title || "")}">${j.cloud ? '<span title="Ran in the cloud and cost credits" style="color:#7cc7ff;margin-right:5px">☁</span>' : ""}${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
-      <td><span class="tag ${j.status === "success" || j.status === "pass" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
+      <td><span class="tag ${j.status === "success" || j.status === "pass" ? "ok" : j.status === "warning" ? "warn" : j.status === "fail" ? "fail" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
       <td>${fmtDur(j.seconds)}</td>
       <td>${j.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(j.delivered.path)}">⇣</span>` : (((j.images || []).length + (j.models || []).length) && j.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${j.kind === "ai" ? "–" : `${j.outputs} files`}${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")
         || ((j.images || []).length ? ` <button data-job="${esc(j.id)}">View</button>` : "")}${(j.details?.prompts || []).length ? ` <button data-p="${esc(j.id)}">Prompt</button>` : ""}</td>

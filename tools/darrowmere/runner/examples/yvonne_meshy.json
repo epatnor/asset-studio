@@ -5,10 +5,10 @@
   "asset": "yvonne",
   "use": "test-only",
   "inputs": {
-    "front.png": "../../../../../lowpoly-test/input/yvonne/front.png",
-    "left.png": "../../../../../lowpoly-test/input/yvonne/left.png",
-    "back.png": "../../../../../lowpoly-test/input/yvonne/back.png",
-    "right.png": "../../../../../lowpoly-test/input/yvonne/right.png"
+    "front.png": "../../../../../../lowpoly-test/input/yvonne/front.png",
+    "left.png": "../../../../../../lowpoly-test/input/yvonne/left.png",
+    "back.png": "../../../../../../lowpoly-test/input/yvonne/back.png",
+    "right.png": "../../../../../../lowpoly-test/input/yvonne/right.png"
   },
   "steps": [
     {"key": "high", "label": "3D model high (meshy-7.1, 4 views)", "kind": "meshy3d",

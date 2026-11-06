@@ -222,9 +222,9 @@ def files_for(o, ref):
     if kind == "$step":
         imgs = [f for f in o.st(name).get("outputs", []) if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
         # Ett texturerat steg granskas på renderingen av modellen, inte på texturkartorna (en UV-atlas ser alltid sönderhackad ut)
-        previews = [f for f in imgs if "_preview" in f["filename"] or "_render" in f["filename"]]
+        previews = [f for f in imgs if "_render_" in f["filename"]] or [f for f in imgs if "_preview" in f["filename"]]
         maps = ("_base_color", "_metallic", "_normal", "_roughness", "_emission")
-        return [out_path(f) for f in (previews or [f for f in imgs if not any(m in f["filename"] for m in maps)] or imgs)][:4]
+        return [out_path(f) for f in (previews or [f for f in imgs if not any(m in f["filename"] for m in maps)] or imgs)][:5]
     raise RuntimeError(f"unknown image reference {ref}")
 
 
@@ -343,7 +343,7 @@ def tripo_model(o, s, texture):
     name = f"{o.order.get('asset') or o.id}_{s['key']}{ext}"
     (OUTPUT / sub_dir / name).write_bytes(blob)
     credits = r["data"].get("consumed_credit")
-    files = [{"filename": name, "subfolder": sub_dir, "type": "output"}]
+    files = render_previews(o, s, [{"filename": name, "subfolder": sub_dir, "type": "output"}])
     ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
             "provider": "tripo", "model": model, "seconds": round(time.time() - t0, 1), "credits": credits, "files": files,
             "texture": texture, "face_limit": face_limit}, "cloud.jsonl")
@@ -438,6 +438,7 @@ def meshy_retexture(o, s):
         if isinstance(url, str) and url.startswith("http"):
             (OUTPUT / sub_dir / f"{stem}_{m}.png").write_bytes(urllib.request.urlopen(url, timeout=300).read())
             files.append({"filename": f"{stem}_{m}.png", "subfolder": sub_dir, "type": "output"})
+    files = render_previews(o, s, files)
     credits = t.get("consumed_credits")
     ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
             "provider": "meshy", "model": body.get("ai_model", "latest"), "seconds": round(time.time() - t0, 1), "credits": credits,
@@ -494,12 +495,34 @@ def meshy3d_step(o, s):
         if isinstance(url, str) and url.startswith("http"):
             (OUTPUT / sub_dir / f"{stem}_preview_{v}.png").write_bytes(urllib.request.urlopen(url, timeout=120).read())
             files.append({"filename": f"{stem}_preview_{v}.png", "subfolder": sub_dir, "type": "output"})
+    files = render_previews(o, s, files)
     credits = t.get("consumed_credits") or cost
     ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
             "provider": "meshy", "model": p.get("ai_model", "latest"), "seconds": round(time.time() - t0, 1), "credits": credits,
             "files": files, "texture": p.get("should_texture", True), "views": len(imgs)}, "cloud.jsonl")
     o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, credits=credits,
           note=f"Meshy {p.get('ai_model', 'latest')} · {len(imgs)} view{'s' if len(imgs) > 1 else ''} · {credits} credits · {round(time.time() - t0)} s")
+
+
+def render_previews(o, s, files):
+    """Darrowmere renderar en ny modell själv (Blender utan skärm, fem vyer) så att granskningen ser hela modellen."""
+    import subprocess
+    blender = CONF.get("blender")
+    glb = next((f for f in files if f["filename"].lower().endswith(".glb")), None)
+    if not blender or not glb or not Path(blender).exists():
+        return files
+    out_dir = out_path(glb).parent
+    try:
+        r = subprocess.run(["nice", "-n", "15", blender, "-b", "--factory-startup", "-P", str(HERE / "render_views.py"), "--",
+                            str(out_path(glb)), str(out_dir), "512", CONF.get("render_engine", "WORKBENCH")],
+                           capture_output=True, text=True, timeout=600)
+        line = next((l for l in r.stdout.splitlines() if l.startswith("RENDER_RESULT ")), None)
+        names = json.loads(line.split(" ", 1)[1])["files"] if line else []
+    except Exception as e:
+        log(o.id, s["key"], "render failed:", e)
+        names = []
+    log(o.id, s["key"], f"rendered {len(names)} views")
+    return files + [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in names]
 
 
 def cloud_gate(o, s, provider, cost):
@@ -572,7 +595,8 @@ def review_step(o, s):
         return None
     o.set(s["key"], status="running", start=time.time(), end=None)
     v = review(o, s)
-    note = f"{'pass' if v.get('pass') else 'fail'} {v.get('score')}/10: {v.get('summary', '')}"[:240]
+    level = "pass" if v.get("pass") else "warning" if (v.get("score") or 0) >= 4 else "fail"
+    note = f"{level} {v.get('score')}/10: {v.get('summary', '')}"[:240]
     if v.get("issues"):
         note += " · " + "; ".join(map(str, v["issues"]))[:200]
     if v.get("pass"):
@@ -585,7 +609,8 @@ def review_step(o, s):
         o.set(s["key"], status="planned", end=time.time(), note="retrying · " + note, verdict=v, attempt=t["attempt"] + 1)
         o.set(target, status="planned", job=None)
         return target  # kör om från målsteget
-    o.set(s["key"], status="failed", end=time.time(), note=note, verdict=v)
+    # Underkänd bild är inget tekniskt fel: "warning" när den är nära (poäng ≥ 4), annars "rejected"
+    o.set(s["key"], status="warning" if (v.get("score") or 0) >= 4 else "rejected", end=time.time(), note=note, verdict=v)
     return None
 
 
@@ -599,7 +624,7 @@ def run_order(o):
     while i < len(keys):
         s = o.order["steps"][i]
         t = o.st(s["key"])
-        if t["status"] in ("done", "skipped", "waiting") or (t["status"] == "failed" and s["kind"] != "comfy"):
+        if t["status"] in ("done", "skipped", "waiting", "warning", "rejected") or (t["status"] == "failed" and s["kind"] != "comfy"):
             i += 1
             continue
         if (o.dir / "cancel").exists():
@@ -626,8 +651,8 @@ def run_order(o):
                 if back:
                     i = keys.index(back)
                     continue
-                if o.st(s["key"])["status"] == "failed" and s.get("stop_on_fail", True):
-                    o.state["status"] = "failed"
+                if o.st(s["key"])["status"] in ("warning", "rejected") and s.get("stop_on_fail", True):
+                    o.state["status"] = "stopped"  # stoppad av granskningen, inte trasig
                     o.save()
                     return
             else:  # manual: görs någon annanstans
@@ -640,7 +665,8 @@ def run_order(o):
             return
         i += 1
     waiting = any(o.st(k)["status"] == "waiting" for k in keys)
-    o.state["status"] = "waiting" if waiting else "done"
+    warned = any(o.st(k)["status"] in ("warning", "rejected") for k in keys)
+    o.state["status"] = "waiting" if waiting else "done with warnings" if warned else "done"
     o.save()
     log(o.id, o.state["status"])
 
@@ -675,7 +701,26 @@ def tick():
             log(oid, "crashed:", traceback.format_exc()[-600:])
 
 
+def rereview(oid, key):
+    """Granskar ett steg igen: renderar modellen från stegen granskningen tittar på (om det saknas) och kör DeepSeek."""
+    o = Order(oid)
+    s = next(x for x in o.order["steps"] if x["key"] == key)
+    for ref in s.get("images", []):
+        if ref.startswith("$step:"):
+            src = ref.split(":", 1)[1]
+            outs = o.st(src).get("outputs", [])
+            if not any("_render_" in f["filename"] for f in outs):
+                o.set(src, outputs=render_previews(o, {"key": src}, outs))
+    o.st(key)["attempt"] = o.st(key).get("attempt", 0)
+    review_step(o, s)
+    print(json.dumps({"order": oid, "step": key, "status": o.st(key)["status"], "note": o.st(key).get("note")}))
+
+
 if __name__ == "__main__":
+    if "--rereview" in sys.argv:  # python runner.py --rereview <beställning> <granskningssteg>
+        i = sys.argv.index("--rereview")
+        rereview(sys.argv[i + 1], sys.argv[i + 2])
+        sys.exit(0)
     log("runner up", COMFY, ORDERS, CONF["model"])
     if "--once" in sys.argv:
         tick()
