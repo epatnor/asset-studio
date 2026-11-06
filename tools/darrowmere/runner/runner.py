@@ -400,7 +400,7 @@ def meshy_retexture(o, s):
         raise RuntimeError(f"{mesh.name} is {mesh.stat().st_size >> 20} MB; Meshy takes at most about 70 MB this way (use the low-poly mesh)")
     body = {"model_url": "data:application/octet-stream;base64," + base64.b64encode(mesh.read_bytes()).decode(),
             "enable_original_uv": bool(opt.get("keep_uv", True)), "enable_pbr": bool(opt.get("pbr", True)),
-            "texture_resolution": opt.get("resolution", "2k"), "target_formats": ["glb"]}
+            "texture_resolution": c.get("resolution") or opt.get("resolution", "2k"), "target_formats": ["glb"]}
     views = [p for r in (c.get("views") or []) for p in files_for(o, r)][:4]
     if views:
         body.update(ai_model="meshy-7", multiview_image_urls=[data_uri_image(p) for p in views])
@@ -475,7 +475,7 @@ def routed_step(o, s):
     use = s.get("force") or route["use"]
     if s["kind"] == "texture" and use == "cloud":
         if route.get("cloud") == "meshy":
-            cost = meshy_cost((route.get("meshy") or {}).get("resolution", "2k"))
+            cost = meshy_cost((s.get("cloud") or {}).get("resolution") or (route.get("meshy") or {}).get("resolution", "2k"))
             cloud_gate(o, s, "meshy", cost)
             o.set(s["key"], status="running", route="cloud", provider="meshy", start=time.time(), end=None)
             files, note, credits = meshy_retexture(o, s)

@@ -1,0 +1,22 @@
+{
+  "id": "robot-meshy-krea-4k",
+  "title": "Robot android: Meshy 4K from the Krea-2 views",
+  "project": "asset-studio",
+  "asset": "robot-android",
+  "use": "test-only",
+  "inputs": {
+    "mesh.glb": "../../../../build/robot/krea_proj/robot_facing_x.glb",
+    "front.png": "../../../../build/robot/krea_proj/krea_front.png",
+    "left.png": "../../../../build/robot/krea_proj/krea_left.png",
+    "back.png": "../../../../build/robot/krea_proj/krea_back.png",
+    "right.png": "../../../../build/robot/krea_proj/krea_right.png",
+    "robot_ref.png": "../../../../build/robot/edit/robot_ref.png"
+  },
+  "steps": [
+    {"key": "texture", "label": "Texture (Meshy 4K, Krea-2 views)", "kind": "texture", "force": "cloud",
+     "cloud": {"mesh": "$in:mesh.glb", "views": ["$in:front.png", "$in:left.png", "$in:back.png", "$in:right.png"], "resolution": "4k"}},
+    {"key": "review", "label": "Review: texture", "kind": "review", "images": ["$step:texture"], "refs": ["$in:front.png", "$in:robot_ref.png"],
+     "criteria": ["The textured model in the candidate keeps the painted look of the first reference: glossy white armor, dark mechanical parts, small red accents.",
+                  "No visible seams, smears or blurred patches on the model."]}
+  ]
+}
