@@ -248,13 +248,19 @@
     .pchip { flex: 1 1 calc(50% - 4px); }
     .ph { flex-wrap: wrap; height: auto; min-height: 34px; padding: 6px 10px; row-gap: 6px; }
     .ph .actions { margin-left: 0; flex-wrap: wrap; }
-    .jobs table { table-layout: auto; }
-    .jobs col { width: auto !important; }
-    .jobs th:nth-child(1), .jobs td:nth-child(1), .jobs th:nth-child(2), .jobs td:nth-child(2),
-    .jobs th:nth-child(5), .jobs td:nth-child(5) { display: none; }
-    .jobs td:nth-child(3) { white-space: normal; max-width: 0; width: 100%; line-height: 1.3; padding-top: 4px; padding-bottom: 4px; height: auto; }
-    .jobs td:nth-child(6) { white-space: nowrap; }
-    th, td { padding: 0 6px; }
+    /* Jobblistan som två rader per jobb: namn och titel över hela bredden, under den status, tid, resultat och ✓ */
+    .jobs thead, .jobs colgroup { display: none; }
+    .jobs table, .jobs tbody { display: block; }
+    .jobs tr { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "job job job job" "st time out ack";
+               align-items: center; column-gap: 8px; row-gap: 4px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    .jobs td { border: 0; height: auto; padding: 0; }
+    .jobs td:nth-child(1), .jobs td:nth-child(2) { display: none; }
+    .jobs td:nth-child(3) { grid-area: job; font-size: 12.5px; }
+    .jobs td:nth-child(4) { grid-area: st; }
+    .jobs td:nth-child(5) { grid-area: time; color: var(--muted); font-size: 11.5px; }
+    .jobs td:nth-child(6) { grid-area: out; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; color: var(--muted); }
+    .jobs td:nth-child(7) { grid-area: ack; justify-self: end; }
+    .jobs td[colspan] { display: block; grid-column: 1 / -1; }
     .chartwrap { height: 170px; padding: 6px 8px 4px; grid-template-rows: minmax(0, 1fr) auto; }
     .legend { flex-wrap: wrap; row-gap: 2px; gap: 8px; white-space: normal; }
     .pop.info, .pop.info.wide { width: calc(100vw - 16px); }
