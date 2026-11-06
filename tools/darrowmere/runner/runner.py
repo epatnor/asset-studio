@@ -461,7 +461,7 @@ def meshy_retexture(o, s):
     if mesh.stat().st_size > 70 * 1024 * 1024:  # data-URI:n får vara högst 100 MB, base64 växer med en tredjedel
         raise RuntimeError(f"{mesh.name} is {mesh.stat().st_size >> 20} MB; Meshy takes at most about 70 MB this way (use the low-poly mesh)")
     body = {"model_url": "data:application/octet-stream;base64," + base64.b64encode(mesh.read_bytes()).decode(),
-            "enable_original_uv": bool(opt.get("keep_uv", True)), "enable_pbr": bool(opt.get("pbr", True)),
+            "enable_original_uv": bool(c.get("keep_uv", opt.get("keep_uv", True))), "enable_pbr": bool(opt.get("pbr", True)),
             "texture_resolution": c.get("resolution") or opt.get("resolution", "2k"), "target_formats": ["glb"]}
     views = [p for r in (c.get("views") or []) for p in files_for(o, r)][:4]
     if views:
@@ -719,6 +719,43 @@ def script_step(o, s):
     o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=note)
 
 
+def meshy_remesh_step(o, s):
+    """Nytt nät med Meshy Remesh (5 krediter): en befintlig modell ner till target_polycount, trianglar eller quads.
+    Används för låg-poly av en högupplöst modell från flera vyer, så att hållningen kommer från alla vyer och inte gissas ur en bild."""
+    p = s.get("params") or {}
+    mesh = mesh_for(o, s.get("mesh") or "$step:model")
+    if mesh.stat().st_size > 70 * 1024 * 1024:
+        raise RuntimeError(f"{mesh.name} is {mesh.stat().st_size >> 20} MB; Meshy takes at most about 70 MB as a data URI")
+    cost = 5
+    cloud_gate(o, s, "meshy", cost)
+    o.set(s["key"], status="running", route="cloud", provider="meshy", start=time.time(), end=None, pct=0)
+    key = env_key("MESHY_API_KEY")
+    body = {"model_url": "data:application/octet-stream;base64," + base64.b64encode(mesh.read_bytes()).decode(),
+            "target_formats": ["glb"], "topology": p.get("topology", "triangle"), "target_polycount": int(p.get("target_polycount", 8000))}
+    t0 = time.time()
+    tid = meshy_req("POST", "/remesh", key, body)["result"]
+    while True:
+        t = meshy_req("GET", f"/remesh/{tid}", key)
+        if t.get("status") == "SUCCEEDED":
+            break
+        if t.get("status") in ("FAILED", "CANCELED") or time.time() - t0 > 1800:
+            raise RuntimeError(f"Meshy task {t.get('status')}: {(t.get('task_error') or {}).get('message', '')}"[:300])
+        o.set(s["key"], note=f"Meshy remesh · {t.get('progress', 0)} %", pct=t.get("progress", 0))
+        time.sleep(6)
+    sub_dir = f"orders/{o.id}/{s['key']}"
+    (OUTPUT / sub_dir).mkdir(parents=True, exist_ok=True)
+    stem = f"{o.order.get('asset') or o.id}_{s['key']}"
+    (OUTPUT / sub_dir / f"{stem}.glb").write_bytes(urllib.request.urlopen(t["model_urls"]["glb"], timeout=300).read())
+    files = [{"filename": f"{stem}.glb", "subfolder": sub_dir, "type": "output"}]
+    files = render_previews(o, s, files)
+    credits = t.get("consumed_credits") or cost
+    ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
+            "provider": "meshy", "model": "remesh", "seconds": round(time.time() - t0, 1), "credits": credits, "files": files,
+            "texture": False}, "cloud.jsonl")
+    o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, credits=credits,
+          note=f"Meshy remesh · {body['topology']} · {body['target_polycount']} · {credits} credits · {round(time.time() - t0)} s")
+
+
 def cloud_gate(o, s, provider, cost):
     # Budget per beställning och tjänst, och godkännande före varje molnsteg om det är påslaget
     st = settings()
@@ -837,9 +874,9 @@ def run_order(o):
                 script_step(o, s)
             elif s["kind"] == "blender":
                 blender_step(o, s)
-            elif s["kind"] == "meshy3d":
+            elif s["kind"] in ("meshy3d", "remesh"):
                 try:
-                    meshy3d_step(o, s)
+                    (meshy3d_step if s["kind"] == "meshy3d" else meshy_remesh_step)(o, s)
                 except Paused:
                     log(o.id, s["key"], "waiting for approval")
                     return
