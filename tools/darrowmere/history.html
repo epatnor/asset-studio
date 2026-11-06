@@ -33,6 +33,11 @@
   button { font: inherit; height: 22px; padding: 0 8px; font-size: 11.5px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; }
   button:hover { border-color: var(--blue); }
   @media (max-width: 560px) { input { width: 120px; } #info { display: none; } }
+  @media (max-width: 760px) {
+    table { table-layout: auto; } col { width: auto !important; }
+    th:nth-child(2), td:nth-child(2), th:nth-child(5), td:nth-child(5) { display: none; }
+    td:nth-child(3) { white-space: normal; }
+  }
 </style>
 </head>
 <body>

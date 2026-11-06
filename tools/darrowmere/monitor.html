@@ -32,6 +32,7 @@
   .pill.run .dot { animation: pulse 1.4s infinite; }
   /* Modellen som kör: bara namnet, stilla (det är ComfyUI-pillret som blinkar, och detaljerna finns i jobblistan) */
   .pill.model { color: var(--text); } .pill.model .dot { display: none; }
+  .pill[hidden] { display: none; }
   @keyframes pulse { 50% { opacity: .3; } }
   .spacer { flex: 1; }
   #age { width: 104px; text-align: right; color: var(--muted); }
@@ -227,9 +228,41 @@
     .now .nowprog { grid-column: 1 / -1; grid-row: 2; }
     .now .actions { grid-column: 1 / -1; }
   }
+  /* Telefon: sidhuvudet på två rader, rattarna mindre två och två, jobbkortet staplat, listan bara med det viktigaste */
+  @media (max-width: 760px) {
+    header { height: auto; flex-wrap: wrap; row-gap: 6px; padding: 8px 12px; position: static; }
+    header .spacer { flex-basis: 100%; height: 0; }
+    header button { height: 26px; padding: 0 9px; font-size: 12px; }
+    #netPill2, #uptimePill { display: none; }
+    #age { width: auto; flex: 1; text-align: left; font-size: 11px; }
+    main { padding: 8px 10px 16px; gap: 8px; }
+    .gauge { height: auto; padding: 4px 0; }
+    .gauge .dial { zoom: .82; }
+    .cur, .cur.pipe { height: auto; margin: 8px 8px 4px; padding: 8px 10px; grid-template-rows: auto; row-gap: 6px; }
+    .cur1 { grid-template-columns: auto minmax(0, 1fr) auto; font-size: 13px; }
+    .cur1 .legend2 { display: none; }
+    .cur2 { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+    .cur2 .steps { grid-column: 1 / -1; grid-row: 2; }
+    .cur3 { grid-template-columns: minmax(0, 1fr); row-gap: 4px; }
+    .pchips { flex-wrap: wrap; overflow: visible; }
+    .pchip { flex: 1 1 calc(50% - 4px); }
+    .ph { flex-wrap: wrap; height: auto; min-height: 34px; padding: 6px 10px; row-gap: 6px; }
+    .ph .actions { margin-left: 0; flex-wrap: wrap; }
+    .jobs table { table-layout: auto; }
+    .jobs col { width: auto !important; }
+    .jobs th:nth-child(1), .jobs td:nth-child(1), .jobs th:nth-child(2), .jobs td:nth-child(2),
+    .jobs th:nth-child(5), .jobs td:nth-child(5) { display: none; }
+    .jobs td:nth-child(3) { white-space: normal; max-width: 0; width: 100%; line-height: 1.3; padding-top: 4px; padding-bottom: 4px; height: auto; }
+    .jobs td:nth-child(6) { white-space: nowrap; }
+    th, td { padding: 0 6px; }
+    .chartwrap { height: 170px; padding: 6px 8px 4px; grid-template-rows: minmax(0, 1fr) auto; }
+    .legend { flex-wrap: wrap; row-gap: 2px; gap: 8px; white-space: normal; }
+    .pop.info, .pop.info.wide { width: calc(100vw - 16px); }
+    dialog.ask { width: calc(100vw - 24px); }
+  }
   @media (max-width: 560px) {
-    main { padding: 10px 16px; }
-    header { padding: 0 16px; overflow: hidden; }
+    main { padding: 8px 8px 16px; }
+    header { overflow: visible; }
     .sparks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     #uptimePill, #age { display: none; }
     .hwgrid { grid-template-columns: minmax(0, 1fr); }
