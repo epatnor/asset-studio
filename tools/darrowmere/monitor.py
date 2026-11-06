@@ -796,6 +796,8 @@ sys.path.insert(0, str(HERE))
 from auth import COOKIE, Auth, is_private  # noqa: E402
 
 AUTH = Auth(STORE.parent)
+from gallery import Gallery  # noqa: E402
+GALLERY = Gallery(SSH, COMFY, STORE.parent / "thumbs")
 PUBLIC_GET = {"/login", "/api/auth-state", "/favicon.ico"}
 PUBLIC_POST = {"/api/login", "/api/setup"}
 
@@ -898,6 +900,29 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, (HERE / "images.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/history":
             return self.send(200, (HERE / "history.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/gallery":
+            return self.send(200, (HERE / "gallery.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/api/gallery":
+            try:
+                fresh = "fresh" in urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                return self.send(200, json.dumps({"ok": True, "groups": GALLERY.index(0 if fresh else 20)}), "application/json")
+            except Exception as e:
+                return self.send(502, json.dumps({"ok": False, "message": f"Darrowmere: {e}"}), "application/json")
+        if path == "/api/thumb":
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            name, sub = q.get("filename", [""])[0], q.get("subfolder", [""])[0]
+            if not name or "/" in name or name.startswith(".") or ".." in sub.split("/"):
+                return self.send(400, "bad filename", "text/plain")
+            try:
+                data = GALLERY.thumb(name, sub, q.get("m", [""])[0])
+            except Exception as e:
+                return self.send(502, f"thumb: {e}", "text/plain")
+            self.send_response(200)
+            self.send_header("Content-Type", "image/webp")
+            self.send_header("Cache-Control", "private, max-age=604800")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         if self.path == "/api/jobs":
             with lock:
                 return self.send(200, json.dumps({"jobs": job_list(include_acked=True, limit=500)}), "application/json")

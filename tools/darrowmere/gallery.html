@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Gallery</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --blue: #4f8dff;
+          --green: #34d399; --amber: #fbbf24; --violet: #a78bfa; --cyan: #22d3ee; --pink: #f472b6; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --blue: #2563eb;
+            --green: #059669; --amber: #b45309; --violet: #7c3aed; --cyan: #0891b2; --pink: #db2777; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 12.5px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px;
+           background: var(--panel); border-bottom: 1px solid var(--line); }
+  .wordmark { display: block; flex: none; height: 28px; aspect-ratio: 605 / 120; background: var(--text);
+    -webkit-mask: url(/static/wordmark.png) center / contain no-repeat; mask: url(/static/wordmark.png) center / contain no-repeat; }
+  header b { letter-spacing: .12em; font-size: 13px; margin-right: 6px; }
+  input, select, button { font: inherit; height: 28px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); }
+  input { padding: 0 10px; width: 220px; } select { padding: 0 6px; } button { padding: 0 10px; cursor: pointer; white-space: nowrap; }
+  input:focus, select:focus { outline: none; border-color: var(--blue); }
+  button:hover { border-color: var(--blue); }
+  .chip { color: var(--muted); } .chip.on { color: var(--text); border-color: color-mix(in srgb, var(--k) 70%, var(--line)); background: color-mix(in srgb, var(--k) 14%, var(--panel2)); }
+  .chip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--k); margin-right: 6px; vertical-align: 0; }
+  .chip small { color: var(--muted); margin-left: 4px; }
+  #info { color: var(--muted); margin-left: auto; white-space: nowrap; }
+  main { padding: 12px 16px 40px; display: grid; gap: 14px; max-width: 1800px; margin: 0 auto; }
+  .group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; }
+  .gh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 10px; }
+  .gh h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+  .gh .meta { color: var(--muted); }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .tag.cloud { border-style: dashed; color: var(--cyan); }
+  .step { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; margin: 4px 0 -2px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .step b { color: var(--text); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .card { position: relative; display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--panel2);
+          cursor: pointer; color: inherit; text-decoration: none; }
+  .card:hover { border-color: var(--blue); }
+  .thumb { aspect-ratio: 1; display: grid; place-items: center; background:
+           repeating-conic-gradient(color-mix(in srgb, var(--line) 55%, transparent) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .thumb .ph { font-size: 26px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
+  .cap { padding: 5px 7px 6px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { position: absolute; top: 6px; left: 6px; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
+           background: color-mix(in srgb, var(--k) 85%, black); color: #fff; }
+  .k-model { --k: var(--violet); } .k-image { --k: var(--blue); } .k-render { --k: var(--green); } .k-inspect { --k: var(--amber); } .k-map { --k: var(--pink); }
+  #msg { color: var(--muted); padding: 30px; text-align: center; }
+  /* Bildvisaren */
+  #lb { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 94%, transparent); display: none; grid-template-rows: auto minmax(0, 1fr); }
+  #lb.open { display: grid; }
+  #lb .bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); min-width: 0; }
+  #lb .bar span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+  #lb .bar a { color: var(--blue); text-decoration: none; white-space: nowrap; }
+  #lbStage { position: relative; display: grid; place-items: center; overflow: hidden; padding: 10px; }
+  #lbStage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+  #lbStage .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; font-size: 24px; opacity: .8; }
+  #lbPrev { left: 10px; } #lbNext { right: 10px; }
+  @media (max-width: 760px) {
+    header { padding: 8px 10px; } input { width: 100%; order: 5; } #info { margin-left: 0; }
+    main { padding: 10px 8px 30px; } .group { padding: 8px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+    #lbStage .nav { width: 36px; height: 52px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="wordmark" role="img" aria-label="Darrowmere"></span><b>GALLERY</b>
+  <span id="chips"></span>
+  <select id="asset" title="Show one asset"></select>
+  <input id="q" placeholder="Search name, order or step" spellcheck="false">
+  <button id="reload" title="Read Darrowmere again">Refresh</button>
+  <span id="info"></span>
+</header>
+<main id="main"><div id="msg">Loading…</div></main>
+<div id="lb" role="dialog" aria-label="Image">
+  <div class="bar"><button id="lbClose" title="Close (Esc)">✕</button><span id="lbName"></span><a id="lbOpen" target="_blank">Full size ↗</a></div>
+  <div id="lbStage"><img id="lbImg" alt=""><button class="nav" id="lbPrev" title="Previous (←)">‹</button><button class="nav" id="lbNext" title="Next (→)">›</button></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const KINDS = [["model", "Models"], ["image", "Images"], ["render", "Renders"], ["inspect", "Inspection"], ["map", "Texture maps"]];
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem("gal." + k)) ?? d; } catch { return d; } },
+                set(k, v) { try { localStorage.setItem("gal." + k, JSON.stringify(v)); } catch {} } };
+let groups = [], on = new Set(store.get("kinds", ["model", "image", "render"])), list = [], cur = 0;
+const fileUrl = i => "/api/file?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output" });
+const thumbUrl = (name, i) => "/api/thumb?" + new URLSearchParams({ filename: name, subfolder: i.subfolder, m: Math.round(i.mtime) });
+const when = t => new Date(t * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const mb = n => n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
+
+function chips() {
+  const n = {}; groups.forEach(g => g.items.forEach(i => n[i.kind] = (n[i.kind] || 0) + 1));
+  $("chips").innerHTML = KINDS.map(([k, l]) => `<button class="chip k-${k} ${on.has(k) ? "on" : ""}" data-k="${k}"><i></i>${l}<small>${n[k] || 0}</small></button>`).join(" ");
+  $("chips").querySelectorAll("button").forEach(b => b.onclick = () => {
+    on.has(b.dataset.k) ? on.delete(b.dataset.k) : on.add(b.dataset.k); store.set("kinds", [...on]); chips(); render();
+  });
+}
+function assets() {
+  const a = [...new Set(groups.map(g => g.asset).filter(Boolean))].sort(), sel = store.get("asset", "");
+  $("asset").innerHTML = `<option value="">All assets</option>` + a.map(x => `<option ${x === sel ? "selected" : ""}>${esc(x)}</option>`).join("");
+}
+function render() {
+  const q = $("q").value.trim().toLowerCase(), asset = $("asset").value;
+  let html = "", shown = 0;
+  list = [];
+  for (const g of groups) {
+    if (asset && g.asset !== asset) continue;
+    const gText = `${g.title} ${g.order || ""} ${g.asset}`.toLowerCase();
+    const items = g.items.filter(i => on.has(i.kind) && (!q || gText.includes(q) || `${i.filename} ${i.step_label || ""} ${i.note || ""}`.toLowerCase().includes(q)));
+    if (!items.length) continue;
+    shown += items.length;
+    const cloud = [...new Set(g.items.map(i => i.cloud).filter(Boolean))];
+    html += `<section class="group"><div class="gh"><h2>${esc(g.title)}</h2>
+      ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}
+      <span class="meta">${when(g.time)}${g.order ? " · " + esc(g.order) : ""} · ${items.length} file${items.length > 1 ? "s" : ""}</span></div><div class="grid">`;
+    let step = null;
+    // stegrubriker bara när något steg har flera filer; annars står steget i bildtexten
+    const per = {}; items.forEach(i => per[i.step] = (per[i.step] || 0) + 1);
+    const dividers = g.order && Object.values(per).some(n => n > 2);
+    for (const i of items) {
+      const cap = !dividers && i.step_label ? i.step_label : i.filename;
+      if (dividers && i.step !== step) {
+        step = i.step;
+        html += `<div class="step"><b>${esc(i.step_label || i.step || "files")}</b>${i.note ? `<span>${esc(i.note)}</span>` : ""}</div>`;
+      }
+      const label = KINDS.find(k => k[0] === i.kind)[1].replace(/s$/, "").replace("Texture map", "Map").replace("Inspection", "Inspect");
+      const title = `${i.filename} · ${mb(i.size)} · ${when(i.mtime)}`;
+      if (i.kind === "model") {
+        const v = "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output" });
+        html += `<a class="card k-model" href="${v}" target="_blank" title="${esc(title)} · open in the 3D viewer">
+          <div class="thumb">${i.thumb ? `<img loading="lazy" src="${thumbUrl(i.thumb, i)}" alt="">` : `<span class="ph">3D</span>`}</div>
+          <span class="badge">3D</span><div class="cap">${esc(cap)}</div></a>`;
+      } else {
+        const n = list.push(i) - 1;
+        html += `<div class="card k-${i.kind}" data-n="${n}" title="${esc(title)}">
+          <div class="thumb"><img loading="lazy" src="${thumbUrl(i.filename, i)}" alt=""></div>
+          ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div></div>`;
+      }
+    }
+    html += `</div></section>`;
+  }
+  $("main").innerHTML = html || `<div id="msg">${groups.length ? "Nothing matches the filters." : "Darrowmere has not made anything yet."}</div>`;
+  $("main").querySelectorAll(".card[data-n]").forEach(c => c.onclick = () => show(+c.dataset.n));
+  const total = groups.reduce((s, g) => s + g.items.length, 0);
+  $("info").textContent = `${shown} of ${total} files`;
+}
+function show(n) {
+  if (!list.length) return;
+  cur = (n + list.length) % list.length;
+  const i = list[cur];
+  $("lbImg").src = fileUrl(i);
+  $("lbOpen").href = fileUrl(i);
+  $("lbName").textContent = `${cur + 1} / ${list.length} · ${i.filename}${i.step_label ? " · " + i.step_label : ""} · ${mb(i.size)}`;
+  $("lb").classList.add("open");
+}
+const close = () => { $("lb").classList.remove("open"); $("lbImg").removeAttribute("src"); };
+$("lbClose").onclick = close;
+$("lbPrev").onclick = () => show(cur - 1);
+$("lbNext").onclick = () => show(cur + 1);
+$("lbStage").onclick = e => { if (e.target.id === "lbStage") close(); };
+document.addEventListener("keydown", e => {
+  if (!$("lb").classList.contains("open")) return;
+  if (e.key === "Escape") close(); else if (e.key === "ArrowLeft") show(cur - 1); else if (e.key === "ArrowRight") show(cur + 1);
+});
+let tx = null;  // svep på telefonen
+$("lbStage").addEventListener("touchstart", e => tx = e.touches[0].clientX, { passive: true });
+$("lbStage").addEventListener("touchend", e => { if (tx === null) return; const d = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(d) > 50) show(cur + (d < 0 ? 1 : -1)); });
+$("q").oninput = render;
+$("asset").onchange = () => { store.set("asset", $("asset").value); render(); };
+async function load(fresh) {
+  $("info").textContent = "Reading Darrowmere…";
+  try {
+    const r = await fetch("/api/gallery" + (fresh ? "?fresh=1" : "")), j = await r.json();
+    if (!j.ok) throw new Error(j.message);
+    groups = j.groups; assets(); chips(); render();
+  } catch (e) { $("main").innerHTML = `<div id="msg">Could not read the gallery: ${esc(e.message)}</div>`; $("info").textContent = ""; }
+}
+$("reload").onclick = () => load(true);
+load(false);
+</script>
+</body>
+</html>

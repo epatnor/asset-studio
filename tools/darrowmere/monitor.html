@@ -295,6 +295,7 @@
   <button id="acctBtn" title="Accounts and password"><span id="meName">Account</span></button>
   <button id="outBtn" title="Log out">Log out</button>
   <button id="setBtn" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
+  <button id="galBtn" title="Everything Darrowmere has made: generations, renders, models and texture maps">Gallery</button>
   <button id="histBtn" title="All jobs, also acknowledged ones">History</button>
   <button id="logBtn" title="Open the ComfyUI log in its own window">Log</button>
 </header>
@@ -456,6 +457,7 @@ $("setBtn").onclick = () => window.open("/settings", "darrowmere-settings", "wid
 $("acctBtn").onclick =() => window.open("/accounts", "darrowmere-accounts", "width=720,height=640");
 $("outBtn").onclick = async () => { await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); location.href = "/login"; };
 fetch("/api/auth-state").then(r => r.json()).then(a => { if (a.user) $("meName").textContent = a.user; }).catch(() => {});
+$("galBtn").onclick = () => window.open("/gallery", "darrowmere-gallery");
 $("histBtn").onclick = () => window.open("/history", "darrowmere-history", "width=1000,height=720");
 document.addEventListener("click", async e => {
   const b = e.target.closest("button.ack");
