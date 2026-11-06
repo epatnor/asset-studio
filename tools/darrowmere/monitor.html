@@ -30,6 +30,8 @@
   .pill.bad { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, var(--line)); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
   .pill.run .dot { animation: pulse 1.4s infinite; }
+  /* Modellen som kör: bara namnet, stilla (det är ComfyUI-pillret som blinkar, och detaljerna finns i jobblistan) */
+  .pill.model { color: var(--text); } .pill.model .dot { display: none; }
   @keyframes pulse { 50% { opacity: .3; } }
   .spacer { flex: 1; }
   #age { width: 104px; text-align: right; color: var(--muted); }
@@ -457,7 +459,7 @@ function render(s) {
          `<span class="dot"></span><span class="ell" style="max-width:260px">${p.service !== "active" ? "ComfyUI " + esc(p.service) : run ? "ComfyUI running" : "ComfyUI idle"}</span>`);
     // Plattformen och modellen var för sig: ComfyUI ovan, modellen som kör (Krea-2, Pixal3D, UltraTex …) här
     $("modelPill").hidden = !run;
-    if (run) { $("modelPill").className = "pill run"; $("modelName").textContent = run.name + (c.pending.length ? ` · ${c.pending.length} queued` : ""); }
+    if (run) { $("modelPill").className = "pill model"; $("modelName").textContent = run.name; }
     $("queueInfo").textContent = run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle";
     const runIds = new Set(c.running.map(x => x.id));
     errors.clear();
