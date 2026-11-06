@@ -100,7 +100,16 @@
   .cloudtag { display: inline-block; height: 16px; line-height: 15px; padding: 0 5px; margin-right: 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
               color: var(--cloud); border: 1px dashed color-mix(in srgb, var(--cloud) 60%, transparent); vertical-align: 1px; }
   .cur.cloudrun { border-style: dashed; border-color: var(--cloud); }
-  .cur.cloudrun .legend2 { visibility: hidden; }  /* nodfärgerna gäller ComfyUI-jobb, inte molnsteg */
+  .cur.cloudrun .legend2 { visibility: hidden; }
+  .cur.needs { border-color: var(--amber); border-style: solid; }
+  .cur.needs .legend2 { visibility: hidden; }
+  button.approve { height: 24px; padding: 0 12px; font-size: 12px; font-weight: 600; background: var(--amber); border-color: var(--amber); color: #1b1408; }
+  dialog.ask { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); padding: 18px 20px; width: min(420px, 92vw); }
+  dialog.ask::backdrop { background: rgb(0 0 0 / .55); }
+  dialog.ask h3 { margin: 0 0 10px; font-size: 15px; }
+  dialog.ask .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: 12.5px; margin: 8px 0 14px; }
+  dialog.ask .kv span:nth-child(odd) { color: var(--muted); }
+  dialog.ask .btns { display: flex; justify-content: flex-end; gap: 8px; }  /* nodfärgerna gäller ComfyUI-jobb, inte molnsteg */
   .steps { display: flex; gap: 3px; height: 12px; overflow: hidden; align-items: center; }
   .steps i { flex: 0 1 12px; min-width: 3px; height: 12px; border-radius: 2px; background: var(--track); }
   /* Solida färger per slags steg; den pågående blinkar */
@@ -269,6 +278,11 @@
   </section>
 </main>
 <div class="pop" id="pop" hidden></div>
+<dialog class="ask" id="approveDlg">
+  <h3>Approve a cloud step?</h3>
+  <div class="kv" id="approveKv"></div>
+  <div class="btns"><button id="approveNo">Not now</button><button class="approve" id="approveYes">Approve and run</button></div>
+</dialog>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -554,16 +568,27 @@ document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener
 }));
 function showMsg(t) { const el = $("msg"); el.textContent = t; el.classList.toggle("show", !!t); }
 
-// Approve: godkänn ett molnstegs beräknade kostnad (två klick), så att runnern fortsätter
-document.addEventListener("click", async e => {
+// Approve: en dialog med tjänst, steg och kostnad; först "Approve and run" skriver godkännandet
+let pendingApprove = null;
+document.addEventListener("click", e => {
   const b = e.target.closest("button[data-approve]");
   if (!b) return;
   e.stopPropagation();
-  if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.classList.add("armed"); showMsg(`Click again to approve ~${b.dataset.credits} credits`); setTimeout(() => { b.dataset.armed = ""; b.classList.remove("armed"); }, 4000); return; }
-  const r = await fetch(`/api/orders/${encodeURIComponent(b.dataset.approve)}/approve`, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ step: b.dataset.step, credits: parseInt(b.dataset.credits) }) });
-  showMsg((await r.json()).message || "Done"); setTimeout(() => showMsg(""), 6000);
+  pendingApprove = { id: b.dataset.approve, step: b.dataset.step, credits: parseInt(b.dataset.credits) };
+  const row = (k, v) => `<span>${k}</span><span>${esc(v)}</span>`;
+  $("approveKv").innerHTML = row("Order", b.dataset.order || b.dataset.approve) + row("Step", b.dataset.label || b.dataset.step)
+    + row("Service", b.dataset.who || "Cloud") + row("Cost", `about ${b.dataset.credits} credits`);
+  $("approveDlg").showModal();
 }, true);
+$("approveNo").onclick = () => { $("approveDlg").close(); pendingApprove = null; };
+$("approveYes").onclick = async () => {
+  const a = pendingApprove; $("approveDlg").close(); pendingApprove = null;
+  if (!a) return;
+  showMsg("Approving…");
+  const r = await fetch(`/api/orders/${encodeURIComponent(a.id)}/approve`, { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ step: a.step, credits: a.credits }) });
+  showMsg((await r.json()).message || "Done"); setTimeout(() => showMsg(""), 6000);
+};
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
@@ -584,7 +609,7 @@ function renderCurrent(run, pr, c, s) {
   if (pl) {
     // Ett molnsteg som väntar på godkännande får en Approve-knapp med beräknad kostnad
     const ap = pl.steps.find(x => x.status === "approval");
-    set("pipeName", ap ? `<button class="view" data-approve="${esc(pl.id)}" data-step="${esc(ap.key)}" data-credits="${ap.estimate || 0}" title="${esc(ap.note || "")}">Approve ~${ap.estimate || "?"} credits</button> ${esc(pl.title)}`
+    set("pipeName", ap ? `${esc(pl.title)} · waiting for approval`
                        : `${esc(pl.title)} · ${pl.done}/${pl.steps.length}`, true);
     $("pipeName").title = pl.title;
     set("pipeSteps", pl.steps.map(x => {
@@ -598,6 +623,18 @@ function renderCurrent(run, pr, c, s) {
     }).join(""), true);
   }
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
+  const need = !run && pl && pl.steps.find(x => x.status === "approval");
+  $("cur").classList.toggle("needs", !!need);
+  if (need) {
+    const who = need.provider ? need.provider[0].toUpperCase() + need.provider.slice(1) : "Cloud";
+    $("cur").classList.add("on"); $("cur").classList.remove("cloudrun");
+    set("curIcon", "⚠", true);
+    set("curName", `Needs your approval<span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
+    set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
+    set("curTiming", `<button class="approve" data-approve="${esc(pl.id)}" data-step="${esc(need.key)}" data-credits="${need.estimate || 0}"
+      data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}">Approve…</button>`, true);
+    return;
+  }
   const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
   const cloudStep = local && (local.kind === "review" || local.route === "cloud");
   $("cur").classList.toggle("on", !!run || !!local);
