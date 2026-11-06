@@ -51,7 +51,7 @@
   .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
   .dial .arc { transition: stroke-dasharray .6s cubic-bezier(.3, .7, .3, 1), stroke .4s; }
   /* Varningslampa som på en bils instrumentpanel: en liten orange triangel i hörnet när mätaren står på 100 % */
-  .dial svg.full { position: absolute; inset: auto; bottom: 2px; left: -10px; width: 18px; height: 17px; display: none; }
+  .dial svg.full { position: absolute; inset: auto; bottom: 27px; left: -10px;  /* i nivå med ringens nedre ände (r 70, 45° under mitten) */ width: 18px; height: 17px; display: none; }
   .dial svg.full.on { display: block; }
   .dial .face { position: absolute; inset: 27px; border-radius: 50%; display: grid; grid-template-rows: 18px 34px 16px 15px 15px; align-content: center; justify-items: center;
                 background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--panel2) 70%, transparent), transparent 70%); }
