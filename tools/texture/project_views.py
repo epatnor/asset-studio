@@ -6,7 +6,8 @@
 #   uv run --no-project --python 3.12 --with trimesh --with numpy --with pillow --with scipy --with opencv-python-headless \
 #     python -I tools/texture/project_views.py <recept.json>
 # Receptfält utöver de gamla: "align": true (standard), "two_band": true (standard), "low_radius" (meter, 0.03),
-# "detail_power" (vinkelns exponent för detaljbandet, 24). Svarar med en rad JSON.
+# "detail_power" (vinkelns exponent för detaljbandet, 24), "mirror_axis" ("x"/"y"/"z": symmetrisk kropp, vänster och höger
+# görs lika över spegelplanet; "mirror_plane", "mirror_tolerance"). Svarar med en rad JSON.
 import argparse
 import json
 import struct
@@ -236,6 +237,8 @@ def main():
         region = np.ones_like(y_axis) if top else smoothstep(view.get("bottom_y", -1.0), view.get("bottom_y", -1.0) + view.get("fade", 0.02), y_axis)
 
         image = np.asarray(Image.open(view["image"]).convert("RGB")).astype(np.float32) / 255
+        if view.get("mirror_image"):  # symmetrisk kropp: höger vy = speglad vänster
+            image = np.ascontiguousarray(image[:, ::-1])
         if view.get("render") and recipe.get("align", True):
             image, drift = align_to_render(image, view["render"])
             view["_drift"] = drift
@@ -308,6 +311,20 @@ def main():
         report.append({"two_band": {"samples": n, "pairs": int(len(pairs)), "radius": radius}})
         mixed = (low_mix + detail).clip(0, 1).astype(np.float32)
     best_weight = np.max([layer[0] for layer in layers], axis=0)
+    if recipe.get("mirror_axis") in ("x", "y", "z"):
+        # Symmetrisk kropp: varje punkt jämförs med sin spegelpunkt på andra sidan; den sida som ser ytan bäst väger mest.
+        # Så blir vänster och höger lika även där vyerna skiljer sig åt. Stäng av för kläder och rustning som inte är symmetriska.
+        ax = "xyz".index(recipe["mirror_axis"])
+        plane = recipe.get("mirror_plane", float((position[:, ax].min() + position[:, ax].max()) / 2))
+        mirrored = position.copy()
+        mirrored[:, ax] = 2 * plane - mirrored[:, ax]
+        dist, partner = cKDTree(position).query(mirrored, workers=-1)
+        close = dist < recipe.get("mirror_tolerance", 0.004)
+        w_self = best_weight ** 2 + 1e-6
+        w_other = np.where(close, best_weight[partner] ** 2, 0)
+        mixed = ((mixed * w_self[:, None] + mixed[partner] * w_other[:, None]) / (w_self + w_other)[:, None]).astype(np.float32)
+        best_weight = np.where(close, np.maximum(best_weight, best_weight[partner]), best_weight)
+        report.append({"mirror": {"axis": recipe["mirror_axis"], "plane": round(float(plane), 4), "matched": round(float(close.mean()), 3)}})
     seen = (best_weight > SEEN_LEVEL) & (total > 1e-3)
 
     patch = recipe.get("patch")
