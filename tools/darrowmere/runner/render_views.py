@@ -98,6 +98,44 @@ def set_mode(mode):
         shading.cavity_ridge_factor, shading.cavity_valley_factor = 1.0, 1.6
 
 
+def write_depth(path, cam, direction, ortho_scale, w, h, step=2):
+    from mathutils.bvhtree import BVHTree
+    deps = bpy.context.evaluated_depsgraph_get()
+    trees = []
+    for o in meshes:
+        me = o.evaluated_get(deps).to_mesh()
+        verts = [o.matrix_world @ v.co for v in me.vertices]
+        trees.append(BVHTree.FromPolygons(verts, [p.vertices[:] for p in me.polygons]))
+    m = cam.matrix_world
+    right, up, fwd = (m.to_3x3() @ Vector((1, 0, 0))).normalized(), (m.to_3x3() @ Vector((0, 1, 0))).normalized(), -direction.normalized()
+    sx, sy = ortho_scale * (w / max(w, h)), ortho_scale * (h / max(w, h))
+    gw, gh = w // step, h // step
+    depth = np.zeros((gh, gw), np.float32)
+    for j in range(gh):
+        for i in range(gw):
+            origin = m.translation + right * ((i + 0.5) / gw - 0.5) * sx + up * (0.5 - (j + 0.5) / gh) * sy
+            best = None
+            for t in trees:
+                hit = t.ray_cast(origin, fwd)
+                if hit[0] is not None and (best is None or hit[3] < best):
+                    best = hit[3]
+            depth[j, i] = best if best is not None else -1
+    seen = depth > 0
+    if seen.any():
+        near, far = depth[seen].min(), depth[seen].max()
+        img = np.where(seen, 0.15 + 0.85 * (far - depth) / max(far - near, 1e-6), 0.0)
+    else:
+        img = depth * 0
+    pix = (img.clip(0, 1) * 255).astype(np.uint8)
+    out_img = bpy.data.images.new("depth", gw, gh)
+    rgba = np.repeat(pix[::-1, :, None], 4, axis=2).astype(np.float32) / 255
+    rgba[..., 3] = 1
+    out_img.pixels.foreach_set(rgba.ravel())
+    out_img.scale(w, h)
+    out_img.filepath_raw, out_img.file_format = str(path), "PNG"
+    out_img.save()
+
+
 done = []
 for sh in shots:
     s_size = int(sh.get("size", size))
@@ -115,8 +153,12 @@ for sh in shots:
     cam_data.ortho_scale = full / max(0.5, float(sh.get("zoom", 1)))
     prefix = job.get("prefix") or ("render_" if job.get("preset", "basic") == "basic" and not job.get("shots") else "inspect_")
     path = out / f"{src.stem}_{prefix}{sh['name']}.png"
-    scene.render.filepath = str(path)
-    bpy.ops.render.render(write_still=True)
+    if sh.get("mode") == "depth":
+        # Exakt djup ur nätet (strålar mot modellen), nära = vitt, bakgrund = svart: styrbilden för Krea-2:s djup-LoRA
+        write_depth(path, cam, direction, cam_data.ortho_scale, s_size, int(s_size * 4 / 3))
+    else:
+        scene.render.filepath = str(path)
+        bpy.ops.render.render(write_still=True)
     done.append(path.name)
 
 stats = None
