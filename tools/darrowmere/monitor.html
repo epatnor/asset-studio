@@ -240,6 +240,7 @@
   <span class="brand">DARROWMERE</span>
   <span class="pill" id="netPill"><span class="dot"></span><b>connecting</b></span>
   <span class="pill" id="comfyPill"><span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI</span></span>
+  <span class="pill" id="modelPill" hidden><span class="dot"></span><span class="ell" style="max-width:200px" id="modelName"></span></span>
   <span class="pill" id="uptimePill">up <b id="uptime">–</b></span>
   <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
   <span class="spacer"></span>
@@ -413,14 +414,15 @@ document.addEventListener("click", async e => {
   tick();
 });
 function render(s) {
-  const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 15;
+  const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 45;
   pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Darrowmere offline"}</b>`);
-  $("age").textContent = s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
+  $("age").textContent = s.slow ? "Darrowmere is busy · waiting for an answer" : s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
   // Panelen svarar men Darrowmere gör det inte: tona ned, visa sedan när, töm rattarna och låt diagrammet flatlina
   document.body.classList.toggle("offline", !online);
   if (!online) {
     const since = s.offline_since ? new Date(s.offline_since * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">offline since ${since} · retrying</span>`);
+    $("modelPill").hidden = true;
     if (s.offline_since) $("age").textContent = `no answer for ${fmtDur(s.now - s.offline_since)}`;
     GROUPS.forEach(([, dials]) => dials.forEach(([k]) => setGauge(k, null, "", "–", "", "--muted")));
     $("g_swap").setAttribute("stroke-dasharray", `0 ${C2}`);
@@ -452,7 +454,10 @@ function render(s) {
   if (c) {
     const run = c.running[0], pr = c.progress;
     pill("comfyPill", p.service !== "active" ? "bad" : run ? "run" : "ok",
-         `<span class="dot"></span><span class="ell" style="max-width:260px">${p.service !== "active" ? "ComfyUI " + esc(p.service) : run ? "Running " + esc(run.name) : "ComfyUI idle"}</span>`);
+         `<span class="dot"></span><span class="ell" style="max-width:260px">${p.service !== "active" ? "ComfyUI " + esc(p.service) : run ? "ComfyUI running" : "ComfyUI idle"}</span>`);
+    // Plattformen och modellen var för sig: ComfyUI ovan, modellen som kör (Krea-2, Pixal3D, UltraTex …) här
+    $("modelPill").hidden = !run;
+    if (run) { $("modelPill").className = "pill run"; $("modelName").textContent = run.name + (c.pending.length ? ` · ${c.pending.length} queued` : ""); }
     $("queueInfo").textContent = run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle";
     const runIds = new Set(c.running.map(x => x.id));
     errors.clear();
@@ -724,6 +729,8 @@ async function tick() {
     render(lastStatus);
   } catch (e) {
     failCount++;
+    // Ett eller två uteblivna svar (panelen startas om, nätet hackar) visas bara som en rad; först sedan blir sidan grå
+    if (failCount < 3) { $("age").textContent = "waiting for the panel …"; return; }
     document.body.classList.add("offline");
     const since = lastOk ? new Date(lastOk).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
     pill("netPill", "bad", `<span class="dot"></span><b>Darrowmere offline</b>`);

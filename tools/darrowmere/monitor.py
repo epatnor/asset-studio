@@ -194,7 +194,7 @@ def job_list(include_acked=False, limit=50):
     return sorted(out, key=lambda j: j.get("start") or 0, reverse=True)[:limit]
 
 
-def get_json(path, timeout=4):
+def get_json(path, timeout=8):
     return json.load(urllib.request.urlopen(f"{COMFY}{path}", timeout=timeout))
 
 
@@ -688,13 +688,35 @@ def comfy_status():
             "devices": [{"name": d["name"], "vram_total": d["vram_total"], "vram_free": d["vram_free"]} for d in stats.get("devices", [])]}
 
 
+SNAPSHOT = STORE.with_name("state.json")  # senaste läget, så att panelen har värden direkt efter en omstart
+try:
+    _snap = json.loads(SNAPSHOT.read_text())
+    if time.time() - _snap.get("updated", 0) < 120:
+        state.update({k: _snap.get(k) for k in ("probe", "comfy", "pipelines")}, updated=time.time(), online=True)
+except (OSError, ValueError):
+    pass
+
+
+def save_snapshot():
+    try:
+        tmp = SNAPSHOT.with_suffix(".tmp")
+        tmp.write_text(json.dumps({k: state.get(k) for k in ("probe", "comfy", "pipelines", "updated")}))
+        tmp.replace(SNAPSHOT)
+    except OSError:
+        pass
+
+
+MISSES = 3  # så många missade svar i rad (cirka 10–30 s) innan panelen säger offline eller "not answering"
+
+
 def poller():
     last_net = None
+    probe_miss = comfy_miss = 0
     while True:
         t0 = time.time()
         probe = perr = comfy = cerr = None
         try:
-            r = subprocess.run(SSH + ["python3", "-"], input=PROBE, capture_output=True, text=True, timeout=10)
+            r = subprocess.run(SSH + ["python3", "-"], input=PROBE, capture_output=True, text=True, timeout=15)
             if r.returncode:
                 perr = (r.stderr or "ssh failed").strip()[-300:]
             else:
@@ -722,8 +744,20 @@ def poller():
                      "swap": 100 * (1 - m["swap_free"] / m["swap_total"]) if m["swap_total"] else 0,
                      "gpu": g.get("util"), "vram": 100 * g["mem_used"] / g["mem_total"] if g.get("mem_total") else None,
                      "net": sum(r["rx"] + r["tx"] for r in rates.values()) / 1e6 if rates else None}
+        # Ett enstaka uteblivet svar (Darrowmere laddar en modell, RAM och swap fulla) är inget avbrott: behåll senaste värdena
+        probe_miss = 0 if probe is not None else probe_miss + 1
+        comfy_miss = 0 if comfy is not None else comfy_miss + 1
+        slow = probe is None and probe_miss < MISSES and state.get("probe")
+        if comfy is None and comfy_miss < MISSES and state.get("comfy"):
+            comfy, cerr = state["comfy"], None
+        if slow:
+            with lock:
+                state.update(comfy=comfy, comfy_error=cerr, slow=probe_miss)
+            time.sleep(max(0.5, POLL - (time.time() - t0)))
+            continue
         with lock:
-            if comfy is not None:
+            state["slow"] = 0
+            if comfy is not None and comfy is not state.get("comfy"):
                 merge_jobs(comfy["history"] + (ai_jobs(probe.get("ai")) if probe else []))
                 comfy["history"] = job_list()
             if probe is not None:
@@ -738,6 +772,7 @@ def poller():
             hist.append(point if probe else {"t": time.time(), "cpu": 0, "ram": 0, "swap": 0, "gpu": 0, "vram": 0, "net": 0, "off": True})
             if len(hist) % 5 == 0:
                 save_metrics()
+                save_snapshot()
         time.sleep(max(0.5, POLL - (time.time() - t0)))
 
 
@@ -1019,7 +1054,7 @@ if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8791
     bind = os.environ.get("MONITOR_BIND", "127.0.0.1")
     import signal
-    signal.signal(signal.SIGTERM, lambda *_: (save_metrics(), save_live(), sys.exit(0)))
+    signal.signal(signal.SIGTERM, lambda *_: (save_metrics(), save_live(), save_snapshot(), sys.exit(0)))
     threading.Thread(target=poller, daemon=True).start()
     threading.Thread(target=ws_listener, daemon=True).start()
     print(json.dumps({"ok": True, "url": f"http://{bind}:{port}", "darrowmere": HOST, "local": LOCAL, "state": str(STORE)}), flush=True)
