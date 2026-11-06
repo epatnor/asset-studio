@@ -107,11 +107,14 @@ for sh in shots:
     yaw = math.radians(sh.get("yaw", 0) + float(job.get("front_yaw", 0)))
     pitch = math.radians(max(-89.0, min(89.0, sh.get("pitch", 0))))
     direction = Vector((math.sin(yaw) * math.cos(pitch), -math.cos(yaw) * math.cos(pitch), math.sin(pitch)))
+    if sh.get("dir"):  # en exakt riktning i Blenders koordinater (samma kameror som projiceringen)
+        direction = Vector(sh["dir"]).normalized()
     target = Vector((center.x, center.y, low.z + extent.z * float(sh.get("height", 0.5))))
     cam.location = target + direction * distance
     cam.rotation_euler = (-direction).to_track_quat("-Z", "Y").to_euler()
     cam_data.ortho_scale = full / max(0.5, float(sh.get("zoom", 1)))
-    path = out / f"{src.stem}_{'render_' if job.get('preset', 'basic') == 'basic' and not job.get('shots') else 'inspect_'}{sh['name']}.png"
+    prefix = job.get("prefix") or ("render_" if job.get("preset", "basic") == "basic" and not job.get("shots") else "inspect_")
+    path = out / f"{src.stem}_{prefix}{sh['name']}.png"
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
     done.append(path.name)

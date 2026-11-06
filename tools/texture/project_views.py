@@ -36,6 +36,8 @@ CAMERAS = {
     "left_front": (1, 0, -1),
     "right_front": (1, 0, 1),
     "top": (0, 1, 0),
+    "left_back": (-1, 0, -1),
+    "right_back": (-1, 0, 1),
 }
 
 
@@ -78,8 +80,10 @@ def bake_surface(mesh, size):
 
 # Den målade bilden flyttas tillbaka till renderingen den målades över: tätt optiskt flöde mellan bildernas strukturer
 # (gråskala, utjämnad), utslätat och begränsat, så att bara Krea-2:s förskjutningar rättas och inte själva motivet ändras.
-def align_to_render(image, render_path, max_shift=15):
+def align_to_render(image, render_path, max_shift=15, mirror=False):
     render = np.asarray(Image.open(render_path).convert("RGB").resize(image.shape[1::-1], Image.BILINEAR)).astype(np.float32) / 255
+    if mirror:  # speglad vy: renderingen är den ospeglade källans, så den speglas på samma sätt
+        render = np.ascontiguousarray(render[:, ::-1])
     gray = lambda im: cv2.GaussianBlur((im.mean(axis=2) * 255).astype(np.uint8), (0, 0), 1.2)
     a, b = gray(render), gray(image)
     dis = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
@@ -240,7 +244,7 @@ def main():
         if view.get("mirror_image"):  # symmetrisk kropp: höger vy = speglad vänster
             image = np.ascontiguousarray(image[:, ::-1])
         if view.get("render") and recipe.get("align", True):
-            image, drift = align_to_render(image, view["render"])
+            image, drift = align_to_render(image, view["render"], mirror=bool(view.get("mirror_image")))
             view["_drift"] = drift
         mask = figure_mask(image)
         usable = visible & (facing > 0.3) & (region > 0.99)

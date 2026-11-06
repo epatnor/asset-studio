@@ -669,6 +669,20 @@ def resolve_paths(o, value):
     return value
 
 
+def blender_step(o, s):
+    """Renderar en modell i Blender på Darrowmere med givna kameror (t.ex. nya vyer att måla över)."""
+    a = s.get("args") or {}
+    glb = path_for(o, a["glb"])
+    sub_dir = f"orders/{o.id}/{s['key']}"
+    (OUTPUT / sub_dir).mkdir(parents=True, exist_ok=True)
+    o.set(s["key"], status="running", start=time.time(), end=None, note="Blender on Darrowmere")
+    t0 = time.time()
+    res = run_blender_job({"glb": glb, "out_dir": str(OUTPUT / sub_dir), "size": a.get("size", 864), "shots": a["shots"],
+                           "front_yaw": a.get("front_yaw", 0), "prefix": "view_", "stats": False})
+    files = [{"filename": n, "subfolder": sub_dir, "type": "output"} for n in res["files"]]
+    o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=f"{len(files)} renders · {round(time.time() - t0)} s")
+
+
 def script_step(o, s):
     """Ett av runnerns egna verktyg på Darrowmere (uppdelning av vyark, projicering på modellen) med en rad JSON ut."""
     import subprocess
@@ -821,6 +835,8 @@ def run_order(o):
                 comfy_step(o, s)
             elif s["kind"] == "script":
                 script_step(o, s)
+            elif s["kind"] == "blender":
+                blender_step(o, s)
             elif s["kind"] == "meshy3d":
                 try:
                     meshy3d_step(o, s)
