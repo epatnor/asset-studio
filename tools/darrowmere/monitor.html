@@ -485,7 +485,7 @@ function render(s) {
            m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${Math.round(m.swap_total / 1073741824)} GB` : "no swap", "--amber");
   const sp = m.swap_total ? Math.min(100, 100 * swUsed / m.swap_total) : 0;
   $("g_swap").setAttribute("stroke-dasharray", `${ARC2 * sp / 100} ${C2}`);
-  $("g_swap").setAttribute("stroke", `var(${level(sp) || "--blue"})`);
+  $("g_swap").setAttribute("stroke", "var(--blue)");
   setGauge("vram", g.mem_total ? 100 * g.mem_used / g.mem_total : null, "graphics memory", g.mem_total ? `${gb(g.mem_used)} / ${gb(g.mem_total)} GB` : "–", "", "--violet");
   setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--blue");
   setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--teal");
