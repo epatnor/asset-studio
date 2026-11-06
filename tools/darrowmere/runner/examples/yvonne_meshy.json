@@ -1,0 +1,24 @@
+{
+  "id": "yvonne-meshy-v2",
+  "title": "Yvonne: Meshy high and low",
+  "project": "asset-studio",
+  "asset": "yvonne",
+  "use": "test-only",
+  "inputs": {
+    "front.png": "../../../../../lowpoly-test/input/yvonne/front.png",
+    "left.png": "../../../../../lowpoly-test/input/yvonne/left.png",
+    "back.png": "../../../../../lowpoly-test/input/yvonne/back.png",
+    "right.png": "../../../../../lowpoly-test/input/yvonne/right.png"
+  },
+  "steps": [
+    {"key": "high", "label": "3D model high (meshy-7.1, 4 views)", "kind": "meshy3d",
+     "images": ["$in:front.png", "$in:left.png", "$in:back.png", "$in:right.png"],
+     "params": {"ai_model": "meshy-7.1", "texture_model": "meshy-7", "texture_resolution": "4k", "enable_pbr": true, "image_enhancement": false}},
+    {"key": "low", "label": "3D model low (meshy-t2.5, 8k tris)", "kind": "meshy3d", "images": ["$in:front.png"],
+     "params": {"model_type": "smart-topology", "ai_model": "meshy-t2.5", "target_polycount": 8000, "texture_model": "meshy-n1"}},
+    {"key": "review", "label": "Review: low model", "kind": "review", "images": ["$step:low"], "refs": ["$in:front.png"],
+     "criteria": ["The model is the same woman as the reference: build, proportions, hair bun, dark teal two-piece outfit, skin tone.",
+                  "No missing limbs, merged fingers or broken surfaces visible in the views."], "stop_on_fail": false},
+    {"key": "rig", "label": "Skeleton rig", "kind": "manual", "where": "andorhal"}
+  ]
+}

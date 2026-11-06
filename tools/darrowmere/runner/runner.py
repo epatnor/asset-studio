@@ -445,6 +445,63 @@ def meshy_retexture(o, s):
     return files, f"Meshy {body.get('ai_model', 'latest')} · {body['texture_resolution']} · {len(views) or 'style'} views · {credits} credits · {round(time.time() - t0)} s", credits
 
 
+MESHY3D_PARAMS = ("ai_model", "model_type", "geometry_resolution", "should_texture", "texture_model", "enable_pbr", "texture_resolution",
+                  "texture_prompt", "should_remesh", "topology", "target_polycount", "image_enhancement", "pose_mode", "remove_lighting")
+
+
+def meshy3d_cost(p):
+    # Meshys prislista: geometri 5 (meshy-6-lite, meshy-t2, meshy-t2.5) eller 20, textur +10 (+5 i 8K), Ultra-geometri +5
+    cost = 5 if p.get("ai_model") in ("meshy-6-lite", "meshy-t2", "meshy-t2.5") else 20
+    if p.get("should_texture", True):
+        cost += 15 if p.get("texture_resolution") == "8k" else 10
+    if p.get("geometry_resolution") in ("2k", "4k"):
+        cost += 5
+    return cost
+
+
+def meshy3d_step(o, s):
+    """3D-modell med Meshy: en bild (image-to-3d, även smart topology för låg-poly) eller 2–4 vyer (multi-image-to-3d)."""
+    p = {k: v for k, v in (s.get("params") or {}).items() if k in MESHY3D_PARAMS}
+    imgs = [q for r in (s.get("images") or []) for q in files_for(o, r)][:4]
+    if not imgs:
+        raise RuntimeError("meshy3d needs images")
+    cost = meshy3d_cost(p)
+    cloud_gate(o, s, "meshy", cost)
+    o.set(s["key"], status="running", route="cloud", provider="meshy", start=time.time(), end=None, pct=0)
+    key = env_key("MESHY_API_KEY")
+    body = {**p, "target_formats": ["glb"], "multi_view_thumbnails": True}
+    if len(imgs) == 1:
+        path, body["image_url"] = "/image-to-3d", data_uri_image(imgs[0])
+    else:
+        path, body["image_urls"] = "/multi-image-to-3d", [data_uri_image(q) for q in imgs]
+    t0 = time.time()
+    tid = meshy_req("POST", path, key, body)["result"]
+    while True:
+        t = meshy_req("GET", f"{path}/{tid}", key)
+        if t.get("status") == "SUCCEEDED":
+            break
+        if t.get("status") in ("FAILED", "CANCELED") or time.time() - t0 > 2400:
+            raise RuntimeError(f"Meshy task {t.get('status')}: {(t.get('task_error') or {}).get('message', '')}"[:300])
+        o.set(s["key"], note=f"Meshy {path[1:]} · {t.get('progress', 0)} %", pct=t.get("progress", 0))
+        time.sleep(6)
+    sub_dir = f"orders/{o.id}/{s['key']}"
+    (OUTPUT / sub_dir).mkdir(parents=True, exist_ok=True)
+    stem = f"{o.order.get('asset') or o.id}_{s['key']}"
+    files = []
+    (OUTPUT / sub_dir / f"{stem}.glb").write_bytes(urllib.request.urlopen(t["model_urls"]["glb"], timeout=300).read())
+    files.append({"filename": f"{stem}.glb", "subfolder": sub_dir, "type": "output"})
+    for v, url in (t.get("thumbnail_urls") or {"front": t.get("thumbnail_url")}).items():
+        if isinstance(url, str) and url.startswith("http"):
+            (OUTPUT / sub_dir / f"{stem}_preview_{v}.png").write_bytes(urllib.request.urlopen(url, timeout=120).read())
+            files.append({"filename": f"{stem}_preview_{v}.png", "subfolder": sub_dir, "type": "output"})
+    credits = t.get("consumed_credits") or cost
+    ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
+            "provider": "meshy", "model": p.get("ai_model", "latest"), "seconds": round(time.time() - t0, 1), "credits": credits,
+            "files": files, "texture": p.get("should_texture", True), "views": len(imgs)}, "cloud.jsonl")
+    o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, credits=credits,
+          note=f"Meshy {p.get('ai_model', 'latest')} · {len(imgs)} view{'s' if len(imgs) > 1 else ''} · {credits} credits · {round(time.time() - t0)} s")
+
+
 def cloud_gate(o, s, provider, cost):
     # Budget per beställning och tjänst, och godkännande före varje molnsteg om det är påslaget
     st = settings()
@@ -552,6 +609,12 @@ def run_order(o):
         try:
             if s["kind"] == "comfy":
                 comfy_step(o, s)
+            elif s["kind"] == "meshy3d":
+                try:
+                    meshy3d_step(o, s)
+                except Paused:
+                    log(o.id, s["key"], "waiting for approval")
+                    return
             elif s["kind"] in ("model", "texture"):
                 try:
                     routed_step(o, s)
