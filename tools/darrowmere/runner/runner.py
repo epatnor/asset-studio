@@ -232,51 +232,101 @@ def files_for(o, ref):
 
 
 def review(o, s):
-    cand = [p for r in s.get("images", []) for p in files_for(o, r)]
+    inspect = s.get("inspect", True)
+    cand, labels, stats = [], [], None
+    for r in s.get("images", []):
+        key = r.split(":", 1)[1].split("/")[0] if r.startswith("$step:") else None
+        shots = []
+        if inspect and key:
+            shots, stats = inspect_model(o, key, s.get("front_yaw", 0))
+        if shots:
+            cand += [out_path(f) for f in shots]
+            labels += [describe_shot(f["filename"].split("_inspect_", 1)[1].rsplit(".", 1)[0]) for f in shots]
+        else:
+            found = files_for(o, r)
+            cand += found
+            labels += ["candidate"] * len(found)
     refs = [p for r in s.get("refs", []) for p in files_for(o, r)]
     if not cand:
         raise RuntimeError("nothing to review")
     crit = s.get("criteria") or ["The image is clean, without artifacts, extra limbs or broken hands."]
-    # Avslappnad granskning: stilisering, små färgskillnader och lite mjukhet är okej. Bara tydliga, grova fel räknas.
-    content = [{"type": "text", "text": (
-        "You review images made for a stylized game asset pipeline. Be relaxed and practical: the candidate does not have to "
-        "match the reference exactly. Stylization, small colour or shade differences, slight softness, simplified details and "
-        "different lighting are all fine. Only flag clear, obvious problems that a person would notice at a glance, such as a "
-        "wrong subject, missing or extra limbs, broken or melted body parts, garbled faces or hands, large smears or holes, "
-        "clearly visible seams, or colours that are completely wrong. "
-        f"The first {len(cand)} image(s) are the CANDIDATE" + (f"; the next {len(refs)} are REFERENCE images." if refs else ".")
-        + " Things the order cares about:\n" + "\n".join(f"- {c}" for c in crit)
-        + "\nReply with JSON only: {\"level\": \"pass\" | \"warning\" | \"fail\", \"score\": 0-10, \"issues\": [short strings], "
-        "\"summary\": \"one sentence\"}. level pass: usable, at most small things. warning: usable but with a noticeable problem "
-        "worth a look. fail: a gross error that makes it unusable. When in doubt, choose pass or warning, not fail.")}]
-    content += [image_part(p) for p in cand + refs]
+    if s.get("mesh_check"):
+        crit = crit + ["As a mesh for rigging and animation: enough geometry around shoulders, elbows, wrists, hips, knees and the face; "
+                       "clean armpits, groin and other folds; arms, legs and fingers separate (not fused to the body or each other); "
+                       "a neutral pose that is easy to rig; no holes, spikes or stray parts."]
+    intro = ("You review a 3D model made for a stylized game. Be relaxed and practical: stylization, small colour or shade differences, "
+             "slight softness, simplified details and different lighting are all fine. Only flag clear, obvious problems that a person "
+             "would notice at a glance, such as a wrong subject, missing or extra limbs, broken or melted body parts, garbled faces or "
+             "hands, large smears or holes, clearly visible texture seams, or colours that are completely wrong. The head and face matter "
+             "most: look carefully at every head close-up, both texture and shape. ")
+    if stats:
+        intro += ("Mesh numbers from Blender (vertices welded at UV seams): " + json.dumps(stats) + ". Separate connected parts and "
+                  "boundary edges can be normal for eyes, hair cards or clothing; judge whether they would cause trouble. ")
+    intro += "Things the order cares about:\n" + "\n".join(f"- {c}" for c in crit)
+    answer = ("\nReply with JSON only: {\"level\": \"pass\" | \"warning\" | \"fail\", \"score\": 0-10, \"issues\": [short strings], "
+              "\"summary\": \"one sentence\", \"rigging\": \"one sentence on how well the mesh would rig and deform\", "
+              "\"look\": [optional, at most 6 extra camera shots you want before deciding, each {\"yaw\": degrees around from the front, "
+              "\"pitch\": degrees up, \"zoom\": 1 = whole figure, \"height\": 0..1 where on the body (0 feet, 1 top of head), "
+              "\"mode\": \"texture\" | \"clay\" | \"wire\", \"why\": short}]}. level pass: usable, at most small things. "
+              "warning: usable but with a noticeable problem worth a look. fail: a gross error that makes it unusable. "
+              "When in doubt, choose pass or warning, not fail. Only ask for look shots if something is unclear.")
+    v = deepseek_review(o, s, intro + answer, list(zip(labels, cand)), refs, crit)
+    # Andra rundan: DeepSeek bad om egna vinklar (bara när den inte redan godkänt)
+    looks = [l for l in (v.get("look") or []) if isinstance(l, dict)][:6]
+    if looks and v.get("level") != "pass" and inspect:
+        key = next((r.split(":", 1)[1].split("/")[0] for r in s.get("images", []) if r.startswith("$step:")), None)
+        glb = next((f for f in o.st(key).get("outputs", []) if f["filename"].lower().endswith(".glb")), None) if key else None
+        if glb:
+            shots = [{"name": f"look{len(o.st(s['key']).get('looks', [])) + i}", "yaw": float(l.get("yaw", 0)), "pitch": float(l.get("pitch", 0)),
+                      "zoom": max(1.0, min(8.0, float(l.get("zoom", 2)))), "height": max(0.0, min(1.0, float(l.get("height", 0.5)))),
+                      "mode": l.get("mode") if l.get("mode") in ("texture", "clay", "wire") else "texture", "size": 640} for i, l in enumerate(looks)]
+            res = run_blender_job({"glb": str(out_path(glb)), "out_dir": str(out_path(glb).parent), "shots": shots, "front_yaw": s.get("front_yaw", 0)})
+            extra = [(f"requested: {l.get('why', '')} (yaw {l.get('yaw')}, pitch {l.get('pitch', 0)}, zoom {l.get('zoom')}, {l.get('mode', 'texture')})",
+                      out_path(glb).parent / n) for l, n in zip(looks, res["files"])]
+            o.set(s["key"], looks=o.st(s["key"]).get("looks", []) + res["files"])
+            follow = (intro + "\nYour first look said: " + json.dumps({k: v.get(k) for k in ("level", "score", "issues", "summary")})
+                      + ". Here are the extra shots you asked for. Decide now; do not ask for more shots." + answer.replace('"look": [optional', '"look": [leave empty'))
+            v2 = deepseek_review(o, s, follow, extra, refs, crit, round_no=2)
+            v2["first_round"] = {k: v.get(k) for k in ("level", "score", "summary")}
+            v = v2
+    return v
+
+
+def deepseek_review(o, s, text, labelled, refs, crit, round_no=1):
+    content = [{"type": "text", "text": text}]
+    for label, path in labelled:
+        content += [{"type": "text", "text": f"CANDIDATE · {label}:"}, image_part(path, 512)]
+    for path in refs:
+        content += [{"type": "text", "text": "REFERENCE:"}, image_part(path, 512)]
     model = s.get("model") or settings()["review"].get("model") or CONF["model"]
     t0 = time.time()
-    entry = {"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": s.get("label", s["key"]),
-             "model": model, "criteria": crit, "images": [str(p) for p in cand], "refs": [str(p) for p in refs]}
-    log(o.id, s["key"], "DeepSeek review", model, len(cand), "+", len(refs), "images")
+    entry = {"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"],
+             "label": s.get("label", s["key"]) + (" (2nd look)" if round_no == 2 else ""),
+             "model": model, "criteria": crit, "images": [str(p) for _, p in labelled], "refs": [str(p) for p in refs]}
+    log(o.id, s["key"], f"DeepSeek review round {round_no}", model, len(labelled), "+", len(refs), "images")
     try:
         r = http_json("https://openrouter.ai/api/v1/chat/completions",
                       {"model": model, "messages": [{"role": "user", "content": content}],
                        "response_format": {"type": "json_object"}, "temperature": 0.2, "usage": {"include": True}},
-                      headers={"Authorization": f"Bearer {env_key()}", "X-Title": "Darrowmere runner"}, timeout=180)
+                      headers={"Authorization": f"Bearer {env_key()}", "X-Title": "Darrowmere runner"}, timeout=240)
     except Exception as e:
         ai_log({**entry, "seconds": round(time.time() - t0, 1), "error": str(e)[:300]})
         raise
-    text = r["choices"][0]["message"]["content"] or ""
+    text_out = r["choices"][0]["message"]["content"] or ""
     try:
-        verdict = json.loads(text[text.find("{"): text.rfind("}") + 1])
+        verdict = json.loads(text_out[text_out.find("{"): text_out.rfind("}") + 1])
     except ValueError:
-        verdict = {"pass": False, "score": 0, "issues": ["unparseable reply"], "summary": text[:200]}
-    if verdict.get("level") not in ("pass", "warning", "fail"):  # äldre svarsform: pass true/false och poäng
+        verdict = {"level": "warning", "score": 5, "issues": ["unparseable reply"], "summary": text_out[:200]}
+    if verdict.get("level") not in ("pass", "warning", "fail"):
         verdict["level"] = "pass" if verdict.get("pass") else "warning" if (verdict.get("score") or 0) >= 4 else "fail"
     verdict["pass"] = verdict["level"] == "pass"
     verdict["model"], verdict["seconds"] = r.get("model", model), round(time.time() - t0, 1)
     verdict["cost_usd"] = (r.get("usage") or {}).get("cost")
     verdict["tokens"] = {k: (r.get("usage") or {}).get(k) for k in ("prompt_tokens", "completion_tokens")}
-    (o.dir / f"review_{s['key']}_{o.st(s['key'])['attempt']}.json").write_text(json.dumps(verdict, indent=1))
-    ai_log({**entry, "seconds": verdict["seconds"], "model": verdict["model"], "pass": bool(verdict.get("pass")), "level": verdict["level"],
+    (o.dir / f"review_{s['key']}_{o.st(s['key'])['attempt']}_r{round_no}.json").write_text(json.dumps(verdict, indent=1))
+    ai_log({**entry, "seconds": verdict["seconds"], "model": verdict["model"], "pass": verdict["pass"], "level": verdict["level"],
             "score": verdict.get("score"), "summary": verdict.get("summary"), "issues": verdict.get("issues"),
+            "rigging": verdict.get("rigging"), "looks_requested": len(verdict.get("look") or []),
             "cost_usd": verdict["cost_usd"], "tokens": verdict["tokens"]})
     log(o.id, s["key"], "verdict", verdict["level"], verdict.get("score"), f"{verdict['seconds']} s", verdict["cost_usd"])
     return verdict
@@ -516,6 +566,47 @@ def meshy3d_step(o, s):
           note=f"Meshy {p.get('ai_model', 'latest')} · {len(imgs)} view{'s' if len(imgs) > 1 else ''} · {credits} credits · {round(time.time() - t0)} s")
 
 
+def run_blender_job(job, timeout=900):
+    import subprocess
+    blender = CONF.get("blender")
+    r = subprocess.run(["nice", "-n", "15", blender, "-b", "--factory-startup", "-P", str(HERE / "render_views.py"), "--", "--json", json.dumps(job)],
+                       capture_output=True, text=True, timeout=timeout)
+    line = next((l for l in r.stdout.splitlines() if l.startswith("RENDER_RESULT ")), None)
+    if not line:
+        raise RuntimeError("Blender: " + (r.stderr or r.stdout).strip()[-300:])
+    return json.loads(line.split(" ", 1)[1])
+
+
+SHOT_INFO = {"tex": "textured", "clay": "clay (no texture, shows shape, creases and folds)", "wire": "wireframe over clay (topology)",
+             "head": "close-up of the head", "close": "close-up", "face": "close-up of the face"}
+
+
+def describe_shot(name):
+    # "head_tex_090" -> "close-up of the head, textured, 90° around from the front"
+    parts = name.split("_")
+    words = [SHOT_INFO.get(p, p) for p in parts if not p.isdigit()]
+    deg = next((int(p) for p in parts if p.isdigit()), None)
+    return ", ".join(words) + (f", {deg}° around from the front" if deg is not None else "")
+
+
+def inspect_model(o, key, front_yaw=0):
+    """Rundtur i Blender för granskningen: 8 vyer + uppifrån, lera, trådnät, närbilder på leder och huvudet från alla håll,
+    och nätets siffror. Sparas bredvid modellen; görs bara en gång per steg."""
+    outs = o.st(key).get("outputs", [])
+    glb = next((f for f in outs if f["filename"].lower().endswith(".glb")), None)
+    if not glb:
+        return [], None
+    have = [f for f in outs if "_inspect_" in f["filename"]]
+    if have and o.st(key).get("mesh_stats"):
+        return have, o.st(key)["mesh_stats"]
+    res = run_blender_job({"glb": str(out_path(glb)), "out_dir": str(out_path(glb).parent), "size": 512, "preset": "inspect",
+                           "front_yaw": front_yaw})
+    files = [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in res["files"]]
+    o.set(key, outputs=outs + files, mesh_stats=res.get("stats"))
+    log(o.id, key, f"inspection: {len(files)} renders")
+    return files, res.get("stats")
+
+
 def render_previews(o, s, files):
     """Darrowmere renderar en ny modell själv (Blender utan skärm, fem vyer) så att granskningen ser hela modellen."""
     import subprocess
@@ -670,6 +761,8 @@ def review_step(o, s):
     v = review(o, s)
     level = v.get("level") or ("pass" if v.get("pass") else "fail")
     note = f"{level} {v.get('score')}/10: {v.get('summary', '')}"[:240]
+    if v.get("rigging"):
+        note += f" · rigging: {v['rigging']}"[:200]
     if v.get("issues"):
         note += " · " + "; ".join(map(str, v["issues"]))[:200]
     if v.get("pass"):
