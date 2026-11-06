@@ -65,8 +65,18 @@ addEventListener("keydown", e => {
 });
 (async () => {
   try {
-    const res = await fetch("/api/jobs"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
-    const job = (await res.json()).jobs.find(j => j.id === id);
+    const q = new URLSearchParams(location.search), pl = q.get("pl"), stepKey = q.get("step");
+    let job;
+    if (pl) {
+      // Ett delsteg i en pipeline: dess bilder ur panelens läge
+      const res = await fetch("/api/status"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
+      const p = ((await res.json()).pipelines || []).find(x => x.id === pl), st = p && p.steps.find(x => x.key === stepKey);
+      if (!st) { $("msg").textContent = "The step was not found."; return; }
+      job = { name: p.title, title: st.label, images: (st.files || []).filter(f => /\.(png|jpe?g|webp)$/i.test(f.filename)) };
+    } else {
+      const res = await fetch("/api/jobs"); if (res.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
+      job = (await res.json()).jobs.find(j => j.id === id);
+    }
     if (!job) { $("msg").textContent = "The job was not found."; return; }
     imgs = job.images || [];
     $("title").textContent = `${job.name}${job.title ? " · " + job.title : ""}`;

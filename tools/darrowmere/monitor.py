@@ -433,9 +433,11 @@ def pipeline_views(plans, comfy):
             v = {"key": s["key"], "label": s.get("label", s["key"]), "where": s.get("where", "darrowmere"), "kind": s.get("kind"),
                  "status": s.get("status") or "planned", "note": s.get("note"), "start": s.get("start"), "end": s.get("end"),
                  "estimate": s.get("estimate"), "route": s.get("route"), "provider": s.get("provider"),
-                 "credits": s.get("credits"), "pct": s.get("pct")}
+                 "credits": s.get("credits"), "pct": s.get("pct"), "files": s.get("files"), "job": s.get("job")}
             j = by_step.get(key)
             if j:
+                if not v.get("files"):
+                    v["files"] = ((j.get("models") or []) + (j.get("images") or []))[:24]
                 v.update(status="done" if j.get("status") == "success" else "failed", job=j["id"], start=j.get("start"),
                          end=(j["start"] + j["seconds"]) if j.get("start") and j.get("seconds") is not None else None)
             if any(p.get("pipeline") and (p["pipeline"]["id"], p["pipeline"]["step"]) == key for p in pend):

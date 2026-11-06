@@ -105,7 +105,7 @@ class Order:
                           "where": s.get("where", "darrowmere"), "kind": s["kind"],
                           "status": t["status"], "start": t.get("start"), "end": t.get("end"),
                           "note": t.get("note"), **({"job": t["job"]} if t.get("job") else {}),
-                          **({"files": t["files"]} if t.get("files") else {}), **({"route": t["route"]} if t.get("route") else {}),
+                          **({"files": (t.get("files") or t.get("outputs"))[:24]} if (t.get("files") or t.get("outputs")) else {}), **({"route": t["route"]} if t.get("route") else {}),
                           **({"provider": t["provider"]} if t.get("provider") else {}), **({"credits": t["credits"]} if t.get("credits") else {}),
                           **({"pct": t["pct"]} if t.get("pct") is not None and t.get("status") == "running" else {}),
                           **({"estimate": t["estimate"]} if t.get("status") == "approval" else {})})
@@ -150,9 +150,12 @@ def resolve(o, value, cache):
     if kind == "in":
         src = o.dir / "in" / name
     elif kind == "step":
+        name, _, part = name.partition("/")
         imgs = [f for f in o.st(name).get("outputs", []) if f["filename"].lower().endswith((".png", ".jpg", ".jpeg", ".webp"))]
+        if part:
+            imgs = [f for f in imgs if part in f["filename"]]
         if not imgs:
-            raise RuntimeError(f"step {name} has no image output")
+            raise RuntimeError(f"step {name} has no image output{' named ' + part if part else ''}")
         src = out_path(imgs[0])
     else:
         return value
@@ -525,6 +528,67 @@ def render_previews(o, s, files):
     return files + [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in names]
 
 
+SCRIPTS = {"split_sheet.py", "project_views.py"}  # verktyg som får köras som steg, ur /data/runner/tools
+
+
+def path_for(o, ref):
+    # En fil som skriptet ska läsa: "$in:<namn>", "$step:<nyckel>" eller "$step:<nyckel>/<namn>" (bild eller modell)
+    kind, _, name = ref.partition(":")
+    if kind == "$in":
+        return str(o.dir / "in" / name)
+    key, _, part = name.partition("/")
+    outs = o.st(key).get("outputs", [])
+    hit = [f for f in outs if part in f["filename"]] if part else outs
+    if not hit:
+        raise RuntimeError(f"no file {ref}")
+    return str(out_path(hit[0]))
+
+
+def resolve_paths(o, value):
+    if isinstance(value, str) and value.startswith("$"):
+        return path_for(o, value)
+    if isinstance(value, list):
+        return [resolve_paths(o, v) for v in value]
+    if isinstance(value, dict):
+        return {k: resolve_paths(o, v) for k, v in value.items()}
+    return value
+
+
+def script_step(o, s):
+    """Ett av runnerns egna verktyg på Darrowmere (uppdelning av vyark, projicering på modellen) med en rad JSON ut."""
+    import subprocess
+    if s["script"] not in SCRIPTS:
+        raise RuntimeError(f"script {s['script']} is not allowed")
+    sub_dir = f"orders/{o.id}/{s['key']}"
+    out_dir = OUTPUT / sub_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    args = resolve_paths(o, s.get("args") or {})
+    o.set(s["key"], status="running", start=time.time(), end=None, note=f"{s['script']} on Darrowmere")
+    if s["script"] == "project_views.py":
+        args["out"] = str(out_dir / f"{o.order.get('asset') or o.id}_{s['key']}.glb")
+        recipe = o.dir / f"{s['key']}_recipe.json"
+        recipe.write_text(json.dumps(args, indent=1))
+        cmd = [sys.executable, "-I", str(HERE / "tools" / s["script"]), str(recipe)]
+    else:
+        args["out_dir"] = str(out_dir)
+        cmd = [sys.executable, "-I", str(HERE / "tools" / s["script"]), json.dumps(args)]
+    t0 = time.time()
+    r = subprocess.run(["nice", "-n", "10"] + cmd, capture_output=True, text=True, timeout=3600, cwd=str(o.dir))
+    last = next((l for l in reversed(r.stdout.splitlines()) if l.startswith("{")), "")
+    if r.returncode or not last:
+        raise RuntimeError(f"{s['script']}: {(r.stderr or r.stdout).strip()[-300:]}")
+    res = json.loads(last)
+    if s["script"] == "project_views.py":
+        names = [Path(res["glb"]).name, Path(res["glb"]).stem + "_basecolor.jpg"]
+        note = f"projected {len(res.get('views', []))} views · {round(res.get('seen', 0) * 100, 1)} % seen · {round(time.time() - t0)} s"
+    else:
+        names = res.get("files", [])
+        note = f"{len(names)} files · {round(time.time() - t0)} s"
+    files = [{"filename": n, "subfolder": sub_dir, "type": "output"} for n in names]
+    files = render_previews(o, s, files)
+    o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=note)
+
+
 def cloud_gate(o, s, provider, cost):
     # Budget per beställning och tjänst, och godkännande före varje molnsteg om det är påslaget
     st = settings()
@@ -634,6 +698,8 @@ def run_order(o):
         try:
             if s["kind"] == "comfy":
                 comfy_step(o, s)
+            elif s["kind"] == "script":
+                script_step(o, s)
             elif s["kind"] == "meshy3d":
                 try:
                     meshy3d_step(o, s)

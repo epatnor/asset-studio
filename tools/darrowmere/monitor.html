@@ -91,6 +91,8 @@
   .pchip.failed { border-color: var(--red); } .pchip.failed::before { background: var(--red); }
   .pchip.skipped { text-decoration: line-through; }
   .pchip.waiting::before { background: var(--amber); }
+  .pchip.viewable { cursor: pointer; } .pchip.viewable:hover { border-color: var(--blue); color: var(--text); }
+  .pchip .vw { margin-left: 4px; color: var(--muted); font-size: 10px; }
   .pchip.warning { border-color: color-mix(in srgb, var(--amber) 60%, var(--line)); } .pchip.warning::before { background: var(--amber); }
   .pchip.rejected { border-color: color-mix(in srgb, #fb923c 60%, var(--line)); } .pchip.rejected::before { background: #fb923c; }
   /* Molnsteg (Meshy, Tripo, DeepSeek): streckad kant i molnfärg och ett moln före namnet; de kostar krediter */
@@ -602,6 +604,13 @@ $("approveYes").onclick = async () => {
     body: JSON.stringify({ step: a.step, credits: a.credits }) });
   showMsg((await r.json()).message || "Done"); setTimeout(() => showMsg(""), 6000);
 };
+// Ett delsteg öppnas med ett klick: modellen i 3D-visaren, bilderna i bildvisaren
+document.addEventListener("click", e => {
+  const c = e.target.closest(".pchip.viewable");
+  if (!c) return;
+  if (c.dataset.vglb) window.open("/viewer?" + new URLSearchParams({ filename: c.dataset.vglb, subfolder: c.dataset.vsub, type: "output" }), "darrowmere-viewer", "width=1100,height=850");
+  else window.open("/images?" + new URLSearchParams({ pl: c.dataset.vpl, step: c.dataset.vstep }), "darrowmere-images", "width=1200,height=900");
+});
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
@@ -632,7 +641,10 @@ function renderCurrent(run, pr, c, s) {
       const cloud = x.route === "cloud" || x.kind === "review";
       const who = x.kind === "review" ? "DeepSeek" : x.provider ? x.provider[0].toUpperCase() + x.provider.slice(1) : "";
       const ctip = cloud ? ` · cloud${who ? ": " + who : ""}${x.credits ? ` · ${x.credits} credits` : x.estimate ? ` · ~${x.estimate} credits` : ""}` : "";
-      return `<span class="pchip ${esc(x.status)}${cloud ? " cloud" : ""}" title="${esc(tip + ctip)}">${cloud ? '<span class="ic">☁</span>' : ""}${esc(x.label)}</span>`;
+      // Ett delsteg med resultat går att öppna: modellen i 3D-visaren, annars bilderna i bildvisaren
+      const files = x.files || [], glb = files.find(f => /\.(glb|gltf)$/i.test(f.filename)), img = files.some(f => /\.(png|jpe?g|webp)$/i.test(f.filename));
+      const view = glb ? ` data-vglb="${esc(glb.filename)}" data-vsub="${esc(glb.subfolder || "")}"` : img ? ` data-vpl="${esc(pl.id)}" data-vstep="${esc(x.key)}"` : "";
+      return `<span class="pchip ${esc(x.status)}${cloud ? " cloud" : ""}${view ? " viewable" : ""}"${view} title="${esc(tip + ctip + (view ? " · click to view" : ""))}">${cloud ? '<span class="ic">☁</span>' : ""}${esc(x.label)}${view ? '<span class="vw">⤢</span>' : ""}</span>`;
     }).join(""), true);
   }
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
