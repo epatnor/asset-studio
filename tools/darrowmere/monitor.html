@@ -50,6 +50,9 @@
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
   .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
   .dial .arc { transition: stroke-dasharray .6s cubic-bezier(.3, .7, .3, 1), stroke .4s; }
+  /* Varningslampa som på en bils instrumentpanel: en liten orange triangel i hörnet när mätaren står på 100 % */
+  .dial svg.full { position: absolute; inset: auto; bottom: 2px; left: -10px; width: 18px; height: 17px; display: none; }
+  .dial svg.full.on { display: block; }
   .dial .face { position: absolute; inset: 27px; border-radius: 50%; display: grid; grid-template-rows: 18px 34px 16px 15px 15px; align-content: center; justify-items: center;
                 background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--panel2) 70%, transparent), transparent 70%); }
   .dial .lbl { color: var(--muted); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
@@ -371,6 +374,9 @@ function dialHtml([k, label, col]) { return `
           <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
         </g>
       </svg>
+      <svg class="full" id="gw_${k}" viewBox="0 0 24 22" aria-label="At full load"><title>At full load</title>
+        <path d="M12 1.5 23 20.5H1z" fill="#fb923c" stroke="#fb923c" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M12 8v6.5" stroke="#1b1408" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.4" r="1.4" fill="#1b1408"/></svg>
       <div class="face">
         <div class="lbl">${label}</div>
         <div class="big num"><span id="gv_${k}">–</span><small>%</small></div>
@@ -386,6 +392,7 @@ function setGauge(k, pct, unit, m1, m2, colorVar) {
   const col = `var(${colorVar})`;  // samma färg som i grafen; hur full mätaren är visar lasten
   $("gs0_" + k).setAttribute("stop-color", col); $("gs1_" + k).setAttribute("stop-color", col);
   $("gv_" + k).textContent = p == null ? "–" : p.toFixed(0);
+  $("gw_" + k).classList.toggle("on", p != null && p >= 99.5);
   $("gu_" + k).textContent = unit; $("gm1_" + k).textContent = m1; $("gm2_" + k).textContent = m2;
 }
 
