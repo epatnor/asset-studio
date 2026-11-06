@@ -377,7 +377,7 @@ def ai_jobs(entries):
     for e in entries or []:
         if e.get("provider"):  # ett molnjobb (Tripo): en rad med 3D-knapp för modellen
             files = e.get("files") or []
-            out.append({"id": f"cloud-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": str(e["provider"]).capitalize(),
+            out.append({"id": f"cloud-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": str(e["provider"]).capitalize(), "cloud": True,
                         "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
                                  + (f" · {e.get('credits')} credits" if e.get("credits") is not None else ""),
                         "status": "error" if e.get("error") else "success", "start": e.get("t"), "seconds": e.get("seconds"),
@@ -388,7 +388,7 @@ def ai_jobs(entries):
             continue
         ok = e.get("pass")
         cost = e.get("cost_usd")
-        out.append({"id": f"ai-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": "DeepSeek",
+        out.append({"id": f"ai-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": "DeepSeek", "cloud": True,
                     "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
                              + (f" · {e.get('score')}/10" if e.get("score") is not None else "")
                              + (f" · ${cost:.4f}" if isinstance(cost, (int, float)) else ""),
@@ -431,7 +431,8 @@ def pipeline_views(plans, comfy):
             key = (pl["id"], s["key"])
             v = {"key": s["key"], "label": s.get("label", s["key"]), "where": s.get("where", "darrowmere"), "kind": s.get("kind"),
                  "status": s.get("status") or "planned", "note": s.get("note"), "start": s.get("start"), "end": s.get("end"),
-                 "estimate": s.get("estimate")}
+                 "estimate": s.get("estimate"), "route": s.get("route"), "provider": s.get("provider"),
+                 "credits": s.get("credits"), "pct": s.get("pct")}
             j = by_step.get(key)
             if j:
                 v.update(status="done" if j.get("status") == "success" else "failed", job=j["id"], start=j.get("start"),

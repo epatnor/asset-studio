@@ -63,7 +63,7 @@ function show() {
   const list = jobs.filter(j => !f || `${j.name} ${j.status}`.toLowerCase().includes(f));
   const html = list.map(j => `
     <tr class="${j.acked ? "acked" : ""}">
-      <td>${when(j.start)}</td><td>${j.start && j.seconds != null ? new Date((j.start + j.seconds) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–"}</td><td title="${esc(j.title || "")}">${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
+      <td>${when(j.start)}</td><td>${j.start && j.seconds != null ? new Date((j.start + j.seconds) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–"}</td><td title="${esc(j.title || "")}">${j.cloud ? '<span title="Ran in the cloud and cost credits" style="color:#7cc7ff;margin-right:5px">☁</span>' : ""}${esc(j.name)}${j.title ? `<span style="color:var(--muted)"> · ${esc(j.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}</td>
       <td><span class="tag ${j.status === "success" || j.status === "pass" ? "ok" : "bad"}" ${j.error ? `data-open="${esc(j.id)}" title="Show the error"` : ""}>${esc(j.status)}${j.error ? " ▾" : ""}</span></td>
       <td>${fmtDur(j.seconds)}</td>
       <td>${j.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(j.delivered.path)}">⇣</span>` : (((j.images || []).length + (j.models || []).length) && j.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${j.kind === "ai" ? "–" : `${j.outputs} files`}${(j.models || []).slice(0, 1).map(m => ` <button data-file="${esc(m.filename)}" data-sub="${esc(m.subfolder)}" data-type="${esc(m.type)}">3D</button>`).join("")

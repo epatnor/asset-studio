@@ -7,12 +7,12 @@
 <style>
   :root {
     --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4b5563;
-    --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32;
+    --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32; --cloud: #7cc7ff;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
-      --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed;
+      --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7;
     }
   }
   * { box-sizing: border-box; }
@@ -91,6 +91,16 @@
   .pchip.failed { border-color: var(--red); } .pchip.failed::before { background: var(--red); }
   .pchip.skipped { text-decoration: line-through; }
   .pchip.waiting::before { background: var(--amber); }
+  /* Molnsteg (Meshy, Tripo, DeepSeek): streckad kant i molnfärg och ett moln före namnet; de kostar krediter */
+  .pchip.cloud { border-style: dashed; border-color: color-mix(in srgb, var(--cloud) 55%, var(--line)); }
+  .pchip.cloud.running { border-color: var(--cloud); border-style: dashed; }
+  .pchip.cloud.running::before { background: var(--cloud); }
+  .pchip .ic { color: var(--cloud); margin-right: 3px; }
+  .pchip.approval { border-color: var(--amber); color: var(--text); } .pchip.approval::before { background: var(--amber); animation: blink 1s steps(1, end) infinite; }
+  .cloudtag { display: inline-block; height: 16px; line-height: 15px; padding: 0 5px; margin-right: 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
+              color: var(--cloud); border: 1px dashed color-mix(in srgb, var(--cloud) 60%, transparent); vertical-align: 1px; }
+  .cur.cloudrun { border-style: dashed; border-color: var(--cloud); }
+  .cur.cloudrun .legend2 { visibility: hidden; }  /* nodfärgerna gäller ComfyUI-jobb, inte molnsteg */
   .steps { display: flex; gap: 3px; height: 12px; overflow: hidden; align-items: center; }
   .steps i { flex: 0 1 12px; min-width: 3px; height: 12px; border-radius: 2px; background: var(--track); }
   /* Solida färger per slags steg; den pågående blinkar */
@@ -358,7 +368,7 @@ const SERIES = [["cpu", "CPU", "--teal"], ["ram", "RAM", "--amber"], ["swap", "S
 $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
 
 let lastRows = "";
-const jobLabel = x => `${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
+const jobLabel = x => `${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
 $("logBtn").onclick = () => window.open("/log", "darrowmere-log", "width=1100,height=720");
@@ -581,18 +591,28 @@ function renderCurrent(run, pr, c, s) {
       const dur = x.start && x.end ? fmtDur(x.end - x.start) : x.start && x.status === "running" ? fmtDur(s.now - x.start) + " so far" : "";
       const tip = [x.label, x.status + (x.status === "running" && x.pct != null ? ` ${x.pct} %` : ""), x.where !== "darrowmere" ? "on " + x.where : "", dur, x.note || ""]
         .filter(Boolean).join(" · ");
-      return `<span class="pchip ${esc(x.status)}" title="${esc(tip)}">${esc(x.label)}</span>`;
+      const cloud = x.route === "cloud" || x.kind === "review";
+      const who = x.kind === "review" ? "DeepSeek" : x.provider ? x.provider[0].toUpperCase() + x.provider.slice(1) : "";
+      const ctip = cloud ? ` · cloud${who ? ": " + who : ""}${x.credits ? ` · ${x.credits} credits` : x.estimate ? ` · ~${x.estimate} credits` : ""}` : "";
+      return `<span class="pchip ${esc(x.status)}${cloud ? " cloud" : ""}" title="${esc(tip + ctip)}">${cloud ? '<span class="ic">☁</span>' : ""}${esc(x.label)}</span>`;
     }).join(""), true);
   }
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
-  const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review"));
+  const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
+  const cloudStep = local && (local.kind === "review" || local.route === "cloud");
   $("cur").classList.toggle("on", !!run || !!local);
+  $("cur").classList.toggle("cloudrun", !!cloudStep);
   if (local) {
     const ai = local.kind === "review";
+    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
     set("curIcon", `<i class="spin big"></i>`, true);
-    set("curName", `${ai ? "DeepSeek" : esc(pl.title)}<span class="sub"> · ${ai ? esc(pl.title) + ": " : ""}${esc(local.label)}</span>`, true);
+    set("curName", cloudStep ? `<span class="cloudtag">☁ cloud</span>${esc(who)}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
+                             : `${esc(pl.title)}<span class="sub"> · ${esc(local.label)}</span>`, true);
     set("curTime", local.start ? fmtDur(s.now - local.start) : "");
-    set("curPhase", ai ? "Reviewing images" : `Running on ${local.where}`); set("curSteps", "", true); set("curTiming", ai ? "via OpenRouter" : local.note || "");
+    set("curPhase", ai ? "Reviewing images" : cloudStep ? (local.pct != null ? `In the cloud · ${local.pct} %` : "In the cloud · waiting for the service") : `Running on ${local.where}`);
+    // Molnsteg: en rad rutor för förloppet (tio rutor, en per tiondel), i molnfärg
+    set("curSteps", cloudStep && local.pct != null ? Array.from({ length: 10 }, (_, i) => `<i style="background:${i < Math.floor(local.pct / 10) ? "var(--cloud)" : "var(--track)"}"></i>`).join("") : "", true);
+    set("curTiming", ai ? "via OpenRouter" : cloudStep ? (local.estimate || local.credits ? `~${local.credits || local.estimate} credits` : "costs credits") : local.note || "");
     return;
   }
   if (!run) {

@@ -106,6 +106,8 @@ class Order:
                           "status": t["status"], "start": t.get("start"), "end": t.get("end"),
                           "note": t.get("note"), **({"job": t["job"]} if t.get("job") else {}),
                           **({"files": t["files"]} if t.get("files") else {}), **({"route": t["route"]} if t.get("route") else {}),
+                          **({"provider": t["provider"]} if t.get("provider") else {}), **({"credits": t["credits"]} if t.get("credits") else {}),
+                          **({"pct": t["pct"]} if t.get("pct") is not None and t.get("status") == "running" else {}),
                           **({"estimate": t["estimate"]} if t.get("status") == "approval" else {})})
         PIPES.mkdir(parents=True, exist_ok=True)
         body = {"id": self.id, "title": self.order.get("title", self.id), "created": self.state["created"], "updated": time.time(),
@@ -327,6 +329,7 @@ def tripo_model(o, s, texture):
             break
         if status in ("failed", "cancelled", "banned", "expired") or time.time() - t0 > 1200:
             raise RuntimeError(f"Tripo task {status}")
+        o.set(s["key"], note=f"Tripo {model} · {(r.get('data') or {}).get('progress', 0)} %", pct=(r.get("data") or {}).get("progress", 0))
         time.sleep(5)
     out = r["data"].get("output", {})
     blob = urllib.request.urlopen(out.get("model_url") or out.get("pbr_model") or out.get("model"), timeout=180).read()
@@ -412,7 +415,7 @@ def meshy_retexture(o, s):
             break
         if t.get("status") in ("FAILED", "CANCELED") or time.time() - t0 > 1800:
             raise RuntimeError(f"Meshy task {t.get('status')}: {(t.get('task_error') or {}).get('message', '')}"[:300])
-        o.set(s["key"], note=f"Meshy retexture · {t.get('progress', 0)} %")
+        o.set(s["key"], note=f"Meshy retexture · {t.get('progress', 0)} %", pct=t.get("progress", 0))
         time.sleep(8)
     sub_dir = f"orders/{o.id}/{s['key']}"
     (OUTPUT / sub_dir).mkdir(parents=True, exist_ok=True)
@@ -440,7 +443,8 @@ def cloud_gate(o, s, provider, cost):
     if spent + cost > cap:
         raise RuntimeError(f"over budget: ~{cost} {provider} credits needed, {cap - spent} left of {cap} per order (Settings → Budget)")
     if st["budget"].get("ask_before_cloud", True) and not approved(o, s["key"], cost):
-        o.set(s["key"], status="approval", note=f"needs approval: ~{cost} {provider.capitalize()} credits", estimate=cost)
+        o.set(s["key"], status="approval", note=f"needs approval: ~{cost} {provider.capitalize()} credits", estimate=cost,
+              provider=provider, route="cloud")
         o.state["status"] = "approval"
         o.save()
         raise Paused()
