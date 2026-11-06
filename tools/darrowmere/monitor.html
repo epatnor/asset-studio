@@ -103,7 +103,11 @@
   .cur.cloudrun .legend2 { visibility: hidden; }
   .cur.needs { border-color: var(--amber); border-style: solid; }
   .cur.needs .legend2 { visibility: hidden; }
-  button.approve { height: 24px; padding: 0 12px; font-size: 12px; font-weight: 600; background: var(--amber); border-color: var(--amber); color: #1b1408; }
+  /* Approve på kortet: liten, i radens höjd, gul kontur; fylld först när man håller över den. I dialogen är den större */
+  button.approve { height: 20px; line-height: 18px; padding: 0 9px; font-size: 11px; font-weight: 600; border-radius: 5px;
+                   background: transparent; border: 1px solid var(--amber); color: var(--amber); vertical-align: middle; }
+  button.approve:hover { background: var(--amber); color: #1b1408; border-color: var(--amber); }
+  dialog.ask button.approve { height: 30px; padding: 0 14px; font-size: 12.5px; background: var(--amber); color: #1b1408; }
   dialog.ask { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); padding: 18px 20px; width: min(420px, 92vw); }
   dialog.ask::backdrop { background: rgb(0 0 0 / .55); }
   dialog.ask h3 { margin: 0 0 10px; font-size: 15px; }
@@ -632,7 +636,7 @@ function renderCurrent(run, pr, c, s) {
     set("curName", `Needs your approval<span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
     set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
     set("curTiming", `<button class="approve" data-approve="${esc(pl.id)}" data-step="${esc(need.key)}" data-credits="${need.estimate || 0}"
-      data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}">Approve…</button>`, true);
+      data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}" title="Review the cost and approve">Approve</button>`, true);
     return;
   }
   const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
