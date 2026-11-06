@@ -18,6 +18,9 @@ Gjort och provat på roboten (`build/robot/`):
   Patriks bedömning (2026-11-06): **suddig och sneda texturer, inte bra.** Fler vyer som blandas ihop gör ytan suddigare
   (Krea-2:s detaljer hamnar några pixlar olika i varje vy och medelvärdet smetar ut dem), och de sneda vyerna målade över
   den redan texturerade modellen förstärker suddet.
+- **En vy per yta** (`"blend": "best"`, 2026-11-06): ingen blandning, varje yta från den vy som ser den rakast. Skarpare
+  (Laplace-varians +35–40 %), men fläckigt där Krea-2:s vyer inte är överens (tydligast på hjässan, där topp- och
+  snettvyerna målat olika). Blandningen gömde alltså oenigheten som sudd; grundproblemet är att vyerna inte är samstämmiga.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
 ## Idéerna, i ordning
