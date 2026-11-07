@@ -107,7 +107,7 @@ checks.heads_measured = +(maxY / (maxY - sk.dims.chinY)).toFixed(2);
 checks.heads_target = +sk.heads.toFixed(2);
 checks.height = +maxY.toFixed(3);
 checks.tris = tris.length;
-const [bmin, bmax] = style.budgets_tris.character;
+const [bmin, bmax] = style.budgets_tris.character_high;  // hög kropp, källa att baka från
 checks.within_budget = tris.length >= bmin * 0.8 && tris.length <= bmax;
 // Mallen: hur väl hörnen ligger på ytan och om några trianglar vänts
 checks.template = refName;

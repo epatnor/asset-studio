@@ -72,7 +72,7 @@ checks.symmetry = +(verts.filter((p) => {
 }).length / verts.length).toFixed(4);
 checks.joint_order = J.Head[1] > J.Neck[1] && J.Neck[1] > J.Chest[1] && J.Chest[1] > J.Spine[1] && J.Spine[1] > J.Hips[1]
   && J.Hips[1] > J.LeftLowerLeg[1] && J.LeftLowerLeg[1] > J.LeftFoot[1] && J.LeftUpperArm[0] > 0 && J.LeftHand[0] > J.LeftLowerArm[0];
-const [bmin, bmax] = style.budgets_tris.character;
+const [bmin, bmax] = style.budgets_tris.character_high;  // hög kropp, källa att baka från
 checks.ok = !checks.missing_targets && checks.symmetry > 0.99 && checks.joint_order;
 
 // Ytan: hela kroppen som en mesh, eller per byggsatsplats med outfit

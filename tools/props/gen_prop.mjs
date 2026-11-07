@@ -550,4 +550,13 @@ const partsLod0 = Object.entries(lods[0]).filter(([, g]) => g?.indices?.length).
 const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -2.5 };
 checks.wind_torn = WIND_TORN;
 checks.ok = partsLod0.length > 0 && checks.resting_on_ground && WIND_TORN === 0;
+// Polygonbudgeten (style.json, LOD0) redovisas men fäller inte ok. Kategori: artens "budget" i props.json, annars efter sort
+const BUDGET_BY_KIND = { rock: 'prop_small', mushroom: 'prop_small', stump: 'prop_medium', log: 'prop_medium', leafpile: 'ground_cover', creeper: 'ground_cover' };
+const STYLE_BUDGETS = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url))).budgets_tris ?? {};
+const biggest = (v) => Math.max(...[v ?? 0].flat());
+const groupOrBig = sp.kind === 'rock' && (biggest(sp.count) > 1 || biggest(sp.size) >= 1);  // stengrupper och bumlingar
+checks.budget_category = sp.budget ?? (groupOrBig ? 'prop_medium' : BUDGET_BY_KIND[sp.kind]) ?? 'prop_medium';
+checks.budget = STYLE_BUDGETS[checks.budget_category] ?? [300, 1500];
+checks.within_budget = tris[0] <= checks.budget[1];
+checks.budget_x = Math.round((tris[0] / checks.budget[1]) * 100) / 100;
 console.log(JSON.stringify({ model: out, preset, kind: sp.kind, tris_lod: tris, checks }));

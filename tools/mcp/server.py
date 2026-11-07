@@ -248,7 +248,7 @@ def import_model(name: str, source: str, height: float | None = None, scale: flo
 
     Normaliseras till meter (cm och mm gissas, eller ange height i meter eller scale), centreras med pivot vid
     marken, komprimeras (WebP-texturer upp till max_texture px, meshopt-geometri) och läggs i katalogen.
-    category: budgetkategori i style.json (prop_small, prop_medium, tree, bush, building_module, character).
+    category: budgetkategori i style.json (prop_small, prop_medium, prop_large, tree, bush, ground_cover, building_module, building, character, character_high).
     origin (varifrån, gärna URL), license (CC0-1.0, CC-BY-4.0, MIT, egen ...) och author (upphovsperson, krävs
     för CC-BY) hamnar i assets/CREDITS.md. Utan licens, eller med NC/ND/editorial, blir checks.ok false.
     Svaret har storlek, trianglar mot budget och "checks".

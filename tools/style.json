@@ -54,13 +54,30 @@
     }
   },
   "budgets_tris": {
+    "_doc": "LOD0, trianglar [min, max]. Riktvärden från 2026-11-07 (docs/style-guide.md avsnitt 2). Träd, props och import redovisar within_budget utan att fälla checks.ok; växter, hus och figurer fäller ok.",
     "prop_small": [
-      500,
-      3000
+      100,
+      600
     ],
     "prop_medium": [
-      3000,
-      15000
+      300,
+      1500
+    ],
+    "prop_large": [
+      1000,
+      4000
+    ],
+    "bush": [
+      500,
+      2000
+    ],
+    "tree": [
+      1500,
+      5000
+    ],
+    "ground_cover": [
+      100,
+      4000
     ],
     "building_module": [
       2000,
@@ -70,21 +87,13 @@
       4000,
       40000
     ],
-    "tree": [
-      10000,
-      40000
-    ],
-    "bush": [
-      2000,
-      8000
-    ],
     "character": [
+      6000,
+      15000
+    ],
+    "character_high": [
       30000,
       60000
-    ],
-    "ground_cover": [
-      100,
-      4000
     ]
   },
   "preview": {

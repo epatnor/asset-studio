@@ -366,6 +366,10 @@ foliage.lods.forEach((lod, i) => {
 doc.createScene(name).addChild(root);
 checks.wind_torn = WIND_TORN;
 checks.ok = checks.ok && WIND_TORN === 0 && checks.rig_torn === 0 && checks.rig_still_moves === 0 && checks.rig_ground_moves === 0 && checks.rig_depth_ok;
+// Polygonbudgeten (style.json, LOD0) redovisas men fäller inte ok: över budget sänks med "detail"
+checks.budget = STYLE.budgets_tris?.[kind === 'bush' ? 'bush' : 'tree'] ?? [1500, 5000];
+checks.within_budget = tris[0] <= checks.budget[1];
+checks.budget_x = Math.round((tris[0] / checks.budget[1]) * 100) / 100;
 await writeGltf(doc, out);
 
 // Kort svar, avsett för en AI-agent

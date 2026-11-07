@@ -33,14 +33,32 @@ Det betyder för generatorerna:
 
 ## 2. Polygonbudget (riktvärden)
 
-| Typ | Trianglar |
-|---|---|
-| Liten prop (låda, tunna, sten) | 500–3 000 |
-| Medelstor prop (vagn, bänk, staket-sektion) | 3 000–15 000 |
-| Byggnad (modulär del) | 2 000–10 000 per modul |
-| Träd | 10 000–40 000 |
-| Buske | 2 000–8 000 |
-| Karaktär | 30 000–60 000 |
+LOD0, i trianglar. Värdena står i `tools/style.json` (`budgets_tris`) och gäller sedan 2026-11-07.
+
+| Typ | Kategori | Trianglar |
+|---|---|---|
+| Liten sten, svamp, liten prop | `prop_small` | 100–600 |
+| Tunna, kista, låda, stubbe, stock, bumling, stengrupp | `prop_medium` | 300–1 500 |
+| Möbler och större rekvisita | `prop_large` | 1 000–4 000 |
+| Buske | `bush` | 500–2 000 |
+| Stiliserat träd | `tree` | 1 500–5 000 |
+| Marktäcke (växter, lövhög, murgröna) | `ground_cover` | 100–4 000 |
+| Byggnad (modulär del) | `building_module` | 2 000–10 000 per modul |
+| Byggnad | `building` | 4 000–40 000 (skalas med ytan) |
+| Spelkaraktär | `character` | 6 000–15 000 |
+| Hög kropp att baka från | `character_high` | 30 000–60 000 |
+
+Generatorerna svarar med `checks.within_budget`, `checks.budget` och `checks.budget_x` (LOD0 delat med taket).
+Träd, props och import redovisar budgeten utan att fälla `checks.ok`; för växter, hus och figurer fäller den ok.
+
+Metod när något ligger över:
+
+- **Våra generatorer:** sänk `detail` eller ändra artens data, inte enskilda modeller.
+- **Hårda föremål utifrån** (bord, stenar, tunnor, byggnadsdelar): planar decimation och begränsad dissolve, ibland
+  voxel-remesh följt av förenkling.
+- **Organiska föremål:** adaptiv förenkling som håller silhuetten.
+- **Figurer som ska animeras:** riktig retopologi med edge loops runt lederna (body-gen-mallen); decimering räcker inte.
+  Detaljerna från en hög modell bakas till normal- och färgkartor.
 
 Över budget är okej om det syns. Under budget är okej om silhuetten fortfarande är rund där den ska vara.
 
