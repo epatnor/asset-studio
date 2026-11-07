@@ -340,6 +340,7 @@
   <span class="pill" id="comfyPill" hidden><span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI</span></span>
   <span class="pill" id="uptimePill">up <b id="uptime">–</b></span>
   <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
+  <span class="pill num" id="powerPill" title="System power">–</span>
   <span class="spacer"></span>
   <span class="num" id="age"></span>
   <div class="menu" id="menu">
@@ -506,6 +507,31 @@ function dialHtml([k, label, col, inner]) {
       </div>
     </div>
   </div>`; }
+// Effekt för hela datorn. Bara kort som rapporterar power.draw mäts (M4000 gör det, T1000 inte); i7-920 saknar RAPL och
+// moderkortet har inga sensorer, så resten uppskattas från lasten. Ett vägguttag med mätare skulle ge det riktiga värdet.
+const POWER_MODEL = {
+  cpu: { idle: 30, full: 130 },              // i7-920 / X5680: TDP 130 W, tomgång utan djupa C-lägen ungefär 30 W
+  gpu: { idleShare: 0.15 },                  // ett kort utan mätning: 15 % av effektgränsen i vila, upp till gränsen vid full last
+  base: 60,                                  // X58 och ICH10 (varma), sex minnen, två diskar, fläktar
+  psu: 0.82,                                 // nätagg från den tiden: ungefär 82 % verkningsgrad
+};
+function renderPower(p) {
+  const M = POWER_MODEL, parts = [];
+  (p.gpus || []).forEach(g => {
+    const name = (g.name || "GPU").replace("NVIDIA ", "").replace(" 8GB", "");
+    if (g.power != null) parts.push([name, g.power, true]);
+    else if (g.power_limit) parts.push([name, g.power_limit * (M.gpu.idleShare + (1 - M.gpu.idleShare) * (g.util || 0) / 100), false]);
+  });
+  parts.push(["CPU", M.cpu.idle + (M.cpu.full - M.cpu.idle) * (p.cpu || 0) / 100, false]);
+  parts.push(["Board, RAM, disks, fans", M.base, false]);
+  const dc = parts.reduce((a, x) => a + x[1], 0), wall = dc / M.psu, measured = parts.filter(x => x[2]).reduce((a, x) => a + x[1], 0);
+  const el = $("powerPill");
+  el.innerHTML = `<b>≈ ${Math.round(wall)} W</b>`;
+  el.title = `System power at the wall, estimated: ${Math.round(wall)} W\n`
+    + parts.map(([n, w, m]) => `${n}: ${Math.round(w)} W ${m ? "(measured)" : "(estimated)"}`).join("\n")
+    + `\nPower supply loss: ${Math.round(wall - dc)} W (${Math.round(M.psu * 100)} % efficiency, estimated)`
+    + `\nMeasured: ${Math.round(measured)} W of ${Math.round(wall)} W`;
+}
 function setGauge(k, pct, unit, m1, m2, colorVar) {
   const p = pct == null || isNaN(pct) ? null : Math.max(0, Math.min(100, pct));
   if (INNER[k]) {
@@ -679,6 +705,7 @@ function render(s) {
   }
   if (!p) { pill("netPill", "bad", `<span class="dot"></span><b class="ell" style="max-width:300px">${esc(s.probe_error || "no data yet")}</b>`); return; }
   $("uptime").textContent = fmtDur(p.uptime);
+  renderPower(p);
 
   const names = p.gpus.map(x => x.name);
   if ([DIAL_STYLE, p.cores.length, ...names].join("|") !== builtGpus) buildGauges(names, p.cores.length);
