@@ -381,21 +381,23 @@ const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
 const GPU_COLORS = [["--green", "--violet"], ["--teal", "--cloud"], ["--amber", "--blue"], ["--red", "--cpu"]];
 const gk = (base, i) => i ? base + i : base;
 const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
-let builtGpus = 0, SERIES = [];
+let builtGpus = null, SERIES = [];
 function buildGauges(names) {
   const n = Math.max(1, names.length), multi = n > 1;
-  const groups = [["Processor and memory", [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"]]],
-    ...Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
-      [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]),
-    ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]]];
+  const cpu = ["Processor and memory", [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"]]];
+  const disks = ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]];
+  const gpuGroups = Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
+      [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]);
+  // Flera kort ligger sist och intill varandra: på en rad i två kolumner, under varandra i en kolumn
+  const groups = multi ? [cpu, disks, ...gpuGroups] : [cpu, ...gpuGroups, disks];
   $("gauges").innerHTML = groups.map(([title, dials]) => `
   <div class="panel group" title="${esc(title)}"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`).join("");
   $("gauges").classList.toggle("two", groups.length === 4);
   // Diagrammet: en kurva för last och en för minne per kort
   SERIES = [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"], ["swap", "Swap", "--blue"],
-    ...groups.slice(1, -1).flatMap(([, dials]) => dials.map(([k, l, c]) => [k, l, c]))];
+    ...gpuGroups.flatMap(([, dials]) => dials.map(([k, l, c]) => [k, l, c]))];
   $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
-  builtGpus = names.length;
+  builtGpus = names.join("|");
 }
 function dialHtml([k, label, col]) { return `
   <div class="gauge" data-k="${k}" title="Click for details">
@@ -559,7 +561,7 @@ function render(s) {
   $("uptime").textContent = fmtDur(p.uptime);
 
   const names = p.gpus.map(x => x.name);
-  if (names.length !== builtGpus || names.some((nm, i) => !$("gauges").children[i + 1]?.title.includes(nm.replace("NVIDIA ", "")))) buildGauges(names);
+  if (names.join("|") !== builtGpus) buildGauges(names);
   const m = p.mem, d = p.disks.find(x => x.mount === "/data"), root = p.disks.find(x => x.mount === "/");
   const ramUsed = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
   const cpuT = p.temps.filter(t => t.chip === "coretemp").map(t => t.c);
