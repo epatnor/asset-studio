@@ -68,6 +68,10 @@
   .gputag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .03em; padding: 0 5px; margin-right: 6px; border-radius: 4px;
             color: var(--muted); border: 1px solid var(--line); vertical-align: 1px; }
   .cur.second { margin-top: 6px; }
+  /* Granskning och molnsteg: en tunn rad under grafikkorten */
+  .cur.slim, .cur.slim.pipe { height: auto; grid-template-rows: auto; padding: 3px 12px; margin-top: 4px; border-style: dashed; }
+  .cur.slim .cur2, .cur.slim .cur3, .cur.slim .legend2 { display: none; }
+  .cur.slim .cur1 { font-size: 12px; font-weight: 500; color: var(--muted); }
   .cur .lane { margin-right: 8px; font-weight: 700; color: var(--muted); }
   .cur .lane.on { color: var(--text); }
   .cur.idle, .cur.idle #curName, .cur.idle [id^="curName_"] { color: var(--muted); font-weight: 500; }
@@ -858,6 +862,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
   const need = !run && pl && pl.steps.find(x => x.status === "approval");
   $("cur" + sfx).classList.toggle("needs", !!need);
+  $("cur" + sfx).classList.remove("slim");
   if (need) {
     const who = need.provider ? need.provider[0].toUpperCase() + need.provider.slice(1) : "Cloud";
     $("cur" + sfx).classList.add("on"); $("cur" + sfx).classList.remove("cloudrun");
@@ -876,9 +881,10 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     const ai = local.kind === "review";
     const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
     set("curIcon", "", true);
-    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
+    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}</span>`
                              : `${laneTag(true)}${esc(pl.title)}${SNAKE}<span class="sub"> · ${esc(local.label)}</span>`, true);
     set("curTime", local.start ? fmtDur(s.now - local.start) : "");
+    if (other) { $("cur" + sfx).classList.add("slim"); return; }  // granskning och moln: en tunn rad, inget mer
     set("curPhase", ai ? "Reviewing images" : cloudStep ? (local.pct != null ? `In the cloud · ${local.pct} %` : "In the cloud · waiting for the service") : `Running on ${local.where}`);
     // Molnsteg: en rad rutor för förloppet (tio rutor, en per tiondel), i molnfärg
     set("curSteps", cloudStep && local.pct != null ? Array.from({ length: 10 }, (_, i) => `<i style="background:${i < Math.floor(local.pct / 10) ? "var(--cloud)" : "var(--track)"}"></i>`).join("") : "", true);
