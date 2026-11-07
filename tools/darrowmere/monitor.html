@@ -7,12 +7,12 @@
 <style>
   :root {
     --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4b5563;
-    --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32; --cloud: #7cc7ff; --cpu: #f472b6;
+    --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32; --cloud: #7cc7ff; --cpu: #f472b6; --lime: #a3e635;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
-      --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7; --cpu: #db2777;
+      --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7; --cpu: #db2777; --lime: #65a30d;
     }
   }
   * { box-sizing: border-box; }
@@ -378,7 +378,7 @@ const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
 // Rattarna byggs en gång och uppdateras sedan på plats, så att ingenting byter storlek.
 // En båge på 270 grader med öppning nedåt; RAM har en inre tunn båge för växlingsutrymmet.
 // Ett par rattar (last och minne) per grafikkort. Det första kortet heter gpu/vram, nästa gpu1/vram1 och så vidare.
-const GPU_COLORS = [["--green", "--violet"], ["--teal", "--cloud"], ["--amber", "--blue"], ["--red", "--cpu"]];
+const GPU_COLORS = [["--green", "--violet"], ["--lime", "--cloud"], ["--amber", "--blue"], ["--red", "--cpu"]];
 const gk = (base, i) => i ? base + i : base;
 const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
 let builtGpus = null, SERIES = [];
