@@ -28,6 +28,13 @@ Gjort och provat på roboten (`build/robot/`):
   för vita fläckar; DeepSeek gav ändå warning 6 för hjässan. Kvar: där Krea-2 målat **olika design** (vit hjälm i en vy,
   mörk i en annan) kan sömnaden bara välja en av dem, inte göra dem lika. Det löses vid källan (idé 1 och 3).
   Order `robot-sheet6-stitch`, ark i `build/robot/stitch/cmp/`.
+- **Krea-2 över UltraTex** (2026-11-07, order `robot-ultratex-krea-stitch`): UltraTex-robotens jämna textur som underlag
+  (sex renderingar med samma kameror som projiceringen, toppvyn med zoom 2), Krea-2 över arket med denoise 0,35 och
+  förfining 0,2, stitch-projicering och `"fill": "baked"` (det ingen vy ser behåller UltraTex). **Bästa hittills:**
+  hjässan är en sammanhängande mörk hjälm, sidan och ryggen hänger ihop, DeepSeek warning 7 (mot 6). Kvar: ansiktet
+  lite smetigt, händerna utsmetade, några små turkosa prickar på axlarna. Obs. licensen: UltraTex (FLUX.2 Klein 9B) är
+  icke-kommersiell, så underlaget måste bytas (Meshy eller eget) innan det används i ett spel som säljs.
+  GLB: `build/robot/ultra_krea/robot_ultratex_krea_stitch.glb`.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
 ## Idéerna, i ordning
