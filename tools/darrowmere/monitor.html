@@ -105,17 +105,7 @@
   .cur1 > [id^="curIcon"] { display: none; }
   .snake { display: inline-grid; grid-template-columns: repeat(3, 3px); grid-auto-rows: 3px; gap: 1px; margin: 0 2px 0 10px;
            vertical-align: 1px; color: var(--snake, var(--blue)); }
-  .snake b { background: currentColor; border-radius: .5px; opacity: .15; animation: snake .8s linear infinite; }
-  .snake b:nth-child(5) { animation: none; opacity: .15; }
-  .snake b:nth-child(1) { animation-delay: -0.8s; }
-  .snake b:nth-child(2) { animation-delay: -0.7s; }
-  .snake b:nth-child(3) { animation-delay: -0.6s; }
-  .snake b:nth-child(6) { animation-delay: -0.5s; }
-  .snake b:nth-child(9) { animation-delay: -0.4s; }
-  .snake b:nth-child(8) { animation-delay: -0.3s; }
-  .snake b:nth-child(7) { animation-delay: -0.2s; }
-  .snake b:nth-child(4) { animation-delay: -0.1s; }
-  @keyframes snake { 0% { opacity: 1; } 45% { opacity: .15; } 100% { opacity: .15; } }
+  .snake b { background: currentColor; border-radius: .5px; opacity: .15; transition: opacity .1s linear; }
   .inl.warn { margin-left: 8px; color: var(--amber); }
   @media (max-width: 900px) { .legend2 { display: none; } }
   .cur2 { grid-template-columns: 170px minmax(0, 1fr) 150px; }
@@ -510,6 +500,25 @@ document.addEventListener("click", e => {
 // Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
 buildGauges([]);
 const SNAKE = `<i class="snake" aria-label="working">${"<b></b>".repeat(9)}</i>`;
+// Ormen kryper slumpvis i rutnätet: oftast rakt fram, då och då en sväng, aldrig in i sig själv (utom svansspetsen)
+const SNAKE_STATE = new WeakMap(), SNAKE_FADE = [1, .65, .4, .22];
+setInterval(() => {
+  if (document.body.classList.contains("offline") || document.hidden) return;
+  document.querySelectorAll(".snake").forEach(el => {
+    let st = SNAKE_STATE.get(el);
+    if (!st) { st = { path: [Math.floor(Math.random() * 9)], dir: null }; SNAKE_STATE.set(el, st); }
+    const h = st.path[0], r = Math.floor(h / 3), c = h % 3;
+    const moves = [[-1, 0], [1, 0], [0, -1], [0, 1]]
+      .map(([dr, dc]) => ({ d: dr * 3 + dc, n: (r + dr) * 3 + c + dc, ok: r + dr >= 0 && r + dr < 3 && c + dc >= 0 && c + dc < 3 }))
+      .filter(m => m.ok && !st.path.slice(0, -1).includes(m.n));
+    if (!moves.length) { st.path = [h]; return; }
+    const straight = moves.find(m => m.d === st.dir);
+    const m = straight && Math.random() < .65 ? straight : moves[Math.floor(Math.random() * moves.length)];
+    st.dir = m.d;
+    st.path = [m.n, ...st.path].slice(0, SNAKE_FADE.length);
+    [...el.children].forEach((b, i) => { const at = st.path.indexOf(i); b.style.opacity = at < 0 ? .15 : SNAKE_FADE[at]; });
+  });
+}, 120);
 const CUR_TEMPLATE = $("cur").cloneNode(true);
 function laneCard(i) {  // kort nummer i (0 = det första, finns i sidan); fler klonas vid behov
   if (!i) return $("cur");
