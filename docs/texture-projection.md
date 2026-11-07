@@ -21,6 +21,13 @@ Gjort och provat på roboten (`build/robot/`):
 - **En vy per yta** (`"blend": "best"`, 2026-11-06): ingen blandning, varje yta från den vy som ser den rakast. Skarpare
   (Laplace-varians +35–40 %), men fläckigt där Krea-2:s vyer inte är överens (tydligast på hjässan, där topp- och
   snettvyerna målat olika). Blandningen gömde alltså oenigheten som sudd; grundproblemet är att vyerna inte är samstämmiga.
+- **Sömnad** (`"blend": "stitch"`, 2026-11-07): en vy per yta, men vyvalet görs över ett grannskapsnät av 60 000
+  ytpunkter där en skarv kostar efter färgskillnaden mellan vyerna, och den skillnad som är kvar jämnas ut med en mjuk
+  korrektion per vy över hela nätet (glesa minsta kvadrater, som Waechter m.fl. 2014). På 6-vyersarket: färgskillnaden över
+  skarvarna 0,13 → 0,05, skärpan behållen (huvudet 140 mot 137). Hjässan och huvudets sida blev enhetligt mörka i stället
+  för vita fläckar; DeepSeek gav ändå warning 6 för hjässan. Kvar: där Krea-2 målat **olika design** (vit hjälm i en vy,
+  mörk i en annan) kan sömnaden bara välja en av dem, inte göra dem lika. Det löses vid källan (idé 1 och 3).
+  Order `robot-sheet6-stitch`, ark i `build/robot/stitch/cmp/`.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
 ## Idéerna, i ordning
