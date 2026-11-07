@@ -12,7 +12,8 @@
 # ("best_power", 40); behåller Krea-2:s skärpa, skarvarna hamnar mellan sammanhängande områden), "blend": "stitch" (sömnad:
 # en vy per yta som i best, men skarvarna läggs där vyerna är överens (vyval över ett grannskapsnät där en skarv kostar efter
 # färgskillnaden mellan vyerna, "stitch_color" 4, "stitch_potts" 1, "stitch_hops" 8) och färgskillnaden som är kvar jämnas ut över hela
-# nätet med en mjuk korrektion per vy (glesa minsta kvadrater, "stitch_level" true); "stitch_samples" 60000). Svarar med en rad JSON.
+# nätet med en mjuk korrektion per vy (glesa minsta kvadrater, "stitch_level" true); "stitch_samples" 60000), "fill": "baked" (det ingen bild ser behåller modellens egen
+# textur i stället för närmaste sedda färg). Svarar med en rad JSON.
 import argparse
 import json
 import struct
@@ -512,6 +513,14 @@ def main():
         gain = np.clip(np.median(baked[ring], axis=0) / (np.median(mixed[ring], axis=0) + 1e-4), 0.75, 1.3)
         mixed = baked * (1 - alpha[:, None]) + (mixed * gain).clip(0, 1) * alpha[:, None]
         report.append({"patch_texels": int((alpha > 0.5).sum()), "gain": [round(float(value), 3) for value in gain]})
+        seen = np.ones(len(mixed), bool)
+    elif recipe.get("fill") == "baked":
+        # Det som ingen bild ser behåller modellens egen textur (t.ex. UltraTex under Krea-2), färgad mot det målade där de möts
+        alpha = (smoothstep(SEEN_LEVEL - 0.3, SEEN_LEVEL + 0.1, best_weight) * (total > 1e-3)).astype(np.float32)
+        ring = (alpha > 0.3) & (alpha < 0.9)
+        gain = np.clip(np.median(mixed[ring], axis=0) / (np.median(baked[ring], axis=0) + 1e-4), 0.75, 1.3) if ring.sum() > 200 else np.ones(3)
+        mixed = ((baked * gain).clip(0, 1) * (1 - alpha[:, None]) + mixed * alpha[:, None]).astype(np.float32)
+        report.append({"fill_baked": {"share": round(float((alpha < 0.5).mean()), 3), "gain": [round(float(v), 3) for v in gain]}})
         seen = np.ones(len(mixed), bool)
     else:
         # What no image sees takes the color of the nearest seen point on the model.
