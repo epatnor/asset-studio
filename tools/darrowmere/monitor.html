@@ -624,6 +624,10 @@ function render(s) {
       laneCard(i);
       renderCurrent(r, r ? ((c.progresses || {})[r.id] || (i === 0 ? pr : null)) : null, c, s, i ? "_" + i : "", lane);
     });
+    if (lanes.length > 1) {  // granskning, moln, godkännande: egen rad utan grafikkortets namn
+      laneCard(lanes.length);
+      renderCurrent(null, null, c, s, "_" + lanes.length, null, true);
+    }
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
         if (g.length === 1 || dsOpen.has(g[0].id)) return g.map((h, k) => histRow(h, g.length > 1 ? (k === 0 ? "first" : "sub") : "", g));
@@ -787,13 +791,18 @@ document.addEventListener("click", e => {
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
 });
 // Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
-function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" för kortet till nästa grafikkort
+// Kort: ett per grafikkort (lane satt) som bara visar vad kortet gör, och med flera kort ett "övrigt"-kort (other) för
+// granskningar, molnsteg och godkännanden, som inte körs på något av korten. Övrigt-kortet syns bara när något pågår.
+function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  // sfx: "_1" … för korten efter det första
   const laneTag = on => lane ? `<span class="lane${on ? " on" : ""}">${esc(lane)}</span>` : "";
-  $("cur" + sfx).classList.toggle("idle", !run && !!sfx);
-  if (!run && sfx) {  // ett extra kort som inte kör något: bara kortets namn och Idle, i grått
+  $("cur" + sfx).hidden = false;
+  $("cur" + sfx).classList.toggle("idle", !run && !!lane);
+  if (!run && lane) {  // ett grafikkort som inte kör något: kortets namn och Idle (eller vad som väntar på det), i grått
+    const waiting = c.pending.filter(x => (x.gpu || c.lanes[0]) === lane);
     $("cur" + sfx).classList.remove("on", "pipe", "needs", "cloudrun");
     $("curPipe" + sfx).hidden = true;
-    for (const [k, v] of [["curIcon", ""], ["curName", `${laneTag(false)}Idle`], ["curTime", ""], ["curPhase", ""], ["curSteps", ""], ["curTiming", ""]]) {
+    for (const [k, v] of [["curIcon", ""], ["curName", `${laneTag(false)}${waiting.length ? "Waiting: " + esc(waiting.map(x => x.name).join(", ")) : "Idle"}`],
+                          ["curTime", ""], ["curPhase", ""], ["curSteps", ""], ["curTiming", ""]]) {
       const el = $(k + sfx); if (el.dataset.v !== v) { el.innerHTML = v; el.dataset.v = v; }
     }
     return;
@@ -855,10 +864,9 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" fö
     return;
   }
   if (!run) {
+    if (other) { $("cur" + sfx).hidden = true; return; }  // inget i molnet eller på andra datorer just nu
     set("curIcon", "", true);
-    set("curName", lane ? `${laneTag(false)}${c.pending.length ? `Waiting: ${esc(c.pending.map(x => x.name).join(", "))}` : "Idle"}`
-                        : c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running", !!lane);
-    $("cur" + sfx).classList.toggle("idle", !!lane && !c.pending.length);
+    set("curName", c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running");
     set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
     return;
   }
