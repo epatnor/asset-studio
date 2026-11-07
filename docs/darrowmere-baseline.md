@@ -66,12 +66,13 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
 
 Resultat per körning (en rad JSON) läggs in här:
 
-| Mätning | Före | Efter |
+| Mätning | Före (2026-11-08 00:41, last 0,5) | Efter |
 |---|---|---|
-| Ren Python, en tråd (s, lägre är bättre) | | |
-| sha256, 1 tråd (MB/s) | | |
-| sha256, alla trådar (MB/s) | | |
-| AES-128-GCM, 1 tråd (MB/s) | | |
-| Minneskopiering (GB/s) | | |
-| Diskläsning `/data` (MB/s) | | |
-| Nedladdning (Mbit/s) | | |
+| Ren Python, en tråd (s, lägre är bättre) | 1,85 | |
+| sha256, 1 tråd (MB/s) | 229 | |
+| sha256, alla trådar (MB/s) | 801 (8 trådar) | |
+| AES-128-GCM, 1 tråd (MB/s) | 194 (utan AES-NI) | |
+| Minneskopiering 1 GB (GB/s) | 1,67 | |
+| Diskläsning `/data`, NVMe (MB/s) | 1 500 | |
+| Nedladdning (Mbit/s) | 69 | |
+| UltraTex 9B Q4, 6 vyer + 2 bakningar (T1000) | 2 074 s (35 min) | |

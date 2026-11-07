@@ -37,6 +37,13 @@ Gjort och provat på roboten (`build/robot/`):
   GLB: `build/robot/ultra_krea/robot_ultratex_krea_stitch.glb`.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
+- **Ny figur, Maren Tidewright** (2026-11-08, uppdraget "Maren: new figure, mesh and UltraTex"): Krea-2-referens i A-pose med
+  armarna väl ut från kroppen och jämnt ljus utan skuggor, TRELLIS.2 1024/28 (DeepSeek 9/10), UltraTex 9B på det otexturerade
+  nätet. **Inga skuggbilder av armarna** på kropp eller ben, sammanhängande fram, sida och bak. Bakningens spakar
+  (`edge_feather_px` 16, `view_weight_power` 6 mot 6/4) gjorde nästan ingen skillnad (medelavvikelse 0,2/255): det var
+  posen och ljuset i referensen som tog bort skuggbilderna. UltraTex finns inte för Klein 4B (LoRA:n är byggd för 9B:s
+  bredd 4096), så licensen är fortfarande icke-kommersiell. GLB: `build/maren/ultratex/MarenPBR_default_00001_.glb`.
+
 ## Andra vägar (2026-11-07, uppdraget "Robot: best model and texture")
 
 Egna Krea-2-projiceringar och UltraTex lagda åt sidan; åtta andra vägar provade på samma robot, granskade av DeepSeek med samma
