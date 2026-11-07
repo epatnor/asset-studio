@@ -103,7 +103,19 @@
   .cur1, .cur2 { display: grid; align-items: center; gap: 12px; min-width: 0; }
   .cur1 { grid-template-columns: minmax(0, 1fr) auto auto; font-size: 14px; font-weight: 650; }
   .cur1 > [id^="curIcon"] { display: none; }
-  .spin.inl { margin: 0 2px 0 9px; vertical-align: -1px; }
+  .snake { display: inline-grid; grid-template-columns: repeat(3, 3px); grid-auto-rows: 3px; gap: 1px; margin: 0 2px 0 10px;
+           vertical-align: 1px; color: var(--snake, var(--blue)); }
+  .snake b { background: currentColor; border-radius: .5px; opacity: .15; animation: snake .8s linear infinite; }
+  .snake b:nth-child(5) { animation: none; opacity: .15; }
+  .snake b:nth-child(1) { animation-delay: -0.8s; }
+  .snake b:nth-child(2) { animation-delay: -0.7s; }
+  .snake b:nth-child(3) { animation-delay: -0.6s; }
+  .snake b:nth-child(6) { animation-delay: -0.5s; }
+  .snake b:nth-child(9) { animation-delay: -0.4s; }
+  .snake b:nth-child(8) { animation-delay: -0.3s; }
+  .snake b:nth-child(7) { animation-delay: -0.2s; }
+  .snake b:nth-child(4) { animation-delay: -0.1s; }
+  @keyframes snake { 0% { opacity: 1; } 45% { opacity: .15; } 100% { opacity: .15; } }
   .inl.warn { margin-left: 8px; color: var(--amber); }
   @media (max-width: 900px) { .legend2 { display: none; } }
   .cur2 { grid-template-columns: 170px minmax(0, 1fr) 150px; }
@@ -241,7 +253,7 @@
   .dlv { display: inline-block; width: 14px; color: var(--dim); font-weight: 700; }
   .dlv.ok { color: var(--green); }
   body.offline main { opacity: .45; filter: grayscale(1); pointer-events: none; transition: opacity .4s; }
-  body.offline .steps i.now, body.offline .spin { animation: none; }
+  body.offline .steps i.now, body.offline .spin, body.offline .snake b { animation: none; }
   .jobcell { cursor: pointer; }
   .jobcell:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
   .pop.info.wide { width: 520px; }
@@ -497,6 +509,7 @@ document.addEventListener("click", e => {
 
 // Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
 buildGauges([]);
+const SNAKE = `<i class="snake" aria-label="working">${"<b></b>".repeat(9)}</i>`;
 const CUR_TEMPLATE = $("cur").cloneNode(true);
 function laneCard(i) {  // kort nummer i (0 = det första, finns i sidan); fler klonas vid behov
   if (!i) return $("cur");
@@ -621,11 +634,11 @@ function render(s) {
     const lanes = c.lanes && c.lanes.length > 1 ? c.lanes : [null];
     lanes.forEach((lane, i) => {
       const r = lane ? c.running.find(x => (x.gpu || lanes[0]) === lane) : run;
-      laneCard(i);
+      laneCard(i).style.setProperty("--snake", lane ? `var(${GPU_COLORS[i % 4][0]})` : "var(--blue)");
       renderCurrent(r, r ? ((c.progresses || {})[r.id] || (i === 0 ? pr : null)) : null, c, s, i ? "_" + i : "", lane);
     });
     if (lanes.length > 1) {  // granskning, moln, godkännande: egen rad utan grafikkortets namn
-      laneCard(lanes.length);
+      laneCard(lanes.length).style.setProperty("--snake", "var(--cloud)");
       renderCurrent(null, null, c, s, "_" + lanes.length, null, true);
     }
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
@@ -854,8 +867,8 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     const ai = local.kind === "review";
     const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
     set("curIcon", "", true);
-    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}<i class="spin inl"></i><span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
-                             : `${laneTag(true)}${esc(pl.title)}<i class="spin inl"></i><span class="sub"> · ${esc(local.label)}</span>`, true);
+    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
+                             : `${laneTag(true)}${esc(pl.title)}${SNAKE}<span class="sub"> · ${esc(local.label)}</span>`, true);
     set("curTime", local.start ? fmtDur(s.now - local.start) : "");
     set("curPhase", ai ? "Reviewing images" : cloudStep ? (local.pct != null ? `In the cloud · ${local.pct} %` : "In the cloud · waiting for the service") : `Running on ${local.where}`);
     // Molnsteg: en rad rutor för förloppet (tio rutor, en per tiondel), i molnfärg
@@ -872,7 +885,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   }
   set("curIcon", "", true);
   // Kortets namn och modellen, snurran direkt efter dem, sedan jobbets titel: texten börjar alltid vid samma vänsterkant
-  set("curName", `${laneTag(true)}${esc(run.name)}<i class="spin inl"></i>${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
+  set("curName", `${laneTag(true)}${esc(run.name)}${SNAKE}${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
   set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
