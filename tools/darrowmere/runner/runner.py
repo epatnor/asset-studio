@@ -657,7 +657,7 @@ def render_previews(o, s, files):
     return files + [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in names]
 
 
-SCRIPTS = {"split_sheet.py", "project_views.py"}  # verktyg som får köras som steg, ur /data/runner/tools
+SCRIPTS = {"split_sheet.py", "project_views.py", "import_model.py"}  # verktyg som får köras som steg, ur /data/runner/tools
 
 
 def path_for(o, ref):

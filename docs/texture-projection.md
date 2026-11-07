@@ -37,6 +37,24 @@ Gjort och provat på roboten (`build/robot/`):
   GLB: `build/robot/ultra_krea/robot_ultratex_krea_stitch.glb`.
 - **Granskning** med en rundtur i Blender (32 bilder, huvudet från alla håll, lera, trådnät), nätets siffror och rigg-bedömning.
 
+## Andra vägar (2026-11-07, uppdraget "Robot: best model and texture")
+
+Egna Krea-2-projiceringar och UltraTex lagda åt sidan; åtta andra vägar provade på samma robot, granskade av DeepSeek med samma
+kriterier och samlade som ett uppdrag i Darrowmere-galleriet. Filer och skript i `build/robot/alt/`.
+
+| Väg | Var | Granskning | Kommentar |
+|---|---|---|---|
+| Tripo P2, ny modell + textur ur fyra identitetsvyer | moln, 110 kr. | pass 8 | renast och närmast referensen, läsbart ansikte, 20k ytor |
+| Meshy Retexture 4K på vårt nät, Krea-2-vy som stilbild | moln, 10 kr. | pass 8 | jämn och hel, plåtfogar och lysande ögon; mindre målad än Krea-2 |
+| TRELLIS.2 / Pixal3D med egen textur (operatören, flera varv) | Darrowmere | warning 6 | form och färger rätt, ansiktet smetigt; operatören fortsätter |
+| MV-Adapter SD2.1, bildstyrd (SDXL ryms inte på 8 GB) | laptop | warning 5 | sammanhängande kropp, men inbakad kromglans, blå fläck på magen, fläckigt huvud |
+| Material per del ur texturverkstaden, inga AI-ytor | laptop | fail 3 | rena ytor, men delarnas gränser följer den gamla texturens fläckar: nätet har inga veck mellan delarna |
+| SyncMVD (SD1.5, bara text) | laptop | fail 2 | hel och utan skarvar, men fel färg (turkos) och utsmetat ansikte; kan inte styras med bild |
+| Paint3D | laptop | se nedan | |
+
+Slutsatser: de betalda tjänsterna (Tripo, Meshy) är klart bäst i dag. Bland de fria är TRELLIS.2/Pixal3D bäst och körs vidare
+av operatören. Material per del fungerar bara på nät som är byggda i delar (våra generatorer, eller en ritad delmask).
+
 ## Idéerna, i ordning
 
 1. **Djupstyrd målning** (påbörjad). Krea-2 målar varje vy styrd av modellens djupkarta (Krea2 Control-LoRA för djup, noderna
