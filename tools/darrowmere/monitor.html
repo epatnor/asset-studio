@@ -101,7 +101,10 @@
          background: var(--panel2); display: grid; grid-template-rows: 22px 20px; gap: 4px; }
   .cur.on { border-color: color-mix(in srgb, var(--muted) 45%, var(--line)); }
   .cur1, .cur2 { display: grid; align-items: center; gap: 12px; min-width: 0; }
-  .cur1 { grid-template-columns: auto minmax(0, 1fr) auto auto; font-size: 14px; font-weight: 650; }
+  .cur1 { grid-template-columns: minmax(0, 1fr) auto auto; font-size: 14px; font-weight: 650; }
+  .cur1 > [id^="curIcon"] { display: none; }
+  .spin.inl { margin: 0 2px 0 9px; vertical-align: -1px; }
+  .inl.warn { margin-left: 8px; color: var(--amber); }
   @media (max-width: 900px) { .legend2 { display: none; } }
   .cur2 { grid-template-columns: 170px minmax(0, 1fr) 150px; }
   .curtime { color: var(--muted); font-weight: 500; font-size: 12.5px; }
@@ -270,7 +273,7 @@
     .gauge { height: auto; padding: 4px 0; }
     .gauge .dial { zoom: .82; }
     .cur, .cur.pipe { height: auto; margin: 8px 8px 4px; padding: 8px 10px; grid-template-rows: auto; row-gap: 6px; }
-    .cur1 { grid-template-columns: auto minmax(0, 1fr) auto; font-size: 13px; }
+    .cur1 { grid-template-columns: minmax(0, 1fr) auto; font-size: 13px; }
     .cur1 .legend2 { display: none; }
     .cur2 { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
     .cur2 .steps { grid-column: 1 / -1; grid-row: 2; }
@@ -827,8 +830,8 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" fö
   if (need) {
     const who = need.provider ? need.provider[0].toUpperCase() + need.provider.slice(1) : "Cloud";
     $("cur" + sfx).classList.add("on"); $("cur" + sfx).classList.remove("cloudrun");
-    set("curIcon", "⚠", true);
-    set("curName", `Needs your approval<span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
+    set("curIcon", "", true);
+    set("curName", `${laneTag(true)}Needs your approval<span class="inl warn">⚠</span><span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
     set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
     set("curTiming", `<button class="approve" data-approve="${esc(pl.id)}" data-step="${esc(need.key)}" data-credits="${need.estimate || 0}"
       data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}" title="Review the cost and approve">Approve</button>`, true);
@@ -841,9 +844,9 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" fö
   if (local) {
     const ai = local.kind === "review";
     const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
-    set("curIcon", `<i class="spin big"></i>`, true);
-    set("curName", cloudStep ? `<span class="cloudtag">☁ cloud</span>${esc(who)}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
-                             : `${esc(pl.title)}<span class="sub"> · ${esc(local.label)}</span>`, true);
+    set("curIcon", "", true);
+    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}<i class="spin inl"></i><span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}</span>`
+                             : `${laneTag(true)}${esc(pl.title)}<i class="spin inl"></i><span class="sub"> · ${esc(local.label)}</span>`, true);
     set("curTime", local.start ? fmtDur(s.now - local.start) : "");
     set("curPhase", ai ? "Reviewing images" : cloudStep ? (local.pct != null ? `In the cloud · ${local.pct} %` : "In the cloud · waiting for the service") : `Running on ${local.where}`);
     // Molnsteg: en rad rutor för förloppet (tio rutor, en per tiondel), i molnfärg
@@ -859,8 +862,9 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" fö
     set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
     return;
   }
-  set("curIcon", `<i class="spin big"></i>`, true);
-  set("curName", `${laneTag(true)}${jobLabel(lane ? { ...run, gpu: null } : run)} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
+  set("curIcon", "", true);
+  // Kortets namn och modellen, snurran direkt efter dem, sedan jobbets titel: texten börjar alltid vid samma vänsterkant
+  set("curName", `${laneTag(true)}${esc(run.name)}<i class="spin inl"></i>${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
   set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
