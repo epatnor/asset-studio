@@ -9,6 +9,7 @@ ENV=$HOME/Spelutveckling/apparition-moodboard/.env
 ssh -o BatchMode=yes $DM 'mkdir -p /data/runner /data/orders/inbox'
 rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/install_runner.sh" $DM:/data/runner/
 rsync -a "$HERE/tools/" $DM:/data/runner/tools/
+rsync -a "$HERE/playbooks/" $DM:/data/runner/playbooks/
 rsync -a "$HERE/../../texture/project_views.py" $DM:/data/runner/tools/project_views.py
 if ! ssh -o BatchMode=yes $DM 'test -s /data/runner/.env'; then
   grep '^OPENROUTER_API_KEY=' "$ENV" | ssh -o BatchMode=yes $DM 'umask 077; cat > /data/runner/.env'

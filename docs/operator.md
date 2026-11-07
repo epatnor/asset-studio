@@ -77,6 +77,21 @@ Texturflödet passar som första fall. Spakarna är tydliga och granskningen ger
 - Mål: pass med betyg minst 7, inga anmärkningar på huvudet.
 - Gränser: högst 6 varv, inga betalda steg utan Patrik.
 
+## Byggt (2026-11-07)
+
+- **Uppdrag:** en beställning kan ha `mission` och `mission_title`. Galleriet samlar beställningarna i ett uppdrag under en
+  rubrik, sorterade efter granskningens betyg (bäst först), med det senaste uppdraget överst och öppet.
+- **Operatören** i runnern (`operate` i `runner.py`): när en beställning med `operator` är klar (oavsett utfall) läser runnern
+  uppdragets alla varv (spakar, betyg, fel), frågar DeepSeek om nästa drag och kontrollerar svaret mot spelboken (kända spakar,
+  tillåtna värden, gränser; samma spakar igen ger nytt frö). Nästa varv läggs i inkorgen som `<uppdrag>-rNN`. Stopp när betyget
+  når `stop_score`, när varven tar slut, efter tre misslyckade varv i rad, eller när DeepSeek svarar done/escalate. Läget skrivs
+  till `/data/utdata/missions/<uppdrag>.json` och syns i galleriets uppdragsrubrik; varje varvs motivering syns i varvet.
+- **Spelböcker** i `tools/darrowmere/runner/playbooks/<namn>.json` (+ mapp med graf och indata), driftsätts med runnern.
+  Spakar är antingen `values` (namn → nodvärden) eller tal med `min`/`max` och `bind` (nod, indata, `add`).
+  Start: `python runner.py --mission <spelbok>` på Darrowmere.
+- **Första spelboken** `robot_model_texture`: gratis modell med egen textur (Pixal3D eller TRELLIS.2, int8 i ComfyUI),
+  spakar model, image, seed, shape_cfg, structure_cfg, tex_cfg; högst 24 varv, mål 9,5/10. Inga betalda steg.
+
 ## Steg för att bygga
 
 1. Spelboksformatet och den första spelboken (textur på figur), med mallen flyttad ur `make_sheet6_order.py`.

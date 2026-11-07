@@ -1,6 +1,6 @@
 """Galleriet i Darrowmere-panelen: allt som finns under /data/utdata (genereringar, renderingar, modeller, texturkartor),
 grupperat per beställning, och små förhandsbilder som panelen gör och sparar själv."""
-import hashlib, io, json, subprocess, threading, time, urllib.parse, urllib.request
+import hashlib, io, json, re, subprocess, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 # Körs på Darrowmere med python3 -, skriver en rad JSON: filerna och beställningarnas planer
@@ -10,7 +10,7 @@ ROOT = "/data/utdata"
 files = []
 for d, dirs, fs in os.walk(ROOT):
     rel = os.path.relpath(d, ROOT)
-    if rel != "." and (rel.split("/")[0] == "pipelines" or any(x.startswith(".") for x in rel.split("/"))):
+    if rel != "." and (rel.split("/")[0] in ("pipelines", "missions") or any(x.startswith(".") for x in rel.split("/"))):
         dirs[:] = []; continue
     dirs[:] = [x for x in dirs if not x.startswith(".")]
     for f in fs:
@@ -26,9 +26,18 @@ for f in sorted(os.listdir(pd)) if os.path.isdir(pd) else []:
             p = json.load(open(os.path.join(pd, f)))
         except Exception:
             continue
-        plans.append({k: p.get(k) for k in ("id", "title", "asset", "project", "use", "created", "updated", "order_status")} |
+        plans.append({k: p.get(k) for k in ("id", "title", "asset", "project", "use", "created", "updated", "order_status", "mission", "mission_title", "operator")} |
                      {"steps": [{k: s.get(k) for k in ("key", "label", "kind", "note", "route", "provider", "status", "files")} for s in p.get("steps", [])]})
-print(json.dumps({"files": files, "plans": plans}))
+missions = {}
+md = ROOT + "/missions"
+for f in os.listdir(md) if os.path.isdir(md) else []:
+    if f.endswith(".json") and not f.startswith("."):
+        try:
+            m = json.load(open(os.path.join(md, f)))
+            missions[m["mission"]] = m
+        except Exception:
+            pass
+print(json.dumps({"files": files, "plans": plans, "missions": missions}))
 '''
 
 MAPS = ("_base_color", "_basecolor", "_normal", "_roughness", "_metallic", "_height", "_ao.", "_orm", "_emission", "_depth")
@@ -50,6 +59,7 @@ def kind_of(name):
 def build(raw):
     """Filerna grupperade per beställning (eller lösa genereringar per dag), nyast först."""
     plans = {p["id"]: p for p in raw["plans"] if p.get("id")}
+    notes = raw.get("missions") or {}
     owner = {}  # (subfolder, filename) -> (beställning, steg) för filer som ComfyUI lade i rotmappen
     for p in plans.values():
         for s in p["steps"]:
@@ -98,12 +108,19 @@ def build(raw):
                     i["note"] = s["note"]
                 if s.get("route") == "cloud":
                     i["cloud"] = s.get("provider") or "cloud"
+            # granskningens betyg ("pass 8/10: ..."): det bästa i beställningen, så att uppdraget kan sorteras efter det
+            score, verdict = None, ""
+            for s in p.get("steps", []):
+                m = re.match(r"\s*(pass|warning|fail|rejected)\s+(\d+(?:\.\d+)?)/10", s.get("note") or "") if s.get("kind") == "review" else None
+                if m and (score is None or float(m.group(2)) > score):
+                    score, verdict = float(m.group(2)), m.group(1)
             g.update(title=p.get("title") or gid[2:], order=gid[2:], asset=p.get("asset") or "", status=p.get("order_status") or "",
-                     time=p.get("updated") or last)
+                     time=p.get("updated") or last, mission=p.get("mission") or "", mission_title=p.get("mission_title") or "",
+                     score=score, verdict=verdict, operator=p.get("operator") or None, mission_note=notes.get(p.get("mission") or ""))
         else:
             day = gid.split(":", 1)[1]
             g.update(title=("3D models" if gid.startswith("3d:") else "ComfyUI generations") + " · " + day, order=None,
-                     asset="", status="", time=last)
+                     asset="", status="", time=last, mission="", mission_title="", score=None, verdict="", operator=None)
         items.sort(key=lambda i: (i["step"], {"model": 0, "render": 1, "image": 2, "map": 3, "inspect": 4}[i["kind"]], i["filename"]))
         out.append(g)
     out.sort(key=lambda g: -g["time"])

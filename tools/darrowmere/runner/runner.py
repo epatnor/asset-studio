@@ -112,6 +112,8 @@ class Order:
         PIPES.mkdir(parents=True, exist_ok=True)
         body = {"id": self.id, "title": self.order.get("title", self.id), "created": self.state["created"], "updated": time.time(),
                 "project": self.order.get("project"), "asset": self.order.get("asset"), "use": self.order.get("use"),
+                "mission": self.order.get("mission"), "mission_title": self.order.get("mission_title"),
+                "operator": self.order.get("operator"),
                 "order_status": self.state["status"], "steps": steps}
         tmp = PIPES / f".{self.id}.tmp"
         tmp.write_text(json.dumps(body, ensure_ascii=False))
@@ -275,7 +277,7 @@ def review(o, s):
     looks = [l for l in (v.get("look") or []) if isinstance(l, dict)][:6]
     if looks and v.get("level") != "pass" and inspect:
         key = next((r.split(":", 1)[1].split("/")[0] for r in s.get("images", []) if r.startswith("$step:")), None)
-        glb = next((f for f in o.st(key).get("outputs", []) if f["filename"].lower().endswith(".glb")), None) if key else None
+        glb = main_glb(o.st(key).get("outputs", [])) if key else None
         if glb:
             shots = [{"name": f"look{len(o.st(s['key']).get('looks', [])) + i}", "yaw": float(l.get("yaw", 0)), "pitch": float(l.get("pitch", 0)),
                       "zoom": max(1.0, min(8.0, float(l.get("zoom", 2)))), "height": max(0.0, min(1.0, float(l.get("height", 0.5)))),
@@ -427,9 +429,10 @@ def mesh_for(o, ref):
     if kind == "$in":
         return o.dir / "in" / name
     if kind == "$step":
-        for f in o.st(name).get("outputs", []):
-            if f["filename"].lower().endswith((".glb", ".gltf", ".fbx", ".obj")):
-                return out_path(f)
+        f = main_glb(o.st(name).get("outputs", [])) or next((f for f in o.st(name).get("outputs", [])
+                                                             if f["filename"].lower().endswith((".gltf", ".fbx", ".obj"))), None)
+        if f:
+            return out_path(f)
         raise RuntimeError(f"step {name} has no model output")
     raise RuntimeError(f"unknown model reference {ref}")
 
@@ -603,11 +606,22 @@ def describe_shot(name):
     return ", ".join(words) + (f", {deg}° around from the front" if deg is not None else "")
 
 
+def main_glb(files):
+    """Stegets huvudmodell: den största GLB-filen (Pixal3D och TRELLIS.2 sparar också struktur och otexturerat nät)."""
+    glbs = [f for f in files if f["filename"].lower().endswith(".glb")]
+    def size(f):
+        try:
+            return out_path(f).stat().st_size
+        except OSError:
+            return 0
+    return max(glbs, key=size) if glbs else None
+
+
 def inspect_model(o, key, front_yaw=0):
     """Rundtur i Blender för granskningen: 8 vyer + uppifrån, lera, trådnät, närbilder på leder och huvudet från alla håll,
     och nätets siffror. Sparas bredvid modellen; görs bara en gång per steg."""
     outs = o.st(key).get("outputs", [])
-    glb = next((f for f in outs if f["filename"].lower().endswith(".glb")), None)
+    glb = main_glb(outs)
     if not glb:
         return [], None
     have = [f for f in outs if "_inspect_" in f["filename"]]
@@ -625,7 +639,7 @@ def render_previews(o, s, files):
     """Darrowmere renderar en ny modell själv (Blender utan skärm, fem vyer) så att granskningen ser hela modellen."""
     import subprocess
     blender = CONF.get("blender")
-    glb = next((f for f in files if f["filename"].lower().endswith(".glb")), None)
+    glb = main_glb(files)
     if not blender or not glb or not Path(blender).exists():
         return files
     free_comfy_memory()
@@ -912,6 +926,185 @@ def run_order(o):
     log(o.id, o.state["status"])
 
 
+# ---- operatören: DeepSeek väljer nästa varv ur en spelbok (docs/operator.md) -------------------------------------
+
+PLAYBOOKS = HERE / "playbooks"
+MISSIONS = OUTPUT / "missions"
+FINAL = ("done", "done with warnings", "stopped", "failed", "waiting", "cancelled")
+
+
+def playbook(name):
+    pb = json.loads((PLAYBOOKS / f"{name}.json").read_text())
+    pb["_dir"] = PLAYBOOKS / name
+    return pb
+
+
+def mission_rounds(mission):
+    """Alla varv i uppdraget: spakar, status, betyg och granskningens fel, äldst först."""
+    rounds = []
+    for d in ORDERS.iterdir():
+        f = d / "order.json"
+        if not (d.is_dir() and f.exists()):
+            continue
+        try:
+            od = json.loads(f.read_text())
+        except ValueError:
+            continue
+        if od.get("mission") != mission or not od.get("operator"):
+            continue
+        st = json.loads((d / "state.json").read_text()) if (d / "state.json").exists() else {}
+        v = {}
+        for r in sorted(d.glob("review_*_r*.json"), key=lambda p: p.stat().st_mtime):
+            try:
+                v = json.loads(r.read_text())
+            except ValueError:
+                pass
+        failed = next((t.get("note") for t in (st.get("steps") or {}).values() if t.get("status") == "failed"), None)
+        rounds.append({"order": d.name, "round": od["operator"].get("round"), "levers": od["operator"].get("levers"),
+                       "why": od["operator"].get("why"), "status": st.get("status"), "score": v.get("score"), "level": v.get("level"),
+                       "summary": v.get("summary"), "issues": (v.get("issues") or [])[:5], "error": failed,
+                       "created": st.get("created", d.stat().st_mtime)})
+    return sorted(rounds, key=lambda r: (r["round"] or 0, r["created"]))
+
+
+def check_levers(pb, levers, previous):
+    """Spakarna mot spelboken: bara kända spakar, tillåtna värden och gränser. Saknade spakar ärver förra varvet."""
+    out = dict(previous or pb["start"])
+    for k, v in (levers or {}).items():
+        spec = pb["levers"].get(k)
+        if spec is None:
+            raise ValueError(f"unknown lever {k}")
+        if "values" in spec:
+            if v not in spec["values"]:
+                raise ValueError(f"{k}={v!r} not in {list(spec['values'])}")
+        else:
+            v = float(v)
+            if not spec["min"] <= v <= spec["max"]:
+                raise ValueError(f"{k}={v} outside {spec['min']}..{spec['max']}")
+            if spec.get("type") == "int":
+                v = int(round(v))
+        out[k] = v
+    return out
+
+
+def build_round(pb, levers, n, why):
+    """Nästa beställning ur spelbokens mall: grafen med spakarna insatta, indata kopierade från spelbokens mapp."""
+    tpl = json.loads(json.dumps(pb["template"]))
+    graph = json.loads((pb["_dir"] / pb["graph"]).read_text())
+    for name, value in levers.items():
+        spec = pb["levers"][name]
+        sets = spec["values"][value] if "values" in spec else [{**b, "value": value + b.get("add", 0)} for b in spec["bind"]]
+        for b in sets:
+            graph[b["node"]]["inputs"][b["input"]] = b["value"]
+    oid = f"{pb['mission']}-r{n:02d}"
+    for k, node in graph.items():  # varje varv sparar under sitt eget namn
+        if isinstance(node, dict) and node.get("class_type") == "SaveGLB":
+            node["inputs"]["filename_prefix"] = f"3d/{pb['mission']}/{oid}_{k}"
+    tpl.update(id=oid, mission=pb["mission"], mission_title=pb["mission_title"],
+               operator={"playbook": pb["id"], "round": n, "levers": levers, "why": why},
+               title=pb["round_title"].format(n=n, **levers))
+    for s in tpl["steps"]:
+        if s.get("graph") == "$graph":
+            s["graph"] = graph
+    d = ORDERS / oid
+    (d / "in").mkdir(parents=True, exist_ok=True)
+    for name, src in tpl.pop("inputs_from_playbook", {}).items():
+        shutil.copy(pb["_dir"] / src, d / "in" / name)
+    tmp = ORDERS / "inbox" / f".{oid}.tmp"
+    tmp.write_text(json.dumps(tpl))
+    tmp.replace(ORDERS / "inbox" / f"{oid}.json")
+    return oid
+
+
+def mission_note(pb, rounds, status, message):
+    MISSIONS.mkdir(parents=True, exist_ok=True)
+    best = max((r for r in rounds if r.get("score") is not None), key=lambda r: r["score"], default=None)
+    body = {"mission": pb["mission"], "title": pb["mission_title"], "playbook": pb["id"], "status": status, "message": message,
+            "rounds": len(rounds), "max_rounds": pb["limits"]["max_rounds"], "best": best, "updated": time.time()}
+    tmp = MISSIONS / f".{pb['mission']}.tmp"
+    tmp.write_text(json.dumps(body, ensure_ascii=False, indent=1))
+    tmp.replace(MISSIONS / f"{pb['mission']}.json")
+
+
+def operator_ask(pb, rounds):
+    lever_text = "\n".join(f"- {k}: " + (f"one of {list(v['values'])}" if "values" in v else f"{v['min']}..{v['max']}") + f" — {v['help']}"
+                           for k, v in pb["levers"].items())
+    hist = json.dumps([{k: r[k] for k in ("round", "levers", "status", "score", "level", "summary", "issues", "error")} for r in rounds],
+                      ensure_ascii=False)
+    prompt = (f"You are the operator of an automated 3D asset pipeline. You never invent new steps; you only choose lever values "
+              f"from the playbook below for the next round, or stop.\n\nGOAL: {pb['goal']}\n\nLEVERS:\n{lever_text}\n\n"
+              f"KNOWN MOVES:\n" + "\n".join(f"- {m}" for m in pb.get("moves", [])) +
+              f"\n\nROUNDS SO FAR (oldest first):\n{hist}\n\nRounds left: {pb['limits']['max_rounds'] - len(rounds)}.\n"
+              "Explore both models and several seeds before fine-tuning; do not repeat an identical lever set. "
+              "Answer with one JSON object only: {\"action\": \"retry\" | \"done\" | \"escalate\", \"levers\": {...only levers you change...}, "
+              "\"why\": \"one sentence\"}. Use done when the goal is met, escalate when something outside the levers is needed.")
+    model = pb.get("model") or settings()["review"].get("model") or CONF["model"]
+    t0 = time.time()
+    r = http_json("https://openrouter.ai/api/v1/chat/completions",
+                  {"model": model, "messages": [{"role": "user", "content": prompt}], "response_format": {"type": "json_object"},
+                   "temperature": 0.4, "usage": {"include": True}},
+                  headers={"Authorization": f"Bearer {env_key()}", "X-Title": "Darrowmere operator"}, timeout=120)
+    text = r["choices"][0]["message"]["content"] or ""
+    ans = json.loads(text[text.find("{"): text.rfind("}") + 1])
+    ai_log({"t": t0, "order": pb["mission"], "order_title": pb["mission_title"], "step": "operator", "label": "Operator: next round",
+            "model": r.get("model", model), "seconds": round(time.time() - t0, 1), "summary": ans.get("why"), "action": ans.get("action"),
+            "levers": ans.get("levers"), "cost_usd": (r.get("usage") or {}).get("cost")})
+    return ans
+
+
+def operate(oid):
+    """Efter en beställning med "operator": nästa varv, eller ett besked till Patrik och Claude. Görs en gång per beställning."""
+    d = ORDERS / oid
+    od = json.loads((d / "order.json").read_text())
+    op = od.get("operator") or {}
+    if not op.get("playbook") or (d / "operated").exists():
+        return
+    st = json.loads((d / "state.json").read_text()) if (d / "state.json").exists() else {}
+    if st.get("status") not in FINAL:
+        return
+    (d / "operated").write_text(str(time.time()))
+    pb = playbook(op["playbook"])
+    rounds = mission_rounds(pb["mission"])
+    if (MISSIONS / f"{pb['mission']}.json").exists() and json.loads((MISSIONS / f"{pb['mission']}.json").read_text()).get("status") in ("done", "escalated", "stopped"):
+        return
+    scores = [r["score"] for r in rounds if r.get("score") is not None]
+    lim = pb["limits"]
+    if scores and max(scores) >= lim["stop_score"]:
+        mission_note(pb, rounds, "done", f"goal reached: {max(scores)}/10")
+        return
+    if len(rounds) >= lim["max_rounds"]:
+        mission_note(pb, rounds, "done", f"all {lim['max_rounds']} rounds used; best {max(scores) if scores else '-'}/10")
+        return
+    if sum(1 for r in rounds[-3:] if r["status"] == "failed") >= 3:
+        mission_note(pb, rounds, "escalated", "three failed rounds in a row: " + str(rounds[-1].get("error"))[:200])
+        return
+    try:
+        ans = operator_ask(pb, rounds)
+        action = ans.get("action")
+        if action in ("done", "escalate"):
+            mission_note(pb, rounds, "done" if action == "done" else "escalated", ans.get("why") or action)
+            return
+        levers = check_levers(pb, ans.get("levers"), op.get("levers"))
+        if any(r.get("levers") == levers for r in rounds):  # samma spakar igen: nytt frö i stället
+            spec = pb["levers"]["seed"]
+            levers["seed"] = int(spec["min"] + (levers["seed"] * 7919 + len(rounds) * 104729) % (spec["max"] - spec["min"]))
+    except Exception as e:
+        mission_note(pb, rounds, "escalated", f"operator reply outside the playbook: {e}"[:300])
+        return
+    nid = build_round(pb, levers, len(rounds) + 1, (ans.get("why") or "")[:300])
+    mission_note(pb, rounds, "running", f"round {len(rounds) + 1}: {ans.get('why', '')}"[:300])
+    log(oid, "operator ->", nid, levers)
+
+
+def start_mission(name):
+    """python runner.py --mission <spelbok>: första varvet med spelbokens startvärden."""
+    pb = playbook(name)
+    rounds = mission_rounds(pb["mission"])
+    nid = build_round(pb, dict(pb["start"]), len(rounds) + 1, "start values from the playbook")
+    mission_note(pb, rounds, "running", "round 1 with the playbook's start values")
+    print(json.dumps({"ok": True, "order": nid}))
+
+
 def take_inbox():
     inbox = ORDERS / "inbox"
     inbox.mkdir(parents=True, exist_ok=True)
@@ -940,6 +1133,10 @@ def tick():
             run_order(Order(oid))
         except Exception:
             log(oid, "crashed:", traceback.format_exc()[-600:])
+        try:
+            operate(oid)
+        except Exception:
+            log(oid, "operator crashed:", traceback.format_exc()[-600:])
 
 
 def rereview(oid, key):
@@ -958,6 +1155,9 @@ def rereview(oid, key):
 
 
 if __name__ == "__main__":
+    if "--mission" in sys.argv:  # python runner.py --mission <spelbok>
+        start_mission(sys.argv[sys.argv.index("--mission") + 1])
+        sys.exit(0)
     if "--rereview" in sys.argv:  # python runner.py --rereview <beställning> <granskningssteg>
         i = sys.argv.index("--rereview")
         rereview(sys.argv[i + 1], sys.argv[i + 2])

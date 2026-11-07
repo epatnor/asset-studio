@@ -33,6 +33,20 @@
   .gh .meta { color: var(--muted); }
   .tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
   .tag.cloud { border-style: dashed; color: var(--cyan); }
+  /* Uppdrag: flera beställningar med ett syfte, sorterade efter granskningens betyg */
+  details.mission { background: color-mix(in srgb, var(--blue) 5%, var(--bg)); border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+                    border-radius: 12px; padding: 8px 10px 10px; }
+  details.mission > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 2px 2px 8px; list-style: none; }
+  details.mission > summary::-webkit-details-marker { display: none; }
+  details.mission > summary::before { content: "▸"; color: var(--muted); }
+  details.mission[open] > summary::before { content: "▾"; }
+  details.mission > summary h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  details.mission .mgroups { display: grid; gap: 10px; }
+  .tag.score { font-weight: 600; color: var(--text); }
+  .tag.score.pass { border-color: var(--green, #3fb950); } .tag.score.warning { border-color: var(--amber, #d29922); }
+  .tag.score.fail, .tag.score.rejected { border-color: var(--red, #f85149); }
+  .rank { font-weight: 700; color: var(--muted); }
+  .why { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; margin: -4px 0 8px; }
   .step { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; margin: 4px 0 -2px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .step b { color: var(--text); font-weight: 600; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -103,48 +117,80 @@ function assets() {
   const a = [...new Set(groups.map(g => g.asset).filter(Boolean))].sort(), sel = store.get("asset", "");
   $("asset").innerHTML = `<option value="">All assets</option>` + a.map(x => `<option ${x === sel ? "selected" : ""}>${esc(x)}</option>`).join("");
 }
+function groupHtml(g, items, rank) {
+  const cloud = [...new Set(g.items.map(i => i.cloud).filter(Boolean))];
+  let html = `<section class="group"><div class="gh">${rank ? `<span class="rank">#${rank}</span>` : ""}<h2>${esc(g.title)}</h2>
+    ${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10 ${esc(g.verdict)}</span>` : ""}
+    ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}
+    <span class="meta">${when(g.time)}${g.order ? " · " + esc(g.order) : ""} · ${items.length} file${items.length > 1 ? "s" : ""}</span></div>
+    ${g.operator && g.operator.why ? `<div class="why">Operator, round ${esc(g.operator.round ?? "")}: ${esc(g.operator.why)}</div>` : ""}<div class="grid">`;
+  let step = null;
+  // stegrubriker bara när något steg har flera filer; annars står steget i bildtexten
+  const per = {}; items.forEach(i => per[i.step] = (per[i.step] || 0) + 1);
+  const dividers = g.order && Object.values(per).some(n => n > 2);
+  for (const i of items) {
+    const cap = !dividers && i.step_label ? i.step_label : i.filename;
+    if (dividers && i.step !== step) {
+      step = i.step;
+      html += `<div class="step"><b>${esc(i.step_label || i.step || "files")}</b>${i.note ? `<span>${esc(i.note)}</span>` : ""}</div>`;
+    }
+    const label = KINDS.find(k => k[0] === i.kind)[1].replace(/s$/, "").replace("Texture map", "Map").replace("Inspection", "Inspect");
+    const title = `${i.filename} · ${mb(i.size)} · ${when(i.mtime)}`;
+    if (i.kind === "model") {
+      const v = "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output" });
+      html += `<a class="card k-model" href="${v}" target="_blank" title="${esc(title)} · open in the 3D viewer">
+        <div class="thumb">${i.thumb ? `<img loading="lazy" src="${thumbUrl(i.thumb, i)}" alt="">` : `<span class="ph">3D</span>`}</div>
+        <span class="badge">3D</span><div class="cap">${esc(cap)}</div></a>`;
+    } else {
+      const n = list.push(i) - 1;
+      html += `<div class="card k-${i.kind}" data-n="${n}" title="${esc(title)}">
+        <div class="thumb"><img loading="lazy" src="${thumbUrl(i.filename, i)}" alt=""></div>
+        ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div></div>`;
+    }
+  }
+  return html + `</div></section>`;
+}
 function render() {
   const q = $("q").value.trim().toLowerCase(), asset = $("asset").value;
-  let html = "", shown = 0;
+  let shown = 0;
   list = [];
+  // Synliga beställningar; de med samma uppdrag samlas under uppdraget, som tar tiden från sin senaste beställning
+  const blocks = [], missions = {};
   for (const g of groups) {
     if (asset && g.asset !== asset) continue;
-    const gText = `${g.title} ${g.order || ""} ${g.asset}`.toLowerCase();
+    const gText = `${g.title} ${g.order || ""} ${g.asset} ${g.mission || ""} ${g.mission_title || ""}`.toLowerCase();
     const items = g.items.filter(i => on.has(i.kind) && (!q || gText.includes(q) || `${i.filename} ${i.step_label || ""} ${i.note || ""}`.toLowerCase().includes(q)));
     if (!items.length) continue;
     shown += items.length;
-    const cloud = [...new Set(g.items.map(i => i.cloud).filter(Boolean))];
-    html += `<section class="group"><div class="gh"><h2>${esc(g.title)}</h2>
-      ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}
-      <span class="meta">${when(g.time)}${g.order ? " · " + esc(g.order) : ""} · ${items.length} file${items.length > 1 ? "s" : ""}</span></div><div class="grid">`;
-    let step = null;
-    // stegrubriker bara när något steg har flera filer; annars står steget i bildtexten
-    const per = {}; items.forEach(i => per[i.step] = (per[i.step] || 0) + 1);
-    const dividers = g.order && Object.values(per).some(n => n > 2);
-    for (const i of items) {
-      const cap = !dividers && i.step_label ? i.step_label : i.filename;
-      if (dividers && i.step !== step) {
-        step = i.step;
-        html += `<div class="step"><b>${esc(i.step_label || i.step || "files")}</b>${i.note ? `<span>${esc(i.note)}</span>` : ""}</div>`;
-      }
-      const label = KINDS.find(k => k[0] === i.kind)[1].replace(/s$/, "").replace("Texture map", "Map").replace("Inspection", "Inspect");
-      const title = `${i.filename} · ${mb(i.size)} · ${when(i.mtime)}`;
-      if (i.kind === "model") {
-        const v = "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output" });
-        html += `<a class="card k-model" href="${v}" target="_blank" title="${esc(title)} · open in the 3D viewer">
-          <div class="thumb">${i.thumb ? `<img loading="lazy" src="${thumbUrl(i.thumb, i)}" alt="">` : `<span class="ph">3D</span>`}</div>
-          <span class="badge">3D</span><div class="cap">${esc(cap)}</div></a>`;
-      } else {
-        const n = list.push(i) - 1;
-        html += `<div class="card k-${i.kind}" data-n="${n}" title="${esc(title)}">
-          <div class="thumb"><img loading="lazy" src="${thumbUrl(i.filename, i)}" alt=""></div>
-          ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div></div>`;
-      }
-    }
-    html += `</div></section>`;
+    if (g.mission) {
+      let m = missions[g.mission];
+      if (!m) blocks.push(m = missions[g.mission] = { mission: g.mission, title: "", time: 0, entries: [] });
+      m.title = m.title || g.mission_title; m.note = m.note || g.mission_note; m.time = Math.max(m.time, g.time); m.entries.push([g, items]);
+    } else blocks.push({ time: g.time, entries: [[g, items]] });
+  }
+  blocks.sort((a, b) => b.time - a.time);
+  const openSet = new Set(store.get("openMissions", []));
+  let html = "", first = true;
+  for (const b of blocks) {
+    if (!b.mission) { html += groupHtml(...b.entries[0]); continue; }
+    b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
+    const best = b.entries[0][0], running = b.entries.some(([g]) => ["running", "approval", "queued", "planned"].includes(g.status));
+    const open = openSet.has(b.mission) || (first && !store.get("closed." + b.mission, false));
+    first = false;
+    html += `<details class="mission" data-m="${esc(b.mission)}" ${open ? "open" : ""}><summary><h2>${esc(b.title || b.mission)}</h2>
+      <span class="tag">Mission · ${b.entries.length} order${b.entries.length > 1 ? "s" : ""}</span>
+      ${best.score != null ? `<span class="tag score ${esc(best.verdict)}">best ${best.score}/10 · ${esc(best.title)}</span>` : ""}
+      ${running ? `<span class="tag">running</span>` : ""}<span class="meta">${when(b.time)}</span>
+      ${b.note ? `<div class="why" style="flex-basis:100%;margin:0">Operator (${esc(b.note.playbook)}): ${esc(b.note.status)} · ${b.note.rounds}/${b.note.max_rounds} rounds · ${esc(b.note.message || "")}</div>` : ""}</summary><div class="mgroups">`;
+    b.entries.forEach(([g, items], k) => html += groupHtml(g, items, k + 1));
+    html += `</div></details>`;
   }
   $("main").innerHTML = html || `<div id="msg">${groups.length ? "Nothing matches the filters." : "Darrowmere has not made anything yet."}</div>`;
   $("main").querySelectorAll(".card[data-n]").forEach(c => c.onclick = () => show(+c.dataset.n));
+  $("main").querySelectorAll("details.mission").forEach(d => d.ontoggle = () => {
+    const s = new Set(store.get("openMissions", []));
+    d.open ? s.add(d.dataset.m) : s.delete(d.dataset.m); store.set("openMissions", [...s]); store.set("closed." + d.dataset.m, !d.open);
+  });
   const total = groups.reduce((s, g) => s + g.items.length, 0);
   $("info").textContent = `${shown} of ${total} files`;
 }
