@@ -202,7 +202,8 @@
   "Faceted, noisy or bumpy surface: raise smooth to 6-10 or lower shape_cfg.",
   "Steps above 30 rarely help much: only go higher when the texture looks noisy.",
   "Fused or blobby limbs: raise structure_cfg a little or try another seed.",
-  "A good result: keep its levers, try one nearby seed and the other model (pixal3d) with the same quality settings."
+  "A good result: keep its levers, try one nearby seed and the other model (pixal3d) with the same quality settings.",
+  "The M4000 is a support card (slower, fp32), capped at resolution 1024 and 20 steps (about 25 min a round): use it for quick seed, model and cfg exploration, and give the T1000 the 1536 rounds for the most promising settings."
  ],
  "limits": {
   "max_rounds": 12,
@@ -247,5 +248,15 @@
  "lanes": [
   "t1000",
   "m4000"
- ]
+ ],
+ "lane_limits": {
+  "m4000": {
+   "resolution": {
+    "max": 1024
+   },
+   "steps": {
+    "max": 20
+   }
+  }
+ }
 }

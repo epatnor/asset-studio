@@ -980,11 +980,20 @@ def mission_rounds(mission):
             except ValueError:
                 pass
         failed = next((t.get("note") for t in (st.get("steps") or {}).values() if t.get("status") == "failed"), None)
-        rounds.append({"order": d.name, "round": od["operator"].get("round"), "levers": od["operator"].get("levers"),
+        rounds.append({"order": d.name, "round": od["operator"].get("round"), "gpu": od.get("gpu") or DEFAULT_LANE, "levers": od["operator"].get("levers"),
                        "why": od["operator"].get("why"), "status": st.get("status"), "score": v.get("score"), "level": v.get("level"),
                        "summary": v.get("summary"), "issues": (v.get("issues") or [])[:5], "error": failed,
                        "created": st.get("created", d.stat().st_mtime)})
     return sorted(rounds, key=lambda r: (r["round"] or 0, r["created"]))
+
+
+def lane_caps(pb, lane, levers):
+    """Spelbokens tak per spår ("lane_limits": {"m4000": {"resolution": {"max": 1280}}}): ett långsammare kort får lättare varv."""
+    for k, lim in ((pb.get("lane_limits") or {}).get(lane) or {}).items():
+        if k in levers and isinstance(levers[k], (int, float)):
+            v = min(max(levers[k], lim.get("min", levers[k])), lim.get("max", levers[k]))
+            levers[k] = int(v) if isinstance(levers[k], int) else v
+    return levers
 
 
 def check_levers(pb, levers, previous):
@@ -1063,15 +1072,17 @@ def mission_note(pb, rounds, status, message):
     tmp.replace(MISSIONS / f"{pb['mission']}.json")
 
 
-def operator_ask(pb, rounds):
+def operator_ask(pb, rounds, lane=None):
     lever_text = "\n".join(f"- {k}: " + (f"one of {list(v['values'])}" if "values" in v else f"{v['min']}..{v['max']}" + (f" (step {v['step']})" if v.get("step") else "")) + f" — {v['help']}"
                            for k, v in pb["levers"].items())
-    hist = json.dumps([{k: r[k] for k in ("round", "levers", "status", "score", "level", "summary", "issues", "error")} for r in rounds],
+    hist = json.dumps([{k: r.get(k) for k in ("round", "gpu", "levers", "status", "score", "level", "summary", "issues", "error")} for r in rounds],
                       ensure_ascii=False)
+    caps = (pb.get("lane_limits") or {}).get(lane)
+    lane_text = (f"\n\nTHE NEXT ROUND RUNS ON: {lane}." + (f" Limits on this GPU (values above are clamped): {json.dumps(caps)}." if caps else "")) if lane else ""
     prompt = (f"You are the operator of an automated 3D asset pipeline. You never invent new steps; you only choose lever values "
               f"from the playbook below for the next round, or stop.\n\nGOAL: {pb['goal']}\n\nLEVERS:\n{lever_text}\n\n"
               f"KNOWN MOVES:\n" + "\n".join(f"- {m}" for m in pb.get("moves", [])) +
-              f"\n\nROUNDS SO FAR (oldest first):\n{hist}\n\nRounds left: {pb['limits']['max_rounds'] - len(rounds)}.\n"
+              f"\n\nROUNDS SO FAR (oldest first):\n{hist}{lane_text}\n\nRounds left: {pb['limits']['max_rounds'] - len(rounds)}.\n"
               "Explore both models and several seeds before fine-tuning; do not repeat an identical lever set. "
               "Answer with one JSON object only: {\"action\": \"retry\" | \"done\" | \"escalate\", \"levers\": {...only levers you change...}, "
               "\"why\": \"one sentence\"}. Use done when the goal is met, escalate when something outside the levers is needed.")
@@ -1121,12 +1132,12 @@ def operate_locked(op, od):
         mission_note(pb, rounds, "escalated", "three failed rounds in a row: " + str(rounds[-1].get("error"))[:200])
         return
     try:
-        ans = operator_ask(pb, rounds)
+        ans = operator_ask(pb, rounds, od.get("gpu"))
         action = ans.get("action")
         if action in ("done", "escalate"):
             mission_note(pb, rounds, "done" if action == "done" else "escalated", ans.get("why") or action)
             return
-        levers = check_levers(pb, ans.get("levers"), op.get("levers"))
+        levers = lane_caps(pb, od.get("gpu"), check_levers(pb, ans.get("levers"), op.get("levers")))
         if any(r.get("levers") == levers for r in rounds):  # samma spakar igen: nytt frö i stället
             spec = pb["levers"]["seed"]
             levers["seed"] = int(spec["min"] + (levers["seed"] * 7919 + len(rounds) * 104729) % (spec["max"] - spec["min"]))
@@ -1152,7 +1163,7 @@ def start_mission(name):
     for i, lane in enumerate(pb.get("lanes") or [DEFAULT_LANE]):
         if lane in busy:
             continue
-        levers = dict(pb["start"])
+        levers = lane_caps(pb, lane, dict(pb["start"]))
         if started or rounds:  # fler spår samtidigt: samma startvärden men eget frö, så att varven inte blir likadana
             levers["seed"] = levers["seed"] + 1000 * (i + len(rounds))
         n = next_round(pb)
