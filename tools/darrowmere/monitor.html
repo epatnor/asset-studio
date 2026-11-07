@@ -38,6 +38,18 @@
   .pill[hidden] { display: none; }
   @keyframes pulse { 50% { opacity: .3; } }
   .spacer { flex: 1; }
+  /* Menyn i sidhuvudet: Gallery, History, Log, Settings, konto och utloggning bakom en knapp */
+  .menu { position: relative; flex: none; }
+  #menuBtn { display: inline-flex; align-items: center; gap: 8px; }
+  .burger, .burger::before, .burger::after { display: block; width: 13px; height: 1.5px; border-radius: 1px; background: currentColor; }
+  .burger { position: relative; } .burger::before, .burger::after { content: ""; position: absolute; left: 0; }
+  .burger::before { top: -4px; } .burger::after { top: 4px; }
+  .menulist { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; min-width: 170px; display: flex; flex-direction: column; gap: 2px; padding: 5px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+  .menulist[hidden] { display: none; }
+  .menulist button { border-color: transparent; background: none; text-align: left; justify-content: flex-start; width: 100%; }
+  .menulist button:hover { background: var(--panel2); border-color: var(--line); }
+  .menulist hr { border: 0; border-top: 1px solid var(--line); margin: 3px 2px; }
   #age { width: 104px; text-align: right; color: var(--muted); }
 
   main { padding: 12px 16px 20px; display: grid; gap: 10px; max-width: 1600px; margin: 0 auto; }
@@ -292,12 +304,18 @@
   <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
   <span class="spacer"></span>
   <span class="num" id="age"></span>
-  <button id="acctBtn" title="Accounts and password"><span id="meName">Account</span></button>
-  <button id="outBtn" title="Log out">Log out</button>
-  <button id="setBtn" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
-  <button id="galBtn" title="Everything Darrowmere has made: generations, renders, models and texture maps">Gallery</button>
-  <button id="histBtn" title="All jobs, also acknowledged ones">History</button>
-  <button id="logBtn" title="Open the ComfyUI log in its own window">Log</button>
+  <div class="menu" id="menu">
+    <button id="menuBtn" title="Menu" aria-haspopup="true" aria-expanded="false"><span class="burger"></span>Menu</button>
+    <div class="menulist" id="menuList" role="menu" hidden>
+      <button id="galBtn" role="menuitem" title="Everything Darrowmere has made: generations, renders, models and texture maps">Gallery</button>
+      <button id="histBtn" role="menuitem" title="All jobs, also acknowledged ones">History</button>
+      <button id="logBtn" role="menuitem" title="Open the ComfyUI log in its own window">Log</button>
+      <button id="setBtn" role="menuitem" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
+      <hr>
+      <button id="acctBtn" role="menuitem" title="Accounts and password"><span id="meName">Account</span></button>
+      <button id="outBtn" role="menuitem" title="Log out">Log out</button>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -452,6 +470,12 @@ const levelClass = st => st === "success" || st === "pass" ? "ok" : st === "warn
 const jobLabel = x => `${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
+// Menyn: öppnas med knappen, stängs vid val, klick utanför och Esc
+const menuOpen = on => { $("menuList").hidden = !on; $("menuBtn").setAttribute("aria-expanded", on); };
+$("menuBtn").onclick = e => { e.stopPropagation(); menuOpen($("menuList").hidden); };
+$("menuList").addEventListener("click", e => { if (e.target.closest("button")) menuOpen(false); });
+document.addEventListener("click", e => { if (!e.target.closest("#menu")) menuOpen(false); });
+addEventListener("keydown", e => { if (e.key === "Escape") menuOpen(false); });
 $("logBtn").onclick = () => window.open("/log", "darrowmere-log", "width=1100,height=720");
 $("setBtn").onclick = () => window.open("/settings", "darrowmere-settings", "width=860,height=900");
 $("acctBtn").onclick =() => window.open("/accounts", "darrowmere-accounts", "width=720,height=640");
