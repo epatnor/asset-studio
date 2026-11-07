@@ -9,7 +9,10 @@
 # "detail_power" (vinkelns exponent för detaljbandet, 24), "mirror_axis" ("x"/"y"/"z": symmetrisk kropp, vänster och höger
 # görs lika över spegelplanet; "mirror_plane", "mirror_tolerance"), "blend": "best" (ingen blandning: varje yta tar färgen
 # från en enda vy, den som ser den rakast räknat över ett område ("best_radius", meter, 0.03), med en smal övergång
-# ("best_power", 40); behåller Krea-2:s skärpa, skarvarna hamnar mellan sammanhängande områden). Svarar med en rad JSON.
+# ("best_power", 40); behåller Krea-2:s skärpa, skarvarna hamnar mellan sammanhängande områden), "blend": "stitch" (sömnad:
+# en vy per yta som i best, men skarvarna läggs där vyerna är överens (vyval över ett grannskapsnät där en skarv kostar efter
+# färgskillnaden mellan vyerna, "stitch_color" 4, "stitch_potts" 1, "stitch_hops" 8) och färgskillnaden som är kvar jämnas ut över hela
+# nätet med en mjuk korrektion per vy (glesa minsta kvadrater, "stitch_level" true); "stitch_samples" 60000). Svarar med en rad JSON.
 import argparse
 import json
 import struct
@@ -195,6 +198,136 @@ def embed_image(glb_path, image_path):
     glb_path.write_bytes(header + text + struct.pack("<I4s", len(new_binary), b"BIN\0") + new_binary)
 
 
+def stitch(position, layers, energies, recipe, area):
+    """Sömnad: en vy per yta, skarvar där vyerna är överens och färgerna utjämnade över skarvarna (som Waechter m.fl. 2014,
+    "Let there be color", fast på ett urval av ytpunkter i stället för på nätets ytor). Ger färgen per texel och en rapport."""
+    from scipy import sparse
+    from scipy.sparse.linalg import cg
+    count, total = len(layers), len(position)
+    n = min(total, int(recipe.get("stitch_samples", 60000)))
+    pick = np.random.default_rng(0).choice(total, n, replace=False)
+    spacing = float(np.sqrt(area / n))
+    radius = recipe.get("stitch_radius", 2.2 * spacing)
+    tree = cKDTree(position[pick])
+    pairs = tree.query_pairs(radius, output_type="ndarray")
+    i, j = pairs[:, 0], pairs[:, 1]
+    A = sparse.coo_matrix((np.ones(2 * len(i), np.float32), (np.r_[i, j], np.r_[j, i])), shape=(n, n)).tocsr()
+    degree = np.asarray(A.sum(axis=1)).ravel() + 1e-6
+    _, owner = tree.query(position, workers=-1)
+    owned = np.bincount(owner, minlength=n) + 1e-6
+
+    def at_samples(values):  # medel över de texlar som hör till varje urvalspunkt
+        if values.ndim == 1:
+            return np.bincount(owner, weights=values, minlength=n) / owned
+        return np.stack([np.bincount(owner, weights=values[:, c], minlength=n) for c in range(values.shape[1])], 1) / owned[:, None]
+
+    valid = np.stack([at_samples(layer[0]) for layer in layers]) > 0.3          # vyn ser punkten
+    C = np.stack([at_samples(layer[1]) for layer in layers]).astype(np.float32)  # vyns färg i punkten
+    E = np.stack([at_samples(e) for e in energies])
+    for _ in range(int(recipe.get("stitch_hops", 8))):  # utjämnad över några grannsteg (~2 cm), så att valet följer formen, inte varje fasett
+        E = (A @ E.T + E.T).T / (degree + 1)
+    data = np.where(valid, 1 - E / (np.where(valid, E, 0).max(axis=0) + 1e-9), 50.0)
+
+    # Färgskillnaden mellan två vyer i varje punkt (0..1); en vy som inte ser punkten räknas som oense
+    diff = np.full((count, count, n), 0.5, np.float32)
+    for a in range(count):
+        for b in range(count):
+            both = valid[a] & valid[b]
+            diff[a, b, both] = np.abs(C[a, both] - C[b, both]).mean(axis=1)
+            if a == b:
+                diff[a, b] = 0
+    color_w, potts = recipe.get("stitch_color", 4.0), recipe.get("stitch_potts", 1.0)
+
+    def seam_stats(lab):  # skarvkanter (andel av alla kanter) och färgskillnaden över dem där båda vyerna ser ytan
+        cut = lab[i] != lab[j]
+        a, b = lab[i][cut], lab[j][cut]
+        ok = valid[a, i[cut]] & valid[b, i[cut]] & valid[a, j[cut]] & valid[b, j[cut]]
+        miss = (diff[a, b, i[cut]] + diff[a, b, j[cut]])[ok] / 2
+        return round(float(cut.mean()), 4), round(float(miss.mean()) if len(miss) else 0.0, 4)
+
+    # Vyval: iterativ förbättring (ICM), varje punkt tar den vy som ger lägst egen kostnad + skarvkostnad mot grannarna
+    label = np.argmax(np.where(valid, E, -1), axis=0)
+    before = seam_stats(label)
+    rng = np.random.default_rng(1)
+    for sweep in range(int(recipe.get("stitch_sweeps", 20))):
+        onehot = (label[None, :] == np.arange(count)[:, None]).astype(np.float32)  # L,n
+        neigh = A @ onehot.T                                                       # n,L: grannar med vy b
+        cost = data.copy()
+        for l in range(count):
+            # summan av skarvens kostnad mot grannar med en annan vy b: färgskillnad här och hos grannen, plus en fast kostnad
+            far = A @ (onehot * diff[l]).T  # n,L: Σ över grannar med vy b av diff_lb(granne)
+            seam = 0.5 * color_w * (neigh * diff[l].T + far) + potts * neigh
+            seam[:, l] = 0
+            cost[l] += seam.sum(axis=1) / degree
+        new = np.argmin(cost, axis=0)
+        move = (new != label) & (rng.random(n) < 0.5)
+        label[move] = new[move]
+        if move.sum() < n * 1e-4:
+            break
+    after = seam_stats(label)
+    if recipe.get("stitch_debug"):
+        np.savez_compressed(recipe["stitch_debug"], label=label, valid=valid, E=E, i=i, j=j, pos=position[pick], C=C, diff=diff)
+
+    # Utjämning: en korrektion g per punkt (för dess vy), så att färgen möts över skarvarna och varierar mjukt inom vyns område
+    g = np.zeros((n, 3), np.float32)
+    level = {}
+    if recipe.get("stitch_level", True):
+        cut = label[i] != label[j]
+        a, b = label[i], label[j]
+        both_a = valid[a, i] & valid[a, j]
+        both_b = valid[b, i] & valid[b, j]
+        use = cut & both_a & both_b
+        d = (C[b, i] + C[b, j]) / 2 - (C[a, i] + C[a, j]) / 2  # g_i - g_j = det vyn b har här minus det vyn a har
+        size_d = np.abs(d).mean(axis=1)
+        seam_w = recipe.get("stitch_seam_weight", 10.0) * np.minimum(1, recipe.get("stitch_max_diff", 0.25) / (size_d + 1e-6))
+        rows_w = np.where(use, seam_w, np.where(cut, 0.0, 1.0)).astype(np.float64)  # inre kanter: g lika hos grannar
+        target = np.where(use[:, None], d, 0)
+        m = len(i)
+        D = sparse.coo_matrix((np.r_[rows_w, -rows_w], (np.r_[np.arange(m), np.arange(m)], np.r_[i, j])), shape=(m, n)).tocsr()
+        # normalekvationerna (DᵀD + εI) g = Dᵀ(w·d); D har redan vikten w i raderna
+        M = (D.T @ D + sparse.identity(n) * recipe.get("stitch_eps", 1e-3)).tocsr()
+        for c in range(3):
+            rhs = D.T @ (rows_w * target[:, c])
+            g[:, c], _ = cg(M, rhs, rtol=1e-6, maxiter=3000)
+        g = np.clip(g, -0.35, 0.35)
+        fixed = (C[a[use], i[use]] + g[i[use]]) - (C[b[use], j[use]] + g[j[use]])
+        raw = C[a[use], i[use]] - C[b[use], j[use]]
+        level = {"seam_edges": int(use.sum()), "mismatch_before": round(float(np.abs(raw).mean()), 4),
+                 "mismatch_after": round(float(np.abs(fixed).mean()), 4), "max_correction": round(float(np.abs(g).max()), 3)}
+
+    # Till texlarna: vyernas andel från de närmaste urvalspunkterna (smal övergång, ett par punktavstånd), bara vyer som ser
+    # texeln, och korrektionen för varje vy förlängd från dess eget område (närmaste punkt med den vyn).
+    k = 6
+    dist, near = tree.query(position, k=k, workers=-1)
+    wk = np.exp(-(dist / spacing) ** 2).astype(np.float32)
+    wk /= wk.sum(axis=1, keepdims=True) + 1e-12
+    share = np.zeros((count, total), np.float32)
+    for l in range(count):
+        share[l] = (wk * (label[near] == l)).sum(axis=1) * (layers[l][0] > 0.3)
+    none = share.sum(axis=0) < 1e-6
+    if none.any():
+        fallback = np.argmax(energies[:, none], axis=0)
+        share[fallback, np.where(none)[0]] = 1
+    share /= share.sum(axis=0, keepdims=True)
+    mixed = np.zeros((total, 3), np.float32)
+    for l in range(count):
+        here = share[l] > 0
+        if not here.any():
+            continue
+        mine = np.where(label == l)[0]
+        if len(mine):
+            _, nearest_l = cKDTree(position[pick][mine]).query(position[pick], workers=-1)
+            g_l = g[mine][nearest_l]  # korrektionen för vy l i alla punkter
+        else:
+            g_l = np.zeros((n, 3), np.float32)
+        g_t = (g_l[near[here]] * wk[here][..., None]).sum(axis=1)
+        mixed[here] += share[l][here, None] * (layers[l][1][here] + g_t)
+    return mixed.clip(0, 1).astype(np.float32), {
+        "samples": n, "spacing_m": round(spacing, 4), "radius_m": round(float(radius), 4), "sweeps": sweep + 1,
+        "seams_before": {"cut": before[0], "mismatch": before[1]}, "seams_after": {"cut": after[0], "mismatch": after[1]},
+        "share": {recipe["views"][l]["name"]: round(float((label == l).mean()), 3) for l in range(count)}, "level": level}
+
+
 def main():
     parser = argparse.ArgumentParser(description="Paint reference images onto a finished model.")
     parser.add_argument("recipe", type=Path)
@@ -300,8 +433,12 @@ def main():
             return ((W @ wv) / ((W @ ww)[:, None] + 1e-6))[owner].astype(np.float32)
         return lowpass, n, len(pairs)
 
-    best_mode = recipe.get("blend") == "best"
-    if best_mode:
+    best_mode = recipe.get("blend") in ("best", "stitch")  # välj en vy, blanda inte (också i spegelpasset)
+    if recipe.get("blend") == "stitch":
+        mixed, info = stitch(position, layers, energies, recipe, float(mesh.area))
+        report.append({"stitch": info})
+        print(json.dumps(report[-1]), flush=True)
+    elif best_mode:
         # En vy per yta: vyernas energi (rak vinkel × bias) jämnas ut över best_radius så att valet blir sammanhängande områden,
         # en vy som inte ser punkten (skymd eller utanför bilden) kan inte väljas, och övergången görs smal med en hög potens.
         lowpass, n, npairs = make_lowpass(recipe.get("best_radius", 0.03))
