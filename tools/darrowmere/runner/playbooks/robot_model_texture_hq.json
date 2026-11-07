@@ -246,8 +246,7 @@
  },
  "dir": "robot_model_texture",
  "lanes": [
-  "t1000",
-  "m4000"
+  "t1000"
  ],
  "lane_limits": {
   "m4000": {

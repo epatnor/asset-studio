@@ -1128,8 +1128,9 @@ def operate_locked(op, od):
     if len(rounds) >= lim["max_rounds"]:
         mission_note(pb, rounds, "done", f"all {lim['max_rounds']} rounds used; best {max(scores) if scores else '-'}/10")
         return
-    if sum(1 for r in rounds[-3:] if r["status"] == "failed") >= 3:
-        mission_note(pb, rounds, "escalated", "three failed rounds in a row: " + str(rounds[-1].get("error"))[:200])
+    lane_rounds = [r for r in rounds if r.get("gpu") == (od.get("gpu") or DEFAULT_LANE)]  # tre fel i rad räknas per kort
+    if sum(1 for r in lane_rounds[-3:] if r["status"] == "failed") >= 3:
+        mission_note(pb, rounds, "escalated", "three failed rounds in a row: " + str(lane_rounds[-1].get("error"))[:200])
         return
     try:
         ans = operator_ask(pb, rounds, od.get("gpu"))
