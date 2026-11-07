@@ -470,7 +470,11 @@ def job_name(prompt):
     if "UltraTex" in joined:
         return "UltraTex"
     if "Pixal3D" in joined or "Trellis2" in joined:
-        return "Pixal3D"
+        # Samma graf kör båda modellerna: TRELLIS.2 när en TRELLIS-vikt är laddad (Pixal3D-laddaren står kvar i grafen)
+        unets = " ".join(str(n.get("inputs", {}).get("unet_name", "")).lower() for n in prompt.values())
+        if "trellis" in unets:
+            return "TRELLIS.2"
+        return "Pixal3D multiview" if "multiview" in unets else "Pixal3D"
     for n in prompt.values():
         name = str(n.get("inputs", {}).get("unet_name", ""))
         if "krea" in name.lower():
@@ -673,10 +677,12 @@ def comfy_status():
         except Exception:
             continue  # en extra instans som inte svarar (avstängd, startar om) döljer inte huvudinstansen
         out["running"] += o["running"]
+        out["graphs"].update(o["graphs"])
         out["pending"] += o["pending"]
         out["history"] = sorted(out["history"] + o["history"], key=lambda j: j["start"] or 0, reverse=True)
     RUN_GRAPHS.clear()
     RUN_GRAPHS.update(out.pop("graphs"))
+    out["lanes"] = [name for name, _ in lanes]
     return out
 
 

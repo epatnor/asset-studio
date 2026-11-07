@@ -68,6 +68,10 @@
   .gputag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .03em; padding: 0 5px; margin-right: 6px; border-radius: 4px;
             color: var(--muted); border: 1px solid var(--line); vertical-align: 1px; }
   .cur.second { margin-top: 6px; }
+  .cur .lane { margin-right: 8px; font-weight: 700; color: var(--muted); }
+  .cur .lane.on { color: var(--text); }
+  .cur.idle, .cur.idle #curName, .cur.idle [id^="curName_"] { color: var(--muted); font-weight: 500; }
+  .cur.idle .legend2 { visibility: hidden; }
   .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
@@ -491,11 +495,17 @@ document.addEventListener("click", e => {
 
 // Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
 buildGauges([]);
-{
-  const card = $("cur").cloneNode(true);
-  card.id = "cur_1"; card.hidden = true; card.classList.add("second");
-  card.querySelectorAll("[id]").forEach(el => el.id += "_1");
-  $("cur").after(card);
+const CUR_TEMPLATE = $("cur").cloneNode(true);
+function laneCard(i) {  // kort nummer i (0 = det första, finns i sidan); fler klonas vid behov
+  if (!i) return $("cur");
+  let card = $("cur_" + i);
+  if (!card) {
+    card = CUR_TEMPLATE.cloneNode(true);
+    card.id = "cur_" + i; card.classList.add("second");
+    card.querySelectorAll("[id]").forEach(el => el.id += "_" + i);
+    (i === 1 ? $("cur") : laneCard(i - 1)).after(card);
+  }
+  return card;
 }
 
 let lastRows = "";
@@ -608,11 +618,13 @@ function render(s) {
     const runIds = new Set(c.running.map(x => x.id));
     errors.clear();
     c.running.concat(c.pending).forEach(x => infos.set(x.id, x));
-    renderCurrent(run, pr, c, s);
-    // Ett kort till per grafikkort som också kör något (M4000 bredvid T1000)
-    const run2 = c.running[1];
-    $("cur_1").hidden = !run2;
-    if (run2) renderCurrent(run2, (c.progresses || {})[run2.id], c, s, "_1");
+    // Ett kort per grafikkort: det som kör där, annars kortets namn och Idle
+    const lanes = c.lanes && c.lanes.length > 1 ? c.lanes : [null];
+    lanes.forEach((lane, i) => {
+      const r = lane ? c.running.find(x => (x.gpu || lanes[0]) === lane) : run;
+      laneCard(i);
+      renderCurrent(r, r ? ((c.progresses || {})[r.id] || (i === 0 ? pr : null)) : null, c, s, i ? "_" + i : "", lane);
+    });
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
         if (g.length === 1 || dsOpen.has(g[0].id)) return g.map((h, k) => histRow(h, g.length > 1 ? (k === 0 ? "first" : "sub") : "", g));
@@ -776,7 +788,17 @@ document.addEventListener("click", e => {
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
 });
 // Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
-function renderCurrent(run, pr, c, s, sfx = "") {  // sfx: "_1" för kortet till nästa grafikkort
+function renderCurrent(run, pr, c, s, sfx = "", lane = null) {  // sfx: "_1" för kortet till nästa grafikkort
+  const laneTag = on => lane ? `<span class="lane${on ? " on" : ""}">${esc(lane)}</span>` : "";
+  $("cur" + sfx).classList.toggle("idle", !run && !!sfx);
+  if (!run && sfx) {  // ett extra kort som inte kör något: bara kortets namn och Idle, i grått
+    $("cur" + sfx).classList.remove("on", "pipe", "needs", "cloudrun");
+    $("curPipe" + sfx).hidden = true;
+    for (const [k, v] of [["curIcon", ""], ["curName", `${laneTag(false)}Idle`], ["curTime", ""], ["curPhase", ""], ["curSteps", ""], ["curTiming", ""]]) {
+      const el = $(k + sfx); if (el.dataset.v !== v) { el.innerHTML = v; el.dataset.v = v; }
+    }
+    return;
+  }
   const set = (id, v, html) => { const el = $(id + sfx); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
   // Pipelinen som det pågående jobbet hör till, annars en som pågår på en annan dator (t.ex. projicering på Andorhal)
   const pipes = s.pipelines || [];
@@ -835,12 +857,14 @@ function renderCurrent(run, pr, c, s, sfx = "") {  // sfx: "_1" för kortet till
   }
   if (!run) {
     set("curIcon", "", true);
-    set("curName", c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running");
+    set("curName", lane ? `${laneTag(false)}${c.pending.length ? `Waiting: ${esc(c.pending.map(x => x.name).join(", "))}` : "Idle"}`
+                        : c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running", !!lane);
+    $("cur" + sfx).classList.toggle("idle", !!lane && !c.pending.length);
     set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
     return;
   }
   set("curIcon", `<i class="spin big"></i>`, true);
-  set("curName", `${jobLabel(run)} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
+  set("curName", `${laneTag(true)}${jobLabel(lane ? { ...run, gpu: null } : run)} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
   set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
