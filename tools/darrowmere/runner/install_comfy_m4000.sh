@@ -20,6 +20,10 @@ F=/etc/sudoers.d/comfyui-m4000
 echo 'epatnor ALL=(root) NOPASSWD: /usr/bin/systemctl restart comfyui-m4000.service, /usr/bin/systemctl stop comfyui-m4000.service, /usr/bin/systemctl start comfyui-m4000.service' > $F.tmp
 chmod 440 $F.tmp && visudo -cf $F.tmp && mv $F.tmp $F
 pkill -u epatnor -f "main.py .*--port 8189" || true
+# Kontrollpanelen på Winterspring läser jobben från port 8189, som 8188
+if command -v ufw >/dev/null && LC_ALL=C ufw status | grep -q "Status: active"; then
+  ufw allow from 192.168.0.0/24 to any port 8189 proto tcp comment "ComfyUI M4000" >/dev/null
+fi
 systemctl daemon-reload
 systemctl enable --now comfyui-m4000.service
 systemctl is-active comfyui-m4000.service

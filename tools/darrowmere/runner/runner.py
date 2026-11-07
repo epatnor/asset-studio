@@ -199,6 +199,7 @@ def comfy_step(o, s):
         pid = r["prompt_id"]
         o.set(s["key"], status="running", job=pid, start=time.time(), end=None, note=None)
         log(o.id, s["key"], "queued", pid)
+    gone = 0
     while True:
         if (o.dir / "cancel").exists():
             raise RuntimeError("cancelled")
@@ -208,6 +209,15 @@ def comfy_step(o, s):
             h = None
         if h and h.get("status", {}).get("completed") is not None:
             break
+        if h is None:  # varken klart eller i kön: ComfyUI har startats om och jobbet är borta
+            try:
+                q = http_json(f"{comfy_url()}/queue", timeout=10)
+                listed = any(r[1] == pid for r in q.get("queue_running", []) + q.get("queue_pending", []))
+                gone = 0 if listed else gone + 1
+            except Exception:
+                pass  # ComfyUI svarar inte än: vänta
+            if gone >= 3:
+                raise RuntimeError("job vanished from ComfyUI (restarted?)")
         time.sleep(10)
     ok = h["status"].get("status_str") == "success"
     files = [{"filename": f["filename"], "subfolder": f.get("subfolder", ""), "type": f.get("type", "output")}

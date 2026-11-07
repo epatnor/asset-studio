@@ -2,7 +2,7 @@
  "id": "robot_model_texture_hq",
  "mission": "robot-hq-model-texture",
  "mission_title": "Robot: slow, high-res model and texture",
- "goal": "A free (local) 3D model of the reference robot with its native PBR texture, sharper than the first mission. Its best round (r18: trellis2, robot_ref, seed 51951, shape_cfg 3.75, structure_cfg 8.0, tex_cfg 1.75, at 1024 voxels, 12 steps, remesh 768 with 20 smoothing passes) got 10/10 from the reviewer, but Patrik judges it not good enough: the face and small details are soft. This mission spends more time per model (higher voxel resolution, more steps, less smoothing) to get crisper shape and texture. Rounds are slow on the 8 GB T1000; 1536 may run out of memory.",
+ "goal": "A free (local) 3D model of the reference robot with its native PBR texture, sharper than the first mission. Its best round (r18: trellis2, robot_ref, seed 51951, shape_cfg 3.75, structure_cfg 8.0, tex_cfg 1.75, at 1024 voxels, 12 steps, remesh 768 with 20 smoothing passes) got 10/10 from the reviewer, but Patrik judges it not good enough: the face and small details are soft. This mission spends more time per model (higher voxel resolution, more steps, less smoothing) to get crisper shape and texture. Rounds are slow on the 8 GB T1000; 1536 may run out of memory. Two GPUs run rounds side by side, each its own chain: the T1000 (int8, faster) and the Quadro M4000 (fp32, about 1.6x slower). Time per round on the T1000: about 15 min at resolution 1024, about 3 h at 1536 with 28 steps; the M4000 takes about 1.6x as long. Prefer 1280 or fewer steps when a lever change is a small experiment, and save 1536 for promising settings.",
  "graph": "graph.json",
  "round_title": "Robot HQ: {model} · {resolution} · {steps} steps · remesh {remesh}/{smooth} · seed {seed} (round {n})",
  "levers": {
@@ -243,5 +243,9 @@
    }
   ]
  },
- "dir": "robot_model_texture"
+ "dir": "robot_model_texture",
+ "lanes": [
+  "t1000",
+  "m4000"
+ ]
 }

@@ -29,6 +29,13 @@ try:
 except (OSError, ValueError, KeyError):
     _default = "http://127.0.0.1:8188"
 COMFY = os.environ.get("DARROWMERE_COMFY", _default).rstrip("/")
+# Darrowmere har en ComfyUI per grafikkort (runnerns körspår). Den första är huvudinstansen (enheter, version, knappar
+# och bildfiler), övriga visar sina jobb i samma lista och får ett eget kort för det som kör. Utdatamappen är gemensam.
+_u = urllib.parse.urlparse(COMFY)
+try:
+    COMFY_LANES = json.loads(os.environ["DARROWMERE_COMFY_LANES"])
+except (KeyError, ValueError):
+    COMFY_LANES = {"T1000": COMFY, "M4000": f"{_u.scheme}://{_u.hostname}:8189"}
 HOST = os.environ.get("DARROWMERE_HOST", urllib.parse.urlparse(COMFY).hostname)
 LOCAL = HOST in ("localhost", "127.0.0.1")
 # Kommandon körs direkt när panelen körs på Darrowmere, annars över en delad SSH-anslutning
@@ -194,8 +201,8 @@ def job_list(include_acked=False, limit=50):
     return sorted(out, key=lambda j: j.get("start") or 0, reverse=True)[:limit]
 
 
-def get_json(path, timeout=8):
-    return json.load(urllib.request.urlopen(f"{COMFY}{path}", timeout=timeout))
+def get_json(path, timeout=8, base=None):
+    return json.load(urllib.request.urlopen(f"{base or COMFY}{path}", timeout=timeout))
 
 
 def job_details(graph):
@@ -479,6 +486,7 @@ def job_name(prompt):
 # ComfyUI:s websocket skickar steg ("progress") och vilken nod som körs ("executing") i realtid. Verktygen skickar
 # inget client_id, så meddelandena går till alla anslutna, även hit. Ett minimalt websocket-klient med standardbiblioteket.
 live = {}
+LIVES = {}  # körspår -> samma sorts läge som live, för de andra ComfyUI-instanserna (bara i minnet)
 RUN_GRAPHS = {}
 # Stegen för det pågående jobbet sparas på disken, så att rutorna finns kvar om panelen startas om mitt i ett jobb
 LIVE_FILE = STORE.with_name("live.json")
@@ -497,11 +505,11 @@ def save_live():
         pass
 
 
-def ws_listener():
+def ws_listener(url=None, live=live, persist=True):
     import base64
     import socket
     import struct
-    u = urllib.parse.urlparse(COMFY)
+    u = urllib.parse.urlparse(url or COMFY)
     while True:
         try:
             s = socket.create_connection((u.hostname, u.port or 80), timeout=30)
@@ -567,7 +575,7 @@ def ws_listener():
                         if live.get("node") is not None and live.get("node") not in live.setdefault("done", []):
                             live["done"].append(live["node"])
                         live.update(node=str(d["node"]) if d.get("node") is not None else None, value=None, max=None, t=now)
-                    if typ in ("execution_start", "execution_cached", "executing", "progress_state"):
+                    if persist and typ in ("execution_start", "execution_cached", "executing", "progress_state"):
                         save_live()
         except Exception:
             time.sleep(5)
@@ -597,7 +605,7 @@ def node_weight(n):
     return int(steps) if node_kind(n.get("class_type")) == "sample" and isinstance(steps, int) and 0 < steps <= 200 else 1
 
 
-def live_progress(prompt_id, graph):
+def live_progress(prompt_id, graph, live=live):
     # Hela flödet som rutor: klara noder i sin kategorifärg, den pågående blinkar, resten grå
     if not live or live.get("prompt_id") != prompt_id or time.time() - live.get("t", 0) > 600:
         return None
@@ -656,9 +664,27 @@ def progress(log):
 
 
 def comfy_status():
-    q = get_json("/queue")
-    hist_raw = get_json("/history?max_items=15")
-    stats = get_json("/system_stats")
+    """Alla ComfyUI-instanser i en lista: jobb märkta med körspåret ("gpu"), enheter och version från den första."""
+    lanes = list(COMFY_LANES.items())
+    out = comfy_one(lanes[0][1], lanes[0][0] if len(lanes) > 1 else None)
+    for name, url in lanes[1:]:
+        try:
+            o = comfy_one(url, name)
+        except Exception:
+            continue  # en extra instans som inte svarar (avstängd, startar om) döljer inte huvudinstansen
+        out["running"] += o["running"]
+        out["pending"] += o["pending"]
+        out["history"] = sorted(out["history"] + o["history"], key=lambda j: j["start"] or 0, reverse=True)
+    RUN_GRAPHS.clear()
+    RUN_GRAPHS.update(out.pop("graphs"))
+    return out
+
+
+def comfy_one(base, gpu):
+    get = lambda path: get_json(path, base=base)
+    q = get("/queue")
+    hist_raw = get("/history?max_items=15")
+    stats = get("/system_stats")
     jobs = []
     for pid, h in hist_raw.items():
         msgs = {m[0]: m[1] for m in h.get("status", {}).get("messages", [])}
@@ -682,9 +708,11 @@ def comfy_status():
                 "queued_at": r[3].get("create_time", 0) / 1000 if isinstance(r[3], dict) else None}
                for r in q.get("queue_running", [])]
     pending = [{"id": r[1], "name": job_name(r[2]), "title": job_title(r), "pipeline": job_pipeline(r)} for r in q.get("queue_pending", [])]
-    RUN_GRAPHS.clear()
-    RUN_GRAPHS.update({r[1]: r[2] for r in q.get("queue_running", [])})
+    if gpu:
+        for j in jobs + running + pending:
+            j["gpu"] = gpu
     return {"running": running, "pending": pending, "history": jobs, "version": stats["system"].get("comfyui_version"),
+            "graphs": {r[1]: r[2] for r in q.get("queue_running", [])},
             "devices": [{"name": d["name"], "vram_total": d["vram_total"], "vram_free": d["vram_free"]} for d in stats.get("devices", [])]}
 
 
@@ -736,8 +764,15 @@ def poller():
                         rates[n] = {"rx": (v["rx"] - last_net[1][n]["rx"]) / dt, "tx": (v["tx"] - last_net[1][n]["tx"]) / dt}
             last_net = (probe["t"], probe["net"])
             if comfy is not None:
-                rid = comfy["running"][0]["id"] if comfy["running"] else None
-                comfy["progress"] = (live_progress(rid, RUN_GRAPHS.get(rid, {})) or progress(probe["log"])) if rid else None
+                # Förloppet per pågående jobb: huvudinstansens ur dess websocket (annars loggen), övriga kort ur sin egen
+                extra = list(COMFY_LANES)[1:]
+
+                def prog(r, log=probe["log"]):
+                    if r.get("gpu") in extra:
+                        return live_progress(r["id"], RUN_GRAPHS.get(r["id"], {}), LIVES.get(r["gpu"], {}))
+                    return live_progress(r["id"], RUN_GRAPHS.get(r["id"], {})) or progress(log)
+                comfy["progresses"] = {r["id"]: prog(r) for r in comfy["running"]}
+                comfy["progress"] = comfy["progresses"].get(comfy["running"][0]["id"]) if comfy["running"] else None
             m = probe["mem"]
             g = probe["gpus"][0] if probe["gpus"] else {}
             point = {"t": probe["t"], "cpu": probe["cpu"], "ram": 100 * (1 - m["avail"] / m["total"]),
@@ -1091,5 +1126,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, lambda *_: (save_metrics(), save_live(), save_snapshot(), sys.exit(0)))
     threading.Thread(target=poller, daemon=True).start()
     threading.Thread(target=ws_listener, daemon=True).start()
+    for name, url in list(COMFY_LANES.items())[1:]:
+        threading.Thread(target=ws_listener, args=(url, LIVES.setdefault(name, {}), False), daemon=True).start()
     print(json.dumps({"ok": True, "url": f"http://{bind}:{port}", "darrowmere": HOST, "local": LOCAL, "state": str(STORE)}), flush=True)
     ThreadingHTTPServer((bind, port), Handler).serve_forever()

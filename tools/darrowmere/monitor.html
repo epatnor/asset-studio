@@ -61,6 +61,9 @@
   /* Mätare */
   .gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .gauges.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gputag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .03em; padding: 0 5px; margin-right: 6px; border-radius: 4px;
+            color: var(--muted); border: 1px solid var(--line); vertical-align: 1px; }
+  .cur.second { margin-top: 6px; }
   .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
@@ -484,11 +487,17 @@ document.addEventListener("click", e => {
 
 // Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
 buildGauges([]);
+{
+  const card = $("cur").cloneNode(true);
+  card.id = "cur_1"; card.hidden = true; card.classList.add("second");
+  card.querySelectorAll("[id]").forEach(el => el.id += "_1");
+  $("cur").after(card);
+}
 
 let lastRows = "";
 // Statusens nivå: pass och success gröna, warning gul, fail orange, allt annat (error, failed) rött
 const levelClass = st => st === "success" || st === "pass" ? "ok" : st === "warning" ? "warn" : st === "fail" ? "fail" : "bad";
-const jobLabel = x => `${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
+const jobLabel = x => `${x.gpu ? `<span class="gputag" title="Ran on ${esc(x.gpu)}">${esc(x.gpu)}</span>` : ""}${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
 function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
 
 // Menyn: öppnas med knappen, stängs vid val, klick utanför och Esc
@@ -596,6 +605,10 @@ function render(s) {
     errors.clear();
     c.running.concat(c.pending).forEach(x => infos.set(x.id, x));
     renderCurrent(run, pr, c, s);
+    // Ett kort till per grafikkort som också kör något (M4000 bredvid T1000)
+    const run2 = c.running[1];
+    $("cur_1").hidden = !run2;
+    if (run2) renderCurrent(run2, (c.progresses || {})[run2.id], c, s, "_1");
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
         if (g.length === 1 || dsOpen.has(g[0].id)) return g.map((h, k) => histRow(h, g.length > 1 ? (k === 0 ? "first" : "sub") : "", g));
@@ -759,20 +772,20 @@ document.addEventListener("click", e => {
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
 });
 // Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
-function renderCurrent(run, pr, c, s) {
-  const set = (id, v, html) => { const el = $(id); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
+function renderCurrent(run, pr, c, s, sfx = "") {  // sfx: "_1" för kortet till nästa grafikkort
+  const set = (id, v, html) => { const el = $(id + sfx); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
   // Pipelinen som det pågående jobbet hör till, annars en som pågår på en annan dator (t.ex. projicering på Andorhal)
   const pipes = s.pipelines || [];
   const pl = (run?.pipeline && pipes.find(p => p.id === run.pipeline.id))
     || pipes.find(p => p.active || p.steps.some(x => x.status === "running"));
-  $("cur").classList.toggle("pipe", !!pl);
-  $("curPipe").hidden = !pl;
+  $("cur" + sfx).classList.toggle("pipe", !!pl);
+  $("curPipe" + sfx).hidden = !pl;
   if (pl) {
     // Ett molnsteg som väntar på godkännande får en Approve-knapp med beräknad kostnad
     const ap = pl.steps.find(x => x.status === "approval");
     set("pipeName", ap ? `${esc(pl.title)} · waiting for approval`
                        : `${esc(pl.title)} · ${pl.done}/${pl.steps.length}`, true);
-    $("pipeName").title = pl.title;
+    $("pipeName" + sfx).title = pl.title;
     set("pipeSteps", pl.steps.map(x => {
       const dur = x.start && x.end ? fmtDur(x.end - x.start) : x.start && x.status === "running" ? fmtDur(s.now - x.start) + " so far" : "";
       const tip = [x.label, x.status + (x.status === "running" && x.pct != null ? ` ${x.pct} %` : ""), x.where !== "darrowmere" ? "on " + x.where : "", dur, x.note || ""]
@@ -788,10 +801,10 @@ function renderCurrent(run, pr, c, s) {
   }
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
   const need = !run && pl && pl.steps.find(x => x.status === "approval");
-  $("cur").classList.toggle("needs", !!need);
+  $("cur" + sfx).classList.toggle("needs", !!need);
   if (need) {
     const who = need.provider ? need.provider[0].toUpperCase() + need.provider.slice(1) : "Cloud";
-    $("cur").classList.add("on"); $("cur").classList.remove("cloudrun");
+    $("cur" + sfx).classList.add("on"); $("cur" + sfx).classList.remove("cloudrun");
     set("curIcon", "⚠", true);
     set("curName", `Needs your approval<span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
     set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
@@ -801,8 +814,8 @@ function renderCurrent(run, pr, c, s) {
   }
   const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
   const cloudStep = local && (local.kind === "review" || local.route === "cloud");
-  $("cur").classList.toggle("on", !!run || !!local);
-  $("cur").classList.toggle("cloudrun", !!cloudStep);
+  $("cur" + sfx).classList.toggle("on", !!run || !!local);
+  $("cur" + sfx).classList.toggle("cloudrun", !!cloudStep);
   if (local) {
     const ai = local.kind === "review";
     const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
