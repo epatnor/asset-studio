@@ -80,6 +80,22 @@
   .cur.idle, .cur.idle #curName, .cur.idle [id^="curName_"] { color: var(--muted); font-weight: 500; }
   .cur.idle .legend2 { visibility: hidden; }
   .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Ringvyn: en ratt per del med minnet eller den andra disken som inre ring, alla i en panel */
+  .gauges.rings { grid-template-columns: minmax(0, 1fr); }
+  .gauges.rings .pair { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .dial .core { transition: stroke-opacity .6s; }
+  /* Texten innanför den inre ringen: lite mindre, så att den inte når ringen */
+  /* Två ringars värden i samma cirkel: fyra korta rader (etikett, procent, yttre ringen, inre ringen med färgprick) */
+  .gauges.rings .dial .face { inset: 34px; grid-template-rows: 14px 27px 14px 14px; }
+  .gauges.rings .dial .unit { display: none; }
+  .gauges.rings .dial .lbl { font-size: 9.5px; letter-spacing: .12em; }
+  .gauges.rings .dial .big { font-size: 23px; line-height: 27px; }
+  .gauges.rings .dial .big small { font-size: 11px; }
+  .gauges.rings .dial .m1 { font-size: 10.5px; max-width: 84px; }
+  .gauges.rings .dial .m2 { font-size: 10px; max-width: 84px; color: var(--muted); }
+  .gauges.rings .dial .m2:not(:empty)::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+                                                 background: var(--inner, var(--muted)); margin-right: 4px; vertical-align: 1px; }
+  .menulist .chk { margin-left: auto; color: var(--blue); }
   .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
   .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
@@ -336,6 +352,9 @@
       <button id="logBtn" role="menuitem" title="Open the ComfyUI log in its own window">Log</button>
       <button id="setBtn" role="menuitem" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
       <hr>
+      <button role="menuitem" data-dials="pairs" title="Two dials per part: load and memory side by side">Dials: pairs<span class="chk"></span></button>
+      <button role="menuitem" data-dials="rings" title="One dial per part: memory, swap or the data disk as an inner ring, CPU threads as ring segments">Dials: rings<span class="chk"></span></button>
+      <hr>
       <button id="acctBtn" role="menuitem" title="Accounts and password"><span id="meName">Account</span></button>
       <button id="outBtn" role="menuitem" title="Log out">Log out</button>
     </div>
@@ -403,10 +422,38 @@ const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
 const GPU_COLORS = [["--c-gpu1", "--c-vram1"], ["--c-gpu2", "--c-vram2"], ["--c-gpu3", "--c-vram3"], ["--red", "--cpu"]];
 const gk = (base, i) => i ? base + i : base;
 const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
-let builtGpus = null, SERIES = [];
-function buildGauges(names) {
+let builtGpus = null, SERIES = [], INNER = {};
+// Rattarnas stil: "pairs" (last och minne bredvid varandra) eller "rings" (minnet som inre ring, fem rattar med två kort)
+let DIAL_STYLE = "pairs";
+try { DIAL_STYLE = localStorage.getItem("darrowmere-dials") === "rings" ? "rings" : "pairs"; } catch (e) {}
+function setDialStyle(v) {
+  DIAL_STYLE = v; builtGpus = null;
+  try { localStorage.setItem("darrowmere-dials", v); } catch (e) {}
+  document.querySelectorAll("[data-dials] .chk").forEach(el => el.textContent = el.parentElement.dataset.dials === v ? "✓" : "");
+  tick();
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-dials]"); if (b) setDialStyle(b.dataset.dials); });
+document.querySelectorAll("[data-dials] .chk").forEach(el => el.textContent = el.parentElement.dataset.dials === DIAL_STYLE ? "✓" : "");
+function buildGauges(names, nCores = 0) {
   const n = Math.max(1, names.length), multi = n > 1;
-  const cpu = ["Processor and memory", [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram"]]];
+  INNER = { swap: { outer: "ram", label: "swap" } };  // swap är alltid RAM-rattens inre ring
+  if (DIAL_STYLE === "rings") {
+    // En ratt per del; inre ringar: swap, datadisken, grafikminnet, och processorns trådar som ringbitar
+    const dials = [["cpu", "CPU", "--c-cpu", { cores: nCores }], ["ram", "RAM", "--c-ram", { k: "swap", col: "--c-swap", label: "swap" }],
+      ["root", "Disks", "--c-sys", { k: "disk", col: "--c-data", label: "data" }],
+      ...Array.from({ length: n }, (_, i) => [gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0],
+        { k: gk("vram", i), col: GPU_COLORS[i % 4][1], label: "VRAM" }])];
+    dials.forEach(([k, , , inner]) => { if (inner.k) INNER[inner.k] = { outer: k, label: inner.label }; });
+    $("gauges").innerHTML = `<div class="panel group"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`;
+    $("gauges").classList.remove("two"); $("gauges").classList.add("rings");
+    SERIES = [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram"], ["swap", "Swap", "--c-swap"],
+      ...Array.from({ length: n }, (_, i) => [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]).flat()];
+    $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
+    builtGpus = [DIAL_STYLE, nCores, ...names].join("|");
+    return;
+  }
+  $("gauges").classList.remove("rings");
+  const cpu = ["Processor and memory", [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram", { k: "swap", col: "--c-swap", label: "swap" }]]];
   const disks = ["Disks", [["root", "System", "--c-sys"], ["disk", "Data", "--c-data"]]];
   const gpuGroups = Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
       [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]);
@@ -419,10 +466,24 @@ function buildGauges(names) {
   SERIES = [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram"], ["swap", "Swap", "--c-swap"],
     ...gpuGroups.flatMap(([, dials]) => dials.map(([k, l, c]) => [k, l, c]))];
   $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
-  builtGpus = names.join("|");
+  builtGpus = [DIAL_STYLE, nCores, ...names].join("|");
 }
-function dialHtml([k, label, col]) { return `
-  <div class="gauge" data-k="${k}" title="Click for details">
+// Inre ring: en båge (swap, datadisk, grafikminne) eller en bit per processortråd, starkare ju mer tråden arbetar
+function innerHtml(inner) {
+  if (!inner) return "";
+  const track = `<circle cx="82" cy="82" r="${R2}" fill="none" stroke="var(--track)" stroke-width="4" stroke-linecap="${inner.cores ? "butt" : "round"}" stroke-dasharray="${ARC2} ${C2}"/>`;
+  if (inner.cores) {
+    const L = ARC2 / inner.cores, gap = inner.cores > 24 ? 1 : 2.5;
+    return Array.from({ length: inner.cores }, (_, i) => `<circle class="core" id="gc_${i}" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--c-cpu)"
+      stroke-width="4" stroke-opacity=".12" stroke-dasharray="${L - gap} ${C2}" stroke-dashoffset="${-i * L}"><title>thread ${i}</title></circle>`).join("");
+  }
+  return track + `<circle class="arc inner" id="g_${inner.k}" cx="82" cy="82" r="${R2}" fill="none" stroke="var(${inner.col})" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>`;
+}
+function dialHtml([k, label, col, inner]) {
+  const tip = inner?.cores ? "Outer ring: CPU load · inner segments: one per thread, brighter when busy"
+            : inner ? `Outer ring: ${label} · inner ring: ${inner.label}` : "";
+  return `
+  <div class="gauge" data-k="${k}" style="--inner: var(${inner?.col || col})" title="${tip ? tip + " · " : ""}Click for details">
     <div class="dial">
       <svg viewBox="0 0 164 164" shape-rendering="geometricPrecision">
         <defs><linearGradient id="gr_${k}" x1="0" y1="1" x2="1" y2="0">
@@ -432,8 +493,7 @@ function dialHtml([k, label, col]) { return `
           <circle cx="82" cy="82" r="${R}" fill="none" stroke="var(--track)" stroke-width="11" stroke-linecap="round" stroke-dasharray="${ARC} ${C}"/>
           <circle class="arc" id="g_${k}" cx="82" cy="82" r="${R}" fill="none" stroke="url(#gr_${k})" stroke-width="11" stroke-linecap="round"
                   stroke-dasharray="0 ${C}"/>
-          ${k === "ram" ? `<circle cx="82" cy="82" r="${R2}" fill="none" stroke="var(--track)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${ARC2} ${C2}"/>
-          <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--c-swap)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
+          ${innerHtml(inner)}
         </g>
       </svg>
       <svg class="full" id="gw_${k}" viewBox="0 0 24 22" aria-label="At full load"><title>At full load</title>
@@ -450,6 +510,13 @@ function dialHtml([k, label, col]) { return `
   </div>`; }
 function setGauge(k, pct, unit, m1, m2, colorVar) {
   const p = pct == null || isNaN(pct) ? null : Math.max(0, Math.min(100, pct));
+  if (INNER[k]) {
+    const el = $("g_" + k); if (!el) return;
+    el.setAttribute("stroke-dasharray", `${p == null ? 0 : ARC2 * p / 100} ${C2}`); el.setAttribute("stroke", `var(${colorVar})`);
+    if (k !== "swap") $("gm2_" + INNER[k].outer).textContent = m1 && m1 !== "–" ? `${INNER[k].label} ${m1}` : "";
+    return;
+  }
+  if (!$("g_" + k)) return;
   $("g_" + k).setAttribute("stroke-dasharray", `${p == null ? 0 : ARC * p / 100} ${C}`);
   const col = `var(${colorVar})`;  // samma färg som i grafen; hur full mätaren är visar lasten
   $("gs0_" + k).setAttribute("stop-color", col); $("gs1_" + k).setAttribute("stop-color", col);
@@ -606,7 +673,8 @@ function render(s) {
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">offline since ${since} · retrying</span>`);
     if (s.offline_since) $("age").textContent = `no answer for ${fmtDur(s.now - s.offline_since)}`;
     document.querySelectorAll(".gauge[data-k]").forEach(el => setGauge(el.dataset.k, null, "", "–", "", "--muted"));
-    $("g_swap").setAttribute("stroke-dasharray", `0 ${C2}`);
+    document.querySelectorAll(".arc.inner").forEach(el => el.setAttribute("stroke-dasharray", `0 ${C2}`));
+    document.querySelectorAll(".dial .core").forEach(el => el.setAttribute("stroke-opacity", ".12"));
     $("netRate").textContent = "–";
     drawSparks(s.history || []);
     return;
@@ -615,7 +683,8 @@ function render(s) {
   $("uptime").textContent = fmtDur(p.uptime);
 
   const names = p.gpus.map(x => x.name);
-  if (names.join("|") !== builtGpus) buildGauges(names);
+  if ([DIAL_STYLE, p.cores.length, ...names].join("|") !== builtGpus) buildGauges(names, p.cores.length);
+  p.cores.forEach((v, i) => { const el = $("gc_" + i); if (el) { el.setAttribute("stroke-opacity", (0.12 + 0.88 * Math.min(100, v) / 100).toFixed(2)); el.firstChild.textContent = `thread ${i}: ${v.toFixed(0)} %`; } });
   const m = p.mem, d = p.disks.find(x => x.mount === "/data"), root = p.disks.find(x => x.mount === "/");
   const ramUsed = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
   const cpuT = p.temps.filter(t => t.chip === "coretemp").map(t => t.c);
@@ -629,11 +698,21 @@ function render(s) {
   // RAM: siffrorna på två rader inuti ringen; den inre blå ringen är swap (förklaras i rutan som öppnas med ett klick)
   setGauge("ram", 100 * ramUsed / m.total, "", `${gb(ramUsed / 1048576)} / ${gb(m.total / 1048576)} GB`,
            m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${Math.round(m.swap_total / 1073741824)} GB` : "no swap", "--c-ram");
-  const sp = m.swap_total ? Math.min(100, 100 * swUsed / m.swap_total) : 0;
-  $("g_swap").setAttribute("stroke-dasharray", `${ARC2 * sp / 100} ${C2}`);
-  $("g_swap").setAttribute("stroke", "var(--c-swap)");
+  setGauge("swap", m.swap_total ? 100 * swUsed / m.swap_total : 0, "", "", "", "--c-swap");
   setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--c-sys");
   setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--c-data");
+  if (DIAL_STYLE === "rings") {  // korta rader: yttre ringens värde, sedan den inre ringens
+    const short = b => fmtB(b).replace(/\.\d+ /, " ");
+    $("gm1_cpu").textContent = cpuT.length ? `${Math.max(...cpuT).toFixed(0)} °C · load ${(+p.load[0]).toFixed(1)}` : `load ${p.load[0]}`;
+    $("gm2_cpu").textContent = `${p.cores.filter(v => v >= 25).length}/${p.cores.length} busy`;
+    $("gm2_ram").textContent = m.swap_total ? `swap ${gb(swUsed / 1048576)} GB` : "no swap";
+    $("gm1_root").textContent = root ? `${short(root.free)} free` : "–";
+    $("gm2_root").textContent = d ? `data ${short(d.free)}` : "";
+    gpus.forEach((g, i) => {
+      $("gm1_" + gk("gpu", i)).textContent = g.temp != null ? `${g.temp} °C${g.clock != null ? " · " + g.clock + " MHz" : ""}` : "–";
+      $("gm2_" + gk("gpu", i)).textContent = g.mem_total ? `VRAM ${gb(g.mem_used)} / ${Math.round(g.mem_total / 1024)} GB` : "";
+    });
+  }
   const r = Object.entries(s.rates || {}).reduce((a, [, v]) => ({ rx: a.rx + v.rx, tx: a.tx + v.tx }), { rx: 0, tx: 0 });
   $("netRate").textContent = `↓ ${fmtRate(r.rx)}  ↑ ${fmtRate(r.tx)}`;
   if (openDial) showDetail(openDial, s);
