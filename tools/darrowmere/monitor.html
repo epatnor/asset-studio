@@ -85,7 +85,7 @@
   .gauges.rings .pair { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
   .dial .core { transition: stroke-opacity .6s; }
   /* Texten innanför den inre ringen: lite mindre, så att den inte når ringen */
-  /* Två ringars värden i samma cirkel: fyra korta rader (etikett, procent, yttre ringen, inre ringen med färgprick) */
+  /* Två ringars värden i samma cirkel: fyra korta rader (etikett, procent, yttre ringen, inre ringen) */
   .gauges.rings .dial .face { inset: 34px; grid-template-rows: 14px 27px 14px 14px; }
   .gauges.rings .dial .unit { display: none; }
   .gauges.rings .dial .lbl { font-size: 9.5px; letter-spacing: .12em; }
@@ -93,8 +93,6 @@
   .gauges.rings .dial .big small { font-size: 11px; }
   .gauges.rings .dial .m1 { font-size: 10.5px; max-width: 84px; }
   .gauges.rings .dial .m2 { font-size: 10px; max-width: 84px; color: var(--muted); }
-  .gauges.rings .dial .m2:not(:empty)::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-                                                 background: var(--inner, var(--muted)); margin-right: 4px; vertical-align: 1px; }
   .menulist .chk { margin-left: auto; color: var(--blue); }
   .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
