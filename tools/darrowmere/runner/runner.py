@@ -362,7 +362,7 @@ def tripo_model(o, s, texture):
     """3D-modell (och textur) från beställningens vyer med Tripo. Sparas under /data/utdata/orders/<id>/<steg>/."""
     st = settings()
     c = s.get("cloud") or {}
-    model = TRIPO_MODELS.get(st["routes"]["model"]["cloud"], "P1-20260311")
+    model = TRIPO_MODELS.get(c.get("model") or st["routes"]["model"]["cloud"], "P1-20260311")
     face_limit = int(c.get("face_limit") or st["routes"]["model"].get("face_limit") or 3000)
     key = env_key("TRIPO_API_KEY")
     views = {v: files_for(o, ref)[0] for v, ref in (c.get("views") or {}).items()}
@@ -805,8 +805,9 @@ def routed_step(o, s):
         return
     # moln: Tripo, med textur om texturen också ska göras av Tripo
     tr = st["routes"]["texture"]
-    tex = tr["use"] == "cloud" and tr.get("cloud") == "tripo"
-    model = TRIPO_MODELS.get(route["cloud"], "P1-20260311")
+    c = s.get("cloud") or {}  # beställningen kan välja modell och textur själv: {"model": "tripo-p2", "texture": true}
+    tex = bool(c["texture"]) if "texture" in c else (tr["use"] == "cloud" and tr.get("cloud") == "tripo")
+    model = TRIPO_MODELS.get(c.get("model") or route["cloud"], "P1-20260311")
     cost = tripo_cost(model, tex)
     cloud_gate(o, s, "tripo", cost)
     o.set(s["key"], status="running", route="cloud", provider="tripo", start=time.time(), end=None)

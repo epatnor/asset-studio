@@ -31,6 +31,15 @@ out.mkdir(parents=True, exist_ok=True)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=str(src))
 meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+# Workbench visar materialets aktiva bildnod: gör grundfärgens bild aktiv (annars kan det bli emissionen eller ruffigheten)
+for mat in {s.material for o in meshes for s in o.material_slots if s.material and s.material.use_nodes}:
+    bsdf = next((n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    link = bsdf and next((l for l in mat.node_tree.links if l.to_node == bsdf and l.to_socket.name == "Base Color"), None)
+    node = link and link.from_node
+    while node and node.type != "TEX_IMAGE" and node.inputs:  # genom eventuella mellanled (färgfaktor, vertexfärg)
+        node = next((l.from_node for l in mat.node_tree.links if l.to_node == node), None)
+    if node and node.type == "TEX_IMAGE":
+        mat.node_tree.nodes.active = node
 corners = [o.matrix_world @ Vector(c) for o in meshes for c in o.bound_box]
 low = Vector([min(c[i] for c in corners) for i in range(3)])
 high = Vector([max(c[i] for c in corners) for i in range(3)])
