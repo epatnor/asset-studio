@@ -22,6 +22,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 import time
 import traceback
 import urllib.error
@@ -33,6 +34,15 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CONF = json.loads((HERE / "runner.json").read_text())
 COMFY = CONF.get("comfy", "http://127.0.0.1:8188")
+# Ett körspår per grafikkort: varje spår har sin ComfyUI och kör en beställning i taget, spåren går samtidigt.
+# Beställningen väljer spår med "gpu" (t.ex. "m4000"); utan det går den på det första.
+LANES = CONF.get("lanes") or {"t1000": COMFY}
+DEFAULT_LANE = next(iter(LANES))
+_lane = threading.local()
+
+
+def comfy_url():
+    return getattr(_lane, "url", COMFY)
 ORDERS = Path(CONF.get("orders", "/data/orders"))
 OUTPUT = Path(CONF.get("output", "/data/utdata"))
 PIPES = OUTPUT / "pipelines"
@@ -133,7 +143,7 @@ def upload(path, oid):
     for k, v in (("subfolder", f"orders/{oid}"), ("overwrite", "true")):
         parts.append(f"--{b}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode())
     body = b"".join(parts) + f"--{b}--\r\n".encode()
-    req = urllib.request.Request(f"{COMFY}/upload/image", data=body, headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+    req = urllib.request.Request(f"{comfy_url()}/upload/image", data=body, headers={"Content-Type": f"multipart/form-data; boundary={b}"})
     r = json.load(urllib.request.urlopen(req, timeout=120))
     return f"{r['subfolder']}/{r['name']}" if r.get("subfolder") else r["name"]
 
@@ -183,7 +193,7 @@ def comfy_step(o, s):
             title += f" (retry {t['attempt']})"
         extra = {"job_title": title, "job_tool": "darrowmere-runner", "job_host": "darrowmere",
                  "pipeline": {"id": o.id, "step": s["key"]}, "use": o.order.get("use")}
-        r = http_json(f"{COMFY}/prompt", {"prompt": g, "extra_data": extra})
+        r = http_json(f"{comfy_url()}/prompt", {"prompt": g, "extra_data": extra})
         if r.get("node_errors"):
             raise RuntimeError("node errors: " + json.dumps(r["node_errors"])[:400])
         pid = r["prompt_id"]
@@ -193,7 +203,7 @@ def comfy_step(o, s):
         if (o.dir / "cancel").exists():
             raise RuntimeError("cancelled")
         try:
-            h = http_json(f"{COMFY}/history/{pid}", timeout=30).get(pid)
+            h = http_json(f"{comfy_url()}/history/{pid}", timeout=30).get(pid)
         except Exception:
             h = None
         if h and h.get("status", {}).get("completed") is not None:
@@ -573,10 +583,10 @@ def free_comfy_memory():
     """Ber ComfyUI släppa sina modeller ur RAM och VRAM innan Blender eller projiceringen körs, men bara när kön är tom.
     Darrowmere har 18 GB RAM, och Krea-2 ensam tar cirka 13 GB."""
     try:
-        q = http_json(f"{COMFY}/queue", timeout=10)
+        q = http_json(f"{comfy_url()}/queue", timeout=10)
         if q.get("queue_running") or q.get("queue_pending"):
             return False
-        http_json(f"{COMFY}/free", {"unload_models": True, "free_memory": True}, timeout=30)
+        http_json(f"{comfy_url()}/free", {"unload_models": True, "free_memory": True}, timeout=30)
         return True
     except Exception:
         return False
@@ -991,9 +1001,22 @@ def check_levers(pb, levers, previous):
     return out
 
 
-def build_round(pb, levers, n, why):
+OPERATOR_LOCK = threading.Lock()  # två spår som blir klara samtidigt får inte bygga samma varv
+
+
+def next_round(pb):
+    """Nästa lediga varvsnummer: räknar även varv som ännu ligger i inkorgen."""
+    pre = f"{pb['mission']}-r"
+    names = [d.name for d in ORDERS.iterdir() if d.name.startswith(pre)] + [f.stem for f in (ORDERS / "inbox").glob(pre + "*.json")]
+    nums = [int(x[len(pre):]) for x in names if x[len(pre):].isdigit()]
+    return max(nums, default=0) + 1
+
+
+def build_round(pb, levers, n, why, lane=None):
     """Nästa beställning ur spelbokens mall: grafen med spakarna insatta, indata kopierade från spelbokens mapp."""
     tpl = json.loads(json.dumps(pb["template"]))
+    if lane:
+        tpl["gpu"] = lane
     graph = json.loads((pb["_dir"] / pb["graph"]).read_text())
     for name, value in levers.items():
         spec = pb["levers"][name]
@@ -1005,7 +1028,7 @@ def build_round(pb, levers, n, why):
         if isinstance(node, dict) and node.get("class_type") == "SaveGLB":
             node["inputs"]["filename_prefix"] = f"3d/{pb['mission']}/{oid}_{k}"
     tpl.update(id=oid, mission=pb["mission"], mission_title=pb["mission_title"],
-               operator={"playbook": pb["id"], "round": n, "levers": levers, "why": why},
+               operator={"playbook": pb["id"], "round": n, "levers": levers, "why": why, "gpu": lane},
                title=pb["round_title"].format(n=n, **levers))
     for s in tpl["steps"]:
         if s.get("graph") == "$graph":
@@ -1067,6 +1090,11 @@ def operate(oid):
     if st.get("status") not in FINAL:
         return
     (d / "operated").write_text(str(time.time()))
+    with OPERATOR_LOCK:
+        operate_locked(op, od)
+
+
+def operate_locked(op, od):
     pb = playbook(op["playbook"])
     rounds = mission_rounds(pb["mission"])
     if (MISSIONS / f"{pb['mission']}.json").exists() and json.loads((MISSIONS / f"{pb['mission']}.json").read_text()).get("status") in ("done", "escalated", "stopped"):
@@ -1095,18 +1123,32 @@ def operate(oid):
     except Exception as e:
         mission_note(pb, rounds, "escalated", f"operator reply outside the playbook: {e}"[:300])
         return
-    nid = build_round(pb, levers, len(rounds) + 1, (ans.get("why") or "")[:300])
-    mission_note(pb, rounds, "running", f"round {len(rounds) + 1}: {ans.get('why', '')}"[:300])
-    log(oid, "operator ->", nid, levers)
+    n = next_round(pb)
+    nid = build_round(pb, levers, n, (ans.get("why") or "")[:300], od.get("gpu"))
+    mission_note(pb, rounds, "running", f"round {n}: {ans.get('why', '')}"[:300])
+    log(od.get("id"), "operator ->", nid, levers)
 
 
 def start_mission(name):
-    """python runner.py --mission <spelbok>: första varvet med spelbokens startvärden."""
+    """python runner.py --mission <spelbok>: ett första varv med spelbokens startvärden på varje spår som spelboken
+    nämner ("lanes") och som inte redan har ett varv igång. Går att köra igen när ett spår har tillkommit."""
     pb = playbook(name)
     rounds = mission_rounds(pb["mission"])
-    nid = build_round(pb, dict(pb["start"]), len(rounds) + 1, "start values from the playbook")
-    mission_note(pb, rounds, "running", "round 1 with the playbook's start values")
-    print(json.dumps({"ok": True, "order": nid}))
+    busy = set()
+    for r in rounds:
+        if r.get("status") in (None, "queued", "running"):
+            busy.add(json.loads((ORDERS / r["order"] / "order.json").read_text()).get("gpu") or DEFAULT_LANE)
+    started = []
+    for i, lane in enumerate(pb.get("lanes") or [DEFAULT_LANE]):
+        if lane in busy:
+            continue
+        levers = dict(pb["start"])
+        if started or rounds:  # fler spår samtidigt: samma startvärden men eget frö, så att varven inte blir likadana
+            levers["seed"] = levers["seed"] + 1000 * (i + len(rounds))
+        n = next_round(pb)
+        started.append(build_round(pb, levers, n, f"start values from the playbook ({lane})", lane))
+    mission_note(pb, rounds, "running", f"started {', '.join(started) or 'nothing (every lane busy)'}")
+    print(json.dumps({"ok": True, "orders": started}))
 
 
 def take_inbox():
@@ -1130,9 +1172,20 @@ def active():
     return [oid for _, oid in sorted(out)]
 
 
-def tick():
-    take_inbox()
-    for oid in active():
+def lane_of(oid):
+    try:
+        lane = json.loads((ORDERS / oid / "order.json").read_text()).get("gpu")
+    except (OSError, ValueError):
+        lane = None
+    return lane if lane in LANES else DEFAULT_LANE
+
+
+LANE_THREADS = {}
+
+
+def run_lane(lane, oids):
+    _lane.url = LANES[lane]
+    for oid in oids:
         try:
             run_order(Order(oid))
         except Exception:
@@ -1141,6 +1194,19 @@ def tick():
             operate(oid)
         except Exception:
             log(oid, "operator crashed:", traceback.format_exc()[-600:])
+
+
+def tick():
+    take_inbox()
+    by_lane = {}
+    for oid in active():
+        by_lane.setdefault(lane_of(oid), []).append(oid)
+    for lane, oids in by_lane.items():
+        th = LANE_THREADS.get(lane)
+        if th and th.is_alive():
+            continue  # spåret jobbar redan; nya beställningar tas vid nästa varv
+        th = LANE_THREADS[lane] = threading.Thread(target=run_lane, args=(lane, oids), name=f"lane-{lane}", daemon=True)
+        th.start()
 
 
 def rereview(oid, key):
@@ -1166,9 +1232,11 @@ if __name__ == "__main__":
         i = sys.argv.index("--rereview")
         rereview(sys.argv[i + 1], sys.argv[i + 2])
         sys.exit(0)
-    log("runner up", COMFY, ORDERS, CONF["model"])
+    log("runner up", LANES, ORDERS, CONF["model"])
     if "--once" in sys.argv:
         tick()
+        for th in LANE_THREADS.values():
+            th.join()
         sys.exit(0)
     while True:
         tick()

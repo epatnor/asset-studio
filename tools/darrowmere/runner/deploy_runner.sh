@@ -7,7 +7,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 DM=epatnor@192.168.0.33
 ENV=$HOME/Spelutveckling/apparition-moodboard/.env
 ssh -o BatchMode=yes $DM 'mkdir -p /data/runner /data/orders/inbox'
-rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/install_runner.sh" $DM:/data/runner/
+rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/install_runner.sh" "$HERE/install_comfy_m4000.sh" "$HERE/comfy_m4000.sh" $DM:/data/runner/
 rsync -a "$HERE/tools/" $DM:/data/runner/tools/
 rsync -a "$HERE/playbooks/" $DM:/data/runner/playbooks/
 rsync -a "$HERE/../../texture/project_views.py" $DM:/data/runner/tools/project_views.py
