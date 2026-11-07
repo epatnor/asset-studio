@@ -218,6 +218,7 @@
   button.view { height: 20px; padding: 0 8px; font-size: 11px; margin-left: 6px; }
   button.ack { height: 20px; padding: 0 7px; font-size: 11px; color: var(--muted); }
   button.ack:hover { color: var(--green); border-color: var(--green); }
+  tr.aisub td:nth-child(3) { padding-left: 22px; } tr.aigrp td:nth-child(3) { color: var(--muted); }
   .ph button.ack { margin-left: 10px; text-transform: none; letter-spacing: 0; }
   pre { margin: 0; height: 262px; overflow: auto; padding: 8px 12px; font: 11.5px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--muted); white-space: pre; }
   .error { color: var(--red); }
@@ -487,8 +488,37 @@ document.addEventListener("click", async e => {
   const b = e.target.closest("button.ack");
   if (!b) return;
   b.disabled = true;
-  await fetch("/api/ack/" + (b.id === "ackAll" ? "all" : b.dataset.ack), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  for (const id of b.id === "ackAll" ? ["all"] : b.dataset.ack.split(" "))
+    await fetch("/api/ack/" + id, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   tick();
+});
+// DeepSeek-anrop (granskningar, operatören) som kommer efter varandra i listan blir en grupp; molnjobb (Meshy, Tripo) står för sig
+const dsOpen = new Set();
+const isDs = h => h.kind === "ai" && /deepseek/i.test(h.name || "");
+function groupAi(list) {
+  const out = [];
+  for (const h of list) {
+    const last = out[out.length - 1];
+    if (isDs(h) && last && isDs(last[0])) last.push(h); else out.push([h]);
+  }
+  return out;
+}
+function histRow(h, mode, g) {
+        const lvl = levelClass(h.status);
+        if (h.error) errors.set(h.id, h.error);
+        infos.set(h.id, h);
+        const tag = h.error ? `<span class="tag ${lvl} btn" data-err="${esc(h.id)}" title="${lvl === "bad" ? "Show the error" : "Show what the review found"}">${esc(h.status)}</span>`
+                            : `<span class="tag ${lvl}">${esc(h.status)}</span>`;
+        const fold = mode === "first" ? `<button class="view fold" data-dsopen="${esc(h.id)}" title="Fold the DeepSeek calls">▾</button> ` : "";
+        return `<tr${mode === "sub" ? ' class="aisub"' : ""}><td>${clock(h.start)}</td><td>${h.start && h.seconds != null ? clock(h.start + h.seconds) : "–"}</td><td class="ell" title="${esc(h.title || "")}">${fold}${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
+          <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.kind === "ai" ? "–" : `${h.outputs} files`}${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
+          <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-dsopen]");
+  if (!b) return;
+  dsOpen.has(b.dataset.dsopen) ? dsOpen.delete(b.dataset.dsopen) : dsOpen.add(b.dataset.dsopen);
+  lastRows = null; tick();
 });
 function render(s) {
   const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 45;
@@ -542,15 +572,16 @@ function render(s) {
     c.running.concat(c.pending).forEach(x => infos.set(x.id, x));
     renderCurrent(run, pr, c, s);
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
-      .concat(c.history.filter(h => !runIds.has(h.id)).map(h => {
-        const lvl = levelClass(h.status);
-        if (h.error) errors.set(h.id, h.error);
-        infos.set(h.id, h);
-        const tag = h.error ? `<span class="tag ${lvl} btn" data-err="${esc(h.id)}" title="${lvl === "bad" ? "Show the error" : "Show what the review found"}">${esc(h.status)}</span>`
-                            : `<span class="tag ${lvl}">${esc(h.status)}</span>`;
-        return `<tr><td>${clock(h.start)}</td><td>${h.start && h.seconds != null ? clock(h.start + h.seconds) : "–"}</td><td class="ell" title="${esc(h.title || "")}">${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
-          <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.kind === "ai" ? "–" : `${h.outputs} files`}${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
-          <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
+      .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
+        if (g.length === 1 || dsOpen.has(g[0].id)) return g.map((h, k) => histRow(h, g.length > 1 ? (k === 0 ? "first" : "sub") : "", g));
+        // Flera DeepSeek-anrop i rad: en rad, så att de tunga jobben syns
+        g.forEach(h => { infos.set(h.id, h); if (h.error) errors.set(h.id, h.error); });
+        const n = {}; g.forEach(h => n[h.status] = (n[h.status] || 0) + 1);
+        const tags = Object.entries(n).map(([k, v]) => `<span class="tag ${levelClass(k)}">${v} ${esc(k)}</span>`).join(" ");
+        const t0 = Math.min(...g.map(h => h.start || Infinity)), t1 = Math.max(...g.map(h => (h.start || 0) + (h.seconds || 0)));
+        const secs = g.reduce((a, h) => a + (h.seconds || 0), 0);
+        return [`<tr class="aigrp"><td>${clock(t0)}</td><td>${clock(t1)}</td><td class="ell"><button class="view fold" data-dsopen="${esc(g[0].id)}" title="Show each call">▸</button> DeepSeek · ${g.length} calls</td><td>${tags}</td><td class="num">${fmtDur(secs)}</td><td>–</td>
+          <td><button class="ack" data-ack="${esc(g.map(h => h.id).join(" "))}" title="Acknowledge all ${g.length}">✓</button></td></tr>`];
       }));
     $("ackAll").hidden = !c.history.length;
     // Högst fem rader här; äldre jobb finns i History
@@ -697,7 +728,7 @@ document.addEventListener("click", e => {
 // View öppnar 3D-visaren i ett eget fönster
 document.addEventListener("click", e => {
   const b = e.target.closest("button.view");
-  if (!b || b.dataset.info) return;  // Prompt-knappen hanteras av rutan för promptar
+  if (!b || b.dataset.info || b.dataset.dsopen) return;  // Prompt-knappen och DeepSeek-gruppernas knapp har egna hanterare
   if (b.dataset.job) { window.open("/images?id=" + encodeURIComponent(b.dataset.job), "darrowmere-images", "width=1200,height=900"); return; }
   const q = new URLSearchParams({ filename: b.dataset.file, subfolder: b.dataset.sub, type: b.dataset.type });
   window.open("/viewer?" + q, "darrowmere-viewer", "width=1100,height=850");
