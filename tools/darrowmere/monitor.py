@@ -744,6 +744,9 @@ def poller():
                      "swap": 100 * (1 - m["swap_free"] / m["swap_total"]) if m["swap_total"] else 0,
                      "gpu": g.get("util"), "vram": 100 * g["mem_used"] / g["mem_total"] if g.get("mem_total") else None,
                      "net": sum(r["rx"] + r["tx"] for r in rates.values()) / 1e6 if rates else None}
+            for i, gx in enumerate(probe["gpus"][1:], 1):  # fler grafikkort: gpu1/vram1 … (det första heter gpu/vram som förut)
+                point[f"gpu{i}"] = gx.get("util")
+                point[f"vram{i}"] = 100 * gx["mem_used"] / gx["mem_total"] if gx.get("mem_total") else None
         # Ett enstaka uteblivet svar (Darrowmere laddar en modell, RAM och swap fulla) är inget avbrott: behåll senaste värdena
         probe_miss = 0 if probe is not None else probe_miss + 1
         comfy_miss = 0 if comfy is not None else comfy_miss + 1

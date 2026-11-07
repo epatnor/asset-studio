@@ -60,6 +60,7 @@
 
   /* Mätare */
   .gauges { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .gauges.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .gauge { height: 176px; padding: 6px 6px 4px; display: grid; place-items: center; min-width: 0; }
   .dial { position: relative; width: 164px; height: 164px; max-width: 100%; }
@@ -239,7 +240,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 1100px) {
-    .gauges { grid-template-columns: minmax(0, 1fr); }
+    .gauges, .gauges.two { grid-template-columns: minmax(0, 1fr); }
     .sparks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .hwgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .hw { height: auto; }
@@ -376,12 +377,26 @@ const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
 
 // Rattarna byggs en gång och uppdateras sedan på plats, så att ingenting byter storlek.
 // En båge på 270 grader med öppning nedåt; RAM har en inre tunn båge för växlingsutrymmet.
-const GROUPS = [["Processor and memory", [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"]]],
-                ["Graphics", [["gpu", "GPU", "--green"], ["vram", "VRAM", "--violet"]]],
-                ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]]];
+// Ett par rattar (last och minne) per grafikkort. Det första kortet heter gpu/vram, nästa gpu1/vram1 och så vidare.
+const GPU_COLORS = [["--green", "--violet"], ["--teal", "--cloud"], ["--amber", "--blue"], ["--red", "--cpu"]];
+const gk = (base, i) => i ? base + i : base;
 const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
-$("gauges").innerHTML = GROUPS.map(([title, dials]) => `
-  <div class="panel group" title="${title}"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`).join("");
+let builtGpus = 0, SERIES = [];
+function buildGauges(names) {
+  const n = Math.max(1, names.length), multi = n > 1;
+  const groups = [["Processor and memory", [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"]]],
+    ...Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
+      [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]),
+    ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]]];
+  $("gauges").innerHTML = groups.map(([title, dials]) => `
+  <div class="panel group" title="${esc(title)}"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`).join("");
+  $("gauges").classList.toggle("two", groups.length === 4);
+  // Diagrammet: en kurva för last och en för minne per kort
+  SERIES = [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"], ["swap", "Swap", "--blue"],
+    ...groups.slice(1, -1).flatMap(([, dials]) => dials.map(([k, l, c]) => [k, l, c]))];
+  $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
+  builtGpus = names.length;
+}
 function dialHtml([k, label, col]) { return `
   <div class="gauge" data-k="${k}" title="Click for details">
     <div class="dial">
@@ -424,7 +439,10 @@ let openDial = null;
 const row = (a, b) => `<div class="drow"><span>${a}</span><span class="num">${b}</span></div>`;
 const bars = vals => `<div class="dbars">${vals.map((v, i) => `<div title="thread ${i}: ${v.toFixed(0)} %"><div style="height:${v}%"></div></div>`).join("")}</div>`;
 function detailHtml(k, s) {
-  const p = s.probe, g = p.gpus[0] || {}, m = p.mem, procs = p.procs.filter(x => x.name !== "ps");
+  const p = s.probe, m = p.mem, procs = p.procs.filter(x => x.name !== "ps");
+  const gm = k.match(/^(gpu|vram)(\d*)$/), g = (gm && p.gpus[+(gm[2] || 0)]) || {};
+  const cdev = (s.comfy?.devices || []).find(dv => g.name && dv.name.includes(g.name));
+  const cuse = !cdev ? "not visible" : (s.comfy.devices[0] === cdev ? "main device" : "visible, not used");
   const gb = b => (b / 1073741824).toFixed(1) + " GB";
   const procRows = (by) => [...procs].sort((a, b) => b[by] - a[by]).slice(0, 4)
     .map(x => row(esc(x.name), by === "cpu" ? `${x.cpu.toFixed(0)} % · ${fmtB(x.rss_mb * 1e6)}` : `${fmtB(x.rss_mb * 1e6)} · ${x.cpu.toFixed(0)} %`)).join("");
@@ -435,11 +453,12 @@ function detailHtml(k, s) {
   if (k === "ram") return `<b>RAM</b>${row("Used", `${gb(m.total - m.avail)} of ${gb(m.total)}`)}${row("Available", gb(m.avail))}
     ${row("Swap used", `${gb(m.swap_total - m.swap_free)} of ${gb(m.swap_total)}`)}
     <div class="dsub">Largest processes</div>${procRows("rss_mb")}`;
-  if (k === "gpu") return `<b>${esc(g.name || "GPU")}</b>${row("Load", (g.util ?? "–") + " %")}${row("Temperature", (g.temp ?? "–") + " °C")}
+  if (gm?.[1] === "gpu") return `<b>${esc(g.name || "GPU")}</b>${row("Load", (g.util ?? "–") + " %")}${row("Temperature", (g.temp ?? "–") + " °C")}
     ${row("Fan", g.fan != null ? g.fan + " %" : "n/a")}${row("Clock", (g.clock ?? "–") + " MHz")}
-    ${row("Power", g.power != null ? g.power.toFixed(0) + " W" : "not reported")}${row("Power limit", (g.power_limit ?? "–") + " W")}`;
-  if (k === "vram") return `<b>VRAM</b>${row("Used", `${(g.mem_used / 1024).toFixed(2)} GB`)}${row("Free", `${((g.mem_total - g.mem_used) / 1024).toFixed(2)} GB`)}
-    ${row("Total", `${(g.mem_total / 1024).toFixed(1)} GB`)}${(s.comfy?.devices || []).map(dv => row("ComfyUI sees", `${gb(dv.vram_free)} free`)).join("")}`;
+    ${row("Power", g.power != null ? g.power.toFixed(0) + " W" : "not reported")}${row("Power limit", (g.power_limit ?? "–") + " W")}
+    ${row("ComfyUI", cuse)}`;
+  if (gm?.[1] === "vram") return `<b>VRAM · ${esc((g.name || "").replace("NVIDIA ", ""))}</b>${row("Used", `${(g.mem_used / 1024).toFixed(2)} GB`)}${row("Free", `${((g.mem_total - g.mem_used) / 1024).toFixed(2)} GB`)}
+    ${row("Total", `${(g.mem_total / 1024).toFixed(1)} GB`)}${cdev ? row("ComfyUI sees", `${gb(cdev.vram_free)} free`) : ""}`;
   const d = p.disks.find(x => x.mount === (k === "root" ? "/" : "/data"));
   if (!d) return "<b>Disk</b>no data";
   const temp = k === "disk" ? p.temps.filter(t => t.chip === "nvme").map(t => row("Temperature " + esc(t.label), t.c.toFixed(0) + " °C")).join("") : "";
@@ -462,8 +481,7 @@ document.addEventListener("click", e => {
 }, true);
 
 // Ett gemensamt diagram för de senaste tio minuterna, med en rad förklaring under
-const SERIES = [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"], ["swap", "Swap", "--blue"], ["gpu", "GPU", "--green"], ["vram", "VRAM", "--violet"]];
-$("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
+buildGauges([]);
 
 let lastRows = "";
 // Statusens nivå: pass och success gröna, warning gul, fail orange, allt annat (error, failed) rött
@@ -531,7 +549,7 @@ function render(s) {
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">offline since ${since} · retrying</span>`);
     $("modelPill").hidden = true;
     if (s.offline_since) $("age").textContent = `no answer for ${fmtDur(s.now - s.offline_since)}`;
-    GROUPS.forEach(([, dials]) => dials.forEach(([k]) => setGauge(k, null, "", "–", "", "--muted")));
+    document.querySelectorAll(".gauge[data-k]").forEach(el => setGauge(el.dataset.k, null, "", "–", "", "--muted"));
     $("g_swap").setAttribute("stroke-dasharray", `0 ${C2}`);
     $("netRate").textContent = "–";
     drawSparks(s.history || []);
@@ -540,19 +558,24 @@ function render(s) {
   if (!p) { pill("netPill", "bad", `<span class="dot"></span><b class="ell" style="max-width:300px">${esc(s.probe_error || "no data yet")}</b>`); return; }
   $("uptime").textContent = fmtDur(p.uptime);
 
-  const m = p.mem, g = p.gpus[0] || {}, d = p.disks.find(x => x.mount === "/data"), root = p.disks.find(x => x.mount === "/");
+  const names = p.gpus.map(x => x.name);
+  if (names.length !== builtGpus || names.some((nm, i) => !$("gauges").children[i + 1]?.title.includes(nm.replace("NVIDIA ", "")))) buildGauges(names);
+  const m = p.mem, d = p.disks.find(x => x.mount === "/data"), root = p.disks.find(x => x.mount === "/");
   const ramUsed = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
   const cpuT = p.temps.filter(t => t.chip === "coretemp").map(t => t.c);
   const gb = mb => (mb / 1024).toFixed(1);
   setGauge("cpu", p.cpu, `${p.cores.length} threads`, cpuT.length ? `${Math.max(...cpuT).toFixed(0)} °C` : "–", `load ${p.load[0]}`, "--cpu");
-  setGauge("gpu", g.util, g.name ? g.name.replace("NVIDIA ", "") : "no GPU", g.temp != null ? `${g.temp} °C · fan ${g.fan ?? "–"} %` : "–", g.clock != null ? `${g.clock} MHz` : "", "--green");
+  const gpus = p.gpus.length ? p.gpus : [{}];
+  gpus.forEach((g, i) => {
+    setGauge(gk("gpu", i), g.util, g.name ? g.name.replace("NVIDIA ", "") : "no GPU", g.temp != null ? `${g.temp} °C · fan ${g.fan ?? "–"} %` : "–", g.clock != null ? `${g.clock} MHz` : "", GPU_COLORS[i % 4][0]);
+    setGauge(gk("vram", i), g.mem_total ? 100 * g.mem_used / g.mem_total : null, "graphics memory", g.mem_total ? `${gb(g.mem_used)} / ${gb(g.mem_total)} GB` : "–", "", GPU_COLORS[i % 4][1]);
+  });
   // RAM: siffrorna på två rader inuti ringen; den inre blå ringen är swap (förklaras i rutan som öppnas med ett klick)
   setGauge("ram", 100 * ramUsed / m.total, "", `${gb(ramUsed / 1048576)} / ${gb(m.total / 1048576)} GB`,
            m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${Math.round(m.swap_total / 1073741824)} GB` : "no swap", "--amber");
   const sp = m.swap_total ? Math.min(100, 100 * swUsed / m.swap_total) : 0;
   $("g_swap").setAttribute("stroke-dasharray", `${ARC2 * sp / 100} ${C2}`);
   $("g_swap").setAttribute("stroke", "var(--blue)");
-  setGauge("vram", g.mem_total ? 100 * g.mem_used / g.mem_total : null, "graphics memory", g.mem_total ? `${gb(g.mem_used)} / ${gb(g.mem_total)} GB` : "–", "", "--violet");
   setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--blue");
   setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--teal");
   const r = Object.entries(s.rates || {}).reduce((a, [, v]) => ({ rx: a.rx + v.rx, tx: a.tx + v.tx }), { rx: 0, tx: 0 });

@@ -935,7 +935,7 @@ FINAL = ("done", "done with warnings", "stopped", "failed", "waiting", "cancelle
 
 def playbook(name):
     pb = json.loads((PLAYBOOKS / f"{name}.json").read_text())
-    pb["_dir"] = PLAYBOOKS / name
+    pb["_dir"] = PLAYBOOKS / pb.get("dir", name)  # flera spelböcker kan dela graf och indata
     return pb
 
 
@@ -969,18 +969,22 @@ def mission_rounds(mission):
 
 def check_levers(pb, levers, previous):
     """Spakarna mot spelboken: bara kända spakar, tillåtna värden och gränser. Saknade spakar ärver förra varvet."""
-    out = dict(previous or pb["start"])
+    out = {**pb["start"], **(previous or {})}  # spakar som kommit till sedan förra varvet tar startvärdet
     for k, v in (levers or {}).items():
         spec = pb["levers"].get(k)
         if spec is None:
             raise ValueError(f"unknown lever {k}")
         if "values" in spec:
+            if v not in spec["values"] and str(v) in spec["values"]:
+                v = str(v)
             if v not in spec["values"]:
                 raise ValueError(f"{k}={v!r} not in {list(spec['values'])}")
         else:
             v = float(v)
             if not spec["min"] <= v <= spec["max"]:
                 raise ValueError(f"{k}={v} outside {spec['min']}..{spec['max']}")
+            if spec.get("step"):
+                v = spec["min"] + round((v - spec["min"]) / spec["step"]) * spec["step"]
             if spec.get("type") == "int":
                 v = int(round(v))
         out[k] = v
@@ -1027,7 +1031,7 @@ def mission_note(pb, rounds, status, message):
 
 
 def operator_ask(pb, rounds):
-    lever_text = "\n".join(f"- {k}: " + (f"one of {list(v['values'])}" if "values" in v else f"{v['min']}..{v['max']}") + f" — {v['help']}"
+    lever_text = "\n".join(f"- {k}: " + (f"one of {list(v['values'])}" if "values" in v else f"{v['min']}..{v['max']}" + (f" (step {v['step']})" if v.get("step") else "")) + f" — {v['help']}"
                            for k, v in pb["levers"].items())
     hist = json.dumps([{k: r[k] for k in ("round", "levers", "status", "score", "level", "summary", "issues", "error")} for r in rounds],
                       ensure_ascii=False)
