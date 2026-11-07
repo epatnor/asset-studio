@@ -311,8 +311,7 @@
 <header>
   <span class="wordmark" role="img" aria-label="Darrowmere" title="Darrowmere"></span>
   <span class="pill" id="netPill"><span class="dot"></span><b>connecting</b></span>
-  <span class="pill" id="comfyPill"><span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI</span></span>
-  <span class="pill" id="modelPill" hidden><span class="dot"></span><span class="ell" style="max-width:200px" id="modelName"></span></span>
+  <span class="pill" id="comfyPill" hidden><span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI</span></span>
   <span class="pill" id="uptimePill">up <b id="uptime">–</b></span>
   <span class="pill num" id="netPill2" title="Network traffic"><span id="netRate" style="display:inline-block;width:150px">–</span></span>
   <span class="spacer"></span>
@@ -512,7 +511,8 @@ let lastRows = "";
 // Statusens nivå: pass och success gröna, warning gul, fail orange, allt annat (error, failed) rött
 const levelClass = st => st === "success" || st === "pass" ? "ok" : st === "warning" ? "warn" : st === "fail" ? "fail" : "bad";
 const jobLabel = x => `${x.gpu ? `<span class="gputag" title="Ran on ${esc(x.gpu)}">${esc(x.gpu)}</span>` : ""}${x.cloud ? '<span class="cloudtag" title="Ran in the cloud and cost credits">☁</span>' : ""}${esc(x.name)}${x.title ? `<span class="sub"> · ${esc(x.title.replace(/^[\w.-]+: /, ""))}</span>` : ""}`;
-function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; }
+// Titelraden visar ComfyUI bara när något är fel (avstängd, svarar inte); vad som kör syns på korten per grafikkort
+function pill(id, cls, html) { const el = $(id); el.className = "pill " + cls; el.innerHTML = html; if (id === "comfyPill") el.hidden = cls !== "bad"; }
 
 // Menyn: öppnas med knappen, stängs vid val, klick utanför och Esc
 const menuOpen = on => { $("menuList").hidden = !on; $("menuBtn").setAttribute("aria-expanded", on); };
@@ -572,7 +572,6 @@ function render(s) {
   if (!online) {
     const since = s.offline_since ? new Date(s.offline_since * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">offline since ${since} · retrying</span>`);
-    $("modelPill").hidden = true;
     if (s.offline_since) $("age").textContent = `no answer for ${fmtDur(s.now - s.offline_since)}`;
     document.querySelectorAll(".gauge[data-k]").forEach(el => setGauge(el.dataset.k, null, "", "–", "", "--muted"));
     $("g_swap").setAttribute("stroke-dasharray", `0 ${C2}`);
@@ -611,9 +610,6 @@ function render(s) {
     const run = c.running[0], pr = c.progress;
     pill("comfyPill", p.service !== "active" ? "bad" : run ? "run" : "ok",
          `<span class="dot"></span><span class="ell" style="max-width:260px">${p.service !== "active" ? "ComfyUI " + esc(p.service) : run ? "ComfyUI running" : "ComfyUI idle"}</span>`);
-    // Plattformen och modellen var för sig: ComfyUI ovan, modellen som kör (Krea-2, Pixal3D, UltraTex …) här
-    $("modelPill").hidden = !run;
-    if (run) { $("modelPill").className = "pill model"; $("modelName").textContent = run.name; }
     $("queueInfo").textContent = run || c.pending.length ? `${c.running.length} running · ${c.pending.length} queued` : "idle";
     const runIds = new Set(c.running.map(x => x.id));
     errors.clear();
