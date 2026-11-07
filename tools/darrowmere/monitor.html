@@ -526,7 +526,7 @@ function renderPower(p) {
   parts.push(["Board, RAM, disks, fans", M.base, false]);
   const dc = parts.reduce((a, x) => a + x[1], 0), wall = dc / M.psu, measured = parts.filter(x => x[2]).reduce((a, x) => a + x[1], 0);
   const el = $("powerPill");
-  el.innerHTML = `<b>≈ ${Math.round(wall)} W</b>`;
+  el.innerHTML = `<b>${Math.round(wall / 10) * 10} W</b>`;  // avrundat till tiotal: det mesta är uppskattat
   el.title = `System power at the wall, estimated: ${Math.round(wall)} W\n`
     + parts.map(([n, w, m]) => `${n}: ${Math.round(w)} W ${m ? "(measured)" : "(estimated)"}`).join("\n")
     + `\nPower supply loss: ${Math.round(wall - dc)} W (${Math.round(M.psu * 100)} % efficiency, estimated)`
