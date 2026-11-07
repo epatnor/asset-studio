@@ -8,11 +8,15 @@
   :root {
     --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4b5563;
     --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32; --cloud: #7cc7ff; --cpu: #f472b6; --lime: #a3e635;
+    --c-cpu: #f472b6; --c-ram: #f9b8d8; --c-swap: #fcdcec; --c-sys: #4f8dff; --c-data: #a3c3ff;
+    --c-gpu1: #2bd46b; --c-vram1: #98ecb8; --c-gpu2: #a77bff; --c-vram2: #d2bcff; --c-gpu3: #f2a93b; --c-vram3: #f8d396;
   }
   @media (prefers-color-scheme: light) {
     :root:not([data-theme="dark"]) {
       --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
       --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7; --cpu: #db2777; --lime: #65a30d;
+      --c-cpu: #db2777; --c-ram: #f472b6; --c-swap: #f9a8d4; --c-sys: #2563eb; --c-data: #60a5fa;
+      --c-gpu1: #16a34a; --c-vram1: #4ade80; --c-gpu2: #7c3aed; --c-vram2: #a78bfa; --c-gpu3: #d97706; --c-vram3: #fbbf24;
     }
   }
   * { box-sizing: border-box; }
@@ -381,14 +385,14 @@ const level = p => p > 90 ? "--red" : p > 75 ? "--amber" : null;
 // Rattarna byggs en gång och uppdateras sedan på plats, så att ingenting byter storlek.
 // En båge på 270 grader med öppning nedåt; RAM har en inre tunn båge för växlingsutrymmet.
 // Ett par rattar (last och minne) per grafikkort. Det första kortet heter gpu/vram, nästa gpu1/vram1 och så vidare.
-const GPU_COLORS = [["--green", "--violet"], ["--lime", "--cloud"], ["--amber", "--blue"], ["--red", "--cpu"]];
+const GPU_COLORS = [["--c-gpu1", "--c-vram1"], ["--c-gpu2", "--c-vram2"], ["--c-gpu3", "--c-vram3"], ["--red", "--cpu"]];
 const gk = (base, i) => i ? base + i : base;
 const R = 70, C = 2 * Math.PI * R, ARC = C * 0.75, R2 = 58, C2 = 2 * Math.PI * R2, ARC2 = C2 * 0.75;
 let builtGpus = null, SERIES = [];
 function buildGauges(names) {
   const n = Math.max(1, names.length), multi = n > 1;
-  const cpu = ["Processor and memory", [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"]]];
-  const disks = ["Disks", [["root", "System", "--blue"], ["disk", "Data", "--teal"]]];
+  const cpu = ["Processor and memory", [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram"]]];
+  const disks = ["Disks", [["root", "System", "--c-sys"], ["disk", "Data", "--c-data"]]];
   const gpuGroups = Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
       [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]);
   // Flera kort ligger sist och intill varandra: på en rad i två kolumner, under varandra i en kolumn
@@ -397,7 +401,7 @@ function buildGauges(names) {
   <div class="panel group" title="${esc(title)}"><div class="pair">${dials.map(dialHtml).join("")}</div></div>`).join("");
   $("gauges").classList.toggle("two", groups.length === 4);
   // Diagrammet: en kurva för last och en för minne per kort
-  SERIES = [["cpu", "CPU", "--cpu"], ["ram", "RAM", "--amber"], ["swap", "Swap", "--blue"],
+  SERIES = [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram"], ["swap", "Swap", "--c-swap"],
     ...gpuGroups.flatMap(([, dials]) => dials.map(([k, l, c]) => [k, l, c]))];
   $("legend").innerHTML = SERIES.map(([k, l, c]) => `<span><i style="background:var(${c})"></i>${l} <b class="num" id="lg_${k}">–</b></span>`).join("");
   builtGpus = names.join("|");
@@ -414,7 +418,7 @@ function dialHtml([k, label, col]) { return `
           <circle class="arc" id="g_${k}" cx="82" cy="82" r="${R}" fill="none" stroke="url(#gr_${k})" stroke-width="11" stroke-linecap="round"
                   stroke-dasharray="0 ${C}"/>
           ${k === "ram" ? `<circle cx="82" cy="82" r="${R2}" fill="none" stroke="var(--track)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${ARC2} ${C2}"/>
-          <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--blue)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
+          <circle class="arc" id="g_swap" cx="82" cy="82" r="${R2}" fill="none" stroke="var(--c-swap)" stroke-width="4" stroke-linecap="round" stroke-dasharray="0 ${C2}"/>` : ""}
         </g>
       </svg>
       <svg class="full" id="gw_${k}" viewBox="0 0 24 22" aria-label="At full load"><title>At full load</title>
@@ -575,7 +579,7 @@ function render(s) {
   const ramUsed = m.total - m.avail, swUsed = m.swap_total - m.swap_free;
   const cpuT = p.temps.filter(t => t.chip === "coretemp").map(t => t.c);
   const gb = mb => (mb / 1024).toFixed(1);
-  setGauge("cpu", p.cpu, `${p.cores.length} threads`, cpuT.length ? `${Math.max(...cpuT).toFixed(0)} °C` : "–", `load ${p.load[0]}`, "--cpu");
+  setGauge("cpu", p.cpu, `${p.cores.length} threads`, cpuT.length ? `${Math.max(...cpuT).toFixed(0)} °C` : "–", `load ${p.load[0]}`, "--c-cpu");
   const gpus = p.gpus.length ? p.gpus : [{}];
   gpus.forEach((g, i) => {
     setGauge(gk("gpu", i), g.util, g.name ? g.name.replace("NVIDIA ", "") : "no GPU", g.temp != null ? `${g.temp} °C · fan ${g.fan ?? "–"} %` : "–", g.clock != null ? `${g.clock} MHz` : "", GPU_COLORS[i % 4][0]);
@@ -583,12 +587,12 @@ function render(s) {
   });
   // RAM: siffrorna på två rader inuti ringen; den inre blå ringen är swap (förklaras i rutan som öppnas med ett klick)
   setGauge("ram", 100 * ramUsed / m.total, "", `${gb(ramUsed / 1048576)} / ${gb(m.total / 1048576)} GB`,
-           m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${Math.round(m.swap_total / 1073741824)} GB` : "no swap", "--amber");
+           m.swap_total ? `swap ${gb(swUsed / 1048576)} / ${Math.round(m.swap_total / 1073741824)} GB` : "no swap", "--c-ram");
   const sp = m.swap_total ? Math.min(100, 100 * swUsed / m.swap_total) : 0;
   $("g_swap").setAttribute("stroke-dasharray", `${ARC2 * sp / 100} ${C2}`);
-  $("g_swap").setAttribute("stroke", "var(--blue)");
-  setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--blue");
-  setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--teal");
+  $("g_swap").setAttribute("stroke", "var(--c-swap)");
+  setGauge("root", root ? 100 * (root.total - root.free) / root.total : null, "840 EVO · /", root ? `${fmtB(root.free)} free` : "–", root ? `of ${fmtB(root.total)}` : "", "--c-sys");
+  setGauge("disk", d ? 100 * (d.total - d.free) / d.total : null, "NVMe · /data", d ? `${fmtB(d.free)} free` : "–", d ? `of ${fmtB(d.total)}` : "", "--c-data");
   const r = Object.entries(s.rates || {}).reduce((a, [, v]) => ({ rx: a.rx + v.rx, tx: a.tx + v.tx }), { rx: 0, tx: 0 });
   $("netRate").textContent = `↓ ${fmtRate(r.rx)}  ↑ ${fmtRate(r.tx)}`;
   if (openDial) showDetail(openDial, s);
