@@ -961,7 +961,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
       const who = x.kind === "review" ? "DeepSeek" : x.provider ? x.provider[0].toUpperCase() + x.provider.slice(1) : "";
       const ctip = cloud ? ` · cloud${who ? ": " + who : ""}${x.credits ? ` · ${x.credits} credits` : x.estimate ? ` · ~${x.estimate} credits` : ""}` : "";
       // Ett delsteg med resultat går att öppna: modellen i 3D-visaren, annars bilderna i bildvisaren
-      const files = x.files || [], glb = files.find(f => /\.(glb|gltf)$/i.test(f.filename)), img = files.some(f => /\.(png|jpe?g|webp)$/i.test(f.filename));
+      const files = x.files || [], glb = finalGlb(files.filter(f => /\.(glb|gltf)$/i.test(f.filename))), img = files.some(f => /\.(png|jpe?g|webp)$/i.test(f.filename));
       const view = glb ? ` data-vglb="${esc(glb.filename)}" data-vsub="${esc(glb.subfolder || "")}"` : img ? ` data-vpl="${esc(pl.id)}" data-vstep="${esc(x.key)}"` : "";
       return `<span class="pchip ${esc(x.status)}${cloud ? " cloud" : ""}${view ? " viewable" : ""}"${view} title="${esc(tip + ctip + (view ? " · click to view" : ""))}">${cloud ? '<span class="ic">☁</span>' : ""}${esc(x.label)}${view ? '<span class="vw">⤢</span>' : ""}</span>`;
     }).join(""), true);
@@ -1027,8 +1027,14 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
 }
 
 // View: 3D-visaren för jobb med en modell, bildvisaren för jobb med bilder
+// Den färdiga modellen: flöden sparar ofta en grov förhandsform först (Pixal3D/TRELLIS: _00001_ är 32³-voxlar),
+// så välj filen med högst löpnummer och vid lika den sista i listan
+function finalGlb(list) {
+  const n = f => +((f.filename.match(/_(\d+)_?\.(glb|gltf)$/i) || [])[1] || 0);
+  return list.reduce((best, f) => !best || n(f) >= n(best) ? f : best, null);
+}
 function viewBtn(h) {
-  const md = (h.models || [])[0];
+  const md = finalGlb(h.models || []);
   if (md) return ` <button class="view" data-file="${esc(md.filename)}" data-sub="${esc(md.subfolder)}" data-type="${esc(md.type)}" title="Open ${esc(md.filename)} in the 3D viewer">3D</button>`;
   if ((h.images || []).length) return ` <button class="view" data-job="${esc(h.id)}" title="Open the images">View</button>`;
   return "";
