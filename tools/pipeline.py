@@ -24,6 +24,11 @@ DIR = "/data/utdata/pipelines"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6"]
 
 
+def _cmd(cmd):
+    """PIPELINE_HOST=local: körs på Darrowmere själv (t.ex. en vakt för molnjobb), annars via ssh."""
+    return ["bash", "-c", cmd] if HOST == "local" else SSH + [HOST, cmd]
+
+
 class Pipeline:
     def __init__(self, pid, title, steps):
         """steps: (key, label) eller (key, label, where); where är "darrowmere" (ComfyUI-jobb, standard) eller en annan värd."""
@@ -34,7 +39,7 @@ class Pipeline:
     @classmethod
     def load(cls, pid):
         """Läser en sparad pipeline (för att fortsätta den), eller None."""
-        r = subprocess.run(SSH + [HOST, f"cat {DIR}/{pid}.json"], capture_output=True, text=True, timeout=20)
+        r = subprocess.run(_cmd(f"cat {DIR}/{pid}.json"), capture_output=True, text=True, timeout=20)
         if r.returncode:
             return None
         d = json.loads(r.stdout)
@@ -50,7 +55,7 @@ class Pipeline:
                           ensure_ascii=False)
         cmd = f"mkdir -p {DIR} && cat > {DIR}/.{self.id}.tmp && mv {DIR}/.{self.id}.tmp {DIR}/{self.id}.json"
         try:
-            r = subprocess.run(SSH + [HOST, cmd], input=body, capture_output=True, text=True, timeout=20)
+            r = subprocess.run(_cmd(cmd), input=body, capture_output=True, text=True, timeout=20)
             if r.returncode:
                 print(f"pipeline: could not save {self.id}: {r.stderr.strip()[-200:]}", file=sys.stderr)
         except Exception as e:

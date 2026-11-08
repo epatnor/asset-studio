@@ -1,0 +1,272 @@
+"""UltraTex 4B-träning på RunPod (docs/ultratex-4b.md, steg 2–3): startar en H100-pod, kör pod_train.sh, följer den,
+hämtar checkpoints medan den kör och tar bort poden när den är klar. Syns i Darrowmere-panelen som pipelinen
+`ultratex4b-<run>`. Vakten (watch) körs på Darrowmere, som alltid är på (se deploy längst ner).
+
+    python3 -I runpod_train.py price
+    python3 -I runpod_train.py start '{"run": "run1", "steps": 10000, "ckpt_steps": 2500, "buckets": ["00", ..., "05"], "max_min": 840}'
+    python3 -I runpod_train.py watch '{"run": "run1"}'       # följer, hämtar checkpoints, tar bort poden
+    python3 -I runpod_train.py status|fetch|stop '{"run": "run1"}'
+
+Nyckeln RUNPOD_API_KEY läses ur .env (RUNPOD_ENV, annars asset-studio/.env) och skrivs aldrig ut. Säkerhet mot glömda
+poddar: vakthunden på poden stoppar den efter max_min minuter (disken med checkpoints finns kvar), poden stoppar sig
+själv om ingen hämtat resultatet inom två timmar efter träningen, och watch tar bort den när allt är hämtat.
+Varje kommando svarar med en rad JSON.
+"""
+import json, os, re, subprocess, sys, time, traceback, urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path[:0] = [HERE, os.path.join(ROOT, "tools")]
+import pipeline  # noqa: E402
+
+OUT_ROOT = os.environ.get("ULTRATEX_RUNS", os.path.join(ROOT, "build/ultratex4b"))
+KEY = os.path.expanduser("~/.ssh/runpod_ed25519")
+GPUS = ["NVIDIA H100 80GB HBM3", "NVIDIA H100 NVL"]      # Hopper: UltraTex:s sparse attention-kärnor
+IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
+SSHO = ["-i", KEY, "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+        "-o", "LogLevel=ERROR", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=30"]
+
+
+def api_key():
+    for f in (os.environ.get("RUNPOD_ENV"), os.path.join(HERE, ".env"), os.path.join(ROOT, ".env")):
+        if f and os.path.exists(f):
+            for line in open(f):
+                if line.startswith("RUNPOD_API_KEY="):
+                    return line.split("=", 1)[1].strip()
+    sys.exit(json.dumps({"ok": False, "error": "RUNPOD_API_KEY saknas"}))
+
+
+def gql(query, variables=None):
+    req = urllib.request.Request("https://api.runpod.io/graphql", json.dumps({"query": query, "variables": variables or {}}).encode(),
+                                 {"Authorization": "Bearer " + api_key(), "Content-Type": "application/json"})
+    d = json.load(urllib.request.urlopen(req, timeout=60))
+    if d.get("errors"):
+        raise RuntimeError("; ".join(e.get("message", "?") for e in d["errors"]))
+    return d["data"]
+
+
+class Run:
+    def __init__(self, name):
+        self.name, self.out = name, os.path.join(OUT_ROOT, name)
+        self.state_f = os.path.join(self.out, "pod.json")
+        self.s = json.load(open(self.state_f)) if os.path.exists(self.state_f) else {}
+        self.pid = f"ultratex4b-{name}"
+
+    def save(self):
+        os.makedirs(self.out, exist_ok=True)
+        json.dump(self.s, open(self.state_f, "w"), indent=1)
+
+    def ssh(self, cmd, timeout=60):
+        return subprocess.run(["ssh", *SSHO, "-p", str(self.s["port"]), f"root@{self.s['ip']}", cmd],
+                              capture_output=True, text=True, errors="replace", timeout=timeout)
+
+    def pull(self, remote, local, timeout=1800):
+        os.makedirs(os.path.dirname(local), exist_ok=True)
+        return subprocess.run(["scp", *SSHO, "-P", str(self.s["port"]), f"root@{self.s['ip']}:{remote}", local],
+                              capture_output=True, text=True, errors="replace", timeout=timeout)
+
+    def cost(self):
+        end = self.s.get("removed_at") or time.time()
+        return round(self.s["cost_per_hr"] * (end - self.s["created"]) / 3600, 2) if self.s.get("cost_per_hr") else None
+
+    def pipe(self):
+        return pipeline.Pipeline.load(self.pid)
+
+
+def price():
+    res = []
+    for g in GPUS:
+        d = gql('query { gpuTypes(input: {id: "%s"}) { communityPrice securePrice lowestPrice(input: {gpuCount: 1, secureCloud: false}) '
+                '{ uninterruptablePrice stockStatus } } }' % g)["gpuTypes"][0]
+        lp = d.get("lowestPrice") or {}
+        res.append({"gpu": g, "community_usd_h": lp.get("uninterruptablePrice"), "stock": lp.get("stockStatus")})
+    return {"gpus": res}
+
+
+def start(r):
+    run = Run(r.get("run", "run1"))
+    if run.s.get("pod_id") and not run.s.get("removed_at"):
+        return {"ok": False, "error": "en pod körs redan för den här körningen", "pod_id": run.s["pod_id"]}
+    if not os.path.exists(KEY):
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "runpod-ultratex", "-f", KEY], check=True)
+    env = {"MAX_MIN": int(r.get("max_min", 150)), "STEPS": r.get("steps", 200), "CKPT_STEPS": r.get("ckpt_steps", 100000),
+           "RESOLUTION": r.get("resolution", 1024), "LIMIT": r.get("limit", 0), "EVAL_N": r.get("eval_n", 2),
+           "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 120)}
+    pod, errs = None, []
+    for g in r.get("gpus", GPUS):           # bara Community Cloud; Secure kostar 50 % mer
+        try:
+            pod = gql("""mutation($i: PodFindAndDeployOnDemandInput) { podFindAndDeployOnDemand(input: $i) { id costPerHr } }""",
+                      {"i": {"cloudType": "COMMUNITY", "gpuCount": 1, "gpuTypeId": g, "name": run.pid, "imageName": IMAGE,
+                             "containerDiskInGb": 40, "volumeInGb": int(r.get("volume_gb", 150)), "volumeMountPath": "/workspace",
+                             "minVcpuCount": 8, "minMemoryInGb": 32, "ports": "22/tcp", "supportPublicIp": True,
+                             "env": [{"key": "PUBLIC_KEY", "value": open(KEY + ".pub").read().strip()}]}})["podFindAndDeployOnDemand"]
+            pod["gpu"] = g; break
+        except RuntimeError as e:
+            errs.append(f"{g}: {e}")
+    if not pod:
+        return {"ok": False, "error": "ingen H100 ledig på Community Cloud", "details": errs}
+    run.s = {"pod_id": pod["id"], "gpu": pod["gpu"], "cost_per_hr": pod["costPerHr"], "created": time.time(), "env": env,
+             "max_min": env["MAX_MIN"], "fetched": []}
+    run.save()
+    p = pipeline.Pipeline(run.pid, f"UltraTex 4B {run.name}: {env['STEPS']} steps on RunPod", [
+        ("pod", "Start H100 pod", "runpod"), ("setup", "Install + download models/data", "runpod"),
+        ("prep", "Unpack TexVerse buckets", "runpod"), ("train", f"Train {env['STEPS']} steps ({env['RESOLUTION']} px)", "runpod"),
+        ("stop", "Fetch checkpoints + remove pod", "runpod")])
+    p.save(); p.start("pod", note=f"{pod['gpu']}, {pod['costPerHr']} USD/h")
+    for _ in range(90):
+        time.sleep(10)
+        rt = gql('query { pod(input: {podId: "%s"}) { runtime { ports { ip isIpPublic privatePort publicPort } } } }'
+                 % run.s["pod_id"])["pod"]["runtime"]
+        ports = [x for x in (rt or {}).get("ports") or [] if x["privatePort"] == 22 and x["isIpPublic"]]
+        if ports:
+            run.s.update(ip=ports[0]["ip"], port=ports[0]["publicPort"]); run.save()
+            if run.ssh("true").returncode == 0:
+                break
+    else:
+        p.fail("pod", note="ssh never came up"); stop({"run": run.name})
+        return {"ok": False, "error": "ssh kom aldrig upp, poden borttagen"}
+    for f in ("pod_train.sh", "prep_texverse.py"):
+        subprocess.run(["scp", *SSHO, "-P", str(run.s["port"]), os.path.join(HERE, f), f"root@{run.s['ip']}:/workspace/"],
+                       capture_output=True, timeout=120)
+    envs = " ".join(f"{k}={v}" for k, v in env.items())
+    try:   # ssh kan vänta kvar på det bakgrundade skriptet; det har ändå startat
+        run.ssh(f"cd /workspace && {envs} setsid nohup bash pod_train.sh > pod.log 2>&1 < /dev/null &", timeout=30)
+    except subprocess.TimeoutExpired:
+        pass
+    run.s["launched"] = time.time(); run.save()
+    p.done("pod", note=f"{pod['gpu']}, {pod['costPerHr']} USD/h"); p.start("setup")
+    return {"ok": True, "pod_id": run.s["pod_id"], "gpu": pod["gpu"], "usd_h": pod["costPerHr"], "max_min": env["MAX_MIN"],
+            "max_usd": round(pod["costPerHr"] * env["MAX_MIN"] / 60, 1)}
+
+
+TQDM = re.compile(r"(\d+)/(\d+) \[(?:(\d+):)?(\d+):(\d+)<")
+
+
+def train_rate(log, total):
+    """Sekunder per steg (tqdm: steg och förfluten tid; bara träningens stapel), räknat över de senaste ~200 stegen."""
+    pts = {}
+    for m in TQDM.finditer(log):
+        if int(m[2]) == total:
+            pts[int(m[1])] = int(m[3] or 0) * 3600 + int(m[4]) * 60 + int(m[5])
+    ns = sorted(pts)
+    if len(ns) >= 2:
+        a = next((n for n in ns if n >= ns[-1] - 200), ns[0])
+        if ns[-1] > a:
+            return round((pts[ns[-1]] - pts[a]) / (ns[-1] - a), 2), ns[-1]
+    return None, ns[-1] if ns else 0
+
+
+def status(r):
+    run = Run(r.get("run", "run1")); s = run.s
+    if not s.get("pod_id"):
+        return {"ok": False, "error": "ingen pod"}
+    out = {"run": run.name, "pod_id": s["pod_id"], "gpu": s.get("gpu"), "usd_so_far": run.cost(), "removed": bool(s.get("removed_at")),
+           "fetched": len(s.get("fetched", []))}
+    if s.get("removed_at") or not s.get("ip"):
+        return {**out, **s.get("result", {})}
+    rr = run.ssh("cat /workspace/phases.jsonl; echo ===; tail -c 30000 /workspace/train.log 2>/dev/null; echo ===; "
+                 "cut -d, -f1 /workspace/gpu.csv 2>/dev/null | sort -n | tail -1; echo ===; cat /workspace/prep.json 2>/dev/null; echo ===; "
+                 "find /workspace/out -name dit_lora.safetensors -mmin +1 2>/dev/null | sort -V; true", 90)
+    if rr.returncode:
+        return {**out, "ssh": "no answer"}
+    ph, log, mem, prep, ck = (rr.stdout.split("===\n") + [""] * 5)[:5]
+    phases = [json.loads(x) for x in ph.splitlines() if x.strip()]
+    total = int(s["env"]["STEPS"])
+    rate, step = train_rate(log, total)
+    out.update(phase=phases[-1]["phase"] if phases else "starting", phases={p["phase"]: p["t"] for p in phases},
+               step=step, s_per_step=rate, gpu_mem_max_mb=int(mem.strip()) if mem.strip().isdigit() else None,
+               checkpoints=[c.split("/")[-2] for c in ck.split()])
+    try:
+        pj = json.loads(prep.strip().splitlines()[-1])
+        out["prep"] = {k: pj.get(k) for k in ("objects", "train", "eval", "problems", "extracted_GB")}
+    except Exception:
+        pass
+    if rate:
+        left_h = rate * (total - step) / 3600
+        out["eta_h"] = round(left_h, 1); out["usd_at_end"] = round(run.cost() + left_h * s["cost_per_hr"], 1)
+    if "failed" in out["phase"]:
+        out["log_tail"] = log[-1500:]
+    return out
+
+
+def fetch(r, final=False):
+    """Hämtar nya färdiga checkpoints (dit_lora.safetensors) och, sist, valideringsbilder och loggar."""
+    run = Run(r.get("run", "run1"))
+    rr = run.ssh("find /workspace/out -name dit_lora.safetensors -mmin +1 2>/dev/null | sort -V; true", 60)
+    got = []
+    for f in rr.stdout.split():
+        ck = f.split("/")[-2]
+        if ck in run.s.get("fetched", []):
+            continue
+        if run.pull(f, os.path.join(run.out, ck, "dit_lora.safetensors")).returncode == 0:
+            run.s.setdefault("fetched", []).append(ck); run.save(); got.append(ck)
+    if final:
+        run.ssh("cd /workspace && tar czf /tmp/logs.tgz pod.log phases.jsonl gpu.csv prep.json pip.log dl_*.log train.log "
+                "$(cd /workspace && find out -name '*.webp' 2>/dev/null) 2>/dev/null; true", 300)
+        if run.pull("/tmp/logs.tgz", os.path.join(run.out, "logs.tgz")).returncode == 0:
+            subprocess.run(["tar", "xzf", os.path.join(run.out, "logs.tgz"), "-C", run.out])
+    return {"ok": True, "new": got, "fetched": run.s.get("fetched", []), "out": run.out}
+
+
+def stop(r):
+    run = Run(r.get("run", "run1"))
+    if run.s.get("pod_id") and not run.s.get("removed_at"):
+        try:
+            gql('mutation { podTerminate(input: {podId: "%s"}) }' % run.s["pod_id"])
+        except RuntimeError as e:
+            if "not found" not in str(e).lower():
+                raise
+        run.s["removed_at"] = time.time(); run.save()
+    return {"ok": True, "pod_id": run.s.get("pod_id"), "usd_total": run.cost()}
+
+
+def watch(r):
+    name = r.get("run", "run1")
+    seen, last_fetch, log = set(), 0, open(os.path.join(Run(name).out, "watch.log"), "a")
+    while True:
+        try:
+            run = Run(name); p = run.pipe(); st = status(r); ph = st.get("phase", "")
+            for key, when in (("setup", ("prep", "train", "done")), ("prep", ("train", "done"))):
+                if ph in when and key not in seen and p:
+                    seen.add(key); p.done(key)
+                    nxt = {"setup": "prep", "prep": "train"}[key]
+                    p.start(nxt, note=json.dumps(st.get("prep")) if key == "prep" else None)
+            if p and ph == "train" and st.get("step"):
+                p._set("train", note=f"step {st['step']}/{run.s['env']['STEPS']}, {st.get('s_per_step')} s/step, "
+                                     f"{st.get('usd_so_far')} USD, ~{st.get('eta_h')} h left")
+            if time.time() - last_fetch > 600 and ph in ("train", "done"):
+                fetch(r); last_fetch = time.time()
+            over = time.time() - run.s["created"] > (run.s["max_min"] + 20) * 60
+            if ph == "done" or "failed" in ph or "watchdog" in ph or "grace" in ph or over:
+                if p:
+                    (p.done if ph == "done" else p.fail)("train", note=f"{ph}: step {st.get('step')}, {st.get('s_per_step')} s/step")
+                    p.start("stop")
+                if st.get("ssh") == "no answer":
+                    # Stoppad av vakthunden: disken med checkpoints finns kvar; ta inte bort den utan att någon tittat
+                    ds = gql('query { pod(input: {podId: "%s"}) { desiredStatus } }' % run.s["pod_id"])["pod"]
+                    if ds and ds.get("desiredStatus") != "RUNNING":
+                        if p:
+                            p.fail("stop", note="pod stopped by watchdog, disk kept: check before removing")
+                        return {"ok": False, "pod": "stopped, disk kept", "fetched": run.s.get("fetched"), "out": run.out}
+                else:
+                    fetch(r, final=True); run.ssh("touch /workspace/fetched")
+                res = stop(r)
+                run = Run(name)
+                run.s["result"] = {k: st.get(k) for k in ("phase", "phases", "step", "s_per_step", "gpu_mem_max_mb", "prep", "checkpoints")}
+                run.save()
+                if p:
+                    p.done("stop", note=f"{len(run.s.get('fetched', []))} checkpoints, {res['usd_total']} USD total")
+                return {**run.s["result"], "usd_total": res["usd_total"], "fetched": run.s.get("fetched"), "out": run.out}
+        except Exception:
+            log.write(time.strftime("%F %T ") + traceback.format_exc() + "\n"); log.flush()
+        time.sleep(60)
+
+
+if __name__ == "__main__":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    rec = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
+    try:
+        fn = {"price": lambda r: price(), "start": start, "status": status, "fetch": fetch, "stop": stop, "watch": watch}[cmd]
+        print(json.dumps(fn(rec)))
+    except Exception as e:
+        print(json.dumps({"ok": False, "error": str(e)[:500]}))

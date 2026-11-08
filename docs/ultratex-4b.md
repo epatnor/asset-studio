@@ -93,8 +93,8 @@ en egen dekoder också. Den är billig (forskarna: 1 200 steg).
 
 ## Resultat av steg 2, provkörningen (2026-11-08)
 
-Körd med `tools/ultratex4b/runpod_smoke.py` (startar poden, kör `pod_smoke.sh`, följer, hämtar loggar och tar bort poden;
-syns i panelen som pipelinen `ultratex4b-smoke`). Community-H100 SXM var slut, så det blev **H100 NVL** (94 GB) för 2,59 USD/h.
+Körd med `tools/ultratex4b/runpod_smoke.py` (nu `runpod_train.py` och `pod_train.sh`; startar poden, kör skriptet, följer,
+hämtar loggar och tar bort poden; syns i panelen som pipelinen `ultratex4b-smoke`). Community-H100 SXM var slut, så det blev **H100 NVL** (94 GB) för 2,59 USD/h.
 
 | Mätning | Värde |
 |---|---|
@@ -119,6 +119,22 @@ gränsen i `fetch`); nästa körning ska hämta dem.
 2 eval-objekt ger 15 × 6 min = 1,5 h, var 2 500:e steg 6 × 6 min = 0,6 h. Med uppstart och data blir det **ungefär 17–18 h,
 44–47 USD**. Före steg 3: gör prep-skriptet parallellt (300 objekt tog 6 min; 6 buckets enkeltrådat skulle ta timmar) och
 håll eval-mängden liten (16 objekt skulle ta ~45 min per validering). Krea 2-forken mättes inte i den här körningen.
+
+## Steg 3, första körningen (startad 2026-11-08)
+
+Patrik valde 10 000 steg först (i stället för 15 000): checkpoints 5 000 och 10 000 provas på Maren, och körningen fortsätter
+till 15 000 från sista checkpointen bara om bilderna blir bättre.
+
+- `run1`: H100 NVL (2,59 USD/h), buckets 00–05 (ca 8 300 objekt), 1024 px, eval 2 objekt, validering var 2 500:e steg,
+  LoRA-checkpoint var 1 000:e. Beräknat ca 11–12 h, ca 30 USD; vakthunden stoppar poden efter 14 h (högst 36 USD).
+- Styrningen körs på Darrowmere, som alltid är på: `/data/texverse/runpod/` (kopior av `runpod_train.py`, `pod_train.sh`,
+  `prep_texverse.py`, `pipeline.py`; nyckeln i en egen `.env` med 600-rättigheter). Vakten
+  (`ULTRATEX_RUNS=/data/texverse/runs PIPELINE_HOST=local python3 -I runpod_train.py watch '{"run": "run1"}'`) hämtar varje ny
+  checkpoint till `/data/texverse/runs/run1/checkpoint-*/` var tionde minut, valideringsbilder och loggar på slutet, och tar
+  bort poden. Panelen visar pipelinen `ultratex4b-run1` med steg, s/steg, kostnad och tid kvar.
+- Skydd mot glömda poddar: vakthunden på poden *stoppar* den (disken med checkpoints finns kvar) efter `max_min`, poden
+  stoppar sig själv om ingen hämtat resultatet inom två timmar efter träningen, och en stoppad pod tas inte bort av vakten
+  förrän någon har tittat.
 
 ## Krea 2 som andra spår
 
