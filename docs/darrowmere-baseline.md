@@ -1,6 +1,6 @@
 # Darrowmere: mätvärden före och efter uppgraderingen
 
-Utgångsläge 2026-11-07, före Xeon X5680 och 64 GB minne (beställda 2026-11-07, X5680 väntas 18–23 nov).
+Utgångsläge 2026-11-07, före Xeon X5680 och 48 GB minne (beställda 2026-11-07, X5680 väntas 18–23 nov).
 Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/bench.py`
 (`python3 -I tools/darrowmere/bench.py --remote`, körs när Darrowmere är ledig).
 
@@ -10,7 +10,7 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
 |---|---|---|
 | Moderkort | Gigabyte X58A-UD7, BIOS F8 | samma |
 | Processor | Core i7-920, 4 kärnor / 8 trådar, 2,67 GHz, BCLK 133, ingen AVX, **ingen AES-NI** | Xeon X5680, 6 / 12, 3,33 GHz, AES-NI, ingen AVX |
-| Minne | 18 GB: 3 × 2 GB + 3 × 4 GB, blandat (dmidecode säger felaktigt 400 MT/s) | 64 GB: 8 × 8 GB SK Hynix PC3-12800U 2Rx8 |
+| Minne | 18 GB: 3 × 2 GB + 3 × 4 GB, blandat (dmidecode säger felaktigt 400 MT/s) | 48 GB: 6 × 8 GB SK Hynix PC3-12800U 2Rx8 (kortet har 6 platser A0–A5, max 48 GB enligt dmidecode 2026-11-08) |
 | GPU 0 | Nvidia T1000 8 GB (Turing, sm_75), effektgräns 50 W, rapporterar ingen effekt | samma |
 | GPU 1 | Quadro M4000 8 GB (Maxwell, sm_52), effektgräns 120 W | samma |
 | Diskar | 840 EVO (system, `/`), NVMe (`/data`, 469 GB) | samma |
@@ -38,7 +38,7 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
 - Darrowmere har 18 GB RAM. Med Klein 4B laddad i M4000:s ComfyUI (modell + textkodaren Qwen3 4B) tog den processen
   **13 GB RAM**, och TRELLIS på T1000 trängdes ut i swap (5,2 GB). Marens nät (1024, 28 steg) gick då klart långsammare
   än r05 med samma inställningar. Att frigöra M4000:s modeller släppte 12 GB.
-- Att köra båda korten samtidigt med tunga modeller kräver alltså mer RAM; 64 GB bör lösa det.
+- Att köra båda korten samtidigt med tunga modeller kräver alltså mer RAM; 48 GB bör lösa det.
 
 ## Nät
 
