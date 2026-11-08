@@ -416,6 +416,9 @@
       <button role="menuitem" data-dials="pairs" title="Two dials per part: load and memory side by side">Dials: pairs<span class="chk"></span></button>
       <button role="menuitem" data-dials="rings" title="One dial per part: memory, swap or the data disk as an inner ring, CPU threads as ring segments">Dials: rings<span class="chk"></span></button>
       <hr>
+      <button role="menuitem" data-rows="all" title="Always show every graphics card and service, also when idle">Rows: always show<span class="chk"></span></button>
+      <button role="menuitem" data-rows="active" title="Hide graphics cards and services with nothing running">Rows: hide idle<span class="chk"></span></button>
+      <hr>
       <button id="acctBtn" role="menuitem" title="Accounts and password"><span id="meName">Account</span></button>
       <button id="outBtn" role="menuitem" title="Log out">Log out</button>
     </div>
@@ -494,6 +497,35 @@ function setDialStyle(v) {
   tick();
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dials]"); if (b) setDialStyle(b.dataset.dials); });
+// Raderna för grafikkort och tjänster: alltid synliga, eller bara de som kör något (allt stilla: en rad "All idle")
+let ROWS_MODE = "all";
+try { ROWS_MODE = localStorage.getItem("darrowmere-rows") === "active" ? "active" : "all"; } catch (e) {}
+function setRowsMode(v) {
+  ROWS_MODE = v;
+  try { localStorage.setItem("darrowmere-rows", v); } catch (e) {}
+  document.querySelectorAll("[data-rows] .chk").forEach(el => el.textContent = el.parentElement.dataset.rows === v ? "✓" : "");
+  tick();
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-rows]"); if (b) setRowsMode(b.dataset.rows); });
+document.querySelectorAll("[data-rows] .chk").forEach(el => el.textContent = el.parentElement.dataset.rows === ROWS_MODE ? "✓" : "");
+function applyRowsMode() {
+  const cards = [...document.querySelectorAll(".cur:not(#allIdle)")].filter(el => !el.hidden);
+  const idle = cards.filter(el => el.classList.contains("idle"));
+  if (ROWS_MODE === "active") idle.forEach(el => el.hidden = true);
+  let all = $("allIdle");
+  if (!all) {
+    all = document.createElement("div"); all.id = "allIdle"; all.className = "cur idle"; all.hidden = true;
+    all.innerHTML = '<div class="cur1"><span class="ell"></span></div>';
+    cards[cards.length - 1].after(all);
+  }
+  const none = ROWS_MODE === "active" && idle.length === cards.length;
+  all.hidden = !none;
+  if (none) {
+    const v = `All idle · ${idle.map(el => el.querySelector(".unit")?.textContent).filter(Boolean).join(", ")}`;
+    const el = all.querySelector(".ell"); if (el.textContent !== v) el.textContent = v;
+    const last = [...document.querySelectorAll(".cur:not(#allIdle)")].pop(); if (last.nextElementSibling !== all) last.after(all);
+  }
+}
 document.querySelectorAll("[data-dials] .chk").forEach(el => el.textContent = el.parentElement.dataset.dials === DIAL_STYLE ? "✓" : "");
 function buildGauges(names, nCores = 0) {
   const n = Math.max(1, names.length), multi = n > 1;
@@ -824,6 +856,7 @@ function render(s) {
       renderCurrent(null, null, c, s, "_" + lanes.length, null, true, true);
       renderCurrent(null, null, c, s, "_" + (lanes.length + 1), null, true);
     }
+    applyRowsMode();
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
         if (g.length === 1 || dsOpen.has(g[0].id)) return g.map((h, k) => histRow(h, g.length > 1 ? (k === 0 ? "first" : "sub") : "", g));
