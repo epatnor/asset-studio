@@ -45,8 +45,8 @@ Gjort och provat på roboten (`build/robot/`):
   bredd 4096), så licensen är fortfarande icke-kommersiell. GLB: `build/maren/ultratex/MarenPBR_default_00001_.glb`.
   Samma referens genom bara Pixal3D (1024, frö 142, CFG 3.5, ingen extra texturering): 14 min, 700k trianglar med egen
   textur, lika ren som UltraTex utan armskuggor och lite mättadare färger. Pixal3D hittade på en lång fläta på ryggen där
-  TRELLIS gjorde en knut. GLB: `build/maren/pixal3d/maren_pixal3d_s142_00003_.glb`. Pixal3D:s licens är ännu inte
-  kontrollerad (se character-generator.md).
+  TRELLIS gjorde en knut. GLB: `build/maren/pixal3d/maren_pixal3d_s142_00003_.glb`. Pixal3D:s licens är MIT, men
+  Hugging Face-repot spärrar nedladdning från EU (se character-generator.md, 2026-11-09).
 - **UltraTex utan NC-licens, läget 2026-11-08:** de officiella vikterna (ModelScope `Yibo-Zhang/UltraTex`) finns fortfarande bara
   för FLUX.1-dev och Klein 9B. Porten till Qwen-Image 2.1 (`orwelian84/UltraTex-Qwen-Image-2.1`, MIT) hjälper inte, eftersom
   Qwen-Image 2.1 har Qwen Research License (icke-kommersiell). Forken `Atlas3DSS/UltraTex` har kod för Krea 2 men inga vikter.
