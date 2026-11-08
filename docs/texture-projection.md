@@ -47,6 +47,12 @@ Gjort och provat på roboten (`build/robot/`):
   textur, lika ren som UltraTex utan armskuggor och lite mättadare färger. Pixal3D hittade på en lång fläta på ryggen där
   TRELLIS gjorde en knut. GLB: `build/maren/pixal3d/maren_pixal3d_s142_00003_.glb`. Pixal3D:s licens är ännu inte
   kontrollerad (se character-generator.md).
+- **UltraTex utan NC-licens, läget 2026-11-08:** de officiella vikterna (ModelScope `Yibo-Zhang/UltraTex`) finns fortfarande bara
+  för FLUX.1-dev och Klein 9B. Porten till Qwen-Image 2.1 (`orwelian84/UltraTex-Qwen-Image-2.1`, MIT) hjälper inte, eftersom
+  Qwen-Image 2.1 har Qwen Research License (icke-kommersiell). Forken `Atlas3DSS/UltraTex` har kod för Krea 2 men inga vikter.
+  En egen 4B-LoRA går att träna: `train_flux2.py` har `flux.2-klein-base-4b` som standard
+  (`bash scripts/train_flux2_9b_2048.sh 4b`). Träningsdatat G-buffer TexVerse är CC0 (351 847 objekt, 256 zip-buckets à
+  ~16 GB), och ComfyUI-noden läser LoRA:ns former ur filen. Det kräver ett hyrt stort kort; Qwen-porten tränades 15 000 steg i 1024.
 
 ## Andra vägar (2026-11-07, uppdraget "Robot: best model and texture")
 
