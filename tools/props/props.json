@@ -258,5 +258,21 @@
     ],
     "spread": 0.7,
     "cell": 0.2
+  },
+  "crate": {
+    "kind": "crate",
+    "size": [0.8, 0.7, 0.8],
+    "bevel": 0.1,
+    "stampSides": [],
+    "crate": "crate_planks",
+    "crateNormal": "crate_planks_normal"
+  },
+  "healing_crate": {
+    "kind": "crate",
+    "size": [0.8, 0.7, 0.8],
+    "bevel": 0.1,
+    "stampSides": ["front", "back"],
+    "crate": "crate_planks_healing",
+    "crateNormal": "crate_planks_normal"
   }
 }

@@ -451,6 +451,51 @@ function creeperLods() {
 
 // Vindningsordning: framsidan ska följa vertexnormalerna. Svarvade former och sammanslagna delar kan
 // hamna åt fel håll, så jämför trianglarnas normal med vertexnormalerna och vänd vid behov
+// Låda (förrådslåda, läkelåda): en låda med en enkel avfasning på alla kanter, 44 trianglar. Plankorna och en eventuell
+// stämpel ligger i texturen, en atlas med två rutor: vänster = ren sida (topp, botten, avfasningar och sidor utan stämpel),
+// höger = sidan med stämpel (stampSides). Samma UV för alla lådor; läkelådan har bara en annan textur.
+function crateLods() {
+  const ext = (sp.size ?? [0.8, 0.8, 0.8]).map((v) => v / 2);
+  const d = Math.min(...ext) * (sp.bevel ?? 0.1);
+  const stamped = new Set(sp.stampSides ?? ['front', 'back']);
+  const SIDE = { '2,1': 'front', '2,-1': 'back', '0,1': 'right', '0,-1': 'left' };
+  const g = empty();
+  const face = (P, uv) => {  // en plan yta; normalen pekar utåt från lådans mitt
+    const i0 = g.positions.length / 3;
+    const c = mul(P.reduce((s, q) => add(s, q), [0, 0, 0]), 1 / P.length);
+    let n = norm(cross(sub(P[1], P[0]), sub(P[2], P[0])));
+    if (dot(n, c) < 0) n = mul(n, -1);
+    P.forEach((q, k) => { g.positions.push(q[0], q[1] + ext[1], q[2]); g.normals.push(...n); g.uvs.push(...uv[k]); });
+    g.indices.push(i0, i0 + 1, i0 + 2);
+    if (P.length === 4) g.indices.push(i0, i0 + 2, i0 + 3);
+  };
+  const at = (i, vi, j, vj, k, vk) => { const q = [0, 0, 0]; q[i] = vi; q[j] = vj; q[k] = vk; return q; };
+  // Sex sidor: u längs sidans vågräta axel, v uppåt (topp och botten: v längs z); sidor med stämpel i högra rutan
+  for (const i of [0, 1, 2]) for (const s of [1, -1]) {
+    const [j, k] = i === 1 ? [0, 2] : [i === 0 ? 2 : 0, 1];   // j = vågrät, k = uppåt (för topp/botten: z)
+    const cell = i !== 1 && stamped.has(SIDE[`${i},${s}`]) ? 0.5 : 0;
+    const P = [], uv = [];
+    for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      P.push(at(i, s * ext[i], j, a * (ext[j] - d), k, b * (ext[k] - d)));
+      uv.push([cell + 0.5 * (i === 2 && s < 0 || i === 0 && s > 0 ? 1 - (a + 1) / 2 : (a + 1) / 2), 1 - (b + 1) / 2]);
+    }
+    face(P, uv);
+  }
+  // Tolv avfasningar: en smal remsa ur vänstra rutans kant (plankans slut), längs den tredje axeln
+  for (const [i, j] of [[0, 1], [0, 2], [1, 2]]) for (const si of [1, -1]) for (const sj of [1, -1]) {
+    const k = 3 - i - j;
+    const P = [at(i, si * ext[i], j, sj * (ext[j] - d), k, -(ext[k] - d)), at(i, si * ext[i], j, sj * (ext[j] - d), k, ext[k] - d),
+      at(i, si * (ext[i] - d), j, sj * ext[j], k, ext[k] - d), at(i, si * (ext[i] - d), j, sj * ext[j], k, -(ext[k] - d))];
+    face(P, [[0.01, 0.005], [0.49, 0.005], [0.49, 0.03], [0.01, 0.03]]);
+  }
+  // Åtta hörn: en liten triangel
+  for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+    face([[sx * ext[0], sy * (ext[1] - d), sz * (ext[2] - d)], [sx * (ext[0] - d), sy * ext[1], sz * (ext[2] - d)],
+      [sx * (ext[0] - d), sy * (ext[1] - d), sz * ext[2]]], [[0.01, 0.005], [0.03, 0.005], [0.01, 0.03]]);
+  }
+  return [{ crate: g }];
+}
+
 function orient(g) {
   const P = (k) => [g.positions[k * 3], g.positions[k * 3 + 1], g.positions[k * 3 + 2]];
   const N = (k) => [g.normals[k * 3], g.normals[k * 3 + 1], g.normals[k * 3 + 2]];
@@ -475,16 +520,17 @@ function windTorn(g) {
 let WIND_TORN = 0;
 
 // ---------- GLB ----------
-const build = { rock: rockLods, mushroom: mushroomLods, stump: stumpLods, log: logLods, leafpile: leafpileLods, creeper: creeperLods }[sp.kind];
+const build = { rock: rockLods, mushroom: mushroomLods, stump: stumpLods, log: logLods, leafpile: leafpileLods, creeper: creeperLods, crate: crateLods }[sp.kind];
 const lods = build();
 const doc = new Document();
 const buffer = doc.createBuffer();
 const acc = (type, array) => doc.createAccessor().setType(type).setArray(array).setBuffer(buffer);
 // Texturer refereras till delade filer (bäddas inte in), se tools/tree/gltf_write.mjs
 const tex = (file, nm) => sharedTexture(doc, file, nm, out);
-function material(nm, { texture, tint, alpha, rough = 0.9 } = {}) {
+function material(nm, { texture, normal, tint, alpha, rough = 0.9 } = {}) {
   const m = doc.createMaterial(nm).setRoughnessFactor(rough).setMetallicFactor(0);
   if (texture && fs.existsSync(texture)) m.setBaseColorTexture(tex(texture, nm));
+  if (normal && fs.existsSync(normal)) m.setNormalTexture(tex(normal, nm + '_normal'));
   if (tint) m.setBaseColorFactor([...lin(tint), 1]);
   if (alpha) m.setAlphaMode('MASK').setAlphaCutoff(0.45);
   return m;
@@ -509,6 +555,7 @@ const MATS = {
   leaves: () => material('Leaves', { texture: T.leaves, tint: sp.kind === 'leafpile' ? sp.tint : undefined, alpha: sp.kind === 'leafpile' }),
   mass: () => material('LeafMass', { texture: T.mass, tint: sp.tint }),
   vines: () => material('Vines', { rough: 0.9 }),
+  crate: () => material('Crate', { texture: T.crate, normal: T.crateNormal, rough: 0.8 }),
 };
 const matCache = {};
 const getMat = (part) => (matCache[part] ??= (part === 'cap' && (sp.kind === 'stump' || sp.kind === 'log') ? material('Rings', { texture: T.rings, rough: 0.8 }) : MATS[part]()));
@@ -551,7 +598,7 @@ const checks = { parts: partsLod0, resting_on_ground: minY <= 0.02 && minY > -2.
 checks.wind_torn = WIND_TORN;
 checks.ok = partsLod0.length > 0 && checks.resting_on_ground && WIND_TORN === 0;
 // Polygonbudgeten (style.json, LOD0) redovisas men fäller inte ok. Kategori: artens "budget" i props.json, annars efter sort
-const BUDGET_BY_KIND = { rock: 'prop_small', mushroom: 'prop_small', stump: 'prop_medium', log: 'prop_medium', leafpile: 'ground_cover', creeper: 'ground_cover' };
+const BUDGET_BY_KIND = { rock: 'prop_small', mushroom: 'prop_small', stump: 'prop_medium', log: 'prop_medium', leafpile: 'ground_cover', creeper: 'ground_cover', crate: 'prop_small' };
 const STYLE_BUDGETS = JSON.parse(fs.readFileSync(new URL('../style.json', import.meta.url))).budgets_tris ?? {};
 const biggest = (v) => Math.max(...[v ?? 0].flat());
 const groupOrBig = sp.kind === 'rock' && (biggest(sp.count) > 1 || biggest(sp.size) >= 1);  // stengrupper och bumlingar

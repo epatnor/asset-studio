@@ -30,6 +30,7 @@ TEXTURES = {
     "log": [("bark", "bark_painted", None), ("rings", "stump_rings", None), ("moss", "moss_painted", "moss_tint")],
     "leafpile": [("leaves", None, "tint"), ("mass", None, "tint")],
     "creeper": [("leaves", "leaf_surface", "always")],
+    "crate": [("crate", "crate_planks", None), ("crateNormal", "crate_planks_normal", None)],
 }
 
 
