@@ -76,6 +76,20 @@ en egen dekoder också. Den är billig (forskarna: 1 200 steg).
   långsammare.
 - Dataladdningen (100 GB) tar tid på den hyrda maskinen. Den räknas in i priset i steg 2.
 
+## Krea 2 som andra spår
+
+Forken `Atlas3DSS/UltraTex` (grenen `qwen21-krea2-port`) har kod för Krea 2 som stomme, men inga tränade vikter och inget
+som visar att Krea 2-vägen har körts. Krea 2 är den modell vars utseende vi gillar mest, och UltraTex löser det som brast
+när vi använde Krea 2 för texturer (vyerna stämde inte överens). Det talar för en Krea 2-version. Men:
+
+- Krea 2 är större än Klein 4B: dyrare att träna och långsammare på 8 GB (redan en vanlig bild tar ~5 min på T1000).
+- Licensen är kommersiell under en omsättningsgräns, inte Apache. Den är mindre värd att dela med andra.
+- Koden är en otestad fork, medan 4B stöds direkt av forskarnas skript.
+
+Ordning: 4B först, eftersom det lär oss hela kedjan (data, hyrd maskin, utvärdering) billigast. I provkörningen (steg 2) mäts
+också Krea 2-forken i 200 steg på samma maskin, så vi vet vad den skulle kosta. Om 4B:s texturer saknar stilen tränas Krea 2
+som andra körning på samma data.
+
 ## Uppföljning i panelen
 
 Den betalda träningen ska synas i Darrowmere-panelen som en beställning med uppdraget `ultratex-4b`. Steget startar maskinen,
