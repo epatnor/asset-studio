@@ -77,7 +77,7 @@
   .cur.second { margin-top: 6px; }
   /* Granskning och molnsteg: en tunn rad under grafikkorten, i stegets färg (moln blått, DeepSeek lila, annan dator teal).
      .cur.cur höjer specificiteten så att mobilregeln för .cur inte gör raden lika hög som korten. */
-  .cur.cur.slim { height: auto; grid-template-rows: auto; padding: 3px 12px; margin: 4px 12px 2px; box-shadow: none; }
+  .cur.cur.slim { height: auto; grid-template-rows: auto; padding: 6px 12px; margin: 4px 12px 2px; box-shadow: none; }
   /* Ett kort som inte kör något är en rad; det växer med fas, steg och delsteg först när något kör */
   .cur.cur.idle { height: auto; grid-template-rows: auto; padding: 6px 12px; }
   .cur.idle .cur2, .cur.idle .cur3 { display: none; }
@@ -89,9 +89,10 @@
      tonad när något kör */
   .cur { --acc: var(--muted); }
   .cur.on { background: color-mix(in srgb, var(--acc) 6%, var(--panel2)); }
-  .cur .unit { display: inline-block; min-width: 78px; color: var(--acc); font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
+  .cur .unit { display: inline-block; min-width: 96px; white-space: nowrap; color: var(--acc); font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
   .cur.idle .unit { color: var(--muted); }
-  .cur .unit .uc { margin-left: 4px; font-weight: 400; }
+  .cur .unit .uic { width: 15px; height: 15px; margin-right: 6px; vertical-align: -3px; fill: none; stroke: currentColor; stroke-width: 1.4;
+                    stroke-linecap: round; stroke-linejoin: round; }
   .cur .snake { --snake: var(--acc); margin: 0 10px 0 0; }
   .cur .snake.off { visibility: hidden; }
   .curtime .est { color: var(--muted); font-weight: 450; }
@@ -371,7 +372,7 @@
     .gauges.rings .pair { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .cur, .cur.pipe { margin: 6px 6px 4px; }
     .cur.cur.idle { padding: 5px 10px; }
-    .cur.cur.slim { padding: 3px 10px; margin: 4px 6px 2px; }
+    .cur.cur.slim { padding: 5px 10px; margin: 4px 6px 2px; }
   }
   /* Telefon liggande (lågt men brett): alla rattar på en rad */
   @media (max-height: 500px) and (orientation: landscape) {
@@ -410,6 +411,7 @@
       <button id="histBtn" role="menuitem" title="All jobs, also acknowledged ones">History</button>
       <button id="logBtn" role="menuitem" title="Open the ComfyUI log in its own window">Log</button>
       <button id="setBtn" role="menuitem" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
+      <button id="reloadBtn" role="menuitem" title="Load the page again (the home-screen app has no reload button)">Reload</button>
       <hr>
       <button role="menuitem" data-dials="pairs" title="Two dials per part: load and memory side by side">Dials: pairs<span class="chk"></span></button>
       <button role="menuitem" data-dials="rings" title="One dial per part: memory, swap or the data disk as an inner ring, CPU threads as ring segments">Dials: rings<span class="chk"></span></button>
@@ -817,9 +819,10 @@ function render(s) {
       laneCard(i).style.setProperty("--snake", lane ? `var(${GPU_COLORS[i % 4][0]})` : "var(--blue)");
       renderCurrent(r, r ? ((c.progresses || {})[r.id] || (i === 0 ? pr : null)) : null, c, s, i ? "_" + i : "", lane);
     });
-    if (lanes.length > 1) {  // granskning, moln, godkännande: egen rad utan grafikkortets namn
-      laneCard(lanes.length).style.setProperty("--snake", "var(--cloud)");
-      renderCurrent(null, null, c, s, "_" + lanes.length, null, true);
+    if (lanes.length > 1) {  // DeepSeek har en fast rad; moln, andra datorer och godkännanden en rad när något pågår
+      laneCard(lanes.length); laneCard(lanes.length + 1);
+      renderCurrent(null, null, c, s, "_" + lanes.length, null, true, true);
+      renderCurrent(null, null, c, s, "_" + (lanes.length + 1), null, true);
     }
     const rows = c.pending.map(x => `<tr><td>–</td><td>–</td><td class="ell" title="${esc(x.title || "")}">${jobLabel(x)}</td><td><span class="tag">queued</span></td><td>–</td><td>–</td><td></td></tr>`)
       .concat(groupAi(c.history.filter(h => !runIds.has(h.id))).flatMap(g => {
@@ -989,23 +992,32 @@ document.addEventListener("click", e => {
 // Varje rad för ett pågående jobb har samma form: enheten som kör (grafikkortet eller tjänsten) i sin färg, snurran,
 // detaljerna, och längst till höger förfluten tid med beräknad total inom parentes
 const SNAKE_OFF = `<i class="snake off" aria-hidden="true">${"<b></b>".repeat(9)}</i>`;
-const unitTag = (name, cloud) => `<span class="unit">${esc(name)}${cloud ? '<span class="uc">☁</span>' : ""}</span>`;
+// Ikonen före enhetens namn: grafikkort = ett chip, molntjänst = ett moln, en annan dator = en skärm (i radens färg)
+const UNIT_ICONS = {
+  gpu: '<rect x="4" y="4" width="8" height="8" rx="1.2"/><rect x="6.3" y="6.3" width="3.4" height="3.4" rx=".5" fill="currentColor" stroke="none"/>'
+     + '<path d="M6 1.5v2.5M10 1.5v2.5M6 12v2.5M10 12v2.5M1.5 6h2.5M1.5 10h2.5M12 6h2.5M12 10h2.5"/>',
+  cloud: '<path d="M4.6 12.5h7.2a2.9 2.9 0 0 0 .4-5.77A3.9 3.9 0 0 0 4.7 6.1 3.2 3.2 0 0 0 4.6 12.5z"/>',
+  host: '<rect x="1.8" y="2.5" width="12.4" height="8.5" rx="1.2"/><path d="M5.5 14h5M8 11v3"/>',
+};
+const unitTag = (name, kind = "gpu") => `<span class="unit"><svg class="uic" viewBox="0 0 16 16" aria-hidden="true">${UNIT_ICONS[kind]}</svg>${esc(name)}</span>`;
 const fmtShort = s => s < 60 ? Math.round(s) + " s" : s < 3600 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
 const median = a => { const v = a.filter(x => x > 0).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null; };
 const timeCell = (el, est) => el == null ? "" : fmtDur(el) + (est ? ` <span class="est">(~${fmtShort(Math.max(est, el))})</span>` : "");
 // Beräknad total för ett ComfyUI-jobb: medianen av de senaste lyckade körningarna av samma flöde på samma kort
 const jobEstimate = (c, run, lane) => median((c.history || []).filter(h => h.name === run.name && h.status === "success"
   && (!lane || !h.gpu || h.gpu === lane)).slice(0, 10).map(h => h.seconds));
-function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  // sfx: "_1" … för korten efter det första
+// other: raden för moln och andra datorer; ds: DeepSeeks fasta rad (granskningarna), Idle när ingen granskning pågår
+function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds = false) {  // sfx: "_1" … för korten efter det första
   const li = Math.max(0, (c.lanes || []).indexOf(lane));
-  $("cur" + sfx).style.setProperty("--acc", `var(${GPU_COLORS[li % 4][0]})`);  // grafikkortets färg, som i rattarna
+  $("cur" + sfx).style.setProperty("--acc", ds ? "var(--violet)" : `var(${GPU_COLORS[li % 4][0]})`);  // grafikkortets färg, som i rattarna
   $("cur" + sfx).hidden = false;
   $("cur" + sfx).classList.toggle("idle", !run && !!lane);
+  $("cur" + sfx).classList.remove("slim");
   if (!run && lane) {  // ett grafikkort som inte kör något: kortets namn och Idle (eller vad som väntar på det), i grått
     const waiting = c.pending.filter(x => (x.gpu || c.lanes[0]) === lane);
     $("cur" + sfx).classList.remove("on", "pipe", "needs", "cloudrun");
     $("curPipe" + sfx).hidden = true;
-    for (const [k, v] of [["curIcon", ""], ["curName", `${unitTag(lane)}${SNAKE_OFF}${waiting.length ? "Waiting: " + esc(waiting.map(x => x.name).join(", ")) : "Idle"}`],
+    for (const [k, v] of [["curIcon", ""], ["curName", `${unitTag(lane, "gpu")}${SNAKE_OFF}${waiting.length ? "Waiting: " + esc(waiting.map(x => x.name).join(", ")) : "Idle"}`],
                           ["curTime", ""], ["curPhase", ""], ["curSteps", ""], ["curTiming", ""]]) {
       const el = $(k + sfx); if (el.dataset.v !== v) { el.innerHTML = v; el.dataset.v = v; }
     }
@@ -1014,8 +1026,13 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   const set = (id, v, html) => { const el = $(id + sfx); if (el.dataset.v !== v) { el[html ? "innerHTML" : "textContent"] = v; el.dataset.v = v; } };
   // Pipelinen som det pågående jobbet hör till, annars en som pågår på en annan dator (t.ex. projicering på Andorhal)
   const pipes = s.pipelines || [];
+  // Steg som körs utanför grafikkorten: DeepSeeks granskningar på sin rad, moln och andra datorer på sin
+  const offGpu = x => x.status === "running" && (ds ? x.kind === "review"
+    : other ? x.kind !== "review" && (x.where !== "darrowmere" || x.route === "cloud")
+    : x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud");
   const pl = (run?.pipeline && pipes.find(p => p.id === run.pipeline.id))
-    || pipes.find(p => p.active || p.steps.some(x => x.status === "running"));
+    || (ds ? pipes.find(p => p.steps.some(offGpu)) : other ? pipes.find(p => p.steps.some(offGpu) || p.steps.some(x => x.status === "approval"))
+           : pipes.find(p => p.active || p.steps.some(x => x.status === "running")));
   $("cur" + sfx).classList.toggle("pipe", !!pl);
   $("curPipe" + sfx).hidden = !pl;
   if (pl) {
@@ -1038,7 +1055,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     }).join(""), true);
   }
   // Steg utan ComfyUI-jobb som pågår: en DeepSeek-granskning på Darrowmere, eller något på en annan dator
-  const need = !run && pl && pl.steps.find(x => x.status === "approval");
+  const need = !run && !ds && pl && pl.steps.find(x => x.status === "approval");
   $("cur" + sfx).classList.toggle("needs", !!need);
   $("cur" + sfx).classList.remove("slim");
   if (need) {
@@ -1046,13 +1063,13 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     $("cur" + sfx).classList.add("on"); $("cur" + sfx).classList.remove("cloudrun");
     $("cur" + sfx).style.setProperty("--acc", "var(--amber)");
     set("curIcon", "", true);
-    set("curName", `${unitTag(who, true)}${SNAKE_OFF}Needs your approval<span class="inl warn">⚠</span><span class="sub"> · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
+    set("curName", `${unitTag(who, "cloud")}${SNAKE_OFF}Needs your approval<span class="inl warn">⚠</span><span class="sub"> · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
     set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
     set("curTiming", `<button class="approve" data-approve="${esc(pl.id)}" data-step="${esc(need.key)}" data-credits="${need.estimate || 0}"
       data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}" title="Review the cost and approve">Approve</button>`, true);
     return;
   }
-  const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
+  const local = !run && pl && pl.steps.find(offGpu);
   const cloudStep = local && (local.kind === "review" || local.route === "cloud" || local.where === "runpod");
   $("cur" + sfx).classList.toggle("on", !!run || !!local);
   $("cur" + sfx).classList.toggle("cloudrun", !!cloudStep);
@@ -1063,7 +1080,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : where;
     $("cur" + sfx).style.setProperty("--acc", ai ? "var(--violet)" : cloudStep ? "var(--cloud)" : "var(--teal)");
     set("curIcon", "", true);
-    set("curName", `${unitTag(who, cloudStep)}${SNAKE}${esc(pl.title)}<span class="sub"> · ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`, true);
+    set("curName", `${unitTag(who, cloudStep ? "cloud" : "host")}${SNAKE}${esc(pl.title)}<span class="sub"> · ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`, true);
     // Beräknad total: stegets egen prognos (eta, sekunder kvar), annars medianen av tidigare DeepSeek-granskningar
     const el = local.start ? s.now - local.start : null;
     const est = local.eta != null && el != null ? el + local.eta : ai ? median((c.history || []).filter(isDs).slice(0, 10).map(h => h.seconds)) : null;
@@ -1075,16 +1092,21 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     set("curTiming", ai ? "via OpenRouter" : cloudStep ? (local.estimate || local.credits ? `~${local.credits || local.estimate} credits` : "costs credits") : local.note || "");
     return;
   }
+  if (!run && ds) {  // DeepSeek granskar inget just nu: en grå rad som de lediga grafikkorten
+    $("cur" + sfx).classList.add("idle"); $("cur" + sfx).classList.remove("on", "pipe", "cloudrun", "ai");
+    set("curIcon", "", true); set("curName", `${unitTag("DeepSeek", "cloud")}${SNAKE_OFF}Idle`, true); set("curTime", "");
+    return;
+  }
   if (!run) {
     if (other) { $("cur" + sfx).hidden = true; return; }  // inget i molnet eller på andra datorer just nu
     set("curIcon", "", true);
-    set("curName", `${unitTag(lane || "GPU")}${SNAKE_OFF}${c.pending.length ? `Waiting: ${esc(c.pending.map(x => x.name).join(", "))}` : "Idle · nothing running"}`, true);
+    set("curName", `${unitTag(lane || "GPU", "gpu")}${SNAKE_OFF}${c.pending.length ? `Waiting: ${esc(c.pending.map(x => x.name).join(", "))}` : "Idle · nothing running"}`, true);
     set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
     return;
   }
   set("curIcon", "", true);
   // Kortet, snurran, sedan modellen och jobbets titel: texten börjar alltid vid samma vänsterkant
-  set("curName", `${unitTag(lane || "GPU")}${SNAKE}${esc(run.name)}${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
+  set("curName", `${unitTag(lane || "GPU", "gpu")}${SNAKE}${esc(run.name)}${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
   set("curTime", run.queued_at ? timeCell(s.now - run.queued_at, jobEstimate(c, run, lane)) : "", true);
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
@@ -1119,12 +1141,16 @@ function viewBtn(h) {
 
 // När Darrowmere är avstängd eller flyttas: sidan står kvar med senaste värdena nedtonade och försöker igen,
 // och fortsätter som vanligt så fort datorn svarar (ComfyUI och panelen startar av sig själva vid uppstart).
-let lastStatus = null, lastOk = 0, failCount = 0;
+let lastStatus = null, lastOk = 0, failCount = 0, UI_VER = null;
+$("reloadBtn").onclick = () => location.reload();
 async function tick() {
   try {
     const r = await fetch("/api/status", { cache: "no-store", signal: AbortSignal.timeout(6000) });
     if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
     lastStatus = await r.json();
+    // En ny version av panelen har driftsatts: ladda om (hemskärmsappen har ingen knapp för det)
+    if (lastStatus.ui && UI_VER && lastStatus.ui !== UI_VER) { location.reload(); return; }
+    UI_VER = UI_VER || lastStatus.ui;
     if (failCount) document.body.classList.remove("offline");
     failCount = 0; lastOk = Date.now();
     render(lastStatus);

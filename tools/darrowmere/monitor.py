@@ -982,7 +982,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.proxy_file()
         if self.path == "/api/status":
             with lock:
-                body = {**state, "history": list(hist), "host": HOST, "comfy_url": COMFY, "now": time.time()}
+                body = {**state, "history": list(hist), "host": HOST, "comfy_url": COMFY, "now": time.time(),
+                        "ui": int((HERE / "monitor.html").stat().st_mtime)}  # sidan laddar om sig när en ny version driftsatts
             return self.send(200, json.dumps(body), "application/json")
         self.send(404, "not found", "text/plain")
 
