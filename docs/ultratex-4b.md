@@ -76,6 +76,21 @@ en egen dekoder också. Den är billig (forskarna: 1 200 steg).
   långsammare.
 - Dataladdningen (100 GB) tar tid på den hyrda maskinen. Den räknas in i priset i steg 2.
 
+## Resultat av steg 1 (2026-11-08)
+
+- UltraTex klonad på Darrowmere i `/data/texverse/UltraTex`, commit `a726678` (2026-10-07). Träningskoden lägger LoRA:n på
+  samma lager för 4B som för 9B (`_lora_targets`: attention i dubbelblocken, linear1/linear2 i enkelblocken), 60 lager för 4B.
+- ComfyUI-noden `UltraTexLoraLoader` laddar en LoRA i 4B:s form (PEFT, rang 64): 60 av 60 lager patchade på M4000.
+  En LoRA med nollor gav en bild identisk med körningen utan LoRA (skillnad 0,0/255), en med slumpvärden ändrade bilden
+  (11/255). Vägen från träning till användning fungerar alltså för 4B.
+- Bucket `00` (16,3 GB, 4–5 MB/s, ca 55 min) uppackad till `/data/texverse/extracted` med `tools/ultratex4b/prep_texverse.py`:
+  1 388 objekt, alla med albedo, position, normaler och renderingar; 588 har ruffighet/metall. Källupplösning: 1024: 423,
+  2048: 579, 4096: 309, 8192: 77. Förgrunden täcker i snitt 18 % av vyerna; 69 objekt under 5 %.
+  Listor: `train.json` (1 372), `eval.json` (16), `foreground_ratios.json`.
+- Manifestet har bara id, filantal, storlek och status, inga kategorier. Viktning mot figurer går inte att göra ur
+  manifestet. Vi tar buckets i följd som forskarna.
+- Uppackning och förgrundsmätning tog 45 min på i7-920. På den hyrda maskinen körs flera buckets parallellt.
+
 ## Krea 2 som andra spår
 
 Forken `Atlas3DSS/UltraTex` (grenen `qwen21-krea2-port`) har kod för Krea 2 som stomme, men inga tränade vikter och inget
