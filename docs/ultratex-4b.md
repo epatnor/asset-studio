@@ -91,6 +91,35 @@ en egen dekoder också. Den är billig (forskarna: 1 200 steg).
   manifestet. Vi tar buckets i följd som forskarna.
 - Uppackning och förgrundsmätning tog 45 min på i7-920. På den hyrda maskinen körs flera buckets parallellt.
 
+## Resultat av steg 2, provkörningen (2026-11-08)
+
+Körd med `tools/ultratex4b/runpod_smoke.py` (startar poden, kör `pod_smoke.sh`, följer, hämtar loggar och tar bort poden;
+syns i panelen som pipelinen `ultratex4b-smoke`). Community-H100 SXM var slut, så det blev **H100 NVL** (94 GB) för 2,59 USD/h.
+
+| Mätning | Värde |
+|---|---|
+| Kostnad totalt | **1,30 USD** (ca 30 min inklusive fyra startfel som rättades på samma pod) |
+| Nedladdning | bucket 00 (16 GB) + Klein base 4B + Qwen3 4B + VAE (16 GB): under en minut |
+| Uppackning, 300 objekt | 6 min (prep-skriptet är enkeltrådat) |
+| Träning 1024 px | **3,9 s/steg**, stadigt före och efter valideringen |
+| Validering vid steg 100 | 5 min 45 s för 2 eval-objekt (8 vyer, 25 steg) |
+| GPU-minne | högst 27 GB av 94 |
+| Loss | 0,46 (steg 1–20) → 0,32 (steg 181–200); inga NaN, LoRA:n tränas från noll |
+
+Det som fungerade: bara öppna delar (Klein base 4B och Qwen3 4B från BFL:s Apache-repo, VAE:n från Comfy-Orgs Apache-repo
+`Comfy-Org/Flux-2-Klein-4B`, samma fil som ComfyUI använder) och en dekoder tagen ur bas-VAE:n i stället för UltraTex:s
+NC-dekoder. Sparse attention-kärnorna går på H100 NVL.
+
+Startfel som är rättade i skripten: uv behöver `--index-strategy unsafe-best-match` (PyTorch-indexet först), `hf`-kommandot
+behöver typer/click, `--include` med en fil och mönster tog inte med modellfilen, och skript som startas via ssh ärver inte
+podens `RUNPOD_*`-variabler (vakthunden läser dem nu ur `/proc/1/environ`). Valideringsbilderna hämtades inte (de är större än
+gränsen i `fetch`); nästa körning ska hämta dem.
+
+**Pris för steg 3** (15 000 steg, H100 NVL 2,59 USD/h): 15 000 × 3,9 s = 16,3 h träning. Validering var 1 000:e steg med
+2 eval-objekt ger 15 × 6 min = 1,5 h, var 2 500:e steg 6 × 6 min = 0,6 h. Med uppstart och data blir det **ungefär 17–18 h,
+44–47 USD**. Före steg 3: gör prep-skriptet parallellt (300 objekt tog 6 min; 6 buckets enkeltrådat skulle ta timmar) och
+håll eval-mängden liten (16 objekt skulle ta ~45 min per validering). Krea 2-forken mättes inte i den här körningen.
+
 ## Krea 2 som andra spår
 
 Forken `Atlas3DSS/UltraTex` (grenen `qwen21-krea2-port`) har kod för Krea 2 som stomme, men inga tränade vikter och inget

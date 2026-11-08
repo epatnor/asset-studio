@@ -7,7 +7,7 @@ Körs där datat ligger (Darrowmere eller den hyrda maskinen) med en Python som 
   /data/venv-m4000/bin/python tools/ultratex4b/prep_texverse.py '{"buckets": ["/data/texverse/canonical/bsdf/00.zip"], "out": "/data/texverse/extracted"}'
 
 Recept: buckets (lista), out (uppackat), eval_n (antal objekt till eval, standard 16), fg (mät förgrund, standard true),
-seed. Svarar med en rad JSON.
+seed, limit (högst så många objekt, för provkörningar). Svarar med en rad JSON.
 """
 import io, json, os, random, sys, zipfile
 from collections import Counter
@@ -42,6 +42,8 @@ def main():
                     continue
                 if not name.endswith(".zip"):
                     continue
+                if r.get("limit") and len(ids) >= r["limit"]:
+                    break
                 oid = os.path.basename(name)[:-4]
                 d = os.path.join(out, oid)
                 if not os.path.isdir(d):
