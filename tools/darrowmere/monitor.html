@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Darrowmere">
+<meta name="theme-color" content="#161a1f">
+<link rel="apple-touch-icon" href="/static/app-icon-180.png">
+<link rel="manifest" href="/static/manifest.webmanifest">
 <title>Darrowmere Monitor</title>
 <style>
   :root {
@@ -367,6 +374,18 @@
     .gauges, .gauges.two { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .gauges.rings .pair { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
     .chartwrap { height: 150px; }
+  }
+  /* Hemskärmsappen (iPhone): sidhuvudet under statusraden och allt innanför notchen i liggande läge */
+  @supports (padding: env(safe-area-inset-top)) {
+    header { height: auto; min-height: calc(46px + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top);
+             padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+    main { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+           padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+    @media (max-width: 560px), (max-height: 500px) and (orientation: landscape) {
+      header { min-height: calc(42px + env(safe-area-inset-top)); padding-left: max(10px, env(safe-area-inset-left));
+               padding-right: max(10px, env(safe-area-inset-right)); }
+      main { padding-left: max(6px, env(safe-area-inset-left)); padding-right: max(6px, env(safe-area-inset-right)); }
+    }
   }
 </style>
 </head>

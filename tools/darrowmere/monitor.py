@@ -911,7 +911,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(204, b"", "image/x-icon")
         if path.startswith("/static/"):
             f = (HERE / "static" / path[len("/static/"):]).resolve()
-            types = {".png": "image/png", ".svg": "image/svg+xml", ".webp": "image/webp"}
+            types = {".png": "image/png", ".svg": "image/svg+xml", ".webp": "image/webp", ".webmanifest": "application/manifest+json"}
             if f.parent != (HERE / "static").resolve() or f.suffix not in types or not f.is_file():
                 return self.send(404, b"not found", "text/plain")
             return self.send(200, f.read_bytes(), types[f.suffix])
