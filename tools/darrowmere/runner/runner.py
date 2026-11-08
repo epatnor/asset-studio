@@ -175,7 +175,42 @@ def resolve(o, value, cache):
     return cache[value]
 
 
+# Bara ett tungt ComfyUI-jobb åt gången över alla kort ("serial_lanes" i runner.json): med 18 GB RAM räcker minnet inte till
+# Krea-2 på T1000 och Klein 4B på M4000 samtidigt (2026-11-08 hängde sig Darrowmere i swap och tappade nätet). Före varje
+# jobb släpper de andra korten sina modeller ur RAM. Stängs av när 48 GB sitter i.
+SERIAL = bool(CONF.get("serial_lanes"))
+HEAVY = threading.Lock()
+
+
+def free_other_lanes():
+    for url in LANES.values():
+        if url == comfy_url():
+            continue
+        try:
+            q = http_json(f"{url}/queue", timeout=10)
+            if not (q.get("queue_running") or q.get("queue_pending")):
+                http_json(f"{url}/free", {"unload_models": True, "free_memory": True}, timeout=30)
+        except Exception:
+            pass
+
+
 def comfy_step(o, s):
+    if not SERIAL:
+        return _comfy_step(o, s)
+    noted = False
+    while not HEAVY.acquire(timeout=10):
+        if (o.dir / "cancel").exists():
+            raise RuntimeError("cancelled")
+        if not noted:
+            o.set(s["key"], note="waiting: one heavy job at a time on Darrowmere"); noted = True
+    try:
+        free_other_lanes()
+        return _comfy_step(o, s)
+    finally:
+        HEAVY.release()
+
+
+def _comfy_step(o, s):
     t = o.st(s["key"])
     if t.get("job") and t["status"] == "running":
         pid = t["job"]  # runnern startades om mitt i jobbet: vänta vidare på samma jobb

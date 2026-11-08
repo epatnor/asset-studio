@@ -39,6 +39,10 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
   **13 GB RAM**, och TRELLIS på T1000 trängdes ut i swap (5,2 GB). Marens nät (1024, 28 steg) gick då klart långsammare
   än r05 med samma inställningar. Att frigöra M4000:s modeller släppte 12 GB.
 - Att köra båda korten samtidigt med tunga modeller kräver alltså mer RAM; 48 GB bör lösa det.
+- 2026-11-08 19:00–19:15 hängde Darrowmere sig när Krea-2 (T1000) och Klein 4B (M4000) kördes samtidigt: "Under memory
+  pressure" i journalen, sedan tappade wifi-stickan basstationen (beacon loss 19:09) och journalen slutade 19:15; ingen OOM-kill,
+  utan swap-trassel tills maskinen fick startas om hårt. Sedan dess kör runnern ett tungt ComfyUI-jobb åt gången över båda
+  korten och släpper det andra kortets modeller först (`serial_lanes` i `runner.json`). Stängs av när 48 GB sitter i.
 
 ## Nät
 

@@ -8,6 +8,7 @@
  "orders": "/data/orders",
  "output": "/data/utdata",
  "blender": "/data/blender/current/blender",
+ "serial_lanes": true,
  "defaults": {
   "routes": {
    "model": {
