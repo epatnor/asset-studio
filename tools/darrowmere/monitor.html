@@ -91,7 +91,7 @@
   .cur.on { background: color-mix(in srgb, var(--acc) 6%, var(--panel2)); }
   .cur .unit { display: inline-block; min-width: 78px; color: var(--acc); font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
   .cur.idle .unit { color: var(--muted); }
-  .cur .unit .uc { margin-right: 4px; font-weight: 400; }
+  .cur .unit .uc { margin-left: 4px; font-weight: 400; }
   .cur .snake { --snake: var(--acc); margin: 0 10px 0 0; }
   .cur .snake.off { visibility: hidden; }
   .curtime .est { color: var(--muted); font-weight: 450; }
@@ -989,7 +989,7 @@ document.addEventListener("click", e => {
 // Varje rad för ett pågående jobb har samma form: enheten som kör (grafikkortet eller tjänsten) i sin färg, snurran,
 // detaljerna, och längst till höger förfluten tid med beräknad total inom parentes
 const SNAKE_OFF = `<i class="snake off" aria-hidden="true">${"<b></b>".repeat(9)}</i>`;
-const unitTag = (name, cloud) => `<span class="unit">${cloud ? '<span class="uc">☁</span>' : ""}${esc(name)}</span>`;
+const unitTag = (name, cloud) => `<span class="unit">${esc(name)}${cloud ? '<span class="uc">☁</span>' : ""}</span>`;
 const fmtShort = s => s < 60 ? Math.round(s) + " s" : s < 3600 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
 const median = a => { const v = a.filter(x => x > 0).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null; };
 const timeCell = (el, est) => el == null ? "" : fmtDur(el) + (est ? ` <span class="est">(~${fmtShort(Math.max(est, el))})</span>` : "");
