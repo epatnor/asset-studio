@@ -36,7 +36,7 @@ for b in $BUCKETS; do
     DLP+=($!)
 done
 $HF download black-forest-labs/FLUX.2-klein-base-4B flux-2-klein-base-4b.safetensors --local-dir $W/hf/klein4b > $W/dl_model.log 2>&1 || fail dl_klein
-$HF download black-forest-labs/FLUX.2-klein-base-4B --include 'text_encoder/*' 'tokenizer/*' \
+$HF download black-forest-labs/FLUX.2-klein-base-4B --include 'text_encoder/*' --include 'tokenizer/*' \
     --local-dir $W/hf/klein4b >> $W/dl_model.log 2>&1 || fail dl_qwen
 $HF download Comfy-Org/Flux-2-Klein-4B split_files/vae/flux2-vae.safetensors \
     --local-dir $W/hf/comfy >> $W/dl_model.log 2>&1 || fail dl_vae
