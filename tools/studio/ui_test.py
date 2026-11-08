@@ -4,8 +4,8 @@ skärmen är låst eller släckt (då står ett vanligt fönster på 0 fps). Stu
 
   python3 -I tools/studio/ui_test.py '<recept>'
 
-Receptet: {"name": "maproom", "url": "/studio/#kartrummet", "size": [1600, 1000], "steps": [...]}. Stegen körs i
-ordning; varje steg är ett av:
+Receptet: {"name": "maproom", "url": "/studio/#kartrummet", "size": [1600, 1000], "steps": [...]}; "mobile": [390, 844, 3]
+emulerar en telefon (bredd, höjd, pixeltäthet). Stegen körs i ordning; varje steg är ett av:
   {"wait": ms}                                 vänta
   {"until": "<js>", "timeout": ms}             vänta tills uttrycket är sant (standard 60 s)
   {"eval": "<js>"}                             kör JavaScript (await går bra); svaret hamnar i resultatet
@@ -109,7 +109,8 @@ async def run(recipe):
     name = recipe.get('name', 'ui')
     out_dir = ROOT / 'build/ui'
     out_dir.mkdir(parents=True, exist_ok=True)
-    url = f"http://localhost:8770{recipe.get('url', '/studio/')}"
+    url = recipe.get('url', '/studio/')
+    url = url if url.startswith('http') else f"http://localhost:8770{url}"
     launch(url, recipe.get('size', [1600, 1000]))
     result = {'ok': True, 'steps': [], 'console': [], 'shots': []}
     try:
@@ -150,6 +151,12 @@ async def run(recipe):
             task = asyncio.ensure_future(reader())
             await send('Runtime.enable')
             await send('Page.enable')
+            if recipe.get('mobile'):  # telefon: Chrome utan fönster går inte smalare än 500 px, så emulera skärmen
+                w, h, dpr = (recipe['mobile'] + [3])[:3]
+                await send('Emulation.setDeviceMetricsOverride', {'width': w, 'height': h, 'deviceScaleFactor': dpr, 'mobile': True})
+                await send('Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
+                await send('Page.reload')
+                await asyncio.sleep(1.5)
             stop = False
             for st in recipe.get('steps', []):
                 if stop:

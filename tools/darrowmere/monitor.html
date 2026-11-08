@@ -68,13 +68,19 @@
   .gputag { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .03em; padding: 0 5px; margin-right: 6px; border-radius: 4px;
             color: var(--muted); border: 1px solid var(--line); vertical-align: 1px; }
   .cur.second { margin-top: 6px; }
-  /* Granskning och molnsteg: en tunn rad under grafikkorten */
-  .cur.slim, .cur.slim.pipe, .cur.slim.cloudrun { height: auto; grid-template-rows: auto; padding: 1px 12px 0; margin-top: 2px;
-                                                  border: 0; background: none; box-shadow: none; }
+  /* Granskning och molnsteg: en tunn rad under grafikkorten, i stegets färg (moln blått, DeepSeek lila, annan dator teal).
+     .cur.cur höjer specificiteten så att mobilregeln för .cur inte gör raden lika hög som korten. */
+  .cur.cur.slim { --acc: var(--teal); height: auto; grid-template-rows: auto; padding: 3px 10px 3px 9px; margin: 4px 12px 2px;
+                  border: 0; border-left: 3px solid var(--acc); border-radius: 5px; box-shadow: none;
+                  background: color-mix(in srgb, var(--acc) 12%, transparent); }
+  .cur.cur.slim.cloudrun { --acc: var(--cloud); }
+  .cur.cur.slim.ai { --acc: var(--violet); }
   .cur.slim .cur2, .cur.slim .cur3, .cur.slim .legend2 { display: none; }
-  .cur.slim .cur1 { font-size: 11.5px; font-weight: 450; color: var(--dim); }
-  .cur.slim .cur1 .sub, .cur.slim .curtime { color: var(--dim); font-size: 11.5px; }
-  .cur.slim .cloudtag { height: auto; line-height: inherit; padding: 0; margin-right: 4px; border: 0; background: none; font-size: inherit; font-weight: inherit; color: var(--dim); }
+  .cur.slim .cur1 { font-size: 12px; font-weight: 600; color: var(--text); }
+  .cur.slim .cur1 .sub { color: var(--muted); font-size: 12px; font-weight: 450; }
+  .cur.slim .curtime { color: var(--acc); font-size: 12px; font-weight: 600; }
+  .cur.slim .cloudtag { height: auto; line-height: inherit; padding: 0; margin-right: 6px; border: 0; background: none;
+                        font-size: inherit; font-weight: 700; color: var(--acc); }
   .cur .lane { margin-right: 8px; font-weight: 700; color: var(--muted); }
   .cur .lane.on { color: var(--text); }
   .cur.idle, .cur.idle #curName, .cur.idle [id^="curName_"] { color: var(--muted); font-weight: 500; }
@@ -330,6 +336,37 @@
     #uptimePill, #age { display: none; }
     .hwgrid { grid-template-columns: minmax(0, 1fr); }
     .hw { height: auto; }
+  }
+  /* Telefon, stående och liggande: sidhuvudet på en rad med menyn längst till höger (listan öppnas inåt), rattarna små utan
+     detaljrader (tryck på en ratt för detaljerna) så att mer får plats på en skärm. Stående: fyra rattar i bredd. */
+  @media (max-width: 560px), (max-height: 500px) and (orientation: landscape) {
+    header { flex-wrap: nowrap; height: 42px; padding: 0 10px; gap: 6px; position: sticky; }
+    header .spacer { flex: 1; flex-basis: auto; height: auto; }
+    header .wordmark { height: 20px; }
+    header .pill { font-size: 11.5px; }
+    header button { height: 28px; padding: 0 9px; }
+    .menulist { right: 0; left: auto; max-width: calc(100vw - 16px); max-height: calc(100vh - 60px); overflow: auto; }
+    main { padding: 6px 6px 14px; gap: 6px; }
+    .gauges, .gauges.two { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .gauges .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .gauge { height: auto; padding: 4px 0 2px; }
+    .gauge .dial { zoom: .5; }
+    .dial .m1, .dial .m2, .dial .unit { display: none; }
+    .dial .face, .gauges.rings .dial .face { grid-template-rows: 28px 50px; }
+    .dial .lbl, .gauges.rings .dial .lbl { font-size: 20px; letter-spacing: .06em; }
+    .dial .big, .gauges.rings .dial .big { font-size: 46px; line-height: 50px; }
+    .dial .big small, .gauges.rings .dial .big small { font-size: 22px; }
+    .dial svg.full { width: 30px; height: 28px; }
+    .gauges.rings .pair { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .cur, .cur.pipe { margin: 6px 6px 4px; }
+    .cur.idle { padding: 5px 10px; }
+    .cur.idle .cur2, .cur.idle .cur3 { display: none; }
+  }
+  /* Telefon liggande (lågt men brett): alla rattar på en rad */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .gauges, .gauges.two { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .gauges.rings .pair { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
+    .chartwrap { height: 150px; }
   }
 </style>
 </head>
@@ -981,14 +1018,15 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
     return;
   }
   const local = !run && pl && pl.steps.find(x => x.status === "running" && (x.where !== "darrowmere" || x.kind === "review" || x.route === "cloud"));
-  const cloudStep = local && (local.kind === "review" || local.route === "cloud");
+  const cloudStep = local && (local.kind === "review" || local.route === "cloud" || local.where === "runpod");
   $("cur" + sfx).classList.toggle("on", !!run || !!local);
   $("cur" + sfx).classList.toggle("cloudrun", !!cloudStep);
+  $("cur" + sfx).classList.toggle("ai", !!(local && local.kind === "review"));
   if (local) {
     const ai = local.kind === "review";
-    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : "";
+    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : "";
     set("curIcon", "", true);
-    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}</span>`
+    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`
                              : `${laneTag(true)}${esc(pl.title)}${SNAKE}<span class="sub"> · ${esc(local.label)}</span>`, true);
     set("curTime", local.start ? fmtDur(s.now - local.start) : "");
     if (other) { $("cur" + sfx).classList.add("slim"); return; }  // granskning och moln: en tunn rad, inget mer
