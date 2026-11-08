@@ -228,12 +228,15 @@ def watch(r):
             run = Run(name); p = run.pipe(); st = status(r); ph = st.get("phase", "")
             for key, when in (("setup", ("prep", "train", "done")), ("prep", ("train", "done"))):
                 if ph in when and key not in seen and p:
-                    seen.add(key); p.done(key)
-                    nxt = {"setup": "prep", "prep": "train"}[key]
-                    p.start(nxt, note=json.dumps(st.get("prep")) if key == "prep" else None)
+                    seen.add(key)
+                    if p.step(key).get("status") != "done":     # en omstartad vakt nollställer inte stegens tider
+                        p.done(key)
+                        nxt = {"setup": "prep", "prep": "train"}[key]
+                        p.start(nxt, note=json.dumps(st.get("prep")) if key == "prep" else None)
             if p and ph == "train" and st.get("step"):
-                p._set("train", note=f"step {st['step']}/{run.s['env']['STEPS']}, {st.get('s_per_step')} s/step, "
-                                     f"{st.get('usd_so_far')} USD, ~{st.get('eta_h')} h left")
+                total = int(run.s["env"]["STEPS"])
+                p._set("train", note=f"step {st['step']}/{total}, {st.get('s_per_step')} s/step, {st.get('usd_so_far')} USD",
+                       pct=round(100 * st["step"] / total), eta=round(st["eta_h"] * 3600) if st.get("eta_h") is not None else None)
             if time.time() - last_fetch > 600 and ph in ("train", "done"):
                 fetch(r); last_fetch = time.time()
             over = time.time() - run.s["created"] > (run.s["max_min"] + 20) * 60

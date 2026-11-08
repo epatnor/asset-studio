@@ -77,19 +77,24 @@
   .cur.second { margin-top: 6px; }
   /* Granskning och molnsteg: en tunn rad under grafikkorten, i stegets färg (moln blått, DeepSeek lila, annan dator teal).
      .cur.cur höjer specificiteten så att mobilregeln för .cur inte gör raden lika hög som korten. */
-  .cur.cur.slim { --acc: var(--teal); height: auto; grid-template-rows: auto; padding: 3px 10px 3px 9px; margin: 4px 12px 2px;
-                  border: 0; border-left: 3px solid var(--acc); border-radius: 5px; box-shadow: none;
-                  background: color-mix(in srgb, var(--acc) 12%, transparent); }
-  .cur.cur.slim.cloudrun { --acc: var(--cloud); }
-  .cur.cur.slim.ai { --acc: var(--violet); }
+  .cur.cur.slim { height: auto; grid-template-rows: auto; padding: 3px 12px; margin: 4px 12px 2px; box-shadow: none; }
+  /* Ett kort som inte kör något är en rad; det växer med fas, steg och delsteg först när något kör */
+  .cur.cur.idle { height: auto; grid-template-rows: auto; padding: 6px 12px; }
+  .cur.idle .cur2, .cur.idle .cur3 { display: none; }
   .cur.slim .cur2, .cur.slim .cur3, .cur.slim .legend2 { display: none; }
   .cur.slim .cur1 { font-size: 12px; font-weight: 600; color: var(--text); }
   .cur.slim .cur1 .sub { color: var(--muted); font-size: 12px; font-weight: 450; }
   .cur.slim .curtime { color: var(--acc); font-size: 12px; font-weight: 600; }
-  .cur.slim .cloudtag { height: auto; line-height: inherit; padding: 0; margin-right: 6px; border: 0; background: none;
-                        font-size: inherit; font-weight: 700; color: var(--acc); }
-  .cur .lane { margin-right: 8px; font-weight: 700; color: var(--muted); }
-  .cur .lane.on { color: var(--text); }
+  /* Samma form för alla rader: tunn ram runt om, enheten och snurran i radens färg (--acc sätts per rad), bakgrunden svagt
+     tonad när något kör */
+  .cur { --acc: var(--muted); }
+  .cur.on { background: color-mix(in srgb, var(--acc) 6%, var(--panel2)); }
+  .cur .unit { display: inline-block; min-width: 78px; color: var(--acc); font-weight: 700; font-size: 12.5px; letter-spacing: .02em; }
+  .cur.idle .unit { color: var(--muted); }
+  .cur .unit .uc { margin-right: 4px; font-weight: 400; }
+  .cur .snake { --snake: var(--acc); margin: 0 10px 0 0; }
+  .cur .snake.off { visibility: hidden; }
+  .curtime .est { color: var(--muted); font-weight: 450; }
   .cur.idle, .cur.idle #curName, .cur.idle [id^="curName_"] { color: var(--muted); font-weight: 500; }
   .cur.idle .legend2 { visibility: hidden; }
   .group .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -175,7 +180,6 @@
   .pchip.approval { border-color: var(--amber); color: var(--text); } .pchip.approval::before { background: var(--amber); animation: blink 1s steps(1, end) infinite; }
   .cloudtag { display: inline-block; height: 16px; line-height: 15px; padding: 0 5px; margin-right: 6px; border-radius: 4px; font-size: 10.5px; font-weight: 600;
               color: var(--cloud); border: 1px dashed color-mix(in srgb, var(--cloud) 60%, transparent); vertical-align: 1px; }
-  .cur.cloudrun { border-style: dashed; border-color: var(--cloud); }
   .cur.cloudrun .legend2 { visibility: hidden; }
   .cur.needs { border-color: var(--amber); border-style: solid; }
   .cur.needs .legend2 { visibility: hidden; }
@@ -366,8 +370,8 @@
     .dial svg.full { width: 30px; height: 28px; }
     .gauges.rings .pair { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .cur, .cur.pipe { margin: 6px 6px 4px; }
-    .cur.idle { padding: 5px 10px; }
-    .cur.idle .cur2, .cur.idle .cur3 { display: none; }
+    .cur.cur.idle { padding: 5px 10px; }
+    .cur.cur.slim { padding: 3px 10px; margin: 4px 6px 2px; }
   }
   /* Telefon liggande (lågt men brett): alla rattar på en rad */
   @media (max-height: 500px) and (orientation: landscape) {
@@ -982,15 +986,26 @@ document.addEventListener("click", e => {
 // Kortet för pågående jobb: rad 1 namn och tid, rad 2 fas, en fyrkant per steg och takt/tid kvar
 // Kort: ett per grafikkort (lane satt) som bara visar vad kortet gör, och med flera kort ett "övrigt"-kort (other) för
 // granskningar, molnsteg och godkännanden, som inte körs på något av korten. Övrigt-kortet syns bara när något pågår.
+// Varje rad för ett pågående jobb har samma form: enheten som kör (grafikkortet eller tjänsten) i sin färg, snurran,
+// detaljerna, och längst till höger förfluten tid med beräknad total inom parentes
+const SNAKE_OFF = `<i class="snake off" aria-hidden="true">${"<b></b>".repeat(9)}</i>`;
+const unitTag = (name, cloud) => `<span class="unit">${cloud ? '<span class="uc">☁</span>' : ""}${esc(name)}</span>`;
+const fmtShort = s => s < 60 ? Math.round(s) + " s" : s < 3600 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
+const median = a => { const v = a.filter(x => x > 0).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null; };
+const timeCell = (el, est) => el == null ? "" : fmtDur(el) + (est ? ` <span class="est">(~${fmtShort(Math.max(est, el))})</span>` : "");
+// Beräknad total för ett ComfyUI-jobb: medianen av de senaste lyckade körningarna av samma flöde på samma kort
+const jobEstimate = (c, run, lane) => median((c.history || []).filter(h => h.name === run.name && h.status === "success"
+  && (!lane || !h.gpu || h.gpu === lane)).slice(0, 10).map(h => h.seconds));
 function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  // sfx: "_1" … för korten efter det första
-  const laneTag = on => lane ? `<span class="lane${on ? " on" : ""}">${esc(lane)}</span>` : "";
+  const li = Math.max(0, (c.lanes || []).indexOf(lane));
+  $("cur" + sfx).style.setProperty("--acc", `var(${GPU_COLORS[li % 4][0]})`);  // grafikkortets färg, som i rattarna
   $("cur" + sfx).hidden = false;
   $("cur" + sfx).classList.toggle("idle", !run && !!lane);
   if (!run && lane) {  // ett grafikkort som inte kör något: kortets namn och Idle (eller vad som väntar på det), i grått
     const waiting = c.pending.filter(x => (x.gpu || c.lanes[0]) === lane);
     $("cur" + sfx).classList.remove("on", "pipe", "needs", "cloudrun");
     $("curPipe" + sfx).hidden = true;
-    for (const [k, v] of [["curIcon", ""], ["curName", `${laneTag(false)}${waiting.length ? "Waiting: " + esc(waiting.map(x => x.name).join(", ")) : "Idle"}`],
+    for (const [k, v] of [["curIcon", ""], ["curName", `${unitTag(lane)}${SNAKE_OFF}${waiting.length ? "Waiting: " + esc(waiting.map(x => x.name).join(", ")) : "Idle"}`],
                           ["curTime", ""], ["curPhase", ""], ["curSteps", ""], ["curTiming", ""]]) {
       const el = $(k + sfx); if (el.dataset.v !== v) { el.innerHTML = v; el.dataset.v = v; }
     }
@@ -1029,8 +1044,9 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   if (need) {
     const who = need.provider ? need.provider[0].toUpperCase() + need.provider.slice(1) : "Cloud";
     $("cur" + sfx).classList.add("on"); $("cur" + sfx).classList.remove("cloudrun");
+    $("cur" + sfx).style.setProperty("--acc", "var(--amber)");
     set("curIcon", "", true);
-    set("curName", `${laneTag(true)}Needs your approval<span class="inl warn">⚠</span><span class="sub"> · ☁ ${esc(who)} · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
+    set("curName", `${unitTag(who, true)}${SNAKE_OFF}Needs your approval<span class="inl warn">⚠</span><span class="sub"> · ${esc(pl.title)}: ${esc(need.label)}</span>`, true);
     set("curTime", ""); set("curPhase", `~${need.estimate || "?"} ${who} credits`); set("curSteps", "", true);
     set("curTiming", `<button class="approve" data-approve="${esc(pl.id)}" data-step="${esc(need.key)}" data-credits="${need.estimate || 0}"
       data-who="${esc(who)}" data-label="${esc(need.label)}" data-order="${esc(pl.title)}" title="Review the cost and approve">Approve</button>`, true);
@@ -1043,11 +1059,15 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   $("cur" + sfx).classList.toggle("ai", !!(local && local.kind === "review"));
   if (local) {
     const ai = local.kind === "review";
-    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : "";
+    const where = local.where ? local.where[0].toUpperCase() + local.where.slice(1) : "";
+    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : where;
+    $("cur" + sfx).style.setProperty("--acc", ai ? "var(--violet)" : cloudStep ? "var(--cloud)" : "var(--teal)");
     set("curIcon", "", true);
-    set("curName", cloudStep ? `${laneTag(true)}<span class="cloudtag">☁ cloud</span>${esc(who)}${SNAKE}<span class="sub"> · ${esc(pl.title)}: ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`
-                             : `${laneTag(true)}${esc(pl.title)}${SNAKE}<span class="sub"> · ${esc(local.label)}</span>`, true);
-    set("curTime", local.start ? fmtDur(s.now - local.start) : "");
+    set("curName", `${unitTag(who, cloudStep)}${SNAKE}${esc(pl.title)}<span class="sub"> · ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`, true);
+    // Beräknad total: stegets egen prognos (eta, sekunder kvar), annars medianen av tidigare DeepSeek-granskningar
+    const el = local.start ? s.now - local.start : null;
+    const est = local.eta != null && el != null ? el + local.eta : ai ? median((c.history || []).filter(isDs).slice(0, 10).map(h => h.seconds)) : null;
+    set("curTime", timeCell(el, est), true);
     if (other) { $("cur" + sfx).classList.add("slim"); return; }  // granskning och moln: en tunn rad, inget mer
     set("curPhase", ai ? "Reviewing images" : cloudStep ? (local.pct != null ? `In the cloud · ${local.pct} %` : "In the cloud · waiting for the service") : `Running on ${local.where}`);
     // Molnsteg: en rad rutor för förloppet (tio rutor, en per tiondel), i molnfärg
@@ -1058,14 +1078,14 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false) {  /
   if (!run) {
     if (other) { $("cur" + sfx).hidden = true; return; }  // inget i molnet eller på andra datorer just nu
     set("curIcon", "", true);
-    set("curName", c.pending.length ? `Waiting: ${c.pending.map(x => x.name).join(", ")}` : "Idle · nothing running");
+    set("curName", `${unitTag(lane || "GPU")}${SNAKE_OFF}${c.pending.length ? `Waiting: ${esc(c.pending.map(x => x.name).join(", "))}` : "Idle · nothing running"}`, true);
     set("curTime", ""); set("curPhase", "ready"); set("curSteps", "", true); set("curTiming", "");
     return;
   }
   set("curIcon", "", true);
-  // Kortets namn och modellen, snurran direkt efter dem, sedan jobbets titel: texten börjar alltid vid samma vänsterkant
-  set("curName", `${laneTag(true)}${esc(run.name)}${SNAKE}${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
-  set("curTime", run.queued_at ? fmtDur(s.now - run.queued_at) : "");
+  // Kortet, snurran, sedan modellen och jobbets titel: texten börjar alltid vid samma vänsterkant
+  set("curName", `${unitTag(lane || "GPU")}${SNAKE}${esc(run.name)}${run.title ? `<span class="sub"> · ${esc(run.title.replace(/^[\w.-]+: /, ""))}</span>` : ""} <button class="view" data-info="${esc(run.id)}" title="Show the prompt and settings">Prompt</button>`, true);
+  set("curTime", run.queued_at ? timeCell(s.now - run.queued_at, jobEstimate(c, run, lane)) : "", true);
   const total = pr?.total || 0, done = pr?.done || 0;
   set("curPhase", pr?.note ? pr.note[0].toUpperCase() + pr.note.slice(1) : total ? `Sampling · step ${done} of ${total}` : "Starting");
   // En ruta per nod i flödet (en per steg för provtagare): klara i sin färg, den pågående blinkar, resten grå

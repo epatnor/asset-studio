@@ -440,7 +440,7 @@ def pipeline_views(plans, comfy):
             v = {"key": s["key"], "label": s.get("label", s["key"]), "where": s.get("where", "darrowmere"), "kind": s.get("kind"),
                  "status": s.get("status") or "planned", "note": s.get("note"), "start": s.get("start"), "end": s.get("end"),
                  "estimate": s.get("estimate"), "route": s.get("route"), "provider": s.get("provider"),
-                 "credits": s.get("credits"), "pct": s.get("pct"), "files": s.get("files"), "job": s.get("job")}
+                 "credits": s.get("credits"), "pct": s.get("pct"), "eta": s.get("eta"), "files": s.get("files"), "job": s.get("job")}
             j = by_step.get(key)
             if j:
                 if not v.get("files"):
