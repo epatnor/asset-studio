@@ -30,6 +30,7 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
 | Klein 4B fp8, bild | M4000 | samma, modellen redan inladdad | 94 s (≈ 20 s/steg; Maxwell räknar om fp8 till fp32) |
 | Klein 4B GGUF Q8_0, bild | M4000 | samma prompt och frö, kall | 108 s (inte snabbare än fp8; bilden nästan identisk, medelavvikelse 4/255) |
 | TRELLIS.2 modell + textur | T1000 | 1024, 28 steg (Maren), med M4000:s modeller i RAM | 3 443 s (57 min): dubbelt mot r05, swap |
+| Pixal3D modell + textur | T1000 | 1024, frö 142, CFG 3.5 (Maren), RAM frigjort först | 860 s (14 min) |
 | DeepSeek-granskning | moln | 3 kriterier, bilder | 60–80 s |
 
 ## Minne under last

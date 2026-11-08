@@ -43,6 +43,10 @@ Gjort och provat på roboten (`build/robot/`):
   (`edge_feather_px` 16, `view_weight_power` 6 mot 6/4) gjorde nästan ingen skillnad (medelavvikelse 0,2/255): det var
   posen och ljuset i referensen som tog bort skuggbilderna. UltraTex finns inte för Klein 4B (LoRA:n är byggd för 9B:s
   bredd 4096), så licensen är fortfarande icke-kommersiell. GLB: `build/maren/ultratex/MarenPBR_default_00001_.glb`.
+  Samma referens genom bara Pixal3D (1024, frö 142, CFG 3.5, ingen extra texturering): 14 min, 700k trianglar med egen
+  textur, lika ren som UltraTex utan armskuggor och lite mättadare färger. Pixal3D hittade på en lång fläta på ryggen där
+  TRELLIS gjorde en knut. GLB: `build/maren/pixal3d/maren_pixal3d_s142_00003_.glb`. Pixal3D:s licens är ännu inte
+  kontrollerad (se character-generator.md).
 
 ## Andra vägar (2026-11-07, uppdraget "Robot: best model and texture")
 
