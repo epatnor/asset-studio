@@ -89,3 +89,16 @@ Qwen3 4B, LoRA) utan att släppa de förra modellerna ("0 models unloaded"), och
 släppte bara det andra kortets modeller (`serial_lanes`). Nu tömmer runnern kortets modeller när nästa jobb på samma kort
 använder andra modellfiler (`LAST_MODELS` i `runner.py`). Galleriets förhandsbilder för 3D-modeller (Blender) görs bara när
 ComfyUI är ledigt och i en minnesbegränsad scope (`systemd-run --user --scope -p MemoryMax=4G`).
+
+## Hängningen 2026-11-09 kl. 15:27 och minnesskyddet
+
+Krea-2 laddades om efter en promptreparation: textkodaren (5 GB) och modellen (14 GB) är ca 19 GB, mer än de 18 GB som finns.
+Maskinen låg under minnestryck i en halvtimme och dog. Inget skyddade resten av systemet. Sedan dess (installerat med
+`sudo bash ~/install_memory_guard.sh`, skriptet i `tools/darrowmere/`):
+
+- **Minnestak per ComfyUI-tjänst** (systemd-drop-in `memory-guard.conf`): T1000 `MemoryHigh` 13G / `MemoryMax` 14G, M4000
+  9G / 10G, båda `MemorySwapMax` 10G och `Restart=always`. Krea-2 får swappa inom sin egen grupp (långsammare), och SSH,
+  runnern och panelen behåller sitt minne.
+- **earlyoom** (`-m 4 -s 10`, föredrar python och blender, undviker sshd och systemd): avslutar ComfyUI hellre än att
+  maskinen fryser.
+- Tas bort med `sudo bash ~/install_memory_guard.sh remove` när 48 GB sitter i.
