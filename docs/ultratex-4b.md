@@ -155,6 +155,20 @@ ingen tydlig vinst. Medelavvikelsen mot facit (0–255, på objektet) är för s
 54–84 vid 7 500, för monstret 35–42 vid 5 000 och 35–43 vid 10 000. Två objekt är för få för att lita på skillnaden, så
 provet på Maren avgör. Det talar inte för att 15 000 steg är det som behövs.
 
+**Maren-provet (2026-11-09, steg 6):** samma nät (`maren_trellis2_323`), referens, frö och vyer som 9B-körningen, med Klein
+base 4B (fp8), Qwen3 4B och run1-LoRA:n; bara albedo. Beställningar `build/ultratex4b/maren/make_orders.py`, resultat
+(vyer, albedo och GLB) i `/data/utdata/ultratex4b/maren/`, ark `build/ultratex4b/maren/compare.jpg`.
+
+- **Tid:** ca 8,5 min per körning på T1000, mot 35 min för 9B Q4. 4B är alltså ungefär fyra gånger snabbare.
+- **Steg 5 000:** Maren går att känna igen, och färgerna är rätt. Men allt är mjukare och plattare: håret blir ljust orange,
+  byxorna får rockens färg och förklädet saknar detaljer.
+- **Steg 10 000:** närmare 9B, med mer kontrast, mörkare förkläde och stövlar och tydligare bälte och knappar. På en riktig
+  figur var 10 000 alltså bättre än 5 000, tvärtom mot de två testobjekten i valideringen.
+- **9B är fortfarande klart skarpast:** detaljer i hår, halsduk och spännen, och byxorna skiljer sig från rocken. Vyerna
+  uppifrån och nedifrån är grumliga i 4B.
+- Bakningen använde 9B:s dekoder (`ultratex_flux2_decoder.pt`, icke-kommersiell). För en helt öppen kedja behövs vår egen
+  dekoder (steg 4).
+
 Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
 (som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
 
