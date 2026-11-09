@@ -99,10 +99,10 @@ def start(r):
             return {"ok": False, "error": f"ingen dit_lora.safetensors i {init}"}
         env["INIT"] = "/workspace/init/" + os.path.basename(init.rstrip("/"))
     pod, errs = None, []
-    for g in r.get("gpus", GPUS):           # bara Community Cloud; Secure kostar 50 % mer
+    for g in r.get("gpus", GPUS):           # Community Cloud om inte "cloud": "SECURE" (ca 50 % dyrare, oftare ledigt)
         try:
             pod = gql("""mutation($i: PodFindAndDeployOnDemandInput) { podFindAndDeployOnDemand(input: $i) { id costPerHr } }""",
-                      {"i": {"cloudType": "COMMUNITY", "gpuCount": 1, "gpuTypeId": g, "name": run.pid, "imageName": IMAGE,
+                      {"i": {"cloudType": r.get("cloud", "COMMUNITY"), "gpuCount": 1, "gpuTypeId": g, "name": run.pid, "imageName": IMAGE,
                              "containerDiskInGb": 40, "volumeInGb": int(r.get("volume_gb", 150)), "volumeMountPath": "/workspace",
                              "minVcpuCount": 8, "minMemoryInGb": 32, "ports": "22/tcp", "supportPublicIp": True,
                              "env": [{"key": "PUBLIC_KEY", "value": open(KEY + ".pub").read().strip()}]}})["podFindAndDeployOnDemand"]
