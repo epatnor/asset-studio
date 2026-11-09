@@ -37,9 +37,40 @@ if vox:
     m = low.modifiers.new("vox", "REMESH"); m.mode = "VOXEL"; m.voxel_size = max(low.dimensions) * vox; m.use_smooth_shade = True
     bpy.ops.object.modifier_apply(modifier=m.name)
 cur = sum(len(p.vertices) - 2 for p in low.data.polygons)
-for ratio in (math.sqrt(min(1.0, target / cur)),) * 2:
-    m = low.modifiers.new("dec", "DECIMATE"); m.decimate_type = "COLLAPSE"; m.ratio = ratio; m.use_collapse_triangulate = True
-    bpy.ops.object.modifier_apply(modifier=m.name)
+quads = None
+if job.get("quad"):
+    # QuadriFlow: fyrhörningar som följer formen (ungefär tris/2 quads), i stället för decimerade trianglar. Kräver ett slutet
+    # nät, därför efter voxel-remeshen och en städning; faller tillbaka på decimering om den vägrar. 2026-11-09 vägrade den
+    # frostsysterns voxel-nät ("needs to be manifold") trots noll icke-manifold-punkter; Instant Meshes är nästa kandidat
+    try:
+        # Städning: QuadriFlow vill ha ett slutet (manifold) nät med enhetliga normaler
+        bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.remove_doubles(threshold=max(low.dimensions) * 1e-5)
+        bpy.ops.mesh.delete_loose()
+        import bmesh
+        for _ in range(6):   # ta bort icke-manifold-kanter och -punkter, fyll hålen, tills inget återstår
+            bpy.ops.mesh.select_all(action="DESELECT"); bpy.ops.mesh.select_non_manifold(use_boundary=False)
+            if not any(v.select for v in bmesh.from_edit_mesh(low.data).verts):
+                break
+            bpy.ops.mesh.delete(type="VERT")
+            bpy.ops.mesh.select_all(action="SELECT"); bpy.ops.mesh.fill_holes(sides=0)
+            bpy.ops.mesh.delete_loose()
+        bpy.ops.mesh.select_all(action="SELECT"); bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.mesh.select_all(action="DESELECT"); bpy.ops.mesh.select_non_manifold()
+        print("NONMANIFOLD_LEFT", sum(1 for v in bmesh.from_edit_mesh(low.data).verts if v.select))
+        bpy.ops.object.mode_set(mode="OBJECT")
+        before = len(low.data.polygons)
+        res = bpy.ops.object.quadriflow_remesh(mode="FACES", target_faces=max(100, target // 2), use_mesh_symmetry=bool(job.get("symmetry", False)),
+                                               use_preserve_sharp=False, use_preserve_boundary=False, smooth_normals=True, seed=0)
+        print("QUADRIFLOW", res, before, "->", len(low.data.polygons))
+        if "FINISHED" in res and len(low.data.polygons) < before:
+            quads = sum(1 for p in low.data.polygons if len(p.vertices) == 4)
+    except Exception as e:
+        print("QUADRIFLOW_FAILED", e)
+if quads is None:
+    for ratio in (math.sqrt(min(1.0, target / cur)),) * 2:
+        m = low.modifiers.new("dec", "DECIMATE"); m.decimate_type = "COLLAPSE"; m.ratio = ratio; m.use_collapse_triangulate = True
+        bpy.ops.object.modifier_apply(modifier=m.name)
 low.data.materials.clear()
 bpy.ops.object.shade_smooth()
 try:
@@ -139,5 +170,7 @@ links.new(sep.outputs[1], bsdf.inputs["Roughness"]); links.new(sep.outputs[2], b
 bpy.data.objects.remove(high, do_unlink=True)
 bpy.ops.object.select_all(action="DESELECT"); low.select_set(True)
 bpy.ops.export_scene.gltf(filepath=out_glb, export_format="GLB", use_selection=True, export_image_format="AUTO")
-print("LOW_RESULT " + json.dumps({"ok": True, "high_tris": high_tris, "tris": low_tris, "tex": tex_size,
+if job.get("quad") and quads is not None:   # fyrhörningarna sparas också som .blend (glTF lagrar bara trianglar)
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out_dir, stem + "_quads.blend"))
+print("LOW_RESULT " + json.dumps({"ok": True, "high_tris": high_tris, "tris": low_tris, "quads": quads, "tex": tex_size,
                                    "device": scene.cycles.device, "size_m": round(size, 3)}))
