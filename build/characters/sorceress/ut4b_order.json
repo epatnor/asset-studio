@@ -1,0 +1,339 @@
+{
+ "project": "asset-studio",
+ "asset": "sorceress",
+ "use": "test-only",
+ "inputs": {
+  "sorceress_ref.png": "../../characters/sorceress/img/krea_s7_00001_.png"
+ },
+ "id": "sorceress-ut4b",
+ "gpu": "t1000",
+ "title": "Sorceress repainted: UltraTex 4B step 8000, base decoder, view weight 8, extra 45\u00b0 rig",
+ "mission": "sorceress",
+ "mission_title": "A stylized fantasy sorceress",
+ "steps": [
+  {
+   "key": "texture",
+   "label": "UltraTex 4B repaint (two bakes: with and without the 45\u00b0 rig)",
+   "kind": "comfy",
+   "graph": {
+    "2": {
+     "inputs": {
+      "mesh_path": "",
+      "render_size": 4096,
+      "atlas_size": 4096,
+      "uv_mode": "comfy_gpu",
+      "reference_alignment": "fit_front_silhouette",
+      "mask_meaning": "foreground",
+      "reference_image": [
+       "19",
+       0
+      ],
+      "reference_mask": [
+       "91",
+       0
+      ],
+      "trimesh": [
+       "22",
+       0
+      ]
+     },
+     "class_type": "UltraTexPrep",
+     "_meta": {
+      "title": "UltraTex Prep (mesh + reference)"
+     }
+    },
+    "4": {
+     "inputs": {
+      "resolution": 1024,
+      "steps": 4,
+      "seed": 12345,
+      "guidance": 4,
+      "drop_background_tokens": true,
+      "memory_factor": 60.0,
+      "attention": "ultratex_sparse",
+      "sparse_topk": 0.2,
+      "token_chunk": 2048,
+      "denoise": 1,
+      "model": [
+       "7",
+       0
+      ],
+      "vae": [
+       "8",
+       0
+      ],
+      "positive": [
+       "10",
+       0
+      ],
+      "prep": [
+       "2",
+       0
+      ],
+      "negative": [
+       "11",
+       0
+      ]
+     },
+     "class_type": "UltraTexSampler",
+     "_meta": {
+      "title": "UltraTex Sampler (Albedo)"
+     }
+    },
+    "5": {
+     "class_type": "UNETLoader",
+     "inputs": {
+      "unet_name": "flux-2-klein-base-4b-fp8.safetensors",
+      "weight_dtype": "default"
+     }
+    },
+    "6": {
+     "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+     },
+     "class_type": "VAELoader",
+     "_meta": {
+      "title": "Load VAE"
+     }
+    },
+    "7": {
+     "inputs": {
+      "lora_name": "ultratex4b_run1_08000.safetensors",
+      "strength": 1,
+      "model": [
+       "5",
+       0
+      ]
+     },
+     "class_type": "UltraTexLoraLoader",
+     "_meta": {
+      "title": "UltraTex Load LoRA"
+     }
+    },
+    "8": {
+     "inputs": {
+      "decoder_name": "flux2_base_decoder.pt",
+      "vae": [
+       "6",
+       0
+      ]
+     },
+     "class_type": "UltraTexForegroundDecoder",
+     "_meta": {
+      "title": "UltraTex Foreground VAE Decoder"
+     }
+    },
+    "9": {
+     "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+     },
+     "class_type": "CLIPLoader",
+     "_meta": {
+      "title": "Load CLIP"
+     }
+    },
+    "10": {
+     "inputs": {
+      "text": "",
+      "clip": [
+       "9",
+       0
+      ]
+     },
+     "class_type": "CLIPTextEncode",
+     "_meta": {
+      "title": "CLIP Text Encode (Prompt) Positive"
+     }
+    },
+    "11": {
+     "inputs": {
+      "text": "",
+      "clip": [
+       "9",
+       0
+      ]
+     },
+     "class_type": "CLIPTextEncode",
+     "_meta": {
+      "title": "CLIP Text Encode (Prompt) Negative"
+     }
+    },
+    "12": {
+     "inputs": {
+      "texture_size": 2048,
+      "filename_prefix": "characters/sorceress/sorceress_ut4b_rig45",
+      "view_weight_power": 8,
+      "best_view_mix": 0.7,
+      "edge_feather_px": 16,
+      "views_2_use": "all",
+      "fusion": "two_band",
+      "detail_sharpness": 32,
+      "exposure_match": true,
+      "hole_fill": "mesh",
+      "views_2_weight": 0.6,
+      "prep": [
+       "2",
+       0
+      ],
+      "albedo_views": [
+       "4",
+       0
+      ],
+      "prep_2": [
+       "40",
+       0
+      ],
+      "albedo_views_2": [
+       "41",
+       0
+      ]
+     },
+     "class_type": "UltraTexBake",
+     "_meta": {
+      "title": "UltraTex Bake Texture"
+     }
+    },
+    "19": {
+     "inputs": {
+      "image": "$in:sorceress_ref.png"
+     },
+     "class_type": "LoadImage",
+     "_meta": {
+      "title": "Load Image"
+     }
+    },
+    "22": {
+     "inputs": {
+      "glb_path": "/data/utdata/3d/characters/sorceress_pixal3d_00003_.glb",
+      "only_vertices_and_faces": true
+     },
+     "class_type": "UltraTexLoadMesh",
+     "_meta": {
+      "title": "UltraText Load Mesh"
+     }
+    },
+    "26": {
+     "inputs": {
+      "filename_prefix": "characters/sorceress/ut4b_albedo_views",
+      "images": [
+       "4",
+       0
+      ]
+     },
+     "class_type": "SaveImage",
+     "_meta": {
+      "title": "Save Image"
+     }
+    },
+    "90": {
+     "class_type": "LoadBackgroundRemovalModel",
+     "inputs": {
+      "bg_removal_name": "birefnet.safetensors"
+     }
+    },
+    "91": {
+     "class_type": "RemoveBackground",
+     "inputs": {
+      "bg_removal_model": [
+       "90",
+       0
+      ],
+      "image": [
+       "19",
+       0
+      ]
+     }
+    },
+    "40": {
+     "class_type": "UltraTexRotateRig",
+     "inputs": {
+      "prep": [
+       "2",
+       0
+      ],
+      "azimuth": 45.0,
+      "elevation": 0.0,
+      "elevation_mode": "per view"
+     }
+    },
+    "41": {
+     "inputs": {
+      "resolution": 1024,
+      "steps": 4,
+      "seed": 12345,
+      "guidance": 4,
+      "drop_background_tokens": true,
+      "memory_factor": 60.0,
+      "attention": "ultratex_sparse",
+      "sparse_topk": 0.2,
+      "token_chunk": 2048,
+      "denoise": 1,
+      "model": [
+       "7",
+       0
+      ],
+      "vae": [
+       "8",
+       0
+      ],
+      "positive": [
+       "10",
+       0
+      ],
+      "prep": [
+       "40",
+       0
+      ],
+      "negative": [
+       "11",
+       0
+      ]
+     },
+     "class_type": "UltraTexSampler",
+     "_meta": {
+      "title": "UltraTex Sampler (Albedo)"
+     }
+    },
+    "42": {
+     "class_type": "SaveImage",
+     "inputs": {
+      "images": [
+       "41",
+       0
+      ],
+      "filename_prefix": "characters/sorceress/ut4b_albedo_views_rig45"
+     }
+    },
+    "13": {
+     "inputs": {
+      "texture_size": 2048,
+      "filename_prefix": "characters/sorceress/sorceress_ut4b_rig1",
+      "view_weight_power": 8,
+      "best_view_mix": 0.7,
+      "edge_feather_px": 16,
+      "views_2_use": "all",
+      "fusion": "two_band",
+      "detail_sharpness": 32,
+      "exposure_match": true,
+      "hole_fill": "mesh",
+      "views_2_weight": 0.6,
+      "prep": [
+       "2",
+       0
+      ],
+      "albedo_views": [
+       "4",
+       0
+      ]
+     },
+     "class_type": "UltraTexBake",
+     "_meta": {
+      "title": "UltraTex Bake Texture"
+     }
+    }
+   }
+  }
+ ]
+}
