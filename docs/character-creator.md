@@ -33,7 +33,14 @@ och ansikte.
 3. **Inpassning, AI:ns nya roll.** Pixal3D (eller en Krea-bild) visar hur figuren ska se ut. Ett optimeringssteg letar fram de
    reglagevärden som gör grundnätet likt Pixal3D-formen: avstånd i 3D och silhuetter från samma kameror, i samma A-pose.
    Det som reglagen inte når sparas som en liten egen förskjutning per punkt, ett personligt mål.
-4. **Lager.**
+4. **Lager.** Hår ingår aldrig i figuren när den skapas (Patrik, 2026-11-09). Koncepten görs skalliga, så att ansikte, öron
+   och skalle blir rena. Håret kommer från en hårgenerator byggd som trädgeneratorn:
+   - Styrkurvor från hårbotten är skelettet. Frisyren är ett recept (knut, hästsvans, fläta, kort, långt).
+   - Kurvorna kläs med chunky skulpterade lockar och hårkort.
+   - Färg och slingor är spakar.
+   - Håret sitter på grundnätets hårbotten, så en frisyr passar alla.
+   - MPFB:s CC0-frisyrer kan användas tills generatorn finns.
+   Övriga lager:
    - Kläder är egna nät som följer kroppen: MPFB:s klädproxies eller en egen klädgenerator, som byggnadsgeneratorns delar.
    - Hår är egna nättyper: knut, hästsvans, fläta.
    - Ögon och ögonbryn också.
