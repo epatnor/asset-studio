@@ -250,6 +250,12 @@ def _comfy_step(o, s):
     gone = 0
     while True:
         if (o.dir / "cancel").exists():
+            # Stoppa också jobbet i ComfyUI: ur kön om det väntar, avbrutet om det körs (annars går kortet vidare i onödan)
+            for path, body in (("/queue", {"delete": [pid]}), ("/interrupt", {"prompt_id": pid})):
+                try:
+                    http_json(f"{comfy_url()}{path}", body, timeout=15)
+                except Exception:
+                    pass
             raise RuntimeError("cancelled")
         try:
             h = http_json(f"{comfy_url()}/history/{pid}", timeout=30).get(pid)
