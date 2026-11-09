@@ -85,6 +85,9 @@
   .racts button { height: 24px; font-size: 11.5px; padding: 0 8px; }
   .racts label { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); font-size: 11.5px; cursor: pointer; margin-left: auto; }
   .rcard.sel { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet); }
+  .srcs { display: flex; gap: 4px; overflow-x: auto; }
+  .srcs img { width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); cursor: pointer; flex: none; background: var(--panel2); }
+  .srcs img:hover { border-color: var(--blue); }
   .pick { position: absolute; top: 6px; right: 6px; z-index: 1; display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px;
           border-radius: 6px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line);
           font-size: 11.5px; cursor: pointer; color: var(--text); }
@@ -204,7 +207,11 @@ function heroes(g) {
   const models = g.items.filter(i => i.kind === "model");
   if (models.length) {
     const last = Math.max(...models.map(i => i.mtime));
-    return g.order ? models.filter(i => i.mtime >= last - 300) : models;   // samma steg kan ge flera varianter
+    if (!g.order) return models;
+    // Samma steg kan ge flera varianter (olika namn); av samma namn med löpnummer (Pixal3D: form, uppskalad, texturerad) bara den sista
+    const byStem = {};
+    models.filter(i => i.mtime >= last - 300).forEach(i => { const k = i.filename.replace(/_?\d{5}_?\.(glb|gltf)$/i, ""); if (!byStem[k] || i.filename > byStem[k].filename) byStem[k] = i; });
+    return Object.values(byStem);
   }
   if (!g.order) return [];
   const pics = g.items.filter(i => i.kind === "render" || i.kind === "image");
@@ -224,9 +231,16 @@ function rcard(g, i, rank) {
       <span class="sub" title="${esc(i.filename)}">${g.order ? esc(i.filename) + " · " : ""}${when(i.mtime)}</span>
       <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
         ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
+      ${isM && g.order ? srcStrip(g) : ""}
       <div class="racts">${g.order ? `<button data-files="${esc(g.order)}" title="Every file this order made, step by step">Files ${g.items.length}</button>` : ""}
 </div>
     </div></div>`;
+}
+// Beställningens bilder (t.ex. Krea-bilderna en modell gjordes av) som små rutor under modellkortet; vyark och renderingar räknas inte
+function srcStrip(g) {
+  const imgs = g.items.filter(i => i.kind === "image" && !/views/i.test(i.filename)).slice(0, 6);
+  if (!imgs.length) return "";
+  return `<div class="srcs">${imgs.map(i => `<img loading="lazy" data-n="${list.push(i) - 1}" src="${thumbUrl(i.filename, i)}" title="${esc(i.filename)}" alt="">`).join("")}</div>`;
 }
 function renderResults() {
   const q = $("q").value.trim().toLowerCase(), asset = $("asset").value;
@@ -253,7 +267,9 @@ function renderResults() {
     if (!b.mission) { const [g, hs] = b.entries[0]; hs.forEach(i => loose += rcard(g, i)); continue; }
     flush();
     b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
-    const open = openSet.has(b.mission) || (first && !store.get("closed." + b.mission, false)) || q;
+    // Utfällt: det senaste uppdraget och allt som ändrats det senaste dygnet, om det inte fällts ihop för hand
+    const fresh = (first || Date.now() / 1000 - b.time < 86400) && !store.get("closed." + b.mission, false);
+    const open = openSet.has(b.mission) || fresh || q;
     first = false;
     const n = b.entries.reduce((s, [, hs]) => s + hs.length, 0), scored = b.entries.some(([g]) => g.score != null);
     html += `<details class="mission" data-m="${esc(b.mission)}" ${open ? "open" : ""}><summary><h2>${esc(b.title || b.mission)}</h2>
@@ -264,7 +280,7 @@ function renderResults() {
   flush();
   $("main").innerHTML = html || `<div id="msg">${groups.length ? "No results match. Try All files." : "Darrowmere has not made anything yet."}</div>`;
   $("main").querySelectorAll(".thumb[data-view]").forEach(t => t.onclick = e => { if (!e.target.closest(".pick")) window.open(t.dataset.view, "_blank"); });
-  $("main").querySelectorAll(".thumb[data-n]").forEach(t => t.onclick = () => show(+t.dataset.n));
+  $("main").querySelectorAll(".thumb[data-n], .srcs img[data-n]").forEach(t => t.onclick = () => show(+t.dataset.n));
   $("main").querySelectorAll("button[data-files]").forEach(b => b.onclick = () => { $("q").value = b.dataset.files; setView("files"); window.scrollTo(0, 0); });
   $("main").querySelectorAll("input[data-pick]").forEach(c => c.onchange = () => pick(c.dataset.pick, c.checked, c));
   $("main").querySelectorAll("details.mission").forEach(d => d.ontoggle = () => {
