@@ -3,7 +3,7 @@
 # Hämtar bara öppet licensierade delar: Klein base 4B + Qwen3 4B (BFL, Apache), FLUX.2-VAE:n (Comfy-Org, Apache),
 # UltraTex-koden (MIT) och G-buffer TexVerse (CC0). UltraTex:s NC-vikter (LoRA, decoder.pt) hämtas inte:
 # dekodern för valideringen tas ur bas-VAE:n.
-# Miljö: TASK (lora eller decoder: UltraTex-dekodern, scripts/train_vae_flux2.sh, bara VAE:n behövs), INIT (checkpoint att fortsätta från), BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
+# Miljö: JOB (lora eller decoder: UltraTex-dekodern, scripts/train_vae_flux2.sh, bara VAE:n behövs), INIT (checkpoint att fortsätta från), BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
 # Faserna skrivs till /workspace/phases.jsonl, GPU-minnet till gpu.csv och träningen till train.log.
 set -uo pipefail
 W=/workspace; mkdir -p $W; cd $W
@@ -24,7 +24,7 @@ cd UltraTex && git checkout -q a726678 || fail checkout
 grep -v '^deepspeed' requirements.txt > $W/req.txt          # deepspeed används inte av train_flux2.py
 uv pip install -q -p .venv/bin/python --index-strategy unsafe-best-match -r $W/req.txt > $W/pip.log 2>&1 || fail pip
 uv pip install -q -p .venv/bin/python typer click hf_xet >> $W/pip.log 2>&1 || fail pip_cli   # för hf-kommandot
-if [ "${TASK:-lora}" = decoder ]; then   # dekoderträningen går via DeepSpeed (ZeRO 2)
+if [ "${JOB:-lora}" = decoder ]; then   # dekoderträningen går via DeepSpeed (ZeRO 2)
     uv pip install -q -p .venv/bin/python "$(grep '^deepspeed' requirements.txt)" >> $W/pip.log 2>&1 || fail pip_deepspeed
 fi
 HF=$PWD/.venv/bin/hf
@@ -38,7 +38,7 @@ for b in $BUCKETS; do
         --local-dir $W/texverse > $W/dl_data_$b.log 2>&1 &
     DLP+=($!)
 done
-if [ "${TASK:-lora}" != decoder ]; then
+if [ "${JOB:-lora}" != decoder ]; then
 $HF download black-forest-labs/FLUX.2-klein-base-4B flux-2-klein-base-4b.safetensors --local-dir $W/hf/klein4b > $W/dl_model.log 2>&1 || fail dl_klein
 $HF download black-forest-labs/FLUX.2-klein-base-4B --include 'text_encoder/*' --include 'tokenizer/*' \
     --local-dir $W/hf/klein4b >> $W/dl_model.log 2>&1 || fail dl_qwen
@@ -49,7 +49,7 @@ ln -sf $W/hf/klein4b/flux-2-klein-base-4b.safetensors $M/
 ln -sf $W/hf/comfy/split_files/vae/flux2-vae.safetensors $M/ae.safetensors
 ln -sf $W/hf/klein4b/text_encoder/* $W/hf/klein4b/tokenizer/* $M/qwen3-4b/
 [ -s $M/ae.safetensors ] || fail models_missing
-[ "${TASK:-lora}" = decoder ] || { [ -s $M/flux-2-klein-base-4b.safetensors ] && [ -s $M/qwen3-4b/config.json ]; } || fail models_missing
+[ "${JOB:-lora}" = decoder ] || { [ -s $M/flux-2-klein-base-4b.safetensors ] && [ -s $M/qwen3-4b/config.json ]; } || fail models_missing
 # Dekoder för valideringen: bas-VAE:ns egen dekoder (inte UltraTex:s NC-dekoder)
 .venv/bin/python -c "
 import torch; from safetensors.torch import load_file
@@ -64,7 +64,7 @@ JZ=$(printf '"%s",' "${ZIPS[@]}"); JZ="[${JZ%,}]"
     > $W/prep.json 2>&1 || fail prep
 
 ph train
-if [ "${TASK:-lora}" = decoder ]; then
+if [ "${JOB:-lora}" = decoder ]; then
     # Bara dekodern tränas (VAE:ns kodare fryst), mot albedon; färgfelet (deltaE 2000) mäts på eval-objekten var 1000:e steg
     AE_MODEL_PATH=$M/ae.safetensors TRAIN_JSON=$W/extracted/train.json EVAL_JSON=$W/extracted/eval.json OUTPUT_DIR=$W/out \
         RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-200} SAVE_EVERY=${CKPT_STEPS:-500} MODEL_NAME=flux.2-klein-base-4b MAIN_PROCESS_PORT=29500 \
@@ -82,6 +82,7 @@ export FLUX2_CACHE=$M RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-20
 ls -d $W/out/checkpoint-* >/dev/null 2>&1 && unset RESUME_FROM_CHECKPOINT
 # LR: inlärningstakten (skriptets standard 5e-5); EXTRA: fler argument till train_flux2.py, t.ex. "--ema True --ema_decay 0.999"
 export LEARNING_RATE=${LR:-5e-5}
+unset TASK   # UltraTex-skriptet läser TASK (albedo/mr) själv; standard albedo
 bash scripts/train_flux2_9b_2048.sh 4b ${EXTRA:-} >> $W/train.log 2>&1 || fail train
 fi
 ph done

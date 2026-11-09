@@ -92,7 +92,7 @@ def start(r):
     env = {"MAX_MIN": int(r.get("max_min", 150)), "STEPS": r.get("steps", 200), "CKPT_STEPS": r.get("ckpt_steps", 100000),
            "RESOLUTION": r.get("resolution", 1024), "LIMIT": r.get("limit", 0), "EVAL_N": r.get("eval_n", 2),
            "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 20),
-           "TASK": r.get("task", "lora"), "LR": r.get("lr", "5e-5"), "EXTRA": "'" + r.get("extra", "") + "'"}
+           "JOB": r.get("task", "lora"), "LR": r.get("lr", "5e-5"), "EXTRA": "'" + r.get("extra", "") + "'"}
     init = r.get("init")       # fortsätt från en hemhämtad checkpoint, t.ex. /data/texverse/runs/run1/checkpoint-10000
     if init:
         if not os.path.isfile(os.path.join(init, "dit_lora.safetensors")):
@@ -267,7 +267,7 @@ def recover(r):
     vara upptaget på värden), hämta sedan alla checkpoints, loggar och hela sista checkpointmappen (med optimerarens läge,
     så att träningen kan fortsätta senare), och ta bort poden när den sista finns hemma. Körs i bakgrunden på Darrowmere."""
     run = Run(r.get("run", "run1")); total = int(run.s["env"]["STEPS"])
-    last = f"decoder_step{total}.pt" if run.s["env"].get("TASK") == "decoder" else f"checkpoint-{total}"
+    last = f"decoder_step{total}.pt" if "decoder" in (run.s["env"].get("JOB"), run.s["env"].get("TASK")) else f"checkpoint-{total}"
     p = run.pipe(); every, until = int(r.get("every_min", 10)), time.time() + float(r.get("hours", 24)) * 3600
     tries = 0
     while True:

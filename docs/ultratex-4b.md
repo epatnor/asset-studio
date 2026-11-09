@@ -197,6 +197,13 @@ steg 10000 fick 1,1, 0,17 och 13,3 (originalets detalj 7,8). Patrik såg samma s
 på togan, och 2000 och 6000 är nästan släta. Statyn var bäst vid 4000 och Maren vid 8000, så kvaliteten hoppar mellan
 checkpoints. Det talar för EMA och lägre inlärningstakt i run3.
 
+**Dekodern (2026-11-09):** Maren steg 8000 med bas-VAE:ns dekoder i stället för forskarnas (NC) blev mycket mörkare
+(medel 31,24,17 mot 79,69,58). Patrik såg att den annars såg likadan ut, med mörkare och fylligare färger. Bas-dekodern
+ger linjära färger: omgjord till sRGB blir den 75,78,64, med större variation (±40 mot ±30) och mer fina detaljer
+(8,9 mot 6,8), och en svag dragning mot grönt. Bas-dekodern (Apache) plus sRGB kan alltså räcka, utan forskarnas
+dekoder. Vår egen dekoder (dec2, A40, 1 000 steg, ca 6 s/steg) tränas ändå och jämförs. run3 föll direkt för att vår
+inställning `TASK` krockade med träningsskriptets `TASK`; den heter nu `JOB`, och run3b kör.
+
 Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
 (som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
 
