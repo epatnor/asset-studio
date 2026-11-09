@@ -85,6 +85,14 @@
   .racts button { height: 24px; font-size: 11.5px; padding: 0 8px; }
   .racts label { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); font-size: 11.5px; cursor: pointer; margin-left: auto; }
   .rcard.sel { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet); }
+  .pick { position: absolute; top: 6px; right: 6px; z-index: 1; display: inline-flex; gap: 5px; align-items: center; padding: 3px 8px;
+          border-radius: 6px; background: color-mix(in srgb, var(--panel) 88%, transparent); border: 1px solid var(--line);
+          font-size: 11.5px; cursor: pointer; color: var(--text); }
+  .pick:hover { border-color: var(--violet); }
+  .pick input { width: auto; height: auto; padding: 0; margin: 0; }   /* inte sökfältets bredd (input-regeln ovan) */
+  .rcard.sel .pick { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 30%, var(--panel)); }
+  #cmpHead[disabled] { opacity: .55; cursor: default; }
+  body:not(.results) #cmpHead { display: none; }
   #cmpBar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; display: none; gap: 8px; align-items: center;
             padding: 8px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--violet); box-shadow: 0 6px 24px rgb(0 0 0 / .35); }
   #cmpBar.on { display: flex; }
@@ -121,6 +129,7 @@
   <span id="chips"></span>
   <select id="asset" title="Show one asset"></select>
   <input id="q" placeholder="Search name, order or step" spellcheck="false">
+  <button id="cmpHead" disabled title="Tick Compare on 2–4 models, then open them side by side">Compare 0/4</button>
   <button id="reload" title="Read Darrowmere again">Refresh</button>
   <span id="info"></span>
 </header>
@@ -209,13 +218,14 @@ function rcard(g, i, rank) {
   const cloud = [...new Set(g.items.map(x => x.cloud).filter(Boolean))];
   return `<div class="rcard ${picked.has(key) ? "sel" : ""}" data-key="${esc(key)}">
     <div class="thumb" ${isM ? `data-view="${viewerUrl(i)}"` : `data-n="${n}"`} title="${isM ? "Open in the 3D viewer" : "Open the image"}">${img}
-      <span class="badge k-${isM ? "model" : i.kind}">${isM ? "3D" : i.kind === "render" ? "Render" : "Image"}</span></div>
+      <span class="badge k-${isM ? "model" : i.kind}">${isM ? "3D" : i.kind === "render" ? "Render" : "Image"}</span>
+      ${isM ? `<label class="pick" title="Pick 2–4 models to compare side by side"><input type="checkbox" data-pick="${esc(key)}" ${picked.has(key) ? "checked" : ""}>Compare</label>` : ""}</div>
     <div class="rbody"><b>${rank ? `<span class="rank">#${rank}</span> ` : ""}${esc(g.order ? g.title : i.filename)}</b>
       <span class="sub" title="${esc(i.filename)}">${g.order ? esc(i.filename) + " · " : ""}${when(i.mtime)}</span>
       <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
         ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
       <div class="racts">${g.order ? `<button data-files="${esc(g.order)}" title="Every file this order made, step by step">Files ${g.items.length}</button>` : ""}
-        ${isM ? `<label title="Pick 2–4 models to compare side by side"><input type="checkbox" data-pick="${esc(key)}" ${picked.has(key) ? "checked" : ""}><span>Compare</span></label>` : ""}</div>
+</div>
     </div></div>`;
 }
 function renderResults() {
@@ -253,7 +263,7 @@ function renderResults() {
   }
   flush();
   $("main").innerHTML = html || `<div id="msg">${groups.length ? "No results match. Try All files." : "Darrowmere has not made anything yet."}</div>`;
-  $("main").querySelectorAll(".thumb[data-view]").forEach(t => t.onclick = () => window.open(t.dataset.view, "_blank"));
+  $("main").querySelectorAll(".thumb[data-view]").forEach(t => t.onclick = e => { if (!e.target.closest(".pick")) window.open(t.dataset.view, "_blank"); });
   $("main").querySelectorAll(".thumb[data-n]").forEach(t => t.onclick = () => show(+t.dataset.n));
   $("main").querySelectorAll("button[data-files]").forEach(b => b.onclick = () => { $("q").value = b.dataset.files; setView("files"); window.scrollTo(0, 0); });
   $("main").querySelectorAll("input[data-pick]").forEach(c => c.onchange = () => pick(c.dataset.pick, c.checked, c));
@@ -288,12 +298,14 @@ function pick(key, onOff, el) {
   $("cmpN").textContent = `${picked.size} model${picked.size === 1 ? "" : "s"} picked`;
   $("cmpBar").classList.toggle("on", picked.size > 0);
   $("cmpGo").disabled = picked.size < 2;
+  $("cmpHead").textContent = `Compare ${picked.size}/4`; $("cmpHead").disabled = picked.size < 2;
 }
+$("cmpHead").onclick = () => $("cmpGo").click();
 $("cmpGo").onclick = () => {
   const qs = new URLSearchParams(); [...picked.keys()].forEach(k => qs.append("f", k));
   window.open("/compare?" + qs, "_blank");
 };
-$("cmpClear").onclick = () => { picked.clear(); $("cmpBar").classList.remove("on"); render(); };
+$("cmpClear").onclick = () => { picked.clear(); $("cmpBar").classList.remove("on"); $("cmpHead").textContent = "Compare 0/4"; $("cmpHead").disabled = true; render(); };
 function setView(v) {
   VIEW = v; store.set("view", v);
   document.body.classList.toggle("results", v === "results");
