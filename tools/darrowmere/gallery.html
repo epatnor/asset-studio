@@ -264,7 +264,13 @@ function renderResults() {
   let html = "", loose = "", first = true;
   const flush = () => { if (loose) html += `<section class="rsec"><div class="rgrid">${loose}</div></section>`; loose = ""; };
   for (const b of blocks) {
-    if (!b.mission) { const [g, hs] = b.entries[0]; hs.forEach(i => loose += rcard(g, i)); continue; }
+    if (!b.mission) {
+      const [g, hs] = b.entries[0];
+      if (g.order) { hs.forEach(i => loose += rcard(g, i)); continue; }   // beställningar utan uppdrag: i en gemensam rad
+      flush();   // lösa filer (ComfyUI-genereringar, 3D-modeller per dag): en egen rubrik, så att de inte blandas med beställningarna
+      html += `<section class="rsec"><h3>${esc(g.title)}</h3><div class="rgrid">${hs.map(i => rcard(g, i)).join("")}</div></section>`;
+      continue;
+    }
     flush();
     b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
     // Utfällt: det senaste uppdraget och allt som ändrats det senaste dygnet, om det inte fällts ihop för hand

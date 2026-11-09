@@ -8,8 +8,8 @@
  "id": "rig45-test-maren-s08000",
  "gpu": "t1000",
  "title": "Maren 4B step 8000, base decoder: extra 45\u00b0 rig to cover the hidden coat behind the scarf",
- "mission": "ultratex4b-decoder",
- "mission_title": "UltraTex 4B: does the decoder matter?",
+ "mission": "ultratex4b-cameras",
+ "mission_title": "UltraTex 4B: bake settings and camera rigs",
  "steps": [
   {
    "key": "texture",

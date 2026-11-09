@@ -69,6 +69,30 @@ def build(raw):
     by_dir = {}
     for f in raw["files"]:
         by_dir.setdefault(f["subfolder"], set()).add(f["filename"])
+    # Filer som gjorts för hand bredvid en beställnings filer (graderade GLB:er, förhandsbilder, sRGB-versioner) hör till den
+    # beställning vars filnamn (utan löpnummer) är början på deras namn; annars till det uppdrag som äger de flesta filerna i mappen
+    prefixes, mission_votes = {}, {}
+    for (sub, name), (oid, step) in owner.items():
+        st = re.sub(r"_?\d{5}_?$", "", name.rsplit(".", 1)[0])
+        if len(st) >= 6:
+            prefixes.setdefault(sub, []).append((st, oid, step))
+        m = (plans.get(oid) or {}).get("mission")
+        if m:
+            mission_votes.setdefault(sub, {}).setdefault(m, 0)
+            mission_votes[sub][m] += 1
+    for f in raw["files"]:
+        key = (f["subfolder"], f["filename"])
+        if key in owner or f["subfolder"].split("/")[0] == "orders":
+            continue
+        hits = [x for x in prefixes.get(f["subfolder"], []) if f["filename"].startswith(x[0])]
+        if hits:
+            st, oid, step = max(hits, key=lambda x: len(x[0]))
+            owner[key] = (oid, step)
+        elif f["subfolder"] and mission_votes.get(f["subfolder"]):   # inte rotmappen, där ComfyUI lägger lösa genereringar
+            votes = mission_votes[f["subfolder"]]
+            m, n = max(votes.items(), key=lambda kv: kv[1])
+            if n >= 0.6 * sum(votes.values()):   # bara när ett uppdrag tydligt äger mappen
+                f["_mission"] = m
     for f in raw["files"]:
         sub, name = f["subfolder"], f["filename"]
         parts = sub.split("/")
@@ -89,6 +113,8 @@ def build(raw):
                     break
         if oid:
             gid = "o:" + oid
+        elif f.get("_mission"):
+            gid = "x:" + f["_mission"] + ":" + sub
         else:
             day = time.strftime("%Y-%m-%d", time.localtime(f["mtime"]))
             gid = ("3d:" if parts[0] == "3d" else "c:") + day
@@ -117,6 +143,13 @@ def build(raw):
             g.update(title=p.get("title") or gid[2:], order=gid[2:], asset=p.get("asset") or "", status=p.get("order_status") or "",
                      time=p.get("updated") or last, mission=p.get("mission") or "", mission_title=p.get("mission_title") or "",
                      score=score, verdict=verdict, operator=p.get("operator") or None, mission_note=notes.get(p.get("mission") or ""))
+        elif gid.startswith("x:"):
+            m, sub = gid[2:].split(":", 1)
+            mt = next((p.get("mission_title") for p in plans.values() if p.get("mission") == m and p.get("mission_title")), "")
+            # Tiden från uppdragets beställningar, inte från filerna (galleriets egna förhandsbilder är nya men hör till gamla jobb)
+            mtime = max((p.get("updated") or 0 for p in plans.values() if p.get("mission") == m), default=last)
+            g.update(title=f"More files in {sub}", order=None, asset="", status="", time=mtime, mission=m, mission_title=mt,
+                     score=None, verdict="", operator=None, mission_note=notes.get(m))
         else:
             day = gid.split(":", 1)[1]
             g.update(title=("3D models" if gid.startswith("3d:") else "ComfyUI generations") + " · " + day, order=None,
