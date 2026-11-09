@@ -363,6 +363,9 @@ if __name__ == "__main__":
     rec = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
     try:
         fn = {"price": lambda r: price(), "start": start, "status": status, "fetch": fetch, "resume": resume, "recover": recover, "stop": stop, "watch": watch}[cmd]
-        print(json.dumps(fn(rec)))
+        res = fn(rec)
+        print(json.dumps(res))
+        if isinstance(res, dict) and res.get("ok") is False:
+            sys.exit(1)   # så att "start ... && watch" inte startar en vakt när starten misslyckades
     except Exception as e:
         print(json.dumps({"ok": False, "error": str(e)[:500]}))

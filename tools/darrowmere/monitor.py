@@ -105,7 +105,12 @@ if os.path.isdir(pd):
     for f in fs[:8]:
         if time.time() - os.path.getmtime(f"{pd}/{f}") < 3 * 86400:
             try:
-                pipes.append(json.load(open(f"{pd}/{f}")))
+                pj = json.load(open(f"{pd}/{f}"))
+                try:   # vilket grafikkort beställningen kör på, så att granskningen kan visas på kortets rad
+                    pj["gpu"] = json.load(open(f"/data/orders/{pj['id']}/order.json")).get("gpu")
+                except Exception:
+                    pass
+                pipes.append(pj)
             except Exception:
                 pass
 ai = []  # de senaste DeepSeek- och molnanropen från beställningsrunnern
