@@ -92,7 +92,7 @@
   .pick input { width: auto; height: auto; padding: 0; margin: 0; }   /* inte sökfältets bredd (input-regeln ovan) */
   .rcard.sel .pick { border-color: var(--violet); background: color-mix(in srgb, var(--violet) 30%, var(--panel)); }
   #cmpHead[disabled] { opacity: .55; cursor: default; }
-  body:not(.results) #cmpHead { display: none; }
+  body:not(.results) #cmpHead, body:not(.results) #cmpReset { display: none; }
   #cmpBar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; display: none; gap: 8px; align-items: center;
             padding: 8px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--violet); box-shadow: 0 6px 24px rgb(0 0 0 / .35); }
   #cmpBar.on { display: flex; }
@@ -129,7 +129,7 @@
   <span id="chips"></span>
   <select id="asset" title="Show one asset"></select>
   <input id="q" placeholder="Search name, order or step" spellcheck="false">
-  <button id="cmpHead" disabled title="Tick Compare on 2–4 models, then open them side by side">Compare 0/4</button>
+  <button id="cmpHead" disabled title="Tick Compare on 2–4 models, then open them side by side">Compare 0/4</button><button id="cmpReset" hidden title="Untick all models">✕ Reset</button>
   <button id="reload" title="Read Darrowmere again">Refresh</button>
   <span id="info"></span>
 </header>
@@ -298,14 +298,15 @@ function pick(key, onOff, el) {
   $("cmpN").textContent = `${picked.size} model${picked.size === 1 ? "" : "s"} picked`;
   $("cmpBar").classList.toggle("on", picked.size > 0);
   $("cmpGo").disabled = picked.size < 2;
-  $("cmpHead").textContent = `Compare ${picked.size}/4`; $("cmpHead").disabled = picked.size < 2;
+  $("cmpHead").textContent = `Compare ${picked.size}/4`; $("cmpHead").disabled = picked.size < 2; $("cmpReset").hidden = !picked.size;
 }
 $("cmpHead").onclick = () => $("cmpGo").click();
 $("cmpGo").onclick = () => {
   const qs = new URLSearchParams(); [...picked.keys()].forEach(k => qs.append("f", k));
   window.open("/compare?" + qs, "_blank");
 };
-$("cmpClear").onclick = () => { picked.clear(); $("cmpBar").classList.remove("on"); $("cmpHead").textContent = "Compare 0/4"; $("cmpHead").disabled = true; render(); };
+$("cmpClear").onclick = () => { picked.clear(); $("cmpBar").classList.remove("on"); $("cmpHead").textContent = "Compare 0/4"; $("cmpHead").disabled = true; $("cmpReset").hidden = true; render(); };
+$("cmpReset").onclick = () => $("cmpClear").click();
 function setView(v) {
   VIEW = v; store.set("view", v);
   document.body.classList.toggle("results", v === "results");
