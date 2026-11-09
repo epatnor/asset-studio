@@ -30,7 +30,7 @@ PY
 TEX_ID=$TEX_ID python3 -I tools/darrowmere/order.py submit $D/texture_order.json
 until done_ $TEX_ID; do sleep 60; done
 for t in mix07 mix09; do
-  F=$(ssh -o BatchMode=yes $DM "ls /data/utdata/characters/cousin/ | grep '^cousin_ut4b_${t}_.*glb$' | tail -1" < /dev/null)
+  F=$(ssh -o BatchMode=yes $DM "ls /data/utdata/characters/cousin/ | grep -E '^cousin_ut4b_${t}_[0-9]+_\.glb$' | tail -1" < /dev/null)
   [ -n "$F" ] || { echo "missing $t"; continue; }
   scp -q "$DM:/data/utdata/characters/cousin/$F" $D/ut4b/ < /dev/null
   uv run -q --no-project --python 3.12 --with pillow --with numpy python -I tools/texture/grade_glb.py $D/ut4b/$F $D/ut4b/cousin_ut4b_${t}_g1.3.glb > /dev/null

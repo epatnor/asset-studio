@@ -1,5 +1,5 @@
 {
-  "_comment": "Reglagen i character creatorn (docs/character-creator.md): vänliga namn ovanpå MPFB/MakeHuman. macro = MPFB:s makrovärden (0..1); pair = ett incr/decr-par i målbiblioteket (-1..1: negativt väger decr, positivt incr); lr = samma par på vänster och höger sida (l-/r-). Etiketter på engelska (appen), kommentarer på svenska.",
+  "_comment": "Reglagen i character creatorn (docs/character-creator.md): vänliga namn ovanpå MPFB/MakeHuman. macro = MPFB:s makrovärden (0..1); pair = ett incr/decr-par i målbiblioteket (-1..1: negativt väger decr, positivt incr); lr = samma par på vänster och höger sida (l-/r-); pairs = flera par som dras lika mycket (t.ex. huvudets storlek i tre riktningar). Etiketter på engelska (appen), kommentarer på svenska.",
   "macro": [
     {"id": "sex", "label": "Sex (female - male)", "macro": "gender", "min": 0, "max": 1, "default": 0, "group": "Body"},
     {"id": "age", "label": "Age (years)", "macro": "age", "min": 18, "max": 70, "default": 25, "unit": "years", "group": "Body"},
@@ -25,6 +25,7 @@
     {"id": "lower_leg_length", "label": "Lower leg length", "pair": "legs/lowerlegs-height", "group": "Legs"},
     {"id": "upper_arms", "label": "Upper arms", "lr": "arms/{s}-upperarm-fat", "group": "Arms"},
     {"id": "arm_muscle", "label": "Arm muscle", "lr": "arms/{s}-upperarm-muscle", "group": "Arms"},
-    {"id": "neck", "label": "Neck thickness", "pair": "neck/measure-neck-circ", "group": "Head"}
+    {"id": "neck", "label": "Neck thickness", "pair": "neck/measure-neck-circ", "group": "Head"},
+    {"id": "head_size", "label": "Head size", "pairs": ["head/head-scale-vert", "head/head-scale-horiz", "head/head-scale-depth"], "group": "Head"}
   ]
 }

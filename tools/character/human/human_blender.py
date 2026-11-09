@@ -50,7 +50,7 @@ for s in cat["sliders"]:
         continue
     v = max(-1.0, min(1.0, v))
     end = "-incr" if v > 0 else "-decr"
-    paths = [s["pair"]] if "pair" in s else [s["lr"].format(s=side) for side in ("l", "r")]
+    paths = [s["pair"]] if "pair" in s else s["pairs"] if "pairs" in s else [s["lr"].format(s=side) for side in ("l", "r")]
     for p in paths:
         load(p + end, abs(v), (p + end).split("/")[-1])
     applied[s["id"]] = round(v, 3)

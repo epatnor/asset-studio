@@ -131,6 +131,16 @@ Patrik om Yvonne-provet (2026-11-09): kroppen, armarna, magen, ryggen och benen 
 - **Ansiktet** är MPFB:s standardansikte, eftersom det inte finns några ansiktsreglage än. Nästa steg är inpassning med
   MediaPipe-punkter (som body-gens `fit_face.py`).
 
+**Kusinen (2026-11-10)** mot sin Pixal3D-form ur 1024-bilden: 45,9 → 30,5 mm i medel (ben 9,7, bål 20,2, huvud 23,4,
+armar 34,0). Två rättningar kom ur provet:
+
+- **Reglaget `head_size`** drar MPFB:s `head-scale` i tre riktningar. Stiliserade figurer har större huvuden, och
+  kusinen fick +0,22.
+- **Höjdförflyttningen är låst.** Båda står på marken. Utan låset sänkte inpassningen AI-formen 10 cm genom golvet för att
+  kompensera för huvudet.
+
+Armarna ligger kvar på 34 mm.
+
 Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres galleri under `characters/creator`.
 
 ## Läget (kväll 2026-11-09)

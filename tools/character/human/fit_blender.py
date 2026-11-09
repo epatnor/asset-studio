@@ -108,7 +108,7 @@ cols = []   # (namn, sort, nyckel(ar)/makro, min, max, prior)
 for s in cat["sliders"]:
     if s["id"] in job.get("skip_sliders", []):
         continue
-    paths = [s["pair"]] if "pair" in s else [s["lr"].format(s=x) for x in "lr"]
+    paths = [s["pair"]] if "pair" in s else s["pairs"] if "pairs" in s else [s["lr"].format(s=x) for x in "lr"]
     for end in ("-incr", "-decr"):
         keys = []
         for p in paths:
@@ -309,7 +309,7 @@ for it in range(int(job.get("iterations", 5))):
     A = np.array(rows) * np.array(wts)[:, None]; b = np.array(rhs) * np.array(wts)
     A /= np.sqrt(len(b)); b /= np.sqrt(len(b))
     x = np.array([c["x"] for c in cols] + [0, 0, 0, 0, 0]); x0 = x.copy(); x0[:len(cols)] = [c["prior"] for c in cols]
-    lo = np.array([c["lo"] for c in cols] + [-0.1, -0.1, -0.05, -0.1, -0.15]) - x; hi = np.array([c["hi"] for c in cols] + [0.1, 0.1, 0.05, 0.1, 0.15]) - x
+    lo = np.array([c["lo"] for c in cols] + [-0.1, -0.1, 0.0, -0.1, -0.15]) - x; hi = np.array([c["hi"] for c in cols] + [0.1, 0.1, 0.0, 0.1, 0.15]) - x   # tz låst: båda står på marken
     K = len(x); free = np.ones(K, bool); dx = np.zeros(K)
     lam_v = np.full(K, lam); lam_v[len(cols):] = lam * 1e-3   # flytt och skala dras inte mot noll
     for _ in range(K):   # aktiv mängd: lös, lås det som slår i gränserna, lös igen
