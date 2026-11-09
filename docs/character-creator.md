@@ -122,6 +122,15 @@ framåtböjd bröstrygg, och receptet härmade felen. Patrik underkände den, s�
 framåt (`arm_forward`) kom till efter Yvonne-provet: mallens armar hängde bakom ryggen, och felet i armarna gick från 28
 till 14 mm.
 
+Patrik om Yvonne-provet (2026-11-09): kroppen, armarna, magen, ryggen och benen ser bra ut och duger till prov. Kvar:
+
+- **Armhålorna** kläms när armarna vrids från viloläget (vanliga hudvikter). Deformationstestet ska mäta det. Rättningen
+  blir korrigerande former eller bättre vikter vid axeln.
+- **Fingrarna** sitter ihop i spelnätet female1605: 2–3 bitar nära topparna mot 3–4 i det fulla nätet. Rättningen blir ett
+  eget spelnät med en egen budget för händerna, eller händer från det fulla nätet.
+- **Ansiktet** är MPFB:s standardansikte, eftersom det inte finns några ansiktsreglage än. Nästa steg är inpassning med
+  MediaPipe-punkter (som body-gens `fit_face.py`).
+
 Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres galleri under `characters/creator`.
 
 ## Första steget
