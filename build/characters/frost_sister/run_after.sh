@@ -1,7 +1,7 @@
 #!/bin/bash
 # Väntar på konceptet (${CONCEPT:-frost-sister-r6}), beställer UltraTex-omålningen och graderar resultatet (gamma 1,3).
 cd "$(dirname "$0")/../../.."; D=build/characters/frost_sister; DM=epatnor@192.168.0.33
-done_() { ssh -o BatchMode=yes -o ConnectTimeout=10 $DM "grep -q -E '^ \"status\": \"(done|failed|cancelled)\"' /data/orders/$1/state.json" < /dev/null; }
+done_() { ssh -o BatchMode=yes -o ConnectTimeout=10 $DM "grep -q -E '^ \"status\": \"(done|failed|cancelled|rejected|stopped)' /data/orders/$1/state.json" < /dev/null; }   # done* omfattar 'done with warnings'
 until done_ ${CONCEPT:-frost-sister-r6}; do sleep 60; done
 ST=$(ssh -o BatchMode=yes $DM "python3 -c \"import json; s=json.load(open('/data/orders/${CONCEPT:-frost-sister-r6}/state.json')); print(s['status']); print([f['filename'] for f in s['steps']['img_1'].get('outputs',[])][-1]); print(sorted(f['filename'] for f in s['steps']['mesh'].get('outputs',[]) if f['filename'].endswith('.glb'))[-1])\"" < /dev/null)
 echo "$ST"; IMG=$(echo "$ST" | sed -n 2p); GLB=$(echo "$ST" | sed -n 3p)
