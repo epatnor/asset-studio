@@ -36,5 +36,5 @@ Per fall:
 - DeepSeek, som granskar i dag, kom sist och tappade svar (tänkte för länge för `max_tokens`).
 - Claude Haiku 5.5 kom först, är snabb och kostar ungefär 0,0005 USD per jämförelse, i samma storleksordning som DeepSeek.
   De dyra modellerna (Sonnet, Gemini 4 Argon, GPT-6.1 Sol) var inte bättre här.
-- Förslag (Patriks beslut, det rör pengar om än lite): Haiku 5.5 som granskare i stället för DeepSeek, eller som andra
-  åsikt när DeepSeek är osäker. Utöka facit med fler fall när Patrik bedömer något, så att testet blir säkrare.
+- **Beslut (Patrik, 2026-11-09):** Claude Haiku 5.5 granskar i stället för DeepSeek (`review.model` i
+  `/data/runner/settings.json`). Promptreparationen och operatören följer samma inställning. Panelen visar granskarens namn. Utöka facit med fler fall när Patrik bedömer något, så att testet blir säkrare.

@@ -766,7 +766,10 @@ document.addEventListener("click", async e => {
 });
 // DeepSeek-anrop (granskningar, operatören) som kommer efter varandra i listan blir en grupp; molnjobb (Meshy, Tripo) står för sig
 const dsOpen = new Set();
-const isDs = h => h.kind === "ai" && /deepseek/i.test(h.name || "");
+const isDs = h => h.kind === "ai" && (h.reviewer || /deepseek/i.test(h.name || ""));
+// Granskningsmodellens korta namn (Haiku, DeepSeek …) från runnerns inställningar
+const RV = () => { const m = (lastStatus?.probe?.review_model || "").toLowerCase().split("/").pop();
+  return [["haiku", "Haiku"], ["sonnet", "Sonnet"], ["opus", "Opus"], ["deepseek", "DeepSeek"], ["gemini", "Gemini"], ["gpt", "GPT"], ["qwen", "Qwen"], ["glm", "GLM"]].find(([k]) => m.includes(k))?.[1] || "AI"; };
 function groupAi(list) {
   const out = [];
   for (const h of list) {
@@ -781,7 +784,7 @@ function histRow(h, mode, g) {
         infos.set(h.id, h);
         const tag = h.error ? `<span class="tag ${lvl} btn" data-err="${esc(h.id)}" title="${lvl === "bad" ? "Show the error" : "Show what the review found"}">${esc(h.status)}</span>`
                             : `<span class="tag ${lvl}">${esc(h.status)}</span>`;
-        const fold = mode === "first" ? `<button class="view fold" data-dsopen="${esc(h.id)}" title="Fold the DeepSeek calls">▾</button> ` : "";
+        const fold = mode === "first" ? `<button class="view fold" data-dsopen="${esc(h.id)}" title="Fold the AI review calls">▾</button> ` : "";
         return `<tr${mode === "sub" ? ' class="aisub"' : ""}><td>${clock(h.start)}</td><td>${h.start && h.seconds != null ? clock(h.start + h.seconds) : "–"}</td><td class="ell" title="${esc(h.title || "")}">${fold}${jobLabel(h)}</td><td>${tag}</td><td class="num">${fmtDur(h.seconds)}</td>
           <td>${h.delivered ? `<span class="dlv ok" title="Delivered to Andorhal: ${esc(h.delivered.path)}">⇣</span>` : (((h.images || []).length + (h.models || []).length) && h.status === "success" ? `<span class="dlv" title="Not yet delivered to Andorhal">⇣</span>` : "")}${h.kind === "ai" ? "–" : `${h.outputs} files`}${viewBtn(h)}${(h.details?.prompts || []).length ? ` <button class="view" data-info="${esc(h.id)}" title="Show the prompt and settings">Prompt</button>` : ""}</td>
           <td><button class="ack" data-ack="${esc(h.id)}" title="Acknowledge: remove from this list (it stays in History)">✓</button></td></tr>`;
@@ -877,7 +880,7 @@ function render(s) {
         const tags = Object.entries(n).map(([k, v]) => `<span class="tag ${levelClass(k)}">${v} ${esc(k)}</span>`).join(" ");
         const t0 = Math.min(...g.map(h => h.start || Infinity)), t1 = Math.max(...g.map(h => (h.start || 0) + (h.seconds || 0)));
         const secs = g.reduce((a, h) => a + (h.seconds || 0), 0);
-        return [`<tr class="aigrp"><td>${clock(t0)}</td><td>${clock(t1)}</td><td class="ell"><button class="view fold" data-dsopen="${esc(g[0].id)}" title="Show each call">▸</button> DeepSeek · ${g.length} calls</td><td>${tags}</td><td class="num">${fmtDur(secs)}</td><td>–</td>
+        return [`<tr class="aigrp"><td>${clock(t0)}</td><td>${clock(t1)}</td><td class="ell"><button class="view fold" data-dsopen="${esc(g[0].id)}" title="Show each call">▸</button> ${esc(g[0].name || "AI")} review · ${g.length} calls</td><td>${tags}</td><td class="num">${fmtDur(secs)}</td><td>–</td>
           <td><button class="ack" data-ack="${esc(g.map(h => h.id).join(" "))}" title="Acknowledge all ${g.length}">✓</button></td></tr>`];
       }));
     $("ackAll").hidden = !c.history.length;
@@ -1053,11 +1056,11 @@ const jobEstimate = (c, run, lane) => median((c.history || []).filter(h => h.nam
 // DeepSeek som etikett på raden den granskar: medan granskningen pågår, sedan utfallet (pass/warning/fail och betyg)
 function dsChip(p) {
   const rv = (p?.steps || []).filter(x => x.kind === "review");
-  if (rv.some(x => x.status === "running")) return ` <span class="dschip run" title="DeepSeek is reviewing this order's images">${UNIT_ICONS.cloud}DeepSeek reviewing…</span>`;
+  if (rv.some(x => x.status === "running")) return ` <span class="dschip run" title="${RV()} is reviewing this order's images">${UNIT_ICONS.cloud}${RV()} reviewing…</span>`;
   const last = rv.filter(x => /^(pass|warning|fail|rejected)\s+\d/.test(x.note || "")).pop();
   if (!last) return "";
   const m = last.note.match(/^(\w+)\s+(\d+(?:\.\d+)?)\/10/);
-  return ` <span class="dschip ${esc(m[1])}" title="${esc(last.label + ": " + last.note)}">${UNIT_ICONS.cloud}DeepSeek ${esc(m[1])} ${esc(m[2])}/10</span>`;
+  return ` <span class="dschip ${esc(m[1])}" title="${esc(last.label + ": " + last.note)}">${UNIT_ICONS.cloud}${RV()} ${esc(m[1])} ${esc(m[2])}/10</span>`;
 }
 // other: raden för moln och andra datorer
 function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds = false) {  // sfx: "_1" … för korten efter det första
@@ -1074,7 +1077,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds =
     $("curPipe" + sfx).hidden = true;
     const v = `${unitTag(lane, "gpu")}${SNAKE}${esc(rvPipe.title)}<span class="sub"> · ${esc(rs.label)}</span>${dsChip(rvPipe)}`;
     for (const [k, val] of [["curIcon", ""], ["curName", v], ["curTime", timeCell(el, median((c.history || []).filter(isDs).slice(0, 10).map(h => h.seconds)))],
-                            ["curPhase", "Reviewing images"], ["curSteps", ""], ["curTiming", "DeepSeek via OpenRouter"]]) {
+                            ["curPhase", "Reviewing images"], ["curSteps", ""], ["curTiming", `${RV()} via OpenRouter`]]) {
       const e = $(k + sfx); if (e.dataset.v !== val) { e.innerHTML = val; e.dataset.v = val; }
     }
     return;
@@ -1112,7 +1115,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds =
       const tip = [x.label, x.status + (x.status === "running" && x.pct != null ? ` ${x.pct} %` : ""), x.where !== "darrowmere" ? "on " + x.where : "", dur, x.note || ""]
         .filter(Boolean).join(" · ");
       const cloud = x.route === "cloud" || x.kind === "review";
-      const who = x.kind === "review" ? "DeepSeek" : x.provider ? x.provider[0].toUpperCase() + x.provider.slice(1) : "";
+      const who = x.kind === "review" ? RV() : x.provider ? x.provider[0].toUpperCase() + x.provider.slice(1) : "";
       const ctip = cloud ? ` · cloud${who ? ": " + who : ""}${x.credits ? ` · ${x.credits} credits` : x.estimate ? ` · ~${x.estimate} credits` : ""}` : "";
       // Ett delsteg med resultat går att öppna: modellen i 3D-visaren, annars bilderna i bildvisaren
       const files = x.files || [], glb = finalGlb(files.filter(f => /\.(glb|gltf)$/i.test(f.filename))), img = files.some(f => /\.(png|jpe?g|webp)$/i.test(f.filename));
@@ -1143,7 +1146,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds =
   if (local) {
     const ai = local.kind === "review";
     const where = local.where ? local.where[0].toUpperCase() + local.where.slice(1) : "";
-    const who = ai ? "DeepSeek" : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : where;
+    const who = ai ? RV() : local.provider ? local.provider[0].toUpperCase() + local.provider.slice(1) : local.where === "runpod" ? "RunPod" : where;
     $("cur" + sfx).style.setProperty("--acc", ai ? "var(--violet)" : cloudStep ? "var(--cloud)" : "var(--teal)");
     set("curIcon", "", true);
     set("curName", `${unitTag(who, cloudStep ? "cloud" : "host")}${SNAKE}${esc(pl.title)}<span class="sub"> · ${esc(local.label)}${other && local.pct != null ? ` · ${local.pct} %` : ""}${other && local.note ? ` · ${esc(local.note)}` : ""}</span>`, true);
@@ -1160,7 +1163,7 @@ function renderCurrent(run, pr, c, s, sfx = "", lane = null, other = false, ds =
   }
   if (!run && ds) {  // DeepSeek granskar inget just nu: en grå rad som de lediga grafikkorten
     $("cur" + sfx).classList.add("idle"); $("cur" + sfx).classList.remove("on", "pipe", "cloudrun", "ai");
-    set("curIcon", "", true); set("curName", `${unitTag("DeepSeek", "cloud")}${SNAKE_OFF}Idle`, true); set("curTime", "");
+    set("curIcon", "", true); set("curName", `${unitTag(RV(), "cloud")}${SNAKE_OFF}Idle`, true); set("curTime", "");
     return;
   }
   if (!run) {

@@ -124,8 +124,12 @@ for fn in ("/data/orders/deepseek.jsonl", "/data/orders/cloud.jsonl"):
                     pass
     except OSError:
         pass
+try:
+    review_model = json.load(open("/data/runner/settings.json")).get("review", {}).get("model")
+except Exception:
+    review_model = None
 print(json.dumps({
-    "pipelines": pipes, "ai": ai,
+    "pipelines": pipes, "ai": ai, "review_model": review_model,
     "t": time.time(), "host": os.uname().nodename, "uptime": float(open("/proc/uptime").read().split()[0]),
     "load": open("/proc/loadavg").read().split()[:3], "cpu": cpu[0], "cores": cpu[1:],
     "mem": {"total": mi["MemTotal"] * 1024, "avail": mi["MemAvailable"] * 1024,
@@ -251,7 +255,7 @@ def job_pipeline(item):
 # /data/runner/.env (läge 600). Nycklar skickas dit över SSH på stdin och läses aldrig tillbaka till webbläsaren; sidan
 # får bara veta om en nyckel finns, dess fyra sista tecken och när den sparades.
 PROVIDERS = {
-    "openrouter": {"label": "OpenRouter", "env": "OPENROUTER_API_KEY", "used_for": "DeepSeek review",
+    "openrouter": {"label": "OpenRouter", "env": "OPENROUTER_API_KEY", "used_for": "AI review",
                    "url": "https://openrouter.ai/settings/keys"},
     "tripo": {"label": "Tripo 3D", "env": "TRIPO_API_KEY", "used_for": "Cloud 3D models and their textures",
               "url": "https://platform.tripo3d.ai/api-keys"},
@@ -383,6 +387,16 @@ def clean_settings(s, defaults):
     return r
 
 
+def ai_name(model):
+    """Kort namn för granskningsmodellen i panelen: anthropic/claude-haiku-5.5 -> Haiku, deepseek/... -> DeepSeek."""
+    m = (model or "").lower().split("/")[-1]
+    for k, n in (("haiku", "Haiku"), ("sonnet", "Sonnet"), ("opus", "Opus"), ("deepseek", "DeepSeek"), ("gemini", "Gemini"),
+                 ("gpt", "GPT"), ("qwen", "Qwen"), ("glm", "GLM"), ("grok", "Grok")):
+        if k in m:
+            return n
+    return m.split("-")[0].capitalize() or "AI"
+
+
 def ai_jobs(entries):
     # DeepSeek-granskningar som rader i jobblistan: namn "DeepSeek", godkänt eller underkänt, tid, poäng och kostnad
     out = []
@@ -400,7 +414,7 @@ def ai_jobs(entries):
             continue
         ok = e.get("pass")
         cost = e.get("cost_usd")
-        out.append({"id": f"ai-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": "DeepSeek", "cloud": True,
+        out.append({"id": f"ai-{e.get('order')}-{e.get('step')}-{int(e.get('t', 0) * 1000)}", "name": ai_name(e.get("model")), "reviewer": True, "cloud": True,
                     "title": f"{e.get('order_title', e.get('order'))}: {e.get('label', e.get('step'))}"
                              + (f" · {e.get('score')}/10" if e.get("score") is not None else "")
                              + (f" · ${cost:.4f}" if isinstance(cost, (int, float)) else ""),

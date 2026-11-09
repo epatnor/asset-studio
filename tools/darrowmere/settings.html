@@ -103,7 +103,7 @@
     <h2>AI review</h2>
     <div class="opt"><label for="reviewOn">Review images</label>
       <span><input type="checkbox" id="reviewOn"> <span class="hint">Checks every reviewed step and runs it again with a new seed when it fails.</span></span>
-      <label for="reviewModel">Model</label><input id="reviewModel" spellcheck="false" placeholder="deepseek/deepseek-v4.1-flash-1017"></div>
+      <label for="reviewModel">Model</label><input id="reviewModel" spellcheck="false" placeholder="anthropic/claude-haiku-5.5"></div>
     <div class="hint">Runs through OpenRouter (key below). About $0.001 per review.</div>
   </section>
 
@@ -256,7 +256,7 @@ $("segTexture").onclick = e => { const b = e.target.closest("button"); if (b) se
 $("modelCloud").onchange = () => { cur.routes.model.cloud = $("modelCloud").value; render(); };
 $("faceLimit").oninput = () => { cur.routes.model.face_limit = parseInt($("faceLimit").value) || 0; render(); };
 $("reviewOn").onchange = async () => {
-  if ($("reviewOn").checked && needKey("openrouter") && !(await askKey("openrouter", "AI review uses DeepSeek through OpenRouter. Paste your OpenRouter API key."))) { $("reviewOn").checked = false; return; }
+  if ($("reviewOn").checked && needKey("openrouter") && !(await askKey("openrouter", "AI review runs through OpenRouter. Paste your OpenRouter API key."))) { $("reviewOn").checked = false; return; }
   cur.review.enabled = $("reviewOn").checked; render();
 };
 $("reviewModel").oninput = () => { cur.review.model = $("reviewModel").value.trim(); render(); };
