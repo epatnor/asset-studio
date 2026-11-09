@@ -34,7 +34,7 @@ for m in cat["macro"]:
         macro[m["macro"]] = age_macro(v) if m["id"] == "age" else max(m["min"], min(m["max"], float(v)))
 for k, v in (r.get("macro") or {}).items():   # råa MPFB-värden går också (t.ex. "african": 0.3)
     macro[k] = v
-base = HumanService.create_human(mask_helpers=True, detailed_helpers=False, extra_vertex_groups=True, feet_on_ground=True,
+base = HumanService.create_human(mask_helpers=True, detailed_helpers=False, extra_vertex_groups=True, feet_on_ground=False,
                                  scale=0.1, macro_detail_dict=macro)
 TROOT = os.path.join(os.path.dirname(sys.modules[TargetService.__module__].__file__), "..", "data", "targets")
 applied = {}
@@ -75,6 +75,13 @@ for kind, sub, atype, ext, nm in (("proxy", "proxymeshes", "Proxymeshes", "proxy
 bpy.context.view_layer.update()
 if parts.get("proxy"):
     base.hide_set(True); base.hide_render = True
+# MPFB:s feet_on_ground flyttar nätet men inte skelettet (armarna roterade då kring bäckenets höjd): ställ i stället
+# hela figuren på marken genom att flytta skelettet, som näten sitter på, efter det nät som exporteras (proxyn)
+_dg = bpy.context.evaluated_depsgraph_get()
+_z = min(min((o.matrix_world @ v.co).z for v in o.evaluated_get(_dg).to_mesh().vertices)
+         for o in bpy.context.scene.objects if o.type == "MESH" and not o.hide_get())
+(rig or base).location.z -= _z
+bpy.context.view_layer.update()
 
 # Mått och kontroller: trianglar per nät, fötterna på marken, symmetri (spegling i X), längd
 dg = bpy.context.evaluated_depsgraph_get()
@@ -104,10 +111,11 @@ angle = {"T": 90, "A": 45}.get(pose, pose if isinstance(pose, (int, float)) else
 arms = [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]
 if arms and angle is not None:
     rig_o = arms[0]; W3 = rig_o.matrix_world.to_3x3(); names = list(rig_o.pose.bones.keys())
-    for side in ("l", "r"):
-        up = next((n for n in (f"upperarm_{side}", f"upperarm01.{side.upper()}", f"upper_arm.{side.upper()}") if n in names), None)
-        lo = next((n for n in (f"hand_{side}", f"lowerarm_{side}", f"wrist.{side.upper()}", f"lowerarm02.{side.upper()}") if n in names), None)
-        if not up or not lo:
+    limbs = [(f"upperarm_{s_}", f"hand_{s_}", angle) for s_ in "lr"]
+    if r.get("leg_spread"):   # benen utåt från lodlinjen, grader (inpassningen anger det)
+        limbs += [(f"thigh_{s_}", f"foot_{s_}", float(r["leg_spread"])) for s_ in "lr"]
+    for up, lo, angle in limbs:
+        if up not in names or lo not in names:
             continue
         pb, end = rig_o.pose.bones[up], rig_o.pose.bones[lo]
         cur = (W3 @ (end.head - pb.head)).normalized()

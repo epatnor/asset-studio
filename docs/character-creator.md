@@ -1,6 +1,6 @@
 # Character creator: ett nät, reglage, och AI som visar vart reglagen ska
 
-Plan 2026-11-09, efter samtal med Patrik. Steg 1 (receptverktyget) är byggt, se nedan.
+Plan 2026-11-09, efter samtal med Patrik. Receptverktyget och inpassningens första omgång (reglagen) är byggda, se nedan.
 
 ## Målet
 
@@ -89,6 +89,35 @@ topologi, UV-karta och skelett. Reglagen är data i `human_sliders.json` (vänli
 
 Provfigurerna (kvinna, kraftigare kvinna, man) ligger i `build/human/` och i Darrowmeres galleri under
 `characters/creator`. Nästa steg är inpassningen mot kusinens Pixal3D-form.
+
+## Byggt: inpassningen, omgång 1 (reglagen, 2026-11-09)
+
+`tools/character/human/fit_human.py` letar fram receptet som gör grundnätet likt en AI-form (Pixal3D-GLB) och bygger
+figuren med `make_human.py`. Ingen punkt flyttas fritt: resultatet är bara ett recept, så topologi, UV och skelett förblir
+de gemensamma. Omgång 2 (den lilla personliga förskjutningen per punkt) återstår.
+
+- **Placering:** AI-formen skalas till mallens längd och centreras efter kroppen under axlarna, så att hår och knut inte
+  räknas. Riktningen avgörs av fötterna: tårna pekar framåt från smalbenen. Att avgöra den efter bålen gav fel på en man
+  med plant bröst, och Patrik såg att figurerna stod åt olika håll.
+- **Pose:** armarnas och benens vinkel letas fram med ett rutnät och hamnar i receptet (`pose`, `leg_spread`).
+- **Gauss-Newton, 5 varv:** varje reglage är en kolumn. Förflyttning, skala och lutning framåt eller bakåt hör till
+  AI-formens placering. Avstånden tas åt båda hållen: mallen mot AI-ytan längs normalen, AI-ytan mot mallens närmaste
+  punkt. Händerna räknas inte. Dragningen mot standardvärdena (`reg`, 1e-5) håller reglagen rimliga; 3e-4 låste dem på
+  noll, 1e-6 gav orimliga värden utan att passa bättre.
+- **Hållningen:** Pixal3D gör figurerna onaturligt framåtlutade, och Patrik tycker att mallens hållning ser bra ut. Lutningen
+  räknas därför som AI-formens placering och följer aldrig med in i receptet. En framåtböjd bröstrygg i AI-formen blir kvar
+  som fel i bålen, och så ska det vara.
+- **Bevis:** `build/human/fit/<namn>/overlay.png`, framifrån och från sidan före och efter (rött = AI, blått = mallen,
+  vitt = båda), och mått per område.
+- **MPFB-fällan:** `feet_on_ground` flyttar nätet men inte skelettet, så armarna roterade kring bäckenets höjd. Figuren
+  ställs nu på marken genom att skelettet flyttas, efter proxyn som exporteras.
+
+| Prov (body-gens Pixal3D-kroppar i baddräkt) | Medel före → efter | Bål | Ben | Armar | Huvud |
+|---|---|---|---|---|---|
+| Man (`body_male_swim`) | 38,7 → 16,5 mm | 8,9 | 9,0 | 14,2 | 6,8 |
+| Kvinna (`body_female_swim`) | 31,9 → 22,9 mm | 18,0 (framåtböjd i AI-formen) | 8,1 | 23,9 | 11,8 |
+
+Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres galleri under `characters/creator`.
 
 ## Första steget
 
