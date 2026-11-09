@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>/* Tema: menyvalet i panelen (darrowmere-theme: dark, light, system), mörkt om inget valts */(function(){var m;try{m=localStorage.getItem("darrowmere-theme")}catch(e){}if(m!=="light"&&m!=="system")m="dark";var t=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;var r=document.documentElement;r.dataset.theme=t;r.dataset.themeMode=m;if(t==="light")addEventListener("DOMContentLoaded",function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.content="#ffffff"})})()</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,14 +19,12 @@
     --c-cpu: #a77bff; --c-ram: #d2bcff; --c-swap: #ebe0ff; --c-sys: #4f8dff; --c-data: #a3c3ff;
     --c-gpu1: #2bd46b; --c-vram1: #98ecb8; --c-gpu2: #f59e0b; --c-vram2: #fcd38a; --c-gpu3: #1fb5b0; --c-vram3: #8ee0dc;
   }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
+  :root[data-theme="light"] {
       --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
       --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7; --cpu: #db2777; --lime: #65a30d;
       --c-cpu: #7c3aed; --c-ram: #a78bfa; --c-swap: #ddd6fe; --c-sys: #2563eb; --c-data: #60a5fa;
       --c-gpu1: #16a34a; --c-vram1: #4ade80; --c-gpu2: #d97706; --c-vram2: #fbbf24; --c-gpu3: #0d9488; --c-vram3: #2dd4bf;
     }
-  }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body { font: 12.5px/1.35 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
@@ -416,6 +415,10 @@
       <button role="menuitem" data-dials="pairs" title="Two dials per part: load and memory side by side">Dials: pairs<span class="chk"></span></button>
       <button role="menuitem" data-dials="rings" title="One dial per part: memory, swap or the data disk as an inner ring, CPU threads as ring segments">Dials: rings<span class="chk"></span></button>
       <hr>
+      <button role="menuitem" data-theme-set="dark" title="Dark colours (the default)">Theme: dark<span class="chk"></span></button>
+      <button role="menuitem" data-theme-set="light" title="Light colours, for bright screens">Theme: light<span class="chk"></span></button>
+      <button role="menuitem" data-theme-set="system" title="Follow the light or dark setting of this device">Theme: system<span class="chk"></span></button>
+      <hr>
       <button role="menuitem" data-rows="all" title="Always show every graphics card and service, also when idle">Rows: always show<span class="chk"></span></button>
       <button role="menuitem" data-rows="active" title="Hide graphics cards and services with nothing running">Rows: hide idle<span class="chk"></span></button>
       <hr>
@@ -497,6 +500,13 @@ function setDialStyle(v) {
   tick();
 }
 document.addEventListener("click", e => { const b = e.target.closest("[data-dials]"); if (b) setDialStyle(b.dataset.dials); });
+// Temat: mörkt, ljust eller som enheten; sparas per enhet (darrowmere-theme) och gäller alla panelens sidor
+function themeChecks() { const m = document.documentElement.dataset.themeMode || "dark";
+  document.querySelectorAll("[data-theme-set] .chk").forEach(el => el.textContent = el.parentElement.dataset.themeSet === m ? "✓" : ""); }
+document.addEventListener("click", e => { const b = e.target.closest("[data-theme-set]"); if (!b) return;
+  try { localStorage.setItem("darrowmere-theme", b.dataset.themeSet); } catch (err) {}
+  location.reload(); });
+themeChecks();
 // Raderna för grafikkort och tjänster: alltid synliga, eller bara de som kör något (allt stilla: en rad "All idle")
 let ROWS_MODE = "all";
 try { ROWS_MODE = localStorage.getItem("darrowmere-rows") === "active" ? "active" : "all"; } catch (e) {}

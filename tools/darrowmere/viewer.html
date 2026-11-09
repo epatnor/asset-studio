@@ -1,14 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>/* Tema: menyvalet i panelen (darrowmere-theme: dark, light, system), mörkt om inget valts */(function(){var m;try{m=localStorage.getItem("darrowmere-theme")}catch(e){}if(m!=="light"&&m!=="system")m="dark";var t=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;var r=document.documentElement;r.dataset.theme=t;r.dataset.themeMode=m;if(t==="light")addEventListener("DOMContentLoaded",function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.content="#ffffff"})})()</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Darrowmere Viewer</title>
 <style>
   :root { --bg: #f1f2f4; --panel: rgba(255,255,255,.92); --line: #d8dce1; --text: #1d2125; --muted: #6a737d; --accent: #3b6fd4; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #15181c; --panel: rgba(28,32,38,.92); --line: #2f353d; --text: #e6e8eb; --muted: #8b949e; --accent: #6b9bff; }
-  }
+  :root[data-theme="dark"] { --bg: #15181c; --panel: rgba(28,32,38,.92); --line: #2f353d; --text: #e6e8eb; --muted: #8b949e; --accent: #6b9bff; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
   #view { position: fixed; inset: 0; }
   .bar { position: fixed; left: 12px; right: 12px; top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -70,7 +69,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 el.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+const dark = document.documentElement.dataset.theme === "dark";
 let darkBg = dark;
 const setBg = () => scene.background = new THREE.Color(darkBg ? 0x1b1e23 : 0xe9ebee);
 setBg();

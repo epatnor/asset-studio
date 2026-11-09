@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>/* Tema: menyvalet i panelen (darrowmere-theme: dark, light, system), mörkt om inget valts */(function(){var m;try{m=localStorage.getItem("darrowmere-theme")}catch(e){}if(m!=="light"&&m!=="system")m="dark";var t=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;var r=document.documentElement;r.dataset.theme=t;r.dataset.themeMode=m;if(t==="light")addEventListener("DOMContentLoaded",function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.content="#ffffff"})})()</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,9 +14,7 @@
 <title>Darrowmere Login</title>
 <style>
   :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --blue: #4f8dff; --red: #ef4f5f; }
-  @media (prefers-color-scheme: light) {
-    :root { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --blue: #2563eb; --red: #dc2626; }
-  }
+  :root[data-theme="light"] { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --blue: #2563eb; --red: #dc2626; }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
   body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
