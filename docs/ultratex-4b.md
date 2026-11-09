@@ -144,6 +144,17 @@ disk. Värden hade inget ledigt kort vid omstart (community-moln), och start uta
 checkpoints, loggar och hela `checkpoint-10000` med optimerarens läge (för att kunna fortsätta mot 15 000) och tar bort
 poden först när den sista finns hemma. Medan den väntar kostar poden bara lagring, ca 0,08 USD/h.
 
+Allt kom hem 2026-11-09 (podden startades på CPU, 1,30 USD/h, i ca 20 minuter, och togs sedan bort): 13 checkpoints i
+`/data/texverse/runs/run1/`, loggar och valideringsbilder. Hela run1 kostade ca 32,6 USD. Träningen sparar bara LoRA:n,
+inget optimerarläge, så en fortsättning mot 15 000 börjar om optimeraren från `checkpoint-10000`.
+
+**Valideringen** (2 objekt, en staty och ett monster; ark i `build/ultratex4b/run1_eval/`): bildernas rader 0–1 är facit
+och samma i alla steg, rad 2–3 kolumn 4–6 är modellens kartor. Steg 100 ger fel färger (orange och grönt på båda), och vid
+5 000 har modellen lärt sig uppgiften: stenfärg på statyn, mörkt med rätt ton på monstret. Mellan 5 000 och 10 000 syns
+ingen tydlig vinst. Medelavvikelsen mot facit (0–255, på objektet) är för statyn 22–31 vid 5 000, 41–53 vid 10 000 och
+54–84 vid 7 500, för monstret 35–42 vid 5 000 och 35–43 vid 10 000. Två objekt är för få för att lita på skillnaden, så
+provet på Maren avgör. Det talar inte för att 15 000 steg är det som behövs.
+
 Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
 (som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
 
