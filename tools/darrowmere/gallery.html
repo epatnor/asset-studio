@@ -57,7 +57,9 @@
            repeating-conic-gradient(color-mix(in srgb, var(--line) 55%, transparent) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
   .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
   .thumb .ph { font-size: 26px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
-  .cap { padding: 5px 7px 6px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cap { padding: 5px 7px 0; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .when { padding: 1px 7px 6px; }
+  .when { font-size: 11px; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; opacity: .85; }
   .badge { position: absolute; top: 6px; left: 6px; font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px;
            background: color-mix(in srgb, var(--k) 85%, black); color: #fff; }
   .k-model { --k: var(--violet); } .k-image { --k: var(--blue); } .k-render { --k: var(--green); } .k-inspect { --k: var(--amber); } .k-map { --k: var(--pink); }
@@ -156,6 +158,14 @@ const modelThumbUrl = i => "/api/model_thumb?" + new URLSearchParams({ filename:
 const viewerUrl = i => "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output", m: Math.round(i.mtime) });
 let VIEW = store.get("view", "results"), picked = new Map();
 const when = t => new Date(t * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+// Datum och tid under varje tumnagel: "Today 17:42", "Yesterday 09:10", annars "9 Nov 2026, 17:42"
+const stamp = t => {
+  const d = new Date(t * 1000), now = new Date(), hm = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(), diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff === 0) return "Today " + hm;
+  if (diff === 1) return "Yesterday " + hm;
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) + ", " + hm;
+};
 const mb = n => n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
 
 function chips() {
@@ -192,12 +202,12 @@ function groupHtml(g, items, rank) {
       const v = "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output", m: Math.round(i.mtime) });
       html += `<a class="card k-model" href="${v}" target="_blank" title="${esc(title)} · open in the 3D viewer">
         <div class="thumb">${i.thumb ? `<img loading="lazy" src="${thumbUrl(i.thumb, i)}" alt="">` : `<span class="ph">3D</span>`}</div>
-        <span class="badge">3D</span><div class="cap">${esc(cap)}</div></a>`;
+        <span class="badge">3D</span><div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></a>`;
     } else {
       const n = list.push(i) - 1;
       html += `<div class="card k-${i.kind}" data-n="${n}" title="${esc(title)}">
         <div class="thumb"><img loading="lazy" src="${thumbUrl(i.filename, i)}" alt=""></div>
-        ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div></div>`;
+        ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></div>`;
     }
   }
   return html + `</div></section>`;
@@ -228,7 +238,8 @@ function rcard(g, i, rank) {
       <span class="badge k-${isM ? "model" : i.kind}">${isM ? "3D" : i.kind === "render" ? "Render" : "Image"}</span>
       ${isM ? `<label class="pick" title="Pick 2–4 models to compare side by side"><input type="checkbox" data-pick="${esc(key)}" ${picked.has(key) ? "checked" : ""}>Compare</label>` : ""}</div>
     <div class="rbody"><b>${rank ? `<span class="rank">#${rank}</span> ` : ""}${esc(g.order ? g.title : i.filename)}</b>
-      <span class="sub" title="${esc(i.filename)}">${g.order ? esc(i.filename) + " · " : ""}${when(i.mtime)}</span>
+      <span class="when">${stamp(i.mtime)}</span>
+      ${g.order ? `<span class="sub" title="${esc(i.filename)}">${esc(i.filename)}</span>` : ""}
       <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
         ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
       ${isM && g.order ? srcStrip(g) : ""}
