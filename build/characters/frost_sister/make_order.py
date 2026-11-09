@@ -17,8 +17,8 @@ TOPKNOT = ("platinum-silver hair slicked tightly straight back from the forehead
            "the whole forehead and hairline fully exposed")
 HAIR = PONYTAIL
 PROMPT = ("A stylized 3D game character render, full body, an attractive adult woman, a fantasy elf frost mage, confident playful smile, "
-          "icy blue eyes, " + HAIR + ", elegant pointed elf ears fully visible, a thin silver circlet with a small "
-          "ice crystal, a fitted ice-blue and white bodice with silver frost filigree, smooth fitted long sleeves, smooth fitted fingerless "
+          "icy blue eyes, " + HAIR + ", elegant pointed elf ears fully visible, a clean bare face and forehead with no circlet, tiara, "
+          "jewellery, face paint or markings, small simple stud earrings at most, a fitted ice-blue and white bodice with silver frost filigree, smooth fitted long sleeves, smooth fitted fingerless "
           "silver-blue gloves with no cuffs, slim fitted pale trousers, smooth knee-high white boots with no flaps, a single flat narrow silver "
           "belt with no pouches, no cape, no scarf, no hood, no hanging cloth or loose ribbons, standing confidently with both hands on her "
           "hips and elbows held out away from the body so there is clear space between the arms and the torso, legs slightly apart, facing "
@@ -32,7 +32,8 @@ CRITERIA = ["Exactly one character, a stylized fantasy elf woman in fitted frost
 # Hårda krav (runnerns granskning ger fail om något bryts, hur fin bilden än är) och en närbild av huvudet, så att en tunn
 # slinga syns. Krea vill gärna lägga hår i ansiktet; det ställer till det för Pixal3D och UltraTex
 HARD = ["No hair on the face at all: nothing crosses the forehead, brows, eyes, temples or cheeks, and no lock or strand hangs down "
-        "beside the face. The hair is slicked tightly back as one smooth solid shape (a ponytail or a top knot), with no fringe, bangs or wisps."]
+        "beside the face. The hair is slicked tightly back as one smooth solid shape (a ponytail or a top knot), with no fringe, bangs or wisps.",
+        "Nothing on the face or forehead: no circlet, tiara, headband, jewels, face paint, markings or glowing effects; the face is clean and fully visible."]
 CROPS = [{"name": "head", "box": [0.25, 0.0, 0.75, 0.22]}]
 
 
@@ -69,7 +70,7 @@ TOPKNOT_PROMPT = PROMPT.replace(PONYTAIL, TOPKNOT)
 steps += [{"key": f"img_{k}", "label": f"Frost mage: image (Krea-2), {kind}, seed {s}", "kind": "comfy",
            "graph": krea_graph(s, f"characters/frost_sister/{kind}_s{s}", TOPKNOT_PROMPT if kind == "topknot" else None)}
           for k, s, kind in ((2, 23, "ponytail"), (3, 57, "topknot"), (4, 91, "topknot"))]
-order = {"id": "frost-sister-r4", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
+order = {"id": "frost-sister-r5", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
          "asset": "frost-sister", "use": "test-only", "gpu": "t1000", "mission": "frost-sister", "mission_title": "The sorceress's sister, a frost mage",
          "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))
