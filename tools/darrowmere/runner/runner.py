@@ -235,9 +235,9 @@ def _comfy_step(o, s):
                          if k.endswith("_name") and isinstance(v, str) and v.endswith((".safetensors", ".gguf", ".pt", ".ckpt", ".pth"))})
         url = comfy_url()
         if LAST_MODELS.get(url) != models:
-            try:
+            log(o.id, s["key"], "freeing models before a model change")
+            try:   # ComfyUI svarar med en tom kropp, så tolkningen kastar; minnet är ändå tömt
                 http_json(f"{url}/free", {"unload_models": True, "free_memory": True}, timeout=30)
-                log(o.id, s["key"], "freed models before a model change")
             except Exception:
                 pass
             LAST_MODELS[url] = models
