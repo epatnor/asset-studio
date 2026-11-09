@@ -99,3 +99,13 @@ Texturflödet passar som första fall. Spakarna är tydliga och granskningen ger
 3. Kedjan i panelen: varven efter varandra, med spakarna och motiveringen per varv, och beskedet överst.
 4. Nästa spelböcker när verktygen är stabila: låg modell av hög (remesh och 4K-textur), kroppar i body-gen, träd och props
    i Asset Studio.
+
+## Hårda krav, närbilder och promptreparation (2026-11-09)
+
+- **`hard`** i ett granskningssteg: krav där ett brott alltid ger fail med högst 4/10, oavsett granskningens avslappnade ton
+  (t.ex. inget hår och inget diadem i ansiktet).
+- **`crops`**: närbilder ur kandidatbilden (`{"name": "head", "box": [x0, y0, x1, y1]}` som andel av bilden) skickas med i
+  768 px, så att små detaljer syns. Hela figuren skickas i 512 px.
+- **`retry.rewrite`**: när en bild underkänns skriver DeepSeek om promptens formulering inom skyddsräcken (samma motiv,
+  tema, kläder och pose, alla krav kvar, bara förtydliganden; 0,5–1,6 gånger längden), och omtaget använder den.
+  Varje version sparas i målstegets `prompts`. Första gången: frostsystern r5, där Krea lade slingor vid kinden två gånger i rad.
