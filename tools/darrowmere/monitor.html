@@ -409,18 +409,8 @@
       <button id="galBtn" role="menuitem" title="Everything Darrowmere has made: generations, renders, models and texture maps">Gallery</button>
       <button id="histBtn" role="menuitem" title="All jobs, also acknowledged ones">History</button>
       <button id="logBtn" role="menuitem" title="Open the ComfyUI log in its own window">Log</button>
-      <button id="setBtn" role="menuitem" title="Local or cloud generation, AI review, budget and API keys">Settings</button>
+      <button id="setBtn" role="menuitem" title="Display on this device, local or cloud generation, AI review, budget and API keys">Settings</button>
       <button id="reloadBtn" role="menuitem" title="Load the page again (the home-screen app has no reload button)">Reload</button>
-      <hr>
-      <button role="menuitem" data-dials="pairs" title="Two dials per part: load and memory side by side">Dials: pairs<span class="chk"></span></button>
-      <button role="menuitem" data-dials="rings" title="One dial per part: memory, swap or the data disk as an inner ring, CPU threads as ring segments">Dials: rings<span class="chk"></span></button>
-      <hr>
-      <button role="menuitem" data-theme-set="dark" title="Dark colours (the default)">Theme: dark<span class="chk"></span></button>
-      <button role="menuitem" data-theme-set="light" title="Light colours, for bright screens">Theme: light<span class="chk"></span></button>
-      <button role="menuitem" data-theme-set="system" title="Follow the light or dark setting of this device">Theme: system<span class="chk"></span></button>
-      <hr>
-      <button role="menuitem" data-rows="all" title="Always show every graphics card and service, also when idle">Rows: always show<span class="chk"></span></button>
-      <button role="menuitem" data-rows="active" title="Hide graphics cards and services with nothing running">Rows: hide idle<span class="chk"></span></button>
       <hr>
       <button id="acctBtn" role="menuitem" title="Accounts and password"><span id="meName">Account</span></button>
       <button id="outBtn" role="menuitem" title="Log out">Log out</button>
@@ -507,6 +497,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-them
   try { localStorage.setItem("darrowmere-theme", b.dataset.themeSet); } catch (err) {}
   location.reload(); });
 themeChecks();
+// Visningsvalen ställs in under Settings (eget fönster): ladda om när de ändras där
+addEventListener("storage", e => { if (["darrowmere-theme", "darrowmere-dials", "darrowmere-rows"].includes(e.key)) location.reload(); });
 // Raderna för grafikkort och tjänster: alltid synliga, eller bara de som kör något (allt stilla: en rad "All idle")
 let ROWS_MODE = "all";
 try { ROWS_MODE = localStorage.getItem("darrowmere-rows") === "active" ? "active" : "all"; } catch (e) {}
