@@ -1,0 +1,30 @@
+{
+  "_comment": "Reglagen i character creatorn (docs/character-creator.md): vänliga namn ovanpå MPFB/MakeHuman. macro = MPFB:s makrovärden (0..1); pair = ett incr/decr-par i målbiblioteket (-1..1: negativt väger decr, positivt incr); lr = samma par på vänster och höger sida (l-/r-). Etiketter på engelska (appen), kommentarer på svenska.",
+  "macro": [
+    {"id": "sex", "label": "Sex (female - male)", "macro": "gender", "min": 0, "max": 1, "default": 0, "group": "Body"},
+    {"id": "age", "label": "Age (years)", "macro": "age", "min": 18, "max": 70, "default": 25, "unit": "years", "group": "Body"},
+    {"id": "muscle", "label": "Muscle", "macro": "muscle", "min": 0, "max": 1, "default": 0.5, "group": "Body"},
+    {"id": "weight", "label": "Weight", "macro": "weight", "min": 0, "max": 1, "default": 0.5, "group": "Body"},
+    {"id": "height", "label": "Height", "macro": "height", "min": 0, "max": 1, "default": 0.5, "group": "Body"},
+    {"id": "proportions", "label": "Proportions (average - idealized)", "macro": "proportions", "min": 0, "max": 1, "default": 0.5, "group": "Body"},
+    {"id": "bust_size", "label": "Bust size", "macro": "cupsize", "min": 0, "max": 1, "default": 0.5, "group": "Torso"},
+    {"id": "bust_firmness", "label": "Bust firmness", "macro": "firmness", "min": 0, "max": 1, "default": 0.5, "group": "Torso"}
+  ],
+  "sliders": [
+    {"id": "shoulders", "label": "Shoulder width", "pair": "torso/measure-shoulder-dist", "group": "Torso"},
+    {"id": "bust", "label": "Bust circumference", "pair": "torso/measure-bust-circ", "group": "Torso"},
+    {"id": "pecs", "label": "Chest muscles", "pair": "torso/torso-muscle-pectoral", "group": "Torso"},
+    {"id": "waist", "label": "Waist", "pair": "torso/measure-waist-circ", "group": "Torso"},
+    {"id": "belly", "label": "Belly", "pair": "stomach/stomach-pregnant", "group": "Torso"},
+    {"id": "hips", "label": "Hip width", "pair": "hip/hip-scale-horiz", "group": "Hips"},
+    {"id": "buttocks", "label": "Buttocks", "pair": "buttocks/buttocks-volume", "group": "Hips"},
+    {"id": "thighs", "label": "Thighs", "lr": "legs/{s}-upperleg-fat", "group": "Legs"},
+    {"id": "thigh_muscle", "label": "Thigh muscle", "lr": "legs/{s}-upperleg-muscle", "group": "Legs"},
+    {"id": "calves", "label": "Calves", "lr": "legs/{s}-lowerleg-fat", "group": "Legs"},
+    {"id": "upper_leg_length", "label": "Upper leg length", "pair": "legs/upperlegs-height", "group": "Legs"},
+    {"id": "lower_leg_length", "label": "Lower leg length", "pair": "legs/lowerlegs-height", "group": "Legs"},
+    {"id": "upper_arms", "label": "Upper arms", "lr": "arms/{s}-upperarm-fat", "group": "Arms"},
+    {"id": "arm_muscle", "label": "Arm muscle", "lr": "arms/{s}-upperarm-muscle", "group": "Arms"},
+    {"id": "neck", "label": "Neck thickness", "pair": "neck/measure-neck-circ", "group": "Head"}
+  ]
+}

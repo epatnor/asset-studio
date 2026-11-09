@@ -1,6 +1,6 @@
 # Character creator: ett nät, reglage, och AI som visar vart reglagen ska
 
-Plan 2026-11-09, efter samtal med Patrik. Inget är byggt än.
+Plan 2026-11-09, efter samtal med Patrik. Steg 1 (receptverktyget) är byggt, se nedan.
 
 ## Målet
 
@@ -70,6 +70,25 @@ värt att ta med:
     QuadriFlow, som vägrade.
   - **Instant Meshes** (BSD) är också en kandidat för samma delar.
   - Ingen av dem ger slingor för ansikte och leder. Det gör mallen.
+
+## Byggt: receptverktyget (steg 1, 2026-11-09)
+
+`tools/character/human/make_human.py` gör en människa ur ett recept med reglage, på MPFB:s grundnät. Alla figurer delar
+topologi, UV-karta och skelett. Reglagen är data i `human_sliders.json` (vänliga namn på engelska ovanpå MPFB:s mål):
+
+- **Makro** (0..1): `sex`, `age` (år, minst 18), `muscle`, `weight`, `height`, `proportions`, `bust_size`, `bust_firmness`.
+- **Reglage** (-1..1, negativt drar åt `-decr`, positivt åt `-incr`): axlar, byst, bröstmuskler, midja, mage, höfter,
+  stuss, lår, lårmuskler, vader, lårbens- och underbenslängd, överarmar, armmuskler, hals.
+- **Fritt:** `targets` (vilket MakeHuman-mål som helst med vikt) och `macro` (råa MPFB-värden).
+- **Upplösning:** proxyn `female1605` eller `male1591` efter kön, delad en gång (`subdiv: 1`): ca 12 700 trianglar plus
+  ögonen 172. `subdiv: 0` ger ca 3 200.
+- **Ut:** `assets/characters/<name>/<name>.glb` (riggad, game_engine, 53 ben) och `<name>_pose.glb` (bakad T- eller
+  A-pose, `pose`). Inget hår. Tar ca 3 sekunder.
+- **Kontroller:** fötterna på marken, symmetri (speglade punkter mot ytan, 99:e percentilen under 2 mm), budget
+  (standard 14 000), riggad, vuxen.
+
+Provfigurerna (kvinna, kraftigare kvinna, man) ligger i `build/human/` och i Darrowmeres galleri under
+`characters/creator`. Nästa steg är inpassningen mot kusinens Pixal3D-form.
 
 ## Första steget
 

@@ -1,0 +1,135 @@
+# Körs i Blender (utan fönster, med de sparade inställningarna så att MPFB laddas) av tools/character/human/make_human.py.
+# En människa ur ett recept med reglage (human_sliders.json) på MPFB:s grundnät: proxy (spelupplösning), ögon och
+# spelskelettet. Skriver <out>/<name>.glb (riggad, i MPFB:s vilopose) och <name>_pose.glb (armarna i vald vinkel, utan
+# skelett: för jämförelser och inpassning mot Pixal3D-figurer i samma pose), och en rad "HUMAN_RESULT {json}".
+# Bygger på body-gen/tools/blender/mpfb_human.py.
+import json, os, sys
+from math import radians, sin, cos
+
+import bpy
+from mathutils import Matrix, Vector
+from bl_ext.user_default.mpfb.services.assetservice import AssetService
+from bl_ext.user_default.mpfb.services.humanservice import HumanService
+from bl_ext.user_default.mpfb.services.targetservice import TargetService
+
+job = json.loads(sys.argv[sys.argv.index("--") + 1])
+cat = json.load(open(job["catalog"]))
+out, name = job["out"], job["name"]
+os.makedirs(out, exist_ok=True)
+for o in list(bpy.data.objects):
+    bpy.data.objects.remove(o)
+
+
+def age_macro(years):
+    """MakeHuman: 0 = 1 år, 0.1875 = 11, 0.5 = 25, 1 = 90. Bara vuxna: minst 18 år."""
+    y = max(18.0, min(90.0, float(years)))
+    return 0.1875 + (y - 11) / 14 * 0.3125 if y < 25 else 0.5 + (y - 25) / 65 * 0.5
+
+
+r = job["recipe"]
+macro = TargetService.get_default_macro_info_dict()
+for m in cat["macro"]:
+    if m["id"] in r:
+        v = r[m["id"]]
+        macro[m["macro"]] = age_macro(v) if m["id"] == "age" else max(m["min"], min(m["max"], float(v)))
+for k, v in (r.get("macro") or {}).items():   # råa MPFB-värden går också (t.ex. "african": 0.3)
+    macro[k] = v
+base = HumanService.create_human(mask_helpers=True, detailed_helpers=False, extra_vertex_groups=True, feet_on_ground=True,
+                                 scale=0.1, macro_detail_dict=macro)
+TROOT = os.path.join(os.path.dirname(sys.modules[TargetService.__module__].__file__), "..", "data", "targets")
+applied = {}
+
+
+def load(path, w, label):
+    TargetService.load_target(base, os.path.join(TROOT, path + ".target.gz"), weight=w, name=label)
+
+
+for s in cat["sliders"]:
+    v = float((r.get("sliders") or {}).get(s["id"], 0))
+    if not v:
+        continue
+    v = max(-1.0, min(1.0, v))
+    end = "-incr" if v > 0 else "-decr"
+    paths = [s["pair"]] if "pair" in s else [s["lr"].format(s=side) for side in ("l", "r")]
+    for p in paths:
+        load(p + end, abs(v), (p + end).split("/")[-1])
+    applied[s["id"]] = round(v, 3)
+for path, w in (r.get("targets") or {}).items():   # vilket mål som helst ur biblioteket: {"torso/measure-waist-circ-decr": 0.5}
+    load(path, w, path.split("/")[-1])
+bpy.context.view_layer.update()
+rig = HumanService.add_builtin_rig(base, r.get("rig", "game_engine"), import_weights=True) if r.get("rig", "game_engine") else None
+sex = macro.get("gender", 0)
+proxy = r.get("proxy") or ("male1591" if sex >= 0.5 else "female1605")
+parts = {}
+for kind, sub, atype, ext, nm in (("proxy", "proxymeshes", "Proxymeshes", "proxy", proxy), ("eyes", "eyes", "Eyes", "mhclo", r.get("eyes", "low-poly")),
+                                  ("hair", "hair", "Hair", "mhclo", r.get("hair"))):
+    if not nm:
+        continue
+    path = AssetService.find_asset_absolute_path(f"{nm}/{nm}.{ext}", sub)
+    ob = HumanService.add_mhclo_asset(path, base, asset_type=atype, subdiv_levels=int(r.get("subdiv", 1)) if kind == "proxy" else 0,
+                                      material_type="GAMEENGINE")
+    parts[kind] = ob.name if ob else None
+    for md in (ob.modifiers if ob else []):   # MPFB sätter bara render_levels; exporten använder levels
+        if md.type == "SUBSURF":
+            md.levels = md.render_levels
+bpy.context.view_layer.update()
+if parts.get("proxy"):
+    base.hide_set(True); base.hide_render = True
+
+# Mått och kontroller: trianglar per nät, fötterna på marken, symmetri (spegling i X), längd
+dg = bpy.context.evaluated_depsgraph_get()
+meshes, tris, zmin, zmax, asym = {}, 0, 1e9, -1e9, 0.0
+for o in bpy.context.scene.objects:
+    if o.type != "MESH" or o.hide_get():
+        continue
+    e = o.evaluated_get(dg).to_mesh(); e.calc_loop_triangles()
+    pts = [o.matrix_world @ v.co for v in e.vertices]
+    meshes[o.name] = {"verts": len(e.vertices), "tris": len(e.loop_triangles), "uv": bool(e.uv_layers)}
+    tris += len(e.loop_triangles)
+    zmin, zmax = min(zmin, min(p.z for p in pts)), max(zmax, max(p.z for p in pts))
+    if o.name == parts.get("proxy"):   # symmetri: speglade punkter mot närmaste yta (inte närmaste punkt; topologin är inte spegelbild)
+        from mathutils.bvhtree import BVHTree
+        bvh = BVHTree.FromPolygons(pts, [t.vertices for t in e.loop_triangles])
+        d = sorted(bvh.find_nearest(Vector((-p.x, p.y, p.z)))[3] for p in pts)
+        asym = d[int(len(d) * 0.99)]   # 99:e percentilen
+    o.evaluated_get(dg).to_mesh_clear()
+for o in bpy.context.scene.objects:
+    o.select_set(not o.hide_get() and o.type in ("MESH", "ARMATURE"))
+bpy.ops.export_scene.gltf(filepath=os.path.join(out, f"{name}.glb"), export_format="GLB", use_selection=True, export_apply=True,
+                          export_animations=False, export_skins=True, export_vertex_color="NONE")
+
+# Samma figur med armarna i vald vinkel (90 = T-pose, 45 = A-pose), bakad till nät utan skelett
+pose = r.get("pose", "T")
+angle = {"T": 90, "A": 45}.get(pose, pose if isinstance(pose, (int, float)) else None)
+arms = [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]
+if arms and angle is not None:
+    rig_o = arms[0]; W3 = rig_o.matrix_world.to_3x3(); names = list(rig_o.pose.bones.keys())
+    for side in ("l", "r"):
+        up = next((n for n in (f"upperarm_{side}", f"upperarm01.{side.upper()}", f"upper_arm.{side.upper()}") if n in names), None)
+        lo = next((n for n in (f"hand_{side}", f"lowerarm_{side}", f"wrist.{side.upper()}", f"lowerarm02.{side.upper()}") if n in names), None)
+        if not up or not lo:
+            continue
+        pb, end = rig_o.pose.bones[up], rig_o.pose.bones[lo]
+        cur = (W3 @ (end.head - pb.head)).normalized()
+        a_ = radians(angle)
+        side_x = 1 if (W3 @ pb.head).x > 0 else -1
+        want = Vector((side_x * sin(a_), 0, -cos(a_)))
+        Ra = (W3.inverted() @ cur.rotation_difference(want).to_matrix() @ W3).to_4x4()
+        h = pb.head.copy()
+        pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
+        bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    baked = []
+    for o in [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.hide_get()]:
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg), depsgraph=dg)
+        if not me.materials:
+            me.materials.append(bpy.data.materials.new("skin"))
+        n = bpy.data.objects.new(o.name.split(".")[-1], me); n.matrix_world = o.matrix_world
+        bpy.context.collection.objects.link(n); baked.append(n)
+    for o in bpy.context.scene.objects:
+        o.select_set(o in baked)
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out, f"{name}_pose.glb"), export_format="GLB", use_selection=True, export_apply=True,
+                              export_animations=False, export_skins=False, export_vertex_color="NONE")
+print("HUMAN_RESULT " + json.dumps({"proxy": proxy, "meshes": meshes, "tris": tris, "bones": len(arms[0].data.bones) if arms else 0,
+                                    "height_m": round(zmax - zmin, 3), "feet_z": round(zmin, 4), "asym_m": round(asym, 4),
+                                    "sliders": applied, "pose": pose, "macro": {k: round(v, 3) for k, v in macro.items() if isinstance(v, (int, float))}}))

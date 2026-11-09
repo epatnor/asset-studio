@@ -70,6 +70,7 @@ Kommandoradsvarianter:
 | `python3 -I tools/props/make_prop.py '<recept>'` | Prop → `assets/props/<name>/<name>.gltf` (+ .bin); `detail` som för träden |
 | `python3 -I tools/plants/make_plant.py '<recept>'` | Växt → `assets/plants/<name>/<name>.gltf` (+ .bin); `detail` som för träden |
 | `python3 -I tools/character/make_character.py '<recept>'` | Karaktär → `assets/characters/<name>/<name>.gltf` (+ .bin), under arbete |
+| `python3 -I tools/character/human/make_human.py '<recept>'` | Character creator ([docs/character-creator.md](docs/character-creator.md)): en människa på MPFB:s gemensamma nät ur reglage (`sex`, `age`, `weight` ..., `sliders` ur `human_sliders.json`), ca 12 700 trianglar, game_engine-skelett, utan hår → `assets/characters/<name>/<name>.glb` + `_pose.glb` (T/A) |
 | `python3 -I tools/building/make_building.py '<recept>'` | Byggnad → `assets/buildings/<name>/<name>.gltf` (+ .bin), texturer genereras vid behov |
 | `node tools/building/gen_kit.mjs '{"assembly": "cottage", "out": "build/kit/cottage.gltf"}'` | Byggsatsen ([docs/building-kit.md](docs/building-kit.md)): en modul (`module`, `ends`), katalogen (`catalog`) eller ett hus av moduler (`assembly`) med kontroller av sockets, överlapp, glipor och svävande stenar. Vanliga murar och takfall är plattor med bakad relief (`kit/bake.mjs`, `{"bake": true}` bakar om); bilder med `tools/building/kit_sheet.py` |
 | `python3 -I tools/import/make_import.py '<recept>'` | Färdig modell (GLB, FBX ...) → `assets/imported/<name>/`, normaliserad och komprimerad |
