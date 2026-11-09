@@ -12,7 +12,8 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
   tränas (dec2).
 - **Kvar att lösa:** fläckar på Maren. Halsdukens färg läcker in på rocken, halsduken har en fläck längs kanten, det finns
   en skugga under bältet och en fläck vid näsan. De två första ser ut som bakningsfel och testas med bakningens
-  inställningar. De två sista ser ut som inbakad skuggning från referensen.
+  inställningar. De två sista ser ut som inbakad skuggning från referensen. Bakningstestet visade att vyvikt 8
+  (`view_weight_power`) tar bort fläckarna vid näsan och tinningen.
 - **Pågår:** run3b (från 8000, LR 2e-5, EMA), dec2 (egen dekoder) och bakningstestet.
 - **Mot 9B:** 9B för fortfarande över detaljer från referensbilden till ytor som formen saknar (statyns veck, placering
   0,38 mot 0,13–0,17). Vår 4B gör inte det än.
@@ -43,7 +44,7 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
 | Valideringsobjekten i 3D | staty och monster från TexVerse, 4B mot 9B mot original | 9B för över veck och mönster; 4B slät (statyns variation ±4 mot 9B ±23) |
 | Genomgång av checkpoints | Maren och statyn, steg 2 000–10 000 | Maren blir bättre fram till 8 000; statyn bäst vid 4 000 (detalj 2,3, färgavstånd 8) |
 | Dekodern | Maren 8 000 med bas-VAE:ns dekoder | linjära färger; som sRGB fylligare och mer detalj än forskarnas dekoder (mättnad 164 mot 118, referensen 100) |
-| Bakningen | Maren 8 000, tre bakningsinställningar från samma målning | pågår |
+| Bakningen | Maren 8 000, tre bakningsinställningar från samma målning | `view_weight_power` 8 (i stället för 4) tar bort fläckarna vid näsan, tinningen och i håret; `edge_feather_px` och `best_view_mix` gör ingen synlig skillnad. Full sRGB blir för ljus; Patrik föredrar den mörkare och fylligare råa färgen, graderingar med gamma 1,3 och 1,6 provas |
 
 Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
 
