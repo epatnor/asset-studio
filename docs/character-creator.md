@@ -133,6 +133,16 @@ Patrik om Yvonne-provet (2026-11-09): kroppen, armarna, magen, ryggen och benen 
 
 Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres galleri under `characters/creator`.
 
+## Läget (kväll 2026-11-09)
+
+- **Kusinen, runda 7** (`cousin-r7` på Darrowmere): ordet "hair" är borta ur prompten, och omskrivningen får inte använda
+  det (`rewrite_avoid`). `build/characters/cousin/run_after.sh` väntar på Pixal3D-modellen, passar in MPFB-kroppen
+  (`build/human/cousin_fit/`, kopia i galleriet under `characters/creator`) och kör sedan UltraTex, gradering, spegling och
+  12k. Om sessionen som startade skriptet är stängd: kolla `cousin-r7` och kör `CONCEPT=cousin-r7 bash
+  build/characters/cousin/run_after.sh` igen.
+- **Nästa i creatorn:** omgång 2 (personlig förskjutning per punkt), ansiktet (MediaPipe), ett spelnät med riktiga
+  fingrar och armhålor som klarar deformationstestet.
+
 ## Första steget
 
 **Kusinen** (A-pose, baddräkt, slät kropp nära grundnätet) är det perfekta första testet. Passa in MPFB:s kvinnokropp efter
