@@ -67,7 +67,7 @@ ph train
 if [ "${TASK:-lora}" = decoder ]; then
     # Bara dekodern tränas (VAE:ns kodare fryst), mot albedon; färgfelet (deltaE 2000) mäts på eval-objekten var 1000:e steg
     AE_MODEL_PATH=$M/ae.safetensors TRAIN_JSON=$W/extracted/train.json EVAL_JSON=$W/extracted/eval.json OUTPUT_DIR=$W/out \
-        RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-200} SAVE_EVERY=${CKPT_STEPS:-500} MODEL_NAME=flux.2-klein-base-4b \
+        RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-200} SAVE_EVERY=${CKPT_STEPS:-500} MODEL_NAME=flux.2-klein-base-4b MAIN_PROCESS_PORT=29500 \
         NUM_WORKERS=$(( $(nproc) > 10 ? 8 : $(nproc) - 2 )) NUM_GPUS=1 \
         bash scripts/train_vae_flux2.sh >> $W/train.log 2>&1 || fail train
 else
