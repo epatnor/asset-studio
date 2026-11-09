@@ -208,6 +208,80 @@ def fetch(r, final=False):
     return {"ok": True, "new": got, "fetched": run.s.get("fetched", []), "out": run.out}
 
 
+def resume(r):
+    """Startar en stoppad pod igen (t.ex. efter vakthunden) för att hämta det som ligger kvar på dess disk, med en egen
+    vakthund på poden (max_min, standard 20) så att den stoppas även om ingen hämtar. Svarar när ssh är uppe."""
+    run = Run(r.get("run", "run1"))
+    if not run.s.get("pod_id") or run.s.get("removed_at"):
+        return {"ok": False, "error": "ingen stoppad pod"}
+    try:
+        res = gql('mutation { podResume(input: {podId: "%s", gpuCount: 1}) { id desiredStatus costPerHr } }' % run.s["pod_id"])["podResume"]
+    except RuntimeError as e:   # kortet upptaget: starta utan GPU, det räcker för att hämta filer (och kostar mindre)
+        if "not enough free gpus" not in str(e).lower():
+            raise
+        res = gql('mutation { podResume(input: {podId: "%s", gpuCount: 0}) { id desiredStatus costPerHr } }' % run.s["pod_id"])["podResume"]
+        res["gpus"] = 0
+    run.s["resumed_at"] = time.time(); run.s.pop("ip", None); run.save()
+    for _ in range(60):
+        time.sleep(10)
+        rt = gql('query { pod(input: {podId: "%s"}) { runtime { ports { ip isIpPublic privatePort publicPort } } } }'
+                 % run.s["pod_id"])["pod"]["runtime"]
+        ports = [x for x in (rt or {}).get("ports") or [] if x["privatePort"] == 22 and x["isIpPublic"]]
+        if ports:
+            run.s.update(ip=ports[0]["ip"], port=ports[0]["publicPort"]); run.save()
+            if run.ssh("true").returncode == 0:
+                break
+    else:
+        gql('mutation { podStop(input: {podId: "%s"}) { id } }' % run.s["pod_id"])
+        return {"ok": False, "error": "ssh kom aldrig upp, poden stoppad igen"}
+    mm = int(r.get("max_min", 20))
+    try:
+        run.ssh("while IFS= read -r -d '' kv; do case $kv in RUNPOD_*) export \"$kv\";; esac; done < /proc/1/environ; "
+                f"setsid nohup bash -c 'sleep {mm * 60}; runpodctl stop pod $RUNPOD_POD_ID' > /dev/null 2>&1 < /dev/null &", timeout=20)
+    except subprocess.TimeoutExpired:
+        pass
+    return {"ok": True, "pod_id": run.s["pod_id"], "status": res.get("desiredStatus"), "gpus": res.get("gpus", 1), "usd_h": res.get("costPerHr"),
+            "max_min": mm, "max_usd": round((res.get("costPerHr") or run.s["cost_per_hr"]) * mm / 60, 2)}
+
+
+def recover(r):
+    """För en pod som stoppats innan allt hämtats: försök starta den var `every_min` minut i högst `hours` timmar (kortet kan
+    vara upptaget på värden), hämta sedan alla checkpoints, loggar och hela sista checkpointmappen (med optimerarens läge,
+    så att träningen kan fortsätta senare), och ta bort poden när den sista finns hemma. Körs i bakgrunden på Darrowmere."""
+    run = Run(r.get("run", "run1")); total = int(run.s["env"]["STEPS"]); last = f"checkpoint-{total}"
+    p = run.pipe(); every, until = int(r.get("every_min", 10)), time.time() + float(r.get("hours", 24)) * 3600
+    tries = 0
+    while True:
+        tries += 1
+        try:
+            up = bool(run.s.get("ip")) and run.ssh("true", 20).returncode == 0
+            res = {"ok": True} if up else (run.s.pop("ip", None), run.save(), resume(r))[2]
+        except (RuntimeError, subprocess.TimeoutExpired) as e:
+            res = {"ok": False, "error": str(e)}
+        if res.get("ok"):
+            break
+        if time.time() > until or "not enough free gpus" not in res.get("error", "").lower():
+            if p: p.fail("stop", note=f"could not restart the pod: {res.get('error', '')[:80]}")
+            return {"ok": False, "tries": tries, **res}
+        if p: (p.start if tries == 1 else lambda k, note: p._set(k, note=note))(
+            "stop", note=f"waiting for a free H100 to fetch the last checkpoints (try {tries})")
+        time.sleep(every * 60)
+        run = Run(run.name)
+    if p: p.start("stop", note="pod restarted, fetching")
+    got = fetch({"run": run.name}, final=True)
+    run = Run(run.name)
+    rr = run.ssh(f"cd /workspace/out && tar cf /tmp/{last}.tar {last}; true", 600)
+    full = run.pull(f"/tmp/{last}.tar", os.path.join(run.out, f"{last}_full.tar"), 3600).returncode == 0
+    if last in run.s.get("fetched", []) and full:
+        res = stop({"run": run.name})
+        if p: p.done("stop", note=f"{len(run.s.get('fetched', []))} checkpoints home, pod removed, {res['usd_total']} USD")
+        return {"ok": True, "tries": tries, "new": got["new"], "full_state": f"{last}_full.tar", **res}
+    gql('mutation { podStop(input: {podId: "%s"}) { id } }' % run.s["pod_id"])
+    run.s.pop("ip", None); run.save()
+    if p: p.fail("stop", note=f"{last} missing on the pod; pod stopped, not removed")
+    return {"ok": False, "error": f"{last} saknas", "new": got["new"], "full_state": full}
+
+
 def stop(r):
     run = Run(r.get("run", "run1"))
     if run.s.get("pod_id") and not run.s.get("removed_at"):
@@ -269,7 +343,7 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     rec = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
     try:
-        fn = {"price": lambda r: price(), "start": start, "status": status, "fetch": fetch, "stop": stop, "watch": watch}[cmd]
+        fn = {"price": lambda r: price(), "start": start, "status": status, "fetch": fetch, "resume": resume, "recover": recover, "stop": stop, "watch": watch}[cmd]
         print(json.dumps(fn(rec)))
     except Exception as e:
         print(json.dumps({"ok": False, "error": str(e)[:500]}))

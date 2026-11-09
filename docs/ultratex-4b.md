@@ -136,6 +136,17 @@ till 15 000 från sista checkpointen bara om bilderna blir bättre.
   stoppar sig själv om ingen hämtat resultatet inom två timmar efter träningen, och en stoppad pod tas inte bort av vakten
   förrän någon har tittat.
 
+**Utfall (2026-11-09):** poden gick i 12,3 h (14:48–03:05 UTC), ca 31,8 USD, som beräknat. Vakten dog när Darrowmere
+hängde 2026-11-08 kväll (vid steg ~6 900, så panelens kostnad fastnade på 18 USD). Träningen gick klart av sig själv och
+poden stoppade sig efter två timmars väntan. Checkpoints 100–6 000 finns på Darrowmere; 7 000–10 000 ligger på poddens
+disk. Värden hade inget ledigt kort vid omstart (community-moln), och start utan GPU gick inte. `runpod_train.py recover`
+(i bakgrunden på Darrowmere, `recover.out`) försöker därför var tionde minut i högst ett dygn. Den hämtar alla
+checkpoints, loggar och hela `checkpoint-10000` med optimerarens läge (för att kunna fortsätta mot 15 000) och tar bort
+poden först när den sista finns hemma. Medan den väntar kostar poden bara lagring, ca 0,08 USD/h.
+
+Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
+(som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
+
 ## Krea 2 som andra spår
 
 Forken `Atlas3DSS/UltraTex` (grenen `qwen21-krea2-port`) har kod för Krea 2 som stomme, men inga tränade vikter och inget
