@@ -70,3 +70,31 @@ order = {"id": "cousin-r7", "title": "Cousin r7 (bald, no hair word in the promp
          "mission_title": "The sorceress's cousin: smooth swimsuit body in A-pose", "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))
 print(json.dumps({"ok": True, "steps": len(steps)}))
+
+
+# Runda 8 (2026-11-09): Patrik valde G_s11_1440 ur A/B-provet (skallig, rakt framifrån, T-pose, kvadratiskt så att
+# händerna kommer med). Bara Pixal3D; resten sköter run_after.sh (CONCEPT=cousin-r8 IMG_SUB=characters/cousin/ab).
+import sys
+if "--r8" in sys.argv:
+    img = ROOT / "build/characters/cousin/ab/G_s11_1440_00001_.png"
+    r8 = {"id": "cousin-r8", "title": "Cousin r8: Pixal3D from the chosen bald front-view T-pose image (G_s11_1440)", "project": "asset-studio",
+          "asset": "cousin", "use": "test-only", "gpu": "t1000", "mission": "cousin", "mission_title": order["mission_title"],
+          "inputs": {"concept.png": str(img)},
+          "steps": [{"key": "mesh", "label": "Cousin: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$in:concept.png", "3d/characters/cousin_pixal3d")}]}
+    (Path(__file__).parent / "order_r8.json").write_text(json.dumps(r8, indent=1))
+    print(json.dumps({"ok": True, "order": "order_r8.json"}))
+
+
+# Runda 9 (2026-11-09): r8:s Pixal3D-modell hade lösa strängar längs armarna. Samma bild nedskalad till 1024 och 768
+# visar om upplösningen spelar in (Patriks misstanke).
+if "--r9" in sys.argv:
+    steps = []
+    for sz in (1024, 768):
+        steps.append({"key": f"mesh_{sz}", "label": f"Cousin: Pixal3D from the {sz}px image", "kind": "comfy",
+                      "graph": pixal_graph(f"$in:concept_{sz}.png", f"3d/characters/cousin_r9_{sz}")})
+    r9 = {"id": "cousin-r9", "title": "Cousin r9: does input resolution cause Pixal3D's arm strands? (1024 vs 768)", "project": "asset-studio",
+          "asset": "cousin", "use": "test-only", "gpu": "t1000", "mission": "cousin", "mission_title": order["mission_title"],
+          "inputs": {f"concept_{sz}.png": str(ROOT / f"build/characters/cousin/ab/G_s11_from1440_{sz}.png") for sz in (1024, 768)},
+          "steps": steps}
+    (Path(__file__).parent / "order_r9.json").write_text(json.dumps(r9, indent=1))
+    print(json.dumps({"ok": True, "order": "order_r9.json"}))

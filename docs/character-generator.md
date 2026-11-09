@@ -115,6 +115,19 @@ Senare: lösa plagg (nivå D: kjol, rock, kappa, långt hår med egna ben), hjä
 
 ## Figurflödet med UltraTex (2026-11-09)
 
+**Indata till Pixal3D: 1024 px (prov 2026-11-10, kusinen).** Samma bild i tre storlekar gav olika antal fel:
+
+| Indata | Lösa bitar | Vassa veck i armarna per 1 000 trianglar | Nålsmala trianglar |
+|---|---|---|---|
+| 1440 px | 267 | 44,5 | 56 |
+| 1024 px | 0 | 1,4 | 0 |
+| 768 px | 13 | 24,9 | 0 |
+
+Grafen beskär själv figuren till 1024×1024, så skala koncepten till 1024 före Pixal3D. Bilder för T-pose görs kvadratiska,
+eftersom armspannet är lika långt som kroppen (i stående format kapades händerna). Krea-2 ritar skalliga figurer om
+motivet står först och kort ("bald young woman, straight-on front view, ..."). `tools/mesh/clean_floaters.py` tar bort
+lösa bitar om några ändå finns kvar.
+
 Steg för en stiliserad figur, som det körs för trollkvinnan, frostsystern och kusinen (`build/characters/`):
 
 1. **Koncept:** Krea-2-bilder med regler i prompten: inget hår eller smycken i ansiktet, få skrymslen, gärna symmetrisk
