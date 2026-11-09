@@ -42,7 +42,6 @@ och ansikte.
    - MPFB:s CC0-frisyrer kan användas tills generatorn finns.
    Övriga lager:
    - Kläder är egna nät som följer kroppen: MPFB:s klädproxies eller en egen klädgenerator, som byggnadsgeneratorns delar.
-   - Hår är egna nättyper: knut, hästsvans, fläta.
    - Ögon och ögonbryn också.
    - Allt följer reglagen, eftersom det sitter på samma nät.
 5. **Textur.** UltraTex målar på den gemensamma UV-kartan. En hudtextur kan återanvändas mellan figurer och detaljeras per figur.
