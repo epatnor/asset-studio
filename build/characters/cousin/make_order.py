@@ -12,16 +12,17 @@ pixal = json.loads((ROOT / "build/maren/order/maren_pixal3d.json").read_text())[
 PROMPT = ("A stylized 3D game character render, full body, an attractive slim adult human woman with round human ears, a friendly "
           "confident smile, warm brown eyes, chestnut hair slicked tightly back into one smooth round bun at the back of the head, "
           "the bun a single solid shape, no fringe, no loose strands, the whole forehead, hairline, ears and face clear of hair, a clean "
-          "bare face with no jewellery or make-up marks. She wears only a sleek one-piece swimsuit with a bold blue and yellow geometric "
-          "pattern, high-cut leg openings on the outer hips, tasteful cut-outs at the sides of the waist, bare shoulders and arms, an open "
-          "back, smooth matte fabric, barefoot. She stands in a "
+          "bare face with no jewellery or make-up marks. She wears only a classic 1980s lifeguard-style one-piece swimsuit: very high-cut leg "
+          "openings up to the hip bones, a deep scoop neckline, thin shoulder straps that cross over a wide open back, smooth matte fabric "
+          "with no logo, badge or print, coloured in a Swedish theme of sunny yellow and royal blue in broad flowing diagonal waves across "
+          "the suit, bare shoulders, arms and legs, barefoot. She stands in a "
           "strict symmetrical A-pose facing the viewer: both arms straight with elbows locked, held out from the body at 45 degrees, palms "
           "facing down, fingers together; legs straight, feet flat on the ground about shoulder-width apart with a clear gap between the "
           "thighs, toes pointing forward. Appealing stylized proportions like Overwatch and World of Warcraft characters, clean readable "
           "shapes, hand-painted stylized PBR textures, the whole figure visible from head to toe and centered, plain flat light grey studio "
           "background, soft even lighting, no text, no other objects")
 CRITERIA = ["Exactly one character, a slim adult human woman, shown whole from head to toe and centered.",
-            "She wears only a one-piece swimsuit with a blue and yellow pattern; shoulders, arms and legs are bare; it is tasteful.",
+            "She wears only a classic high-cut one-piece swimsuit in broad yellow and blue waves, with no logo or badge; shoulders, arms and legs are bare; it is tasteful.",
             "Plain even background, no other objects or text; no strong white highlights on the swimsuit or skin; correct hands and face."]
 HARD = ["No hair on the face at all: hair slicked back into one smooth bun, no fringe, no strands beside the face or over the ears.",
         "Nothing on the face: no jewellery, face paint or markings; round human ears, not pointed elf ears.",
@@ -61,7 +62,7 @@ steps = [{"key": "img_1", "label": "Cousin: image (Krea-2), seed 5", "kind": "co
          {"key": "mesh", "label": "Cousin: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$step:img_1", "3d/characters/cousin_pixal3d")}]
 steps += [{"key": f"img_{k}", "label": f"Cousin: image (Krea-2), seed {s}", "kind": "comfy", "graph": krea_graph(s, f"characters/cousin/krea_s{s}")}
           for k, s in ((2, 19), (3, 44), (4, 73))]
-order = {"id": "cousin-r1", "title": "Cousin: human A-pose in a patterned swimsuit, Krea-2 images, review and a Pixal3D model",
+order = {"id": "cousin-r2", "title": "Cousin: human A-pose in a yellow-and-blue 80s high-cut swimsuit, Krea-2 images, review and a Pixal3D model",
          "project": "asset-studio", "asset": "cousin", "use": "test-only", "gpu": "t1000", "mission": "cousin",
          "mission_title": "The sorceress's cousin: smooth swimsuit body in A-pose", "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))
