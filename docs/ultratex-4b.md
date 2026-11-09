@@ -17,7 +17,7 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
 - **Beslut (Patrik, 2026-11-09):** bas-VAE:ns dekoder med färggradering gamma 1,3 (`tools/texture/grade_glb.py`),
   bakning med `view_weight_power` 8 och en andra kamerauppsättning vriden 45° (`UltraTexRotateRig`, `prep_2` och
   `albedo_views_2` i bakningen). Den andra uppsättningen tog bort det mesta av den bruna fläcken på halsdukens
-  framsida och gjorde mer av kragen grön. Den dubblar målningstiden (ca 17 min för Maren på T1000). Full sRGB var för ljus, och forskarnas dekoder slätade bort fräknarna.
+  framsida, gjorde mer av kragen grön och tog nästan bort skuggan mellan bälte och förkläde. Den dubblar målningstiden (ca 17 min för Maren på T1000). Full sRGB var för ljus, och forskarnas dekoder slätade bort fräknarna.
 - **Pågår:** run3b (från 8000, LR 2e-5, EMA), dec2 (egen dekoder) och ett test med extra kameror vridna 45° mot
   läckan från halsduken.
 - **Mot 9B:** 9B för fortfarande över detaljer från referensbilden till ytor som formen saknar (statyns veck, placering
@@ -50,7 +50,7 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
 | Genomgång av checkpoints | Maren och statyn, steg 2 000–10 000 | Maren blir bättre fram till 8 000; statyn bäst vid 4 000 (detalj 2,3, färgavstånd 8) |
 | Dekodern | Maren 8 000 med bas-VAE:ns dekoder | linjära färger; som sRGB fylligare och mer detalj än forskarnas dekoder (mättnad 164 mot 118, referensen 100) |
 | Bakningen | Maren 8 000, tre bakningsinställningar från samma målning | `view_weight_power` 8 (i stället för 4) tar bort fläckarna vid näsan, tinningen och i håret; `edge_feather_px` och `best_view_mix` gör ingen synlig skillnad. Full sRGB blir för ljus; Patrik föredrar den mörkare och fylligare råa färgen, graderingar med gamma 1,3 och 1,6 provas |
-| Fler kameror | Maren 8 000 med en andra kamerauppsättning vriden 45° | halsdukens bruna fläck nästan borta, mer av kragen grön; lite läcka kvar |
+| Fler kameror | Maren 8 000 med en andra kamerauppsättning vriden 45° | halsdukens bruna fläck nästan borta, mer av kragen grön, skuggan i hörnet mellan bälte och förkläde nästan borta; lite läcka kvar |
 
 Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
 
