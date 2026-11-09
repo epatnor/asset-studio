@@ -129,6 +129,14 @@ Lärt på den här datorn: webbläsarpanelen i Claude-appen ritar på det inbygg
 
 **Genvägen i appmenyn** (Asset Studio, med bonsaiikonen): `tools/studio/launch.sh` körs på värden, startar studioservern som systemd-enheten `asset-studio-server` i containern claude-desktop om den inte svarar, och ber den öppna studion på det snabba kortet (`/api/gpu/launch` med `id: "discrete"`); går det inte öppnas studion i standardwebbläsaren. Fönstret får klassen `asset-studio` (`--class`), som posten anger i `StartupWMClass`, så att aktivitetsfältet visar appens ikon. Finns ett Asset Studio-fönster redan lyfter genvägen fram det (`wmctrl -x -a asset-studio`) i stället för att öppna ett till (alla fönster på ett kort delar en Chrome-profil, så varje ny start blev annars ett fönster till ovanpå). Posten och ikonerna (ikontemat hicolor, 32–512 px) installeras med `sh tools/studio/install_launcher.sh` på värden; kör den igen om mappen flyttas.
 
+## Idé: Darrowmere i en liten ruta (2026-11-09)
+
+Patrik gillade RunPods kompakta poddlista som förebild för en widget i Asset Studio, så att man kan följa Darrowmere
+medan man jobbar. Det är en rad per enhet (T1000, M4000, RunPod-poddar, DeepSeek). Varje rad har en statusprick,
+namnet och ett id i fast bredd, små ringar med procent under för last (CPU, GPU), minne (RAM, VRAM) och disk, en liten
+ikon mitt i varje ring, korttyp med antal, kostnad per timme och en ⋮-meny. Widgeten läser panelens `/api/status`.
+Den byggs när GUI:t i Godot får dockbara paneler.
+
 ## Faser
 
 | Fas | Innehåll | Klart när | Status |
