@@ -178,6 +178,18 @@ base 4B (fp8), Qwen3 4B och run1-LoRA:n; bara albedo. Beställningar `build/ultr
 - Bakningen använde 9B:s dekoder (`ultratex_flux2_decoder.pt`, icke-kommersiell). För en helt öppen kedja behövs vår egen
   dekoder (steg 4).
 
+**Varför 10 000 kan vara sämre än 5 000 (2026-11-09):** Patrik ser att texturerna från 10 000 ser sämre ut än från
+5 000. Statyn blir grå vid 10 000 men sandfärgad vid 5 000. Träningens loss låg platt hela vägen, 0,34–0,38 i snitt per
+1 000 steg och svagt stigande (0,343 vid 0–999, 0,376 vid 7 000–8 999). Modellen lärde sig alltså uppgiften tidigt och
+har sedan vandrat. Trolig orsak: forskarnas skript kör batch 1 per GPU med konstant inlärningstakt 5e-5. Vi kör på ett
+kort, så den effektiva batchen blir 1 och bruset i varje steg stort, medan forskarna troligen tränade på flera kort.
+Åtgärder till nästa körning: lägre inlärningstakt (1e-5–2e-5) och EMA-vikter (`--ema True --ema_decay 0.999`, stöds av
+`train_flux2.py` och sparas som `dit_lora_ema.safetensors`), med start från den bästa checkpointen.
+run2 (fortsättning från 10 000 på A100) stoppades vid 10 100 för 1,33 USD: A100 tog 11,3 s/steg (3,3 gånger H100), och
+5 015 objekt gick inte att packa upp (`error_OSError`; troligen för liten disk för sex hinkar på 150 GB).
+En gratis genomgång av checkpoints (2 000, 4 000, 6 000, 8 000) på Maren och statyn körs på Darrowmere (uppdraget
+`ultratex4b-sweep`) för att hitta det bästa steget.
+
 Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
 (som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
 
