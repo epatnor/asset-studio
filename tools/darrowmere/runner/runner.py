@@ -217,6 +217,10 @@ def _comfy_step(o, s):
         pid = t["job"]  # runnern startades om mitt i jobbet: vänta vidare på samma jobb
     else:
         g = copy.deepcopy(s["graph"])
+        if t.get("prompt") and t.get("prompt_original"):   # promptreparation efter en underkänd granskning
+            for n in g.values():
+                if isinstance(n, dict) and n.get("class_type") == "CLIPTextEncode" and n.get("inputs", {}).get("text") == t["prompt_original"]:
+                    n["inputs"]["text"] = t["prompt"]
         cache = {}
         for n in g.values():
             if isinstance(n, dict):
@@ -426,6 +430,58 @@ def deepseek_review(o, s, text, labelled, refs, crit, round_no=1):
             "cost_usd": verdict["cost_usd"], "tokens": verdict["tokens"]})
     log(o.id, s["key"], "verdict", verdict["level"], verdict.get("score"), f"{verdict['seconds']} s", verdict["cost_usd"])
     return verdict
+
+
+def prompt_texts(graph):
+    """Prompttexterna i ett flöde (CLIPTextEncode-noder med text), i nodordning."""
+    return [n["inputs"]["text"] for n in graph.values() if isinstance(n, dict) and n.get("class_type") == "CLIPTextEncode"
+            and isinstance(n.get("inputs", {}).get("text"), str) and n["inputs"]["text"].strip()]
+
+
+def rewrite_prompt(o, s, target, verdict):
+    """Promptreparation ("retry": {"rewrite": true}): när en bild underkänns skriver DeepSeek om promptens formulering så att
+    felet inte upprepas, inom skyddsräcken: samma motiv, tema, kläder och pose, alla krav kvar, bara förtydliganden och
+    förstärkningar. Varje version sparas i målstegets "prompts" och syns i panelen."""
+    ts = next(x for x in o.order["steps"] if x["key"] == target)
+    t = o.st(target)
+    texts = prompt_texts(ts.get("graph") or {})
+    if not texts:
+        return None
+    current = t.get("prompt") or texts[0]
+    hard = s.get("hard") or []
+    ask = ("You improve an image-generation prompt for Krea-2 (a FLUX-style model, no negative prompt, plain English, comma-separated "
+           "phrases work well). An automatic review rejected the last image made from it.\n\nPROMPT:\n" + current +
+           "\n\nREVIEW: " + json.dumps({k: verdict.get(k) for k in ("level", "score", "issues", "summary")}) +
+           "\n\nREQUIREMENTS the image must meet:\n" + "\n".join(f"- {c}" for c in (s.get("criteria") or []) + hard) +
+           "\n\nRewrite the prompt so the problems do not repeat. Rules: keep the same subject, theme, colours, clothing, pose, framing "
+           "and style; do not remove any requirement; only clarify, reorder (put what failed early in the prompt), make it more "
+           "concrete or repeat it. Describe what you want rather than listing what you do not want where you can. At most "
+           f"{int(len(current) * 1.5)} characters. Reply with JSON only: {{\"prompt\": \"...\", \"why\": \"one sentence\"}}.")
+    model = s.get("model") or settings()["review"].get("model") or CONF["model"]
+    t0 = time.time()
+    try:
+        r = http_json("https://openrouter.ai/api/v1/chat/completions",
+                      {"model": model, "messages": [{"role": "user", "content": ask}], "response_format": {"type": "json_object"},
+                       "temperature": 0.3, "usage": {"include": True}},
+                      headers={"Authorization": f"Bearer {env_key()}", "X-Title": "Darrowmere runner"}, timeout=120)
+        out = r["choices"][0]["message"]["content"] or ""
+        j = json.loads(out[out.find("{"): out.rfind("}") + 1])
+        new = str(j.get("prompt") or "").strip()
+    except Exception as e:
+        log(o.id, s["key"], "prompt rewrite failed", str(e)[:200])
+        return None
+    # Skyddsräcken: inte tom, inte för lång, inte samma
+    if len(new) < 0.5 * len(current) or len(new) > 1.6 * len(current) or new == current:
+        log(o.id, s["key"], "prompt rewrite rejected", len(new))
+        return None
+    hist = t.get("prompts") or [{"attempt": 0, "prompt": current, "why": "original"}]
+    hist.append({"attempt": t["attempt"], "prompt": new, "why": str(j.get("why", ""))[:300]})
+    o.set(target, prompt=new, prompts=hist, prompt_original=texts[0])
+    ai_log({"t": t0, "order": o.id, "order_title": o.order.get("title", o.id), "step": s["key"], "label": "Prompt rewrite after review",
+            "model": r.get("model", model), "seconds": round(time.time() - t0, 1), "summary": str(j.get("why", ""))[:300],
+            "cost_usd": (r.get("usage") or {}).get("cost")})
+    log(o.id, s["key"], "prompt rewritten for", target, str(j.get("why", ""))[:160])
+    return new
 
 
 def ai_log(entry, name="deepseek.jsonl"):
@@ -951,6 +1007,8 @@ def review_step(o, s):
     target = retry.get("step")
     if target and o.st(target)["attempt"] < retry.get("max", 1):
         o.st(target)["attempt"] += 1
+        if retry.get("rewrite"):
+            rewrite_prompt(o, s, target, v)
         o.set(s["key"], status="planned", end=time.time(), note="retrying · " + note, verdict=v, attempt=t["attempt"] + 1)
         o.set(target, status="planned", job=None)
         return target  # kör om från målsteget

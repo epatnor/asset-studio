@@ -64,7 +64,7 @@ def pixal_graph(img_ref, prefix):
 
 steps = [{"key": "img_1", "label": "Frost mage: image (Krea-2), ponytail, seed 11", "kind": "comfy", "graph": krea_graph(11, "characters/frost_sister/ponytail_s11")},
          {"key": "rev_1", "label": "Review: frost mage image", "kind": "review", "images": ["$step:img_1"], "criteria": CRITERIA,
-          "hard": HARD, "crops": CROPS, "min_score": 7, "retry": {"step": "img_1", "max": 4}},
+          "hard": HARD, "crops": CROPS, "min_score": 7, "retry": {"step": "img_1", "max": 6, "rewrite": True}},
          {"key": "mesh", "label": "Frost mage: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$step:img_1", "3d/characters/frost_sister_pixal3d")}]
 TOPKNOT_PROMPT = PROMPT.replace(PONYTAIL, TOPKNOT)
 steps += [{"key": f"img_{k}", "label": f"Frost mage: image (Krea-2), {kind}, seed {s}", "kind": "comfy",
