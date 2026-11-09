@@ -92,7 +92,7 @@ def start(r):
     env = {"MAX_MIN": int(r.get("max_min", 150)), "STEPS": r.get("steps", 200), "CKPT_STEPS": r.get("ckpt_steps", 100000),
            "RESOLUTION": r.get("resolution", 1024), "LIMIT": r.get("limit", 0), "EVAL_N": r.get("eval_n", 2),
            "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 20),
-           "TASK": r.get("task", "lora")}
+           "TASK": r.get("task", "lora"), "LR": r.get("lr", "5e-5"), "EXTRA": "'" + r.get("extra", "") + "'"}
     init = r.get("init")       # fortsätt från en hemhämtad checkpoint, t.ex. /data/texverse/runs/run1/checkpoint-10000
     if init:
         if not os.path.isfile(os.path.join(init, "dit_lora.safetensors")):
@@ -104,7 +104,7 @@ def start(r):
             pod = gql("""mutation($i: PodFindAndDeployOnDemandInput) { podFindAndDeployOnDemand(input: $i) { id costPerHr } }""",
                       {"i": {"cloudType": r.get("cloud", "COMMUNITY"), "gpuCount": 1, "gpuTypeId": g, "name": run.pid, "imageName": IMAGE,
                              "containerDiskInGb": 40, "volumeInGb": int(r.get("volume_gb", 150)), "volumeMountPath": "/workspace",
-                             "minVcpuCount": 8, "minMemoryInGb": 32, "ports": "22/tcp", "supportPublicIp": True,
+                             "minVcpuCount": 8, "minMemoryInGb": int(r.get("min_ram_gb", 32)), "ports": "22/tcp", "supportPublicIp": True,
                              "env": [{"key": "PUBLIC_KEY", "value": open(KEY + ".pub").read().strip()}]}})["podFindAndDeployOnDemand"]
             pod["gpu"] = g; break
         except RuntimeError as e:
@@ -214,6 +214,8 @@ def fetch(r, final=False):
         if ck in run.s.get("fetched", []):
             continue
         local = os.path.join(run.out, ck, "dit_lora.safetensors") if f.endswith("dit_lora.safetensors") else os.path.join(run.out, ck)
+        if f.endswith("dit_lora.safetensors"):   # EMA-vikterna (om träningen kör med --ema) hämtas bredvid
+            run.pull(f.replace("dit_lora.safetensors", "dit_lora_ema.safetensors"), local.replace("dit_lora.", "dit_lora_ema."))
         if run.pull(f, local).returncode == 0:
             run.s.setdefault("fetched", []).append(ck); run.save(); got.append(ck)
     if final:
