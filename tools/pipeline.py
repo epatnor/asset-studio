@@ -39,7 +39,10 @@ class Pipeline:
     @classmethod
     def load(cls, pid):
         """Läser en sparad pipeline (för att fortsätta den), eller None."""
-        r = subprocess.run(_cmd(f"cat {DIR}/{pid}.json"), capture_output=True, text=True, timeout=20)
+        try:   # panelen är bara visning: en seg disk eller ett avbrott får aldrig stoppa jobbet (run3b-bevakaren dog så)
+            r = subprocess.run(_cmd(f"cat {DIR}/{pid}.json"), capture_output=True, text=True, timeout=60)
+        except (subprocess.TimeoutExpired, OSError):
+            return None
         if r.returncode:
             return None
         d = json.loads(r.stdout)

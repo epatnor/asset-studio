@@ -2,7 +2,7 @@
 # Kusinen: väntar på konceptet (cousin-r1), beställer UltraTex-omålningen på Pixal3D-modellen (samma upplägg som frostsysterns
 # r6b: steg 8000, bas-dekodern, vyvikt 8, 45°- och uppifrån-grupper utan deras topp/botten-vyer, två bakningar), graderar
 # (gamma 1,3) och speglar ansiktet (den symmetriska A-posen gör speglingen möjlig).
-cd "$(dirname "$0")/../../.."; D=build/characters/cousin; DM=epatnor@192.168.0.33; C=${CONCEPT:-cousin-r6}
+cd "$(dirname "$0")/../../.."; D=build/characters/cousin; DM=epatnor@192.168.0.33; C=${CONCEPT:-cousin-r7}
 done_() { ssh -o BatchMode=yes -o ConnectTimeout=10 $DM "grep -q -E '^ \"status\": \"(done|failed|cancelled|rejected|stopped)' /data/orders/$1/state.json" < /dev/null; }
 until done_ $C; do sleep 60; done
 ST=$(ssh -o BatchMode=yes $DM "python3 -c \"import json; s=json.load(open('/data/orders/$C/state.json')); print(s['status']); print([f['filename'] for f in s['steps']['img_1'].get('outputs',[])][-1]); print(sorted(f['filename'] for f in s['steps']['mesh'].get('outputs',[]) if f['filename'].endswith('.glb'))[-1])\"" < /dev/null)
@@ -10,6 +10,10 @@ echo "$ST"; IMG=$(echo "$ST" | sed -n 2p); GLB=$(echo "$ST" | sed -n 3p)
 case "$(echo "$ST" | sed -n 1p)" in done*) ;; *) echo "concept did not finish: no repaint"; exit 1;; esac
 [ -n "$GLB" ] || { echo "no model from Pixal3D"; exit 1; }
 mkdir -p $D/img $D/ut4b; scp -q "$DM:/data/utdata/characters/cousin/$IMG" $D/img/ < /dev/null
+# Character creatorn: passa in MPFB-kroppen efter Pixal3D-formen (reglagen) och lägg figuren i galleriet för Compare
+mkdir -p $D/pixal3d; scp -q "$DM:/data/utdata/3d/characters/$GLB" $D/pixal3d/ < /dev/null
+python3 -I tools/character/human/fit_human.py "{\"name\": \"cousin_fit\", \"target\": \"$D/pixal3d/$GLB\", \"sex\": 0, \"out_dir\": \"build/human/cousin_fit\"}" | cut -c1-1500
+scp -q build/human/cousin_fit/cousin_fit_pose.glb $DM:/data/utdata/characters/creator/ < /dev/null && echo "fit copied"
 python3 -I - "$GLB" "$D/img/$IMG" <<'PY'
 import json, sys
 from pathlib import Path

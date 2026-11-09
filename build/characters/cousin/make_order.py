@@ -9,18 +9,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 krea = next(s["graph"] for s in json.loads((ROOT / "build/darrowmere/branding/order_krea.json").read_text())["steps"] if s["key"] == "logo_11")
 pixal = json.loads((ROOT / "build/maren/order/maren_pixal3d.json").read_text())["steps"][0]["graph"]
-PROMPT = ("A stylized 3D game character render, full body, an attractive slim adult human woman with a slender model-like figure: long slim legs with slender thighs and a clear thigh gap, narrow hips, a slender waist and a fairly full bust, round human ears, a friendly "
-          "confident smile, warm brown eyes, natural brown eyebrows, a completely bald head with a smooth bald scalp and "
-          "no hair at all on the head (hair is added later as a separate part), the whole skull shape, forehead and ears clearly visible, "
-          "a clean bare face with no jewellery or make-up marks. She wears only a classic 1980s lifeguard-style one-piece swimsuit: very high-cut leg "
-          "openings up to the hip bones, a deep scoop neckline, thin shoulder straps that cross over a wide open back, smooth matte fabric "
-          "with no logo, badge or print, mostly royal blue with a few broad flowing diagonal waves of sunny yellow across it (a Swedish "
-          "colour theme, blue dominant), bare shoulders, arms and legs, barefoot. She stands in a "
-          "strict symmetrical T-pose facing the viewer: both arms straight out to the sides at shoulder height, horizontal, elbows locked, "
-          "palms facing down, fingers together; legs straight, feet flat on the ground about shoulder-width apart with a clear gap between the "
-          "thighs, toes pointing forward. Appealing stylized proportions like Overwatch and World of Warcraft characters, clean readable "
-          "shapes, hand-painted stylized PBR textures, the whole figure visible from head to toe and centered, plain flat light grey studio "
-          "background, soft even lighting, no text, no other objects")
+# Runda 7: ordet "hair" finns inte i prompten (Krea har ingen negativ prompt; "no hair" ritar hår), och skalligheten
+# kommer först. Omskrivningen får inte heller använda ordet (rewrite_avoid).
+PROMPT = ("A stylized 3D game character render, full body, an attractive slim adult human woman with a completely bald, "
+          "clean-shaven head: smooth bare skin over the whole scalp like a polished mannequin head, the round skull shape, forehead, "
+          "temples, back of the head and both ears fully visible. Slender model-like figure: long slim legs with slender thighs and a "
+          "clear gap between them, narrow hips, a slender waist and a fairly full bust. Round human ears, a friendly confident smile, "
+          "warm brown eyes, thin natural eyebrows, a clean bare face with no jewellery or make-up marks. She wears only a classic 1980s "
+          "high-cut one-piece swimsuit: very high-cut leg openings up to the hip bones, a deep scoop neckline, thin shoulder straps that "
+          "cross over a wide open back, smooth matte fabric with no logo, badge or print, mostly royal blue with a few broad flowing "
+          "diagonal waves of sunny yellow across it (a Swedish colour theme, blue dominant), bare shoulders, arms and legs, barefoot. She "
+          "stands in a strict symmetrical T-pose facing the viewer: both arms straight out to the sides at shoulder height, horizontal, "
+          "elbows locked, palms facing down, fingers together; legs straight, feet flat on the ground about shoulder-width apart with "
+          "light grey background visible between the legs, toes pointing forward. Appealing stylized proportions like Overwatch and "
+          "World of Warcraft characters, clean readable shapes, hand-painted stylized PBR textures, the whole figure visible from head "
+          "to toe and centered, plain flat light grey studio background, soft even lighting, no text, no other objects")
 CRITERIA = ["Exactly one character, a slim adult human woman, shown whole from head to toe and centered.",
             "She wears only a classic high-cut one-piece swimsuit, mostly blue with broad yellow waves, no logo or badge; shoulders, arms and legs are bare; it is tasteful. Slim: long slim legs, slender thighs, narrow hips, a fairly full bust.",
             "Plain even background, no other objects or text; no strong white highlights on the swimsuit or skin; correct hands and face."]
@@ -58,11 +61,11 @@ def pixal_graph(img_ref, prefix):
 
 steps = [{"key": "img_1", "label": "Cousin: image (Krea-2), seed 5", "kind": "comfy", "graph": krea_graph(5, "characters/cousin/krea_s5")},
          {"key": "rev_1", "label": "Review: cousin image", "kind": "review", "images": ["$step:img_1"], "criteria": CRITERIA,
-          "hard": HARD, "crops": CROPS, "min_score": 7, "retry": {"step": "img_1", "max": 6, "rewrite": True}},
+          "hard": HARD, "crops": CROPS, "min_score": 7, "retry": {"step": "img_1", "max": 8, "rewrite": True}, "rewrite_avoid": ["hair", "hairstyle", "haircut"]},
          {"key": "mesh", "label": "Cousin: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$step:img_1", "3d/characters/cousin_pixal3d")}]
 steps += [{"key": f"img_{k}", "label": f"Cousin: image (Krea-2), seed {s}", "kind": "comfy", "graph": krea_graph(s, f"characters/cousin/krea_s{s}")}
           for k, s in ((2, 19), (3, 44), (4, 73))]
-order = {"id": "cousin-r6", "title": "Cousin (bald, hair comes later): human A-pose in a yellow-and-blue 80s high-cut swimsuit, Krea-2 images, review and a Pixal3D model",
+order = {"id": "cousin-r7", "title": "Cousin r7 (bald, no hair word in the prompt): human T-pose in a yellow-and-blue 80s high-cut swimsuit, Krea-2 images, review and a Pixal3D model",
          "project": "asset-studio", "asset": "cousin", "use": "test-only", "gpu": "t1000", "mission": "cousin",
          "mission_title": "The sorceress's cousin: smooth swimsuit body in A-pose", "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))

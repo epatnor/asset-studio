@@ -135,11 +135,11 @@ Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres gall
 
 ## Läget (kväll 2026-11-09)
 
-- **Kusinen, runda 7** (`cousin-r7` på Darrowmere): ordet "hair" är borta ur prompten, och omskrivningen får inte använda
-  det (`rewrite_avoid`). `build/characters/cousin/run_after.sh` väntar på Pixal3D-modellen, passar in MPFB-kroppen
-  (`build/human/cousin_fit/`, kopia i galleriet under `characters/creator`) och kör sedan UltraTex, gradering, spegling och
-  12k. Om sessionen som startade skriptet är stängd: kolla `cousin-r7` och kör `CONCEPT=cousin-r7 bash
-  build/characters/cousin/run_after.sh` igen.
+- **Kusinen:** runda 7 gav hår i alla åtta försök. A/B-provet (`build/characters/cousin/ab_bald.py`) visade att stilorden
+  inte var boven. Det var att "bald" kom sent i en lång inledning. **Regel för Krea-2:** motivet först och kort ("bald
+  young woman, straight-on front view, body and face square to the camera, ..."), detaljerna efteråt. Alla åtta i E/F blev
+  skalliga, rakt framifrån och i T-pose (galleriet `characters/cousin/ab/`). Nästa steg är att välja en bild och köra
+  Pixal3D, inpassningen och UltraTex (`run_after.sh`, som behöver peka på den nya ordern).
 - **Nästa i creatorn:** omgång 2 (personlig förskjutning per punkt), ansiktet (MediaPipe), ett spelnät med riktiga
   fingrar och armhålor som klarar deformationstestet.
 

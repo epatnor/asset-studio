@@ -22,12 +22,10 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
   - **dec2** (egen dekoder) är klar, 1 000 steg. Hämtat: `decoder_step0.pt` och `decoder_step500.pt` i
     `/data/texverse/runs/dec2/` på Darrowmere. Podden är borttagen, så steg 1 000 finns troligen inte. **Inte testad:** prova
     steg 500 på Maren mot bas-dekodern (gratis, Darrowmere).
-  - **run3b** (8 000 → 13 000, LR 2e-5, EMA) körde till tidsgränsen (6 h). Bevakaren kraschade på en timeout mot panelen
-    (`/data/utdata/pipelines/ultratex4b-run3b.json`) efter att ha hämtat `checkpoint-8100` och `checkpoint-9000`
-    (`/data/texverse/runs/run3b/`). Podden `ers55e0xbfq5hl` är stoppad (EXITED, lagring ca 0,056 USD/h) och har troligen
-    10 500 och 13 000 kvar. Att starta den för att hämta dem kostar 3,99 USD/h en kort stund: Patriks beslut. Ta bort
-    podden när det är klart. Saldo 18,35 USD.
-  - Utvärdera checkpoint-9000 med svepet och `detail_score.py` mot run1 steg 8000.
+  - **run3b** (8 000 → 13 000, LR 2e-5, EMA) körde klart. Bevakaren kraschade på en timeout mot panelen (rättat i
+    `tools/pipeline.py`). Patrik startade podden utan kort, och `recover` hämtade 10 000, 11 000, 12 000, 12 500 och 13 000
+    plus hela tillståndet (`checkpoint-13000_full.tar`) till `/data/texverse/runs/run3b/`. Podden är borttagen.
+  - Utvärdera run3b:s checkpoints (9 000–13 000, vanliga och EMA) med svepet och `detail_score.py` mot run1 steg 8000.
 - **Mot 9B:** 9B för fortfarande över detaljer från referensbilden till ytor som formen saknar (statyns veck, placering
   0,38 mot 0,13–0,17). Vår 4B gör inte det än.
 
@@ -42,7 +40,7 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
 | run1 | 11-08–09 | H100 NVL | 0 → 10 000 | 00–05, 8 341 objekt | LR 5e-5 konstant, batch 1 | ≈32,6 | lär sig uppgiften tidigt; brusiga checkpoints (se utvärderingar) |
 | run2 | 11-09 | A100 PCIe (community) | 10 000 → 10 100 | 06–11 | LR 5e-5 | 1,33 | stoppad: startade från sämre checkpoint, 11,3 s/steg, 5 015 objekt packades inte upp (för liten disk) |
 | run3 | 11-09 | H100 SXM (secure) | – | 06–09 | LR 2e-5, EMA | 1,00 | föll direkt: vår `TASK` krockade med träningsskriptets |
-| run3b | 11-09 | H100 SXM (secure) | 8 000 → 13 000 | 06–09, 5 374 objekt | LR 2e-5, EMA 0,999 | ≈24 (6 h) | hämtat 8100 och 9000; bevakaren kraschade; podden stoppad med resten på disken |
+| run3b | 11-09 | H100 SXM (secure) | 8 000 → 13 000 | 06–09, 5 374 objekt | LR 2e-5, EMA 0,999 | 30,81 | klar till 13 000; alla checkpoints och hela tillståndet hemma; inte utvärderad |
 | dec1 | 11-09 | A40 (secure) | – | 00 | dekoder | 0,15 | DeepSpeed letade efter MPI (`MAIN_PROCESS_PORT` saknades) |
 | dec1b | 11-09 | A40 | – | 00 | 8 dataladdare | 0,19 | dog av minnesbrist vid första mätningen |
 | dec1c | 11-09 | L40S | 2 | 00 | 2 dataladdare | 0,16 | stoppad för tidigt: 72 s/steg mättes under uppstarten |
