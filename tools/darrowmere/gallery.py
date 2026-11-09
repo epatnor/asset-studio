@@ -1,6 +1,6 @@
 """Galleriet i Darrowmere-panelen: allt som finns under /data/utdata (genereringar, renderingar, modeller, texturkartor),
 grupperat per beställning, och små förhandsbilder som panelen gör och sparar själv."""
-import hashlib, io, json, re, subprocess, threading, time, urllib.parse, urllib.request
+import hashlib, io, json, re, shlex, subprocess, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 # Körs på Darrowmere med python3 -, skriver en rad JSON: filerna och beställningarnas planer
@@ -133,6 +133,7 @@ class Gallery:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.cached, self.at, self.lock = None, 0, threading.Lock()
         self.thumbing = threading.Semaphore(2)  # Winterspring gör högst två förhandsbilder åt gången
+        self.rendering = threading.Semaphore(1)  # Darrowmere renderar högst en modell åt gången (Blender, utan skärm)
 
     def index(self, max_age=20):
         with self.lock:
@@ -166,3 +167,22 @@ class Gallery:
             tmp.write_bytes(buf.getvalue())
             tmp.replace(p)
             return buf.getvalue()
+
+
+    def model_thumb(self, filename, subfolder, mtime="", size=360):
+        """Förhandsbild för en 3D-modell som saknar en: Blender på Darrowmere renderar <namn>_render_a.png bredvid modellen
+        (platt textur, snett framifrån). Den blir sedan modellens vanliga förhandsbild i galleriet."""
+        render = filename.rsplit(".", 1)[0] + "_render_a.png"
+        key = hashlib.sha1(f"{subfolder}/{render}@{mtime}@{size}".encode()).hexdigest()
+        if (self.dir / f"{key}.webp").exists():
+            return (self.dir / f"{key}.webp").read_bytes()
+        d = f"/data/utdata/{subfolder}" if subfolder else "/data/utdata"
+        with self.rendering:
+            job = {"glb": f"{d}/{filename}", "out_dir": d, "size": 512, "prefix": "render_",
+                   "shots": [{"name": "a", "yaw": 30, "pitch": 10, "mode": "texture"}]}
+            cmd = (f"test -f {shlex.quote(d + '/' + render)} || nice -n 15 /data/blender/current/blender -b --factory-startup "
+                   f"-P /data/runner/render_views.py -- --json {shlex.quote(json.dumps(job))} > /dev/null 2>&1; test -f {shlex.quote(d + '/' + render)}")
+            r = subprocess.run(self.ssh + [cmd] if self.ssh else ["bash", "-c", cmd], capture_output=True, text=True, timeout=300)
+            if r.returncode:
+                raise RuntimeError("Blender could not render the model")
+        return self.thumb(render, subfolder, mtime, size)

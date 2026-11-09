@@ -936,6 +936,8 @@ class Handler(BaseHTTPRequestHandler):
                 "providers": {k: {**p, "key": r["keys"].get(p["env"], {"set": False})} for k, p in PROVIDERS.items()}}), "application/json")
         if self.path in ("/", "/index.html"):
             return self.send(200, (HERE / "monitor.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/compare":
+            return self.send(200, (HERE / "compare.html").read_bytes(), "text/html; charset=utf-8")
         if self.path.startswith("/viewer"):
             return self.send(200, (HERE / "viewer.html").read_bytes(), "text/html; charset=utf-8")
         if self.path == "/log":
@@ -952,6 +954,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, json.dumps({"ok": True, "groups": GALLERY.index(0 if fresh else 20)}), "application/json")
             except Exception as e:
                 return self.send(502, json.dumps({"ok": False, "message": f"Darrowmere: {e}"}), "application/json")
+        if path == "/api/model_thumb":
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            name, sub = q.get("filename", [""])[0], q.get("subfolder", [""])[0]
+            if not name.lower().endswith((".glb", ".gltf")) or "/" in name or name.startswith(".") or ".." in sub.split("/"):
+                return self.send(400, "bad filename", "text/plain")
+            try:
+                data = GALLERY.model_thumb(name, sub, q.get("m", [""])[0])
+            except Exception as e:
+                return self.send(502, f"model thumb: {e}", "text/plain")
+            self.send_response(200)
+            self.send_header("Content-Type", "image/webp")
+            self.send_header("Cache-Control", "private, max-age=604800")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         if path == "/api/thumb":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             name, sub = q.get("filename", [""])[0], q.get("subfolder", [""])[0]

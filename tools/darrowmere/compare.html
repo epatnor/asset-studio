@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>/* Tema: menyvalet i panelen (darrowmere-theme: dark, light, system), mörkt om inget valts */(function(){var m;try{m=localStorage.getItem("darrowmere-theme")}catch(e){}if(m!=="light"&&m!=="system")m="dark";var t=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;var r=document.documentElement;r.dataset.theme=t;r.dataset.themeMode=m;if(t==="light")addEventListener("DOMContentLoaded",function(){var q=document.querySelector('meta[name="theme-color"]');if(q)q.content="#ffffff"})})()</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darrowmere Compare</title>
+<!-- Upp till fyra modeller sida vid sida (galleriets Compare). Alla delar samma kamera, så att de vrids och zoomas tillsammans;
+     varje modell skalas till samma storlek och centreras. Ett enda WebGL-fönster, delat i rutor (scissor). -->
+<style>
+  :root { --bg: #e9ebee; --panel: rgba(255,255,255,.92); --line: #d8dce1; --text: #1d2125; --muted: #6a737d; --accent: #3b6fd4; }
+  :root[data-theme="dark"] { --bg: #15181c; --panel: rgba(28,32,38,.92); --line: #2f353d; --text: #e6e8eb; --muted: #8b949e; --accent: #6b9bff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; touch-action: none; }
+  #view canvas { display: block; }
+  .bar { position: fixed; left: 12px; right: 12px; top: 12px; z-index: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+         background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  .bar b { margin-right: auto; }
+  button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  .lab { position: fixed; z-index: 1; max-width: 46vw; padding: 3px 8px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line);
+         font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .lab small { color: var(--muted); }
+  .hint { position: fixed; left: 12px; bottom: 10px; color: var(--muted); font-size: 12px; z-index: 1; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div class="bar"><b>Compare</b>
+  <button id="tex" class="on" title="Texture or plain clay on all models">Texture</button>
+  <button id="spin" title="Turn all models slowly">Rotate</button>
+  <button id="reset" title="Frame the models again">Reset view</button>
+</div>
+<div class="hint">Drag to turn all models together · pinch or scroll to zoom</div>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+// f = "undermapp|filnamn|ändringstid" (från galleriet), högst fyra
+const files = new URLSearchParams(location.search).getAll("f").slice(0, 4).map(f => { const [sub, name, m] = f.split("|"); return { sub, name, m }; });
+const el = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setScissorTest(true);
+el.appendChild(renderer.domElement);
+const dark = document.documentElement.dataset.theme === "dark";
+const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+const clay = new THREE.MeshStandardMaterial({ color: 0xc9c4bd, roughness: 0.8 });
+const home = () => { camera.position.set(0, 0.25, 5.2); controls.target.set(0, 0, 0); controls.update(); };
+home();
+
+// Rutnät: 2 sida vid sida (eller över varandra på smal skärm), 3 i rad (staplade på telefon), 4 som 2 × 2
+function cells() {
+  const W = el.clientWidth, H = el.clientHeight, n = files.length, tall = H > W;
+  const [cols, rows] = n <= 1 ? [1, 1] : n === 2 ? (tall ? [1, 2] : [2, 1]) : n === 3 ? (tall ? [1, 3] : [3, 1]) : [2, 2];
+  const w = W / cols, h = H / rows;
+  return files.map((_, k) => ({ x: (k % cols) * w, y: Math.floor(k / cols) * h, w, h }));
+}
+const views = files.map(f => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(dark ? 0x1b1e23 : 0xe9ebee);
+  scene.environment = env;
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(2, 3, 2); scene.add(sun);
+  const lab = document.createElement("div"); lab.className = "lab";
+  lab.innerHTML = `${f.name} <small>${f.sub} · loading…</small>`; document.body.appendChild(lab);
+  const v = { f, scene, lab, originals: new Map() };
+  const url = "/api/file?" + new URLSearchParams({ filename: f.name, subfolder: f.sub, type: "output", m: f.m || "" });
+  new GLTFLoader().load(url, gltf => {
+    const root = gltf.scene, box = new THREE.Box3().setFromObject(root);
+    const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+    const s = 2 / Math.max(size.x, size.y, size.z, 1e-6);   // alla lika stora, centrerade i origo
+    root.position.copy(center).multiplyScalar(-s); root.scale.setScalar(s);
+    let tris = 0;
+    root.traverse(o => { if (o.isMesh) { v.originals.set(o, o.material); const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+    scene.add(root);
+    lab.innerHTML = `${f.name} <small>${f.sub} · ${Math.round(tris).toLocaleString()} tris</small>`;
+  }, undefined, err => lab.innerHTML = `${f.name} <small>could not load: ${err.message || err}</small>`);
+  return v;
+});
+
+function resize() {
+  renderer.setSize(el.clientWidth, el.clientHeight);
+  const c = cells();
+  views.forEach((v, k) => { v.lab.style.left = (c[k].x + 10) + "px"; v.lab.style.top = (c[k].y + (c[k].y < 60 ? 60 : 8)) + "px"; });
+}
+addEventListener("resize", resize); resize();
+const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); }; };
+toggle("tex", on => views.forEach(v => v.originals.forEach((m, o) => o.material = on ? m : clay)));
+toggle("spin", on => controls.autoRotate = on);
+document.getElementById("reset").onclick = home;
+renderer.setAnimationLoop(() => {
+  controls.update();
+  const H = el.clientHeight;
+  cells().forEach((c, k) => {
+    camera.aspect = c.w / c.h; camera.updateProjectionMatrix();
+    renderer.setViewport(c.x, H - c.y - c.h, c.w, c.h); renderer.setScissor(c.x, H - c.y - c.h, c.w, c.h);
+    renderer.render(views[k].scene, camera);
+  });
+});
+</script>
+</body>
+</html>

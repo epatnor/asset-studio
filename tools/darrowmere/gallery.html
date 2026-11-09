@@ -45,6 +45,7 @@
   .tag.score.pass { border-color: var(--green, #3fb950); } .tag.score.warning { border-color: var(--amber, #d29922); }
   .tag.score.fail, .tag.score.rejected { border-color: var(--red, #f85149); }
   .rank { font-weight: 700; color: var(--muted); }
+  details.mission .rgrid { margin-top: 2px; }
   .why { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; margin: -4px 0 8px; }
   .step { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; margin: 4px 0 -2px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .step b { color: var(--text); font-weight: 600; }
@@ -61,6 +62,34 @@
            background: color-mix(in srgb, var(--k) 85%, black); color: #fff; }
   .k-model { --k: var(--violet); } .k-image { --k: var(--blue); } .k-render { --k: var(--green); } .k-inspect { --k: var(--amber); } .k-map { --k: var(--pink); }
   #msg { color: var(--muted); padding: 30px; text-align: center; }
+  /* Lägen: Results (det färdiga, en ruta per beställning) och All files (alla filer per steg) */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--muted); }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--blue); color: #fff; }
+  body.results #chips { display: none; }
+  .rsec { display: grid; gap: 8px; }
+  .rsec > h3 { margin: 2px 2px 0; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+  .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .rcard { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); min-width: 0; }
+  .rcard:hover { border-color: color-mix(in srgb, var(--blue) 60%, var(--line)); }
+  .rcard .thumb { aspect-ratio: 4 / 3; position: relative; cursor: pointer; }
+  .rcard .thumb img { position: absolute; inset: 0; }   /* bilden får inte bestämma kortets bredd */
+  .rcard .thumb .ph { position: absolute; }
+  .rcard .badge { top: 8px; left: 8px; }
+  .rbody { padding: 8px 10px 9px; display: grid; gap: 4px; min-width: 0; }
+  .rbody b { font-size: 12.5px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .rbody .sub { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rtags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .racts { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+  .racts button { height: 24px; font-size: 11.5px; padding: 0 8px; }
+  .racts label { display: inline-flex; gap: 5px; align-items: center; color: var(--muted); font-size: 11.5px; cursor: pointer; margin-left: auto; }
+  .rcard.sel { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet); }
+  #cmpBar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; display: none; gap: 8px; align-items: center;
+            padding: 8px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--violet); box-shadow: 0 6px 24px rgb(0 0 0 / .35); }
+  #cmpBar.on { display: flex; }
+  #cmpBar span { color: var(--muted); white-space: nowrap; }
+  #cmpGo { border-color: var(--violet); color: var(--text); }
   /* Bildvisaren */
   #lb { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 94%, transparent); display: none; grid-template-rows: auto minmax(0, 1fr); }
   #lb.open { display: grid; }
@@ -80,6 +109,8 @@
     header { padding: 8px 10px; } input { width: 100%; order: 5; } #info { margin-left: 0; }
     main { padding: 10px 8px 30px; } .group { padding: 8px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+    .rgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .racts label span { display: none; }
     #lbStage .nav { width: 36px; height: 52px; }
   }
 </style>
@@ -87,6 +118,7 @@
 <body>
 <header>
   <span class="wordmark" role="img" aria-label="Darrowmere"></span><b>GALLERY</b>
+  <span class="seg" id="views"><button data-v="results" title="The finished model (or image) of every order">Results</button><button data-v="files" title="Every file of every step">All files</button></span>
   <span id="chips"></span>
   <select id="asset" title="Show one asset"></select>
   <input id="q" placeholder="Search name, order or step" spellcheck="false">
@@ -94,6 +126,7 @@
   <span id="info"></span>
 </header>
 <main id="main"><div id="msg">Loading…</div></main>
+<div id="cmpBar"><span id="cmpN"></span><button id="cmpGo" title="Open the chosen models side by side, turning together">Compare</button><button id="cmpClear" title="Clear the selection">Clear</button></div>
 <div id="lb" role="dialog" aria-label="Image">
   <div class="bar"><button id="lbClose" title="Close (Esc)">✕</button><span id="lbName"></span><a id="lbOpen" target="_blank">Full size ↗</a></div>
   <div id="lbStage"><img id="lbImg" alt="" title="Tap to see full size and scroll"><button class="nav" id="lbPrev" title="Previous (←)">‹</button><button class="nav" id="lbNext" title="Next (→)">›</button></div>
@@ -108,6 +141,9 @@ let groups = [], on = new Set(store.get("kinds", ["model", "image", "render"])),
 // m = filens ändringstid: en fil som ersatts under samma namn får en ny adress, så att webbläsaren inte visar den gamla
 const fileUrl = i => "/api/file?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output", m: Math.round(i.mtime) });
 const thumbUrl = (name, i) => "/api/thumb?" + new URLSearchParams({ filename: name, subfolder: i.subfolder, m: Math.round(i.mtime) });
+const modelThumbUrl = i => "/api/model_thumb?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, m: Math.round(i.mtime) });
+const viewerUrl = i => "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output", m: Math.round(i.mtime) });
+let VIEW = store.get("view", "results"), picked = new Map();
 const when = t => new Date(t * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const mb = n => n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
 
@@ -155,7 +191,120 @@ function groupHtml(g, items, rank) {
   }
   return html + `</div></section>`;
 }
+// ---- Results: en ruta per beställning med det färdiga (sista modellsteget, annars den senaste bilden) ----
+function heroes(g) {
+  const models = g.items.filter(i => i.kind === "model");
+  if (models.length) {
+    const last = Math.max(...models.map(i => i.mtime));
+    return g.order ? models.filter(i => i.mtime >= last - 300) : models;   // samma steg kan ge flera varianter
+  }
+  if (!g.order) return [];
+  const pics = g.items.filter(i => i.kind === "render" || i.kind === "image");
+  return pics.length ? [pics.reduce((a, b) => b.mtime > a.mtime ? b : a)] : [];
+}
+function rcard(g, i, rank) {
+  const isM = i.kind === "model", key = `${i.subfolder}|${i.filename}|${Math.round(i.mtime)}`;
+  const n = isM ? -1 : list.push(i) - 1;
+  const src = isM ? (i.thumb ? thumbUrl(i.thumb, i) : "") : thumbUrl(i.filename, i);
+  const img = src ? `<img loading="lazy" src="${src}" alt="">` : `<span class="ph">3D</span><img data-mt="${modelThumbUrl(i)}" alt="" hidden>`;
+  const cloud = [...new Set(g.items.map(x => x.cloud).filter(Boolean))];
+  return `<div class="rcard ${picked.has(key) ? "sel" : ""}" data-key="${esc(key)}">
+    <div class="thumb" ${isM ? `data-view="${viewerUrl(i)}"` : `data-n="${n}"`} title="${isM ? "Open in the 3D viewer" : "Open the image"}">${img}
+      <span class="badge k-${isM ? "model" : i.kind}">${isM ? "3D" : i.kind === "render" ? "Render" : "Image"}</span></div>
+    <div class="rbody"><b>${rank ? `<span class="rank">#${rank}</span> ` : ""}${esc(g.order ? g.title : i.filename)}</b>
+      <span class="sub" title="${esc(i.filename)}">${g.order ? esc(i.filename) + " · " : ""}${when(i.mtime)}</span>
+      <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
+        ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
+      <div class="racts">${g.order ? `<button data-files="${esc(g.order)}" title="Every file this order made, step by step">Files ${g.items.length}</button>` : ""}
+        ${isM ? `<label title="Pick 2–4 models to compare side by side"><input type="checkbox" data-pick="${esc(key)}" ${picked.has(key) ? "checked" : ""}><span>Compare</span></label>` : ""}</div>
+    </div></div>`;
+}
+function renderResults() {
+  const q = $("q").value.trim().toLowerCase(), asset = $("asset").value;
+  list = [];
+  const blocks = [], missions = {};
+  let shown = 0;
+  for (const g of groups) {
+    if (asset && g.asset !== asset) continue;
+    const gText = `${g.title} ${g.order || ""} ${g.asset} ${g.mission || ""} ${g.mission_title || ""}`.toLowerCase();
+    const hs = heroes(g).filter(i => !q || gText.includes(q) || i.filename.toLowerCase().includes(q));
+    if (!hs.length) continue;
+    shown += hs.length;
+    if (g.mission) {
+      let m = missions[g.mission];
+      if (!m) blocks.push(m = missions[g.mission] = { mission: g.mission, title: "", time: 0, entries: [] });
+      m.title = m.title || g.mission_title; m.time = Math.max(m.time, g.time); m.entries.push([g, hs]);
+    } else blocks.push({ time: g.time, entries: [[g, hs]] });
+  }
+  blocks.sort((a, b) => b.time - a.time);
+  const openSet = new Set(store.get("openMissions", []));
+  let html = "", loose = "", first = true;
+  const flush = () => { if (loose) html += `<section class="rsec"><div class="rgrid">${loose}</div></section>`; loose = ""; };
+  for (const b of blocks) {
+    if (!b.mission) { const [g, hs] = b.entries[0]; hs.forEach(i => loose += rcard(g, i)); continue; }
+    flush();
+    b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
+    const open = openSet.has(b.mission) || (first && !store.get("closed." + b.mission, false)) || q;
+    first = false;
+    const n = b.entries.reduce((s, [, hs]) => s + hs.length, 0), scored = b.entries.some(([g]) => g.score != null);
+    html += `<details class="mission" data-m="${esc(b.mission)}" ${open ? "open" : ""}><summary><h2>${esc(b.title || b.mission)}</h2>
+      <span class="tag">${b.entries.length} order${b.entries.length > 1 ? "s" : ""} · ${n} result${n > 1 ? "s" : ""}</span><span class="meta">${when(b.time)}</span></summary><div class="rgrid">`;
+    b.entries.forEach(([g, hs], k) => hs.forEach(i => html += rcard(g, i, scored && g.score != null ? k + 1 : 0)));
+    html += `</div></details>`;
+  }
+  flush();
+  $("main").innerHTML = html || `<div id="msg">${groups.length ? "No results match. Try All files." : "Darrowmere has not made anything yet."}</div>`;
+  $("main").querySelectorAll(".thumb[data-view]").forEach(t => t.onclick = () => window.open(t.dataset.view, "_blank"));
+  $("main").querySelectorAll(".thumb[data-n]").forEach(t => t.onclick = () => show(+t.dataset.n));
+  $("main").querySelectorAll("button[data-files]").forEach(b => b.onclick = () => { $("q").value = b.dataset.files; setView("files"); window.scrollTo(0, 0); });
+  $("main").querySelectorAll("input[data-pick]").forEach(c => c.onchange = () => pick(c.dataset.pick, c.checked, c));
+  $("main").querySelectorAll("details.mission").forEach(d => d.ontoggle = () => {
+    const s = new Set(store.get("openMissions", []));
+    d.open ? s.add(d.dataset.m) : s.delete(d.dataset.m); store.set("openMissions", [...s]); store.set("closed." + d.dataset.m, !d.open);
+    if (d.open) watchModelThumbs();
+  });
+  $("info").textContent = `${shown} result${shown === 1 ? "" : "s"}`;
+  watchModelThumbs();
+}
+// Förhandsbilder för modeller som saknar en: Darrowmere renderar dem en åt gången när rutan syns
+let mq = [], mbusy = false, mobs = null;
+function watchModelThumbs() {
+  mobs && mobs.disconnect();
+  mobs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { mobs.unobserve(e.target); mq.push(e.target); pumpThumbs(); } }), { rootMargin: "200px" });
+  document.querySelectorAll("img[data-mt]").forEach(i => mobs.observe(i));
+}
+function pumpThumbs() {
+  if (mbusy || !mq.length) return;
+  const img = mq.shift();
+  if (!img.isConnected || img.src) return pumpThumbs();
+  mbusy = true;
+  const done = ok => { mbusy = false; if (ok) { img.hidden = false; img.previousElementSibling?.remove(); } pumpThumbs(); };
+  img.onload = () => done(true); img.onerror = () => done(false);
+  img.src = img.dataset.mt;
+}
+function pick(key, onOff, el) {
+  if (onOff && picked.size >= 4) { el.checked = false; return; }
+  onOff ? picked.set(key, true) : picked.delete(key);
+  el.closest(".rcard").classList.toggle("sel", onOff);
+  $("cmpN").textContent = `${picked.size} model${picked.size === 1 ? "" : "s"} picked`;
+  $("cmpBar").classList.toggle("on", picked.size > 0);
+  $("cmpGo").disabled = picked.size < 2;
+}
+$("cmpGo").onclick = () => {
+  const qs = new URLSearchParams(); [...picked.keys()].forEach(k => qs.append("f", k));
+  window.open("/compare?" + qs, "_blank");
+};
+$("cmpClear").onclick = () => { picked.clear(); $("cmpBar").classList.remove("on"); render(); };
+function setView(v) {
+  VIEW = v; store.set("view", v);
+  document.body.classList.toggle("results", v === "results");
+  $("views").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  render();
+}
+$("views").querySelectorAll("button").forEach(b => b.onclick = () => setView(b.dataset.v));
+
 function render() {
+  if (VIEW === "results") return renderResults();
   const q = $("q").value.trim().toLowerCase(), asset = $("asset").value;
   let shown = 0;
   list = [];
@@ -229,7 +378,7 @@ async function load(fresh) {
   try {
     const r = await fetch("/api/gallery" + (fresh ? "?fresh=1" : "")), j = await r.json();
     if (!j.ok) throw new Error(j.message);
-    groups = j.groups; assets(); chips(); render();
+    groups = j.groups; assets(); chips(); setView(VIEW);
   } catch (e) { $("main").innerHTML = `<div id="msg">Could not read the gallery: ${esc(e.message)}</div>`; $("info").textContent = ""; }
 }
 $("reload").onclick = () => load(true);
