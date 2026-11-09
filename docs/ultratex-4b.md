@@ -33,6 +33,15 @@ har Apache 2.0. En egen UltraTex-LoRA på 4B ger samma metod utan NC-licens, och
 UltraTex-dekodern `flux2/decoder.pt` (finjusterad VAE-dekoder) ligger i samma paket som NC-licensen. Vi tränar därför
 en egen dekoder också. Den är billig (forskarna: 1 200 steg).
 
+**Förbehåll om datat (upptäckt 2026-11-09):** G-buffer TexVerse är märkt CC0, men bilderna är renderingar av TexVerse-objekt
+från Sketchfab. Enligt TexVerse har de objektens egna licenser: 699 075 CC BY, 88 710 CC BY-NC-SA, 31 514 CC BY-NC,
+14 624 CC BY-SA, 11 599 CC BY-NC-ND, 7 008 CC BY-ND och 6 139 CC0. G-buffer-releasen filtrerar inte på licens (bara
+material och kvalitet), så ungefär 15 % av källobjekten är icke-kommersiella. Att träna på dem är en gråzon. Licensen på
+LoRA:n blir inte automatiskt NC av det, men "öppet hela vägen" stämmer bara för koden och vikterna, inte för datat.
+Vill vi vara säkra kan en senare körning filtreras på objektens licens: TexVerses metadata har licens per objekt.
+Valideringsobjekten i run1 är båda CC BY: statyn "Polybios Statue Lowpoly" (zvodd) och monstret "Boost Guardian"
+(Bornstellar Makes Eternallasting). Monstret är fankonst av en Metroid-figur och används bara i test.
+
 ## Data
 
 - G-buffer TexVerse: 351 847 objekt i 256 zip-buckets (`canonical/bsdf/00.zip` … `ff.zip`), cirka 16 GB och 1 400 objekt
