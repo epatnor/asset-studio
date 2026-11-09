@@ -866,8 +866,8 @@ GALLERY = Gallery(SSH, COMFY, STORE.parent / "thumbs")
 def prewarm_previews():
     """Förhandsbilder för 3D-modeller som saknar en, i bakgrunden, så att galleriet har dem när det öppnas: en i taget,
     bara när ComfyUI är ledigt (model_thumb vägrar annars), högst 20 per varv, ett varv var femte minut."""
+    time.sleep(60)   # första varvet strax efter start (panelen startas om vid varje driftsättning)
     while True:
-        time.sleep(300)
         try:
             n = 0
             for g in GALLERY.index(60):
@@ -878,6 +878,7 @@ def prewarm_previews():
                     n += 1
         except Exception:
             pass   # upptaget eller offline: nästa varv
+        time.sleep(300)
 
 
 threading.Thread(target=prewarm_previews, daemon=True).start()
