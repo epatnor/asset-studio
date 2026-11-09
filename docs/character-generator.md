@@ -112,3 +112,19 @@ Kropparna ska vara rätt innan kläder och hår byggs vidare. Referens: Appariti
 Att titta på (noterat 2026-10-26): [blender-skills](https://github.com/arjun988/blender-skills) (MIT), 94 färdiga färdigheter för AI-agenter som kör Blender via Blender MCP, bland annat character-artist, creature-artist, character-archetypes, sculpting, retopology, hair-groom, rigging och animation, plus export till Unity, Unreal och Godot. Kan bli ett stöd för karaktärsskapandet: retopologi och rigg av importerade eller skulpterade figurer, hårgroom som jämförelse med `hair.mjs`, och granskning i Patriks Blender. Läs först hur djupa färdigheterna är (sidan visar bara namnen), och kopiera bara de som behövs till `.claude/skills/`.
 
 Senare: lösa plagg (nivå D: kjol, rock, kappa, långt hår med egna ben), hjälmar som klipper håret, rasbyte som test (samma utrustning på dvärg och goblin), anpassning av importerade rustningar till våra kroppar, ansiktsuttryck och fler klipp.
+
+## Figurflödet med UltraTex (2026-11-09)
+
+Steg för en stiliserad figur, som det körs för trollkvinnan, frostsystern och kusinen (`build/characters/`):
+
+1. **Koncept:** Krea-2-bilder med regler i prompten: inget hår eller smycken i ansiktet, få skrymslen, gärna symmetrisk
+   A-pose med glipor vid armar och lår. Granskningen har hårda krav, närbild av huvudet och promptreparation.
+2. **Form:** Pixal3D (`maren_pixal3d.json`-flödet) ger en högpolymodell, ca 700 000 trianglar (`DecimateMesh`
+   `target_face_count`).
+3. **Textur:** UltraTex 4B steg 8000, bas-VAE:ns dekoder, vyvikt 8, 45°-gruppen och en grupp 40° uppifrån utan deras
+   topp- och bottenvyer (`views_2_use: no top/bottom`, mot fläckiga axlar och hjässa).
+4. **Färg:** gradering med gamma 1,3 (`tools/texture/grade_glb.py`).
+5. **Ansikte:** spegling av det lyckade ögat (`tools/texture/mirror_face.py`). Spegelplanet anpassas till ansiktet, men
+   det fungerar bäst i symmetrisk pose.
+6. **Spelmodell:** `tools/mesh/make_low.py` med 12 000 trianglar, 2048-textur och `voxel: 0.0035`. Med standardvärdet
+   (1/140) försvann frostsysterns öra. Färg och normalkarta bakas från högpolyversionen.

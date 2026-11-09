@@ -31,5 +31,8 @@ for t in mix07 mix09; do
   scp -q "$DM:/data/utdata/characters/cousin/$F" $D/ut4b/ < /dev/null
   uv run -q --no-project --python 3.12 --with pillow --with numpy python -I tools/texture/grade_glb.py $D/ut4b/$F $D/ut4b/cousin_ut4b_${t}_g1.3.glb > /dev/null
   uv run -q --no-project --python 3.12 --with trimesh --with numpy --with pillow --with scipy --with rtree python -I tools/texture/mirror_face.py "{\"in\": \"$D/ut4b/cousin_ut4b_${t}_g1.3.glb\", \"out\": \"$D/ut4b/cousin_ut4b_${t}_g1.3_mirror.glb\"}"
-  scp -q $D/ut4b/cousin_ut4b_${t}_g1.3.glb $D/ut4b/cousin_ut4b_${t}_g1.3_mirror.glb $DM:/data/utdata/characters/cousin/ < /dev/null && echo "done $t"
+  # Spelmodellen: 12 000 trianglar med färg och normalkarta bakade från högpolyversionen (fina voxlar, så att tunna delar
+  # som öron och fingrar blir kvar)
+  python3 -I tools/mesh/make_low.py "{\"high\": \"$D/ut4b/cousin_ut4b_${t}_g1.3_mirror.glb\", \"out\": \"$D/ut4b/low/cousin_low_12k_${t}.glb\", \"tris\": 12000, \"tex\": 2048, \"voxel\": 0.0035}"
+  scp -q $D/ut4b/cousin_ut4b_${t}_g1.3.glb $D/ut4b/cousin_ut4b_${t}_g1.3_mirror.glb $D/ut4b/low/cousin_low_12k_${t}.glb $DM:/data/utdata/characters/cousin/ < /dev/null && echo "done $t"
 done
