@@ -26,10 +26,14 @@ PROMPT = ("A stylized 3D game character render, full body, an attractive adult w
           "stylized PBR textures, the whole figure visible from head to toe and centered, plain flat light grey studio background, soft even "
           "lighting, no text, no weapon, no other objects, no magic effects around her")
 CRITERIA = ["Exactly one character, a stylized fantasy elf woman in fitted frost-blue clothes, shown whole from head to toe and centered.",
-            "Her hair is slicked tightly back as one smooth solid shape (a ponytail or a top knot): no fringe, no bangs, no loose strands or wisps; the whole forehead and hairline are bare.",
             "No cape, scarf, hood or hanging cloth; sleeves, gloves and boots are smooth without folded cuffs; only a flat belt without pouches.",
             "Hands on hips with elbows out and clear gaps between arms and torso, legs slightly apart; correct hands and face, no melted or extra parts.",
             "Plain even background, no other objects, no text, no magic effects."]
+# Hårda krav (runnerns granskning ger fail om något bryts, hur fin bilden än är) och en närbild av huvudet, så att en tunn
+# slinga syns. Krea vill gärna lägga hår i ansiktet; det ställer till det för Pixal3D och UltraTex
+HARD = ["No hair on the face at all: nothing crosses the forehead, brows, eyes, temples or cheeks, and no lock or strand hangs down "
+        "beside the face. The hair is slicked tightly back as one smooth solid shape (a ponytail or a top knot), with no fringe, bangs or wisps."]
+CROPS = [{"name": "head", "box": [0.25, 0.0, 0.75, 0.22]}]
 
 
 def krea_graph(seed, prefix, prompt=None):
@@ -59,13 +63,13 @@ def pixal_graph(img_ref, prefix):
 
 steps = [{"key": "img_1", "label": "Frost mage: image (Krea-2), ponytail, seed 11", "kind": "comfy", "graph": krea_graph(11, "characters/frost_sister/ponytail_s11")},
          {"key": "rev_1", "label": "Review: frost mage image", "kind": "review", "images": ["$step:img_1"], "criteria": CRITERIA,
-          "min_score": 7, "retry": {"step": "img_1", "max": 3}},
+          "hard": HARD, "crops": CROPS, "min_score": 7, "retry": {"step": "img_1", "max": 4}},
          {"key": "mesh", "label": "Frost mage: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$step:img_1", "3d/characters/frost_sister_pixal3d")}]
 TOPKNOT_PROMPT = PROMPT.replace(PONYTAIL, TOPKNOT)
 steps += [{"key": f"img_{k}", "label": f"Frost mage: image (Krea-2), {kind}, seed {s}", "kind": "comfy",
            "graph": krea_graph(s, f"characters/frost_sister/{kind}_s{s}", TOPKNOT_PROMPT if kind == "topknot" else None)}
           for k, s, kind in ((2, 23, "ponytail"), (3, 57, "topknot"), (4, 91, "topknot"))]
-order = {"id": "frost-sister-r3", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
+order = {"id": "frost-sister-r4", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
          "asset": "frost-sister", "use": "test-only", "gpu": "t1000", "mission": "frost-sister", "mission_title": "The sorceress's sister, a frost mage",
          "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))

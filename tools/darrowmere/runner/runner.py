@@ -322,6 +322,19 @@ def review(o, s):
             found = files_for(o, r)
             cand += found
             labels += ["candidate"] * len(found)
+            # Närbilder ("crops": [{"name": "head", "box": [x0, y0, x1, y1] som andel av bilden}]): små detaljer, t.ex. hår i
+            # ansiktet, syns inte när hela figuren skickas i låg upplösning
+            for c in s.get("crops", []):
+                from PIL import Image
+                for f in found:
+                    try:
+                        im = Image.open(f).convert("RGB"); w, h = im.size; x0, y0, x1, y1 = c["box"]
+                        cp = im.crop((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h)))
+                        cp = cp.resize((768, max(1, int(768 * cp.height / cp.width))), Image.LANCZOS)
+                        out = o.dir / f"{s['key']}_crop_{c.get('name', 'detail')}_{Path(f).stem}.png"; cp.save(out)
+                        cand.append(out); labels.append(f"close-up of the {c.get('name', 'detail')} from the candidate")
+                    except Exception:
+                        pass
     refs = [p for r in s.get("refs", []) for p in files_for(o, r)]
     if not cand:
         raise RuntimeError("nothing to review")
@@ -339,13 +352,20 @@ def review(o, s):
         intro += ("Mesh numbers from Blender (vertices welded at UV seams): " + json.dumps(stats) + ". Separate connected parts and "
                   "boundary edges can be normal for eyes, hair cards or clothing; judge whether they would cause trouble. ")
     intro += "Things the order cares about:\n" + "\n".join(f"- {c}" for c in crit)
+    # Hårda krav: ett brott ger alltid fail, oavsett den avslappnade tonen ovan (t.ex. inget hår i ansiktet)
+    hard = s.get("hard") or []
+    if hard:
+        intro += ("\nHARD REQUIREMENTS. Check each one carefully, using the close-ups. If any of them is broken even slightly, "
+                  "the level is fail and the score at most 4, however good the rest is, and name the broken requirement in issues:\n"
+                  + "\n".join(f"- {c}" for c in hard))
     answer = ("\nReply with JSON only: {\"level\": \"pass\" | \"warning\" | \"fail\", \"score\": 0-10, \"issues\": [short strings], "
               "\"summary\": \"one sentence\", \"rigging\": \"one sentence on how well the mesh would rig and deform\", "
               "\"look\": [optional, at most 6 extra camera shots you want before deciding, each {\"yaw\": degrees around from the front, "
               "\"pitch\": degrees up, \"zoom\": 1 = whole figure, \"height\": 0..1 where on the body (0 feet, 1 top of head), "
               "\"mode\": \"texture\" | \"clay\" | \"wire\", \"why\": short}]}. level pass: usable, at most small things. "
               "warning: usable but with a noticeable problem worth a look. fail: a gross error that makes it unusable. "
-              "When in doubt, choose pass or warning, not fail. Only ask for look shots if something is unclear.")
+              "When in doubt, choose pass or warning, not fail" + (" (except for the hard requirements)" if s.get("hard") else "") +
+              ". Only ask for look shots if something is unclear.")
     v = deepseek_review(o, s, intro + answer, list(zip(labels, cand)), refs, crit)
     # Andra rundan: DeepSeek bad om egna vinklar (bara när den inte redan godkänt)
     looks = [l for l in (v.get("look") or []) if isinstance(l, dict)][:6]

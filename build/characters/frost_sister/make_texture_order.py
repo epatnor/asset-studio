@@ -12,7 +12,7 @@ g["22"]["inputs"].update(glb_path=glb, only_vertices_and_faces=True)
 g["19"]["inputs"]["image"] = "$in:ref.png"
 for nid, pre in (("26", "ut4b_albedo_views"), ("42", "ut4b_albedo_views_2"), ("12", "frost_sister_ut4b")):
     g[nid]["inputs"]["filename_prefix"] = f"characters/frost_sister/{pre}"
-o.update(id="frost-sister-ut4b-r3", title="Frost sister repainted: UltraTex 4B step 8000, base decoder, view weight 8, 45° + above rigs",
+o.update(id="frost-sister-ut4b-r4", title="Frost sister repainted: UltraTex 4B step 8000, base decoder, view weight 8, 45° + above rigs",
          asset="frost-sister", mission="frost-sister", mission_title="The sorceress's sister, a frost mage", inputs={"ref.png": str(Path(ref).resolve())})
 o["steps"][0]["label"] = "UltraTex 4B repaint (6 + 45° + 4 from above)"
 (HERE / "texture_order.json").write_text(json.dumps(o, indent=1))
