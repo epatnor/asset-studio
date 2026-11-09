@@ -47,6 +47,14 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
+// Datorer utan grafikkort (eller med grafiken avstängd, som i fjärrskrivbord) ritar WebGL i mjukvara: då ritas bilden i
+// lägre upplösning och utan utjämning, så att modellen går att vrida
+function softwareGL(r) {
+  try { const gl = r.getContext(), x = gl.getExtension("WEBGL_debug_renderer_info");
+        return /swiftshader|llvmpipe|software|basic render|softpipe|mesa offscreen/i.test(x ? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : ""); }
+  catch (e) { return false; }
+}
+
 const params = new URLSearchParams(location.search);
 const file = params.get("filename") || "";
 const url = "/api/file?" + params.toString();
@@ -62,7 +70,8 @@ try {
   document.getElementById("status").textContent = "This browser has no WebGL, so the model cannot be shown here. Use Download, or open the page in Chrome.";
   throw e;
 }
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+const SOFT_GL = softwareGL(renderer);
+renderer.setPixelRatio(SOFT_GL ? 0.6 : Math.min(2, window.devicePixelRatio));
 renderer.setSize(el.clientWidth, el.clientHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -81,7 +90,11 @@ scene.add(sun);
 
 const camera = new THREE.PerspectiveCamera(35, el.clientWidth / el.clientHeight, 0.001, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls.enableDamping = !SOFT_GL;
+// Rita bara när något ändras (vridning, zoom, knappar), inte 60 gånger i sekunden i onödan
+let need = true;
+const redraw = () => need = true;
+controls.addEventListener("change", redraw);
 
 let root = null, home = null;
 const originals = new Map();
@@ -118,7 +131,7 @@ new GLTFLoader().load(url, gltf => {
     if (map?.image && !texSize) texSize = `${map.image.width}×${map.image.height}`;
   });
   scene.add(root);
-  frame();
+  frame(); redraw();
   document.getElementById("status").remove();
   document.getElementById("info").textContent =
     `${Math.round(tris).toLocaleString()} triangles · ${texSize ? "texture " + texSize : "no texture"}`;
@@ -128,18 +141,19 @@ new GLTFLoader().load(url, gltf => {
   document.getElementById("status").textContent = "Could not load the model: " + (err.message || err);
 });
 
-const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); }; };
+const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); redraw(); }; };
 toggle("tex", on => originals.forEach((m, o) => o.material = on ? m : clay));
 toggle("wire", on => { originals.forEach(m => (Array.isArray(m) ? m : [m]).forEach(x => x.wireframe = on)); clay.wireframe = on; });
 toggle("spin", on => controls.autoRotate = on);
-document.getElementById("light").onclick = () => { darkBg = !darkBg; setBg(); };
+document.getElementById("light").onclick = () => { darkBg = !darkBg; setBg(); redraw(); };
 document.getElementById("reset").onclick = () => { if (!home) return; camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); };
 
 addEventListener("resize", () => {
   renderer.setSize(el.clientWidth, el.clientHeight);
-  camera.aspect = el.clientWidth / el.clientHeight; camera.updateProjectionMatrix();
+  camera.aspect = el.clientWidth / el.clientHeight; camera.updateProjectionMatrix(); redraw();
 });
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+renderer.setAnimationLoop(() => { if (controls.update() || need || controls.autoRotate) { renderer.render(scene, camera); need = false; } });
+if (SOFT_GL) document.querySelector(".hint").textContent += " · software graphics: lower resolution for speed";
 </script>
 </body>
 </html>

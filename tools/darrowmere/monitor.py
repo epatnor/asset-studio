@@ -852,8 +852,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def send(self, code, body, ctype, headers=None):
         data = body if isinstance(body, bytes) else body.encode()
+        # Text packas med gzip när webbläsaren klarar det: statusen är ~200 kB var tredje sekund, packad ~10 %
+        gz = len(data) > 2048 and ctype.split(";")[0] in ("application/json", "text/html", "text/plain") \
+            and "gzip" in (self.headers.get("Accept-Encoding") or "")
+        if gz:
+            import gzip
+            data = gzip.compress(data, compresslevel=5)
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if gz:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         for k, v in (headers or {}).items():

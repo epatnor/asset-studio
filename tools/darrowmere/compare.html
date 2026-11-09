@@ -44,11 +44,20 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
+// Datorer utan grafikkort (eller med grafiken avstängd, som i fjärrskrivbord) ritar WebGL i mjukvara: då ritas bilden i
+// lägre upplösning och utan utjämning, så att modellen går att vrida
+function softwareGL(r) {
+  try { const gl = r.getContext(), x = gl.getExtension("WEBGL_debug_renderer_info");
+        return /swiftshader|llvmpipe|software|basic render|softpipe|mesa offscreen/i.test(x ? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : ""); }
+  catch (e) { return false; }
+}
+
 // f = "undermapp|filnamn|ändringstid" (från galleriet), högst fyra
 const files = new URLSearchParams(location.search).getAll("f").slice(0, 4).map(f => { const [sub, name, m] = f.split("|"); return { sub, name, m }; });
 const el = document.getElementById("view");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+const SOFT_GL = softwareGL(renderer);
+renderer.setPixelRatio(SOFT_GL ? 0.6 : Math.min(2, devicePixelRatio));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.setScissorTest(true);
@@ -57,7 +66,10 @@ const dark = document.documentElement.dataset.theme === "dark";
 const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+controls.enableDamping = !SOFT_GL;
+let need = true;
+const redraw = () => need = true;
+controls.addEventListener("change", redraw);
 const clay = new THREE.MeshStandardMaterial({ color: 0xc9c4bd, roughness: 0.8 });
 const home = () => { camera.position.set(0, 0.25, 5.2); controls.target.set(0, 0, 0); controls.update(); };
 home();
@@ -85,7 +97,7 @@ const views = files.map(f => {
     root.position.copy(center).multiplyScalar(-s); root.scale.setScalar(s);
     let tris = 0;
     root.traverse(o => { if (o.isMesh) { v.originals.set(o, o.material); const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
-    scene.add(root);
+    scene.add(root); redraw();
     lab.innerHTML = `${f.name} <small>${f.sub} · ${Math.round(tris).toLocaleString()} tris</small>`;
   }, undefined, err => lab.innerHTML = `${f.name} <small>could not load: ${err.message || err}</small>`);
   return v;
@@ -96,13 +108,15 @@ function resize() {
   const c = cells();
   views.forEach((v, k) => { v.lab.style.left = (c[k].x + 10) + "px"; v.lab.style.top = (c[k].y + (c[k].y < 60 ? 60 : 8)) + "px"; });
 }
-addEventListener("resize", resize); resize();
-const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); }; };
+addEventListener("resize", () => { resize(); redraw(); }); resize();
+const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); redraw(); }; };
 toggle("tex", on => views.forEach(v => v.originals.forEach((m, o) => o.material = on ? m : clay)));
 toggle("spin", on => controls.autoRotate = on);
-document.getElementById("reset").onclick = home;
+document.getElementById("reset").onclick = () => { home(); redraw(); };
+if (SOFT_GL) document.querySelector(".hint").textContent += " · software graphics: lower resolution for speed";
 renderer.setAnimationLoop(() => {
-  controls.update();
+  if (!(controls.update() || need || controls.autoRotate)) return;
+  need = false;
   const H = el.clientHeight;
   cells().forEach((c, k) => {
     camera.aspect = c.w / c.h; camera.updateProjectionMatrix();

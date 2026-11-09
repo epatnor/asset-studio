@@ -1178,7 +1178,12 @@ function viewBtn(h) {
 // och fortsätter som vanligt så fort datorn svarar (ComfyUI och panelen startar av sig själva vid uppstart).
 let lastStatus = null, lastOk = 0, failCount = 0, UI_VER = null;
 $("reloadBtn").onclick = () => location.reload();
+// En hämtning åt gången: på en långsam dator eller förbindelse hinner en hämtning inte klart på tre sekunder,
+// och då ska nästa vänta i stället för att läggas ovanpå
+let ticking = false;
 async function tick() {
+  if (ticking) return;
+  ticking = true;
   try {
     const r = await fetch("/api/status", { cache: "no-store", signal: AbortSignal.timeout(6000) });
     if (r.status === 401) { location.href = "/login?next=" + encodeURIComponent(location.pathname + location.search); return; }
@@ -1198,9 +1203,10 @@ async function tick() {
     pill("netPill", "bad", `<span class="dot"></span><b>Darrowmere offline</b>`);
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">last seen ${since} · retrying</span>`);
     $("age").textContent = lastOk ? `no answer for ${fmtDur((Date.now() - lastOk) / 1000)}` : "";
-  }
+  } finally { ticking = false; }
 }
 addEventListener("resize", () => lastStatus && drawSparks(lastStatus.history || []));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });   // direkt när fliken syns igen
 tick(); setInterval(tick, 3000);
 </script>
 </body>
