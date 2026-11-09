@@ -47,6 +47,30 @@ och ansikte.
 5. **Textur.** UltraTex målar på den gemensamma UV-kartan. En hudtextur kan återanvändas mellan figurer och detaljeras per figur.
 6. **Rigg och animation.** MPFB:s game_engine-skelett = Quaternius UAL-benen ([[animation-route]]). En gång för alla figurer.
 
+## Tillägg efter ChatGPT:s genomgång (2026-11-09)
+
+ChatGPT föreslog samma väg: Pixal3D som skulptör och en mall med färdig topologi som lindas runt. Det som var nytt och
+värt att ta med:
+
+- **Inpassning i två omgångar, inte ren shrinkwrap.** Först grovt: reglagen (MPFB) och anatomiska landmärken (ögonvrår,
+  mungipor, nästipp, haka, axlar, armbågar, knän, anklar). Sedan lokalt mot Pixal3D-ytan, med en regularisering som
+  bevarar mallens form och slingor (Laplace eller as-rigid-as-possible), så att fingrar, armhålor och mun inte förstörs.
+- **Landmärken automatiskt.** Rendera Pixal3D-modellen framifrån och från sidan, hitta punkterna i 2D med en fri
+  landmärkesmodell (till exempel MediaPipe Pose och Face Mesh, Apache 2.0) och skjut strålar tillbaka till ytan.
+- **Deformationstest som kontroll (`checks.ok`).** Den riggade figuren höjer armarna, böjer armbågar och knän, sätter sig
+  på huk och öppnar munnen. Testet mäter töjning, volymförlust och självskärningar och fångar dåliga figurer före export.
+- **Budget per kroppsdel** som kontroll, startförslag för 10 000 trianglar: huvud 2 200, bål 2 000, armar och händer
+  1 800, ben och fötter 2 200, hår 1 200, övrigt 600.
+- **Verktygen** (kontrollerade 2026-11-09):
+  - **BWrap** (skalin.org) lindar en mall med motsvarande punkter. Gratisversionen tar högst 50 punkter och ger 256 px
+    texturer, den fulla kostar 29,99 EUR. Inget skript-API är beskrivet, så den passar inte ett automatiskt flöde. Vi
+    bygger inpassningen själva.
+  - **ReQuad** (github mlstr0m/requad) är QuadWild bi-MDF som Blender-tillägg. Licens GPL-3.0 (verktyget, inte de nät
+    det gör), kör utan fönster i `blender -b`. Mycket nytt (3 stjärnor). Kandidat för kläder, hår och props i stället för
+    QuadriFlow, som vägrade.
+  - **Instant Meshes** (BSD) är också en kandidat för samma delar.
+  - Ingen av dem ger slingor för ansikte och leder. Det gör mallen.
+
 ## Första steget
 
 **Kusinen** (A-pose, baddräkt, slät kropp nära grundnätet) är det perfekta första testet. Passa in MPFB:s kvinnokropp efter
