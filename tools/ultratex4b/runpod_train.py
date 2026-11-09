@@ -91,7 +91,8 @@ def start(r):
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "runpod-ultratex", "-f", KEY], check=True)
     env = {"MAX_MIN": int(r.get("max_min", 150)), "STEPS": r.get("steps", 200), "CKPT_STEPS": r.get("ckpt_steps", 100000),
            "RESOLUTION": r.get("resolution", 1024), "LIMIT": r.get("limit", 0), "EVAL_N": r.get("eval_n", 2),
-           "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 20)}
+           "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 20),
+           "TASK": r.get("task", "lora")}
     init = r.get("init")       # fortsätt från en hemhämtad checkpoint, t.ex. /data/texverse/runs/run1/checkpoint-10000
     if init:
         if not os.path.isfile(os.path.join(init, "dit_lora.safetensors")):
@@ -175,7 +176,7 @@ def status(r):
         return {**out, **s.get("result", {})}
     rr = run.ssh("cat /workspace/phases.jsonl; echo ===; tail -c 30000 /workspace/train.log 2>/dev/null; echo ===; "
                  "cut -d, -f1 /workspace/gpu.csv 2>/dev/null | sort -n | tail -1; echo ===; cat /workspace/prep.json 2>/dev/null; echo ===; "
-                 "find /workspace/out -name dit_lora.safetensors -mmin +1 2>/dev/null | sort -V; true", 90)
+                 "find /workspace/out \\( -name dit_lora.safetensors -o -name 'decoder_step*.pt' \\) -mmin +1 2>/dev/null | sort -V; true", 90)
     if rr.returncode:
         return {**out, "ssh": "no answer"}
     ph, log, mem, prep, ck = (rr.stdout.split("===\n") + [""] * 5)[:5]
@@ -184,7 +185,7 @@ def status(r):
     rate, step = train_rate(log, total)
     out.update(phase=phases[-1]["phase"] if phases else "starting", phases={p["phase"]: p["t"] for p in phases},
                step=step, s_per_step=rate, gpu_mem_max_mb=int(mem.strip()) if mem.strip().isdigit() else None,
-               checkpoints=[c.split("/")[-2] for c in ck.split()])
+               checkpoints=[ck_name(c) for c in ck.split()])
     try:
         pj = json.loads(prep.strip().splitlines()[-1])
         out["prep"] = {k: pj.get(k) for k in ("objects", "train", "eval", "problems", "extracted_GB")}
@@ -198,20 +199,26 @@ def status(r):
     return out
 
 
+def ck_name(path):
+    """checkpoint-N för LoRA-mappar, filnamnet (decoder_stepN.pt) för dekodern."""
+    return path.split("/")[-2] if path.endswith("dit_lora.safetensors") else path.split("/")[-1]
+
+
 def fetch(r, final=False):
     """Hämtar nya färdiga checkpoints (dit_lora.safetensors) och, sist, valideringsbilder och loggar."""
     run = Run(r.get("run", "run1"))
-    rr = run.ssh("find /workspace/out -name dit_lora.safetensors -mmin +1 2>/dev/null | sort -V; true", 60)
+    rr = run.ssh("find /workspace/out \\( -name dit_lora.safetensors -o -name 'decoder_step*.pt' \\) -mmin +1 2>/dev/null | sort -V; true", 60)
     got = []
     for f in rr.stdout.split():
-        ck = f.split("/")[-2]
+        ck = ck_name(f)
         if ck in run.s.get("fetched", []):
             continue
-        if run.pull(f, os.path.join(run.out, ck, "dit_lora.safetensors")).returncode == 0:
+        local = os.path.join(run.out, ck, "dit_lora.safetensors") if f.endswith("dit_lora.safetensors") else os.path.join(run.out, ck)
+        if run.pull(f, local).returncode == 0:
             run.s.setdefault("fetched", []).append(ck); run.save(); got.append(ck)
     if final:
         run.ssh("cd /workspace && tar czf /tmp/logs.tgz pod.log phases.jsonl gpu.csv prep.json pip.log dl_*.log train.log "
-                "$(cd /workspace && find out -name '*.webp' 2>/dev/null) 2>/dev/null; true", 300)
+                "$(cd /workspace && find out -name '*.webp' -o -name '*.png' 2>/dev/null) 2>/dev/null; true", 300)
         if run.pull("/tmp/logs.tgz", os.path.join(run.out, "logs.tgz")).returncode == 0:
             subprocess.run(["tar", "xzf", os.path.join(run.out, "logs.tgz"), "-C", run.out])
     return {"ok": True, "new": got, "fetched": run.s.get("fetched", []), "out": run.out}
@@ -257,7 +264,8 @@ def recover(r):
     """För en pod som stoppats innan allt hämtats: försök starta den var `every_min` minut i högst `hours` timmar (kortet kan
     vara upptaget på värden), hämta sedan alla checkpoints, loggar och hela sista checkpointmappen (med optimerarens läge,
     så att träningen kan fortsätta senare), och ta bort poden när den sista finns hemma. Körs i bakgrunden på Darrowmere."""
-    run = Run(r.get("run", "run1")); total = int(run.s["env"]["STEPS"]); last = f"checkpoint-{total}"
+    run = Run(r.get("run", "run1")); total = int(run.s["env"]["STEPS"])
+    last = f"decoder_step{total}.pt" if run.s["env"].get("TASK") == "decoder" else f"checkpoint-{total}"
     p = run.pipe(); every, until = int(r.get("every_min", 10)), time.time() + float(r.get("hours", 24)) * 3600
     tries = 0
     while True:

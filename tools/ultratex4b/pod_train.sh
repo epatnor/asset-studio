@@ -3,7 +3,7 @@
 # Hämtar bara öppet licensierade delar: Klein base 4B + Qwen3 4B (BFL, Apache), FLUX.2-VAE:n (Comfy-Org, Apache),
 # UltraTex-koden (MIT) och G-buffer TexVerse (CC0). UltraTex:s NC-vikter (LoRA, decoder.pt) hämtas inte:
 # dekodern för valideringen tas ur bas-VAE:n.
-# Miljö: INIT (checkpoint att fortsätta från), BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
+# Miljö: TASK (lora eller decoder: UltraTex-dekodern, scripts/train_vae_flux2.sh, bara VAE:n behövs), INIT (checkpoint att fortsätta från), BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
 # Faserna skrivs till /workspace/phases.jsonl, GPU-minnet till gpu.csv och träningen till train.log.
 set -uo pipefail
 W=/workspace; mkdir -p $W; cd $W
@@ -24,6 +24,9 @@ cd UltraTex && git checkout -q a726678 || fail checkout
 grep -v '^deepspeed' requirements.txt > $W/req.txt          # deepspeed används inte av train_flux2.py
 uv pip install -q -p .venv/bin/python --index-strategy unsafe-best-match -r $W/req.txt > $W/pip.log 2>&1 || fail pip
 uv pip install -q -p .venv/bin/python typer click hf_xet >> $W/pip.log 2>&1 || fail pip_cli   # för hf-kommandot
+if [ "${TASK:-lora}" = decoder ]; then   # dekoderträningen går via DeepSpeed (ZeRO 2)
+    uv pip install -q -p .venv/bin/python "$(grep '^deepspeed' requirements.txt)" >> $W/pip.log 2>&1 || fail pip_deepspeed
+fi
 HF=$PWD/.venv/bin/hf
 
 ph download
@@ -35,15 +38,18 @@ for b in $BUCKETS; do
         --local-dir $W/texverse > $W/dl_data_$b.log 2>&1 &
     DLP+=($!)
 done
+if [ "${TASK:-lora}" != decoder ]; then
 $HF download black-forest-labs/FLUX.2-klein-base-4B flux-2-klein-base-4b.safetensors --local-dir $W/hf/klein4b > $W/dl_model.log 2>&1 || fail dl_klein
 $HF download black-forest-labs/FLUX.2-klein-base-4B --include 'text_encoder/*' --include 'tokenizer/*' \
     --local-dir $W/hf/klein4b >> $W/dl_model.log 2>&1 || fail dl_qwen
+fi
 $HF download Comfy-Org/Flux-2-Klein-4B split_files/vae/flux2-vae.safetensors \
     --local-dir $W/hf/comfy >> $W/dl_model.log 2>&1 || fail dl_vae
 ln -sf $W/hf/klein4b/flux-2-klein-base-4b.safetensors $M/
 ln -sf $W/hf/comfy/split_files/vae/flux2-vae.safetensors $M/ae.safetensors
 ln -sf $W/hf/klein4b/text_encoder/* $W/hf/klein4b/tokenizer/* $M/qwen3-4b/
-[ -s $M/flux-2-klein-base-4b.safetensors ] && [ -s $M/ae.safetensors ] && [ -s $M/qwen3-4b/config.json ] || fail models_missing
+[ -s $M/ae.safetensors ] || fail models_missing
+[ "${TASK:-lora}" = decoder ] || { [ -s $M/flux-2-klein-base-4b.safetensors ] && [ -s $M/qwen3-4b/config.json ]; } || fail models_missing
 # Dekoder för valideringen: bas-VAE:ns egen dekoder (inte UltraTex:s NC-dekoder)
 .venv/bin/python -c "
 import torch; from safetensors.torch import load_file
@@ -58,6 +64,13 @@ JZ=$(printf '"%s",' "${ZIPS[@]}"); JZ="[${JZ%,}]"
     > $W/prep.json 2>&1 || fail prep
 
 ph train
+if [ "${TASK:-lora}" = decoder ]; then
+    # Bara dekodern tränas (VAE:ns kodare fryst), mot albedon; färgfelet (deltaE 2000) mäts på eval-objekten var 1000:e steg
+    AE_MODEL_PATH=$M/ae.safetensors TRAIN_JSON=$W/extracted/train.json EVAL_JSON=$W/extracted/eval.json OUTPUT_DIR=$W/out \
+        RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-200} SAVE_EVERY=${CKPT_STEPS:-500} MODEL_NAME=flux.2-klein-base-4b \
+        NUM_WORKERS=$(( $(nproc) > 10 ? 8 : $(nproc) - 2 )) NUM_GPUS=1 \
+        bash scripts/train_vae_flux2.sh >> $W/train.log 2>&1 || fail train
+else
 export FLUX2_CACHE=$M RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-200} CHECKPOINTING_STEPS=${CKPT_STEPS:-100000} \
     RESUME_FROM_CHECKPOINT= DECODER_CKPT=$W/decoder_base.pt \
     TRAIN_JSON=$W/extracted/train.json EVAL_JSON=$W/extracted/eval.json BUCKET_METADATA_JSON=$W/extracted/foreground_ratios.json \
@@ -68,6 +81,7 @@ export FLUX2_CACHE=$M RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-20
 [ -n "${INIT:-}" ] && export RESUME_FROM_CHECKPOINT=$INIT
 ls -d $W/out/checkpoint-* >/dev/null 2>&1 && unset RESUME_FROM_CHECKPOINT
 bash scripts/train_flux2_9b_2048.sh 4b >> $W/train.log 2>&1 || fail train
+fi
 ph done
 
 # Vänta på att vakten hämtar resultatet (den skriver /workspace/fetched); annars stoppa poden så att disken finns kvar
