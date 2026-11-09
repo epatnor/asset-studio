@@ -109,3 +109,7 @@ Texturflödet passar som första fall. Spakarna är tydliga och granskningen ger
 - **`retry.rewrite`**: när en bild underkänns skriver DeepSeek om promptens formulering inom skyddsräcken (samma motiv,
   tema, kläder och pose, alla krav kvar, bara förtydliganden; 0,5–1,6 gånger längden), och omtaget använder den.
   Varje version sparas i målstegets `prompts`. Första gången: frostsystern r5, där Krea lade slingor vid kinden två gånger i rad.
+
+- **`rewrite_avoid`** (i granskningssteget): ord som omskrivningen aldrig får använda, inte ens nekade, eftersom Krea-2
+  saknar negativ prompt och ritar det som nämns ("no hair" gav hår). En omskrivning med något av orden kastas. Exempel:
+  `["hair", "hairstyle", "haircut"]` för skalliga figurer (kusinen, 2026-11-09).

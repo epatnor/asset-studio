@@ -18,7 +18,7 @@ En fil /data/orders/<id>/cancel stoppar beställningen före nästa steg.
 import base64
 import copy
 import io
-import json
+import json, re
 import os
 import shutil
 import sys
@@ -468,6 +468,7 @@ def rewrite_prompt(o, s, target, verdict):
         return None
     current = t.get("prompt") or texts[0]
     hard = s.get("hard") or []
+    avoid = [w.lower() for w in s.get("rewrite_avoid") or []]   # ord som drar fram det man vill slippa (t.ex. "hair")
     ask = ("You improve an image-generation prompt for Krea-2 (a FLUX-style model, no negative prompt, plain English, comma-separated "
            "phrases work well). An automatic review rejected the last image made from it.\n\nPROMPT:\n" + current +
            "\n\nREVIEW: " + json.dumps({k: verdict.get(k) for k in ("level", "score", "issues", "summary")}) +
@@ -475,7 +476,10 @@ def rewrite_prompt(o, s, target, verdict):
            "\n\nRewrite the prompt so the problems do not repeat. Rules: keep the same subject, theme, colours, clothing, pose, framing "
            "and style; do not remove any requirement; only clarify, reorder (put what failed early in the prompt), make it more "
            "concrete or repeat it. Describe what you want rather than listing what you do not want where you can. At most "
-           f"{int(len(current) * 1.5)} characters. Reply with JSON only: {{\"prompt\": \"...\", \"why\": \"one sentence\"}}.")
+           f"{int(len(current) * 1.5)} characters." +
+           (" Never use these words, not even negated (the model draws what is named): " + ", ".join(avoid) +
+            ". Describe the wanted result positively instead." if avoid else "") +
+           " Reply with JSON only: {\"prompt\": \"...\", \"why\": \"one sentence\"}.")
     model = s.get("model") or settings()["review"].get("model") or CONF["model"]
     t0 = time.time()
     try:
@@ -490,6 +494,9 @@ def rewrite_prompt(o, s, target, verdict):
         log(o.id, s["key"], "prompt rewrite failed", str(e)[:200])
         return None
     # Skyddsräcken: inte tom, inte för lång, inte samma
+    if any(re.search(rf"\b{re.escape(w)}", new.lower()) for w in avoid):
+        log(o.id, s["key"], "prompt rewrite rejected: uses an avoided word", ", ".join(avoid))
+        return None
     if len(new) < 0.5 * len(current) or len(new) > 1.6 * len(current) or new == current:
         log(o.id, s["key"], "prompt rewrite rejected", len(new))
         return None
