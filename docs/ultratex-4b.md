@@ -51,6 +51,7 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
 | Dekodern | Maren 8 000 med bas-VAE:ns dekoder | linjära färger; som sRGB fylligare och mer detalj än forskarnas dekoder (mättnad 164 mot 118, referensen 100) |
 | Bakningen | Maren 8 000, tre bakningsinställningar från samma målning | `view_weight_power` 8 (i stället för 4) tar bort fläckarna vid näsan, tinningen och i håret; `edge_feather_px` och `best_view_mix` gör ingen synlig skillnad. Full sRGB blir för ljus; Patrik föredrar den mörkare och fylligare råa färgen, graderingar med gamma 1,3 och 1,6 provas |
 | Fler kameror | Maren 8 000 med en andra kamerauppsättning vriden 45° | halsdukens bruna fläck nästan borta, mer av kragen grön, skuggan i hörnet mellan bälte och förkläde nästan borta; lite läcka kvar |
+| Täckning | `tools/ultratex4b/coverage.py` på Maren: andel av ytan som syns bra, snett eller inte alls | 6 vinklar 63/18/19 %, 12 vinklar 69/15/16 % (2 % är insidor). Viktat som en spelkamera (uppifrån och från sidan): 12 vinklar 95,8 % bra; +4 uppifrån mot sidorna 98,5 %, +4 underifrån 96,4 %. Patriks förslag (uppifrån, ut mot sidorna) täcker krage, bröst och ärmkanter. Test med tredje uppsättningen pågår |
 
 Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
 
@@ -64,7 +65,9 @@ Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
 3. **Skilj modellfel från bakningsfel.** Fläckar på samma ställe med olika dekodrar kommer från målningen eller
    bakningen, inte från dekodern. Bakningens inställningar kan provas på samma målning.
 4. **Dekoderns färgrymd.** Bas-VAE:ns dekoder ger linjära färger. Jämför i sRGB innan något döms ut.
-5. **Drift:**
+5. **Täckning först.** Mät vad kamerorna ser med `coverage.py` innan fler vinklar läggs till, och vikta efter vad spelkameran ser
+   (`"weight": "game"`): undersidor ger stor yta men syns sällan. Stanna när nästa vinkel ger under ca 1 %.
+6. **Drift:**
    - Vakten ska vara ett runnersteg, inte en lös process.
    - Väntan efter träningen ska vara 20 minuter (två timmar kostade 5 USD).
    - Disken ska räcka för zip-filer och uppackning samtidigt.
@@ -72,7 +75,7 @@ Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
    - Ett misslyckat kommando ska ge felkod, så att `start && watch` inte startar vakter i onödan.
    - Mät hastigheten först efter 15–20 minuter.
    - Community-kort tar slut ofta: `start_when_free.sh` provar igen, och secure cloud fungerar när det brådskar.
-6. **Datalicensen.** G-buffer TexVerse är märkt CC0, men källobjekten har blandade licenser (ca 15 % NC). Se förbehållet nedan.
+7. **Datalicensen.** G-buffer TexVerse är märkt CC0, men källobjekten har blandade licenser (ca 15 % NC). Se förbehållet nedan.
 
 
 ## Varför
