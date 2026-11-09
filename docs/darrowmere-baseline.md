@@ -81,3 +81,11 @@ Resultat per körning (en rad JSON) läggs in här:
 | Diskläsning `/data`, NVMe (MB/s) | 1 500 | |
 | Nedladdning (Mbit/s) | 69 | |
 | UltraTex 9B Q4, 6 vyer + 2 bakningar (T1000) | 2 074 s (35 min) | |
+
+## Hängningen 2026-11-09 kl. 14:36
+
+ComfyUI på T1000 laddade Krea-2 (14 GB) för frostsysterns första bild direkt efter ett UltraTex-jobb (Klein 4B fp8,
+Qwen3 4B, LoRA) utan att släppa de förra modellerna ("0 models unloaded"), och Darrowmere hamnade i swap (18 GB). Runnern
+släppte bara det andra kortets modeller (`serial_lanes`). Nu tömmer runnern kortets modeller när nästa jobb på samma kort
+använder andra modellfiler (`LAST_MODELS` i `runner.py`). Galleriets förhandsbilder för 3D-modeller (Blender) görs bara när
+ComfyUI är ledigt och i en minnesbegränsad scope (`systemd-run --user --scope -p MemoryMax=4G`).
