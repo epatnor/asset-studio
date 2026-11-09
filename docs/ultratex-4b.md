@@ -190,6 +190,13 @@ run2 (fortsättning från 10 000 på A100) stoppades vid 10 100 för 1,33 USD: A
 En gratis genomgång av checkpoints (2 000, 4 000, 6 000, 8 000) på Maren och statyn körs på Darrowmere (uppdraget
 `ultratex4b-sweep`) för att hitta det bästa steget.
 
+**Mått på detaljer (2026-11-09):** `tools/ultratex4b/detail_score.py` renderar originalet och kandidaterna platt
+från samma vinklar och mäter detaljstyrka, placering (korrelation med originalets mönster) och färgavstånd. På statyn
+(vinklarna 0 och 180) fick 9B detalj 6,4 och placering 0,38 (färg 33, för varm). Steg 4000 fick 2,3, 0,13 och 8,3, och
+steg 10000 fick 1,1, 0,17 och 13,3 (originalets detalj 7,8). Patrik såg samma sak: steg 4000 har ett skönjbart mönster
+på togan, och 2000 och 6000 är nästan släta. Statyn var bäst vid 4000 och Maren vid 8000, så kvaliteten hoppar mellan
+checkpoints. Det talar för EMA och lägre inlärningstakt i run3.
+
 Lärdom till nästa körning: de två timmarnas väntan med kortet igång kostade ca 5 USD. Vakten ska köras där den inte dör
 (som runnersteg, se [agent-team.md](agent-team.md), fas 0), och väntan efter träningen kortas till 20 minuter.
 
