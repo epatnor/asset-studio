@@ -3,7 +3,7 @@
 # Hämtar bara öppet licensierade delar: Klein base 4B + Qwen3 4B (BFL, Apache), FLUX.2-VAE:n (Comfy-Org, Apache),
 # UltraTex-koden (MIT) och G-buffer TexVerse (CC0). UltraTex:s NC-vikter (LoRA, decoder.pt) hämtas inte:
 # dekodern för valideringen tas ur bas-VAE:n.
-# Miljö: BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
+# Miljö: INIT (checkpoint att fortsätta från), BUCKETS ("00 01 ..."), LIMIT (0 = alla objekt), EVAL_N, STEPS, CKPT_STEPS (validering), RESOLUTION, MAX_MIN, GRACE_MIN.
 # Faserna skrivs till /workspace/phases.jsonl, GPU-minnet till gpu.csv och träningen till train.log.
 set -uo pipefail
 W=/workspace; mkdir -p $W; cd $W
@@ -63,6 +63,9 @@ export FLUX2_CACHE=$M RESOLUTION=${RESOLUTION:-1024} MAX_TRAIN_STEPS=${STEPS:-20
     TRAIN_JSON=$W/extracted/train.json EVAL_JSON=$W/extracted/eval.json BUCKET_METADATA_JSON=$W/extracted/foreground_ratios.json \
     WORKERS_PER_GPU=$(( $(nproc) > 14 ? 12 : $(nproc) - 2 )) PROJECT_DIR=$W/out
 # Fortsätt från senaste checkpoint om poden har startats om (skriptet letar själv i PROJECT_DIR)
+# INIT: en checkpoint från en tidigare körning (laddas upp av runpod_train.py), t.ex. /workspace/init/checkpoint-10000.
+# Skriptet läser LoRA:n och fortsätter räkna steg därifrån; STEPS är då det totala målet (15000 = 5000 till)
+[ -n "${INIT:-}" ] && export RESUME_FROM_CHECKPOINT=$INIT
 ls -d $W/out/checkpoint-* >/dev/null 2>&1 && unset RESUME_FROM_CHECKPOINT
 bash scripts/train_flux2_9b_2048.sh 4b >> $W/train.log 2>&1 || fail train
 ph done

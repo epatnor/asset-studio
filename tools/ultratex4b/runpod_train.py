@@ -91,7 +91,12 @@ def start(r):
         subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "runpod-ultratex", "-f", KEY], check=True)
     env = {"MAX_MIN": int(r.get("max_min", 150)), "STEPS": r.get("steps", 200), "CKPT_STEPS": r.get("ckpt_steps", 100000),
            "RESOLUTION": r.get("resolution", 1024), "LIMIT": r.get("limit", 0), "EVAL_N": r.get("eval_n", 2),
-           "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 120)}
+           "BUCKETS": "'" + " ".join(r.get("buckets", ["00"])) + "'", "GRACE_MIN": r.get("grace_min", 20)}
+    init = r.get("init")       # fortsätt från en hemhämtad checkpoint, t.ex. /data/texverse/runs/run1/checkpoint-10000
+    if init:
+        if not os.path.isfile(os.path.join(init, "dit_lora.safetensors")):
+            return {"ok": False, "error": f"ingen dit_lora.safetensors i {init}"}
+        env["INIT"] = "/workspace/init/" + os.path.basename(init.rstrip("/"))
     pod, errs = None, []
     for g in r.get("gpus", GPUS):           # bara Community Cloud; Secure kostar 50 % mer
         try:
@@ -110,7 +115,7 @@ def start(r):
     run.save()
     p = pipeline.Pipeline(run.pid, f"UltraTex 4B {run.name}: {env['STEPS']} steps on RunPod", [
         ("pod", "Start H100 pod", "runpod"), ("setup", "Install + download models/data", "runpod"),
-        ("prep", "Unpack TexVerse buckets", "runpod"), ("train", f"Train {env['STEPS']} steps ({env['RESOLUTION']} px)", "runpod"),
+        ("prep", "Unpack TexVerse buckets", "runpod"), ("train", f"Train {'from ' + os.path.basename(init) + ' to ' if init else ''}{env['STEPS']} steps ({env['RESOLUTION']} px)", "runpod"),
         ("stop", "Fetch checkpoints + remove pod", "runpod")])
     p.save(); p.start("pod", note=f"{pod['gpu']}, {pod['costPerHr']} USD/h")
     for _ in range(90):
@@ -125,6 +130,10 @@ def start(r):
     else:
         p.fail("pod", note="ssh never came up"); stop({"run": run.name})
         return {"ok": False, "error": "ssh kom aldrig upp, poden borttagen"}
+    if init:
+        run.ssh(f"mkdir -p {env['INIT']}", 30)
+        subprocess.run(["scp", *SSHO, "-P", str(run.s["port"]), os.path.join(init, "dit_lora.safetensors"),
+                        f"root@{run.s['ip']}:{env['INIT']}/"], capture_output=True, timeout=900)
     for f in ("pod_train.sh", "prep_texverse.py"):
         subprocess.run(["scp", *SSHO, "-P", str(run.s["port"]), os.path.join(HERE, f), f"root@{run.s['ip']}:/workspace/"],
                        capture_output=True, timeout=120)
