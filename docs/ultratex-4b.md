@@ -1,6 +1,72 @@
 # UltraTex för Klein 4B: plan för en egen LoRA
 
-Plan 2026-11-08. Inget är startat, och inga betalda steg körs utan Patriks ja.
+Plan 2026-11-08, sedan genomförd. Inga betalda steg körs utan Patriks ja. Överst finns läget och en samlad logg över
+alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
+
+## Läget (2026-11-09)
+
+- **Bästa hittills:** run1 steg 8000 för Maren (Patrik: "rätt så bra, med bara några fläckar kvar") och steg 4000 för
+  statyn. Det bästa steget skiljer sig mellan objekt, alltså är checkpoints brusiga.
+- **Dekoder:** bas-VAE:ns dekoder (Apache) med texturen omgjord till sRGB ger fylligare färger och mer detalj
+  (fräknarna syns) än forskarnas icke-kommersiella dekoder. Färgen blir dock för mättad mot referensen. Vår egen dekoder
+  tränas (dec2).
+- **Kvar att lösa:** fläckar på Maren. Halsdukens färg läcker in på rocken, halsduken har en fläck längs kanten, det finns
+  en skugga under bältet och en fläck vid näsan. De två första ser ut som bakningsfel och testas med bakningens
+  inställningar. De två sista ser ut som inbakad skuggning från referensen.
+- **Pågår:** run3b (från 8000, LR 2e-5, EMA), dec2 (egen dekoder) och bakningstestet.
+- **Mot 9B:** 9B för fortfarande över detaljer från referensbilden till ytor som formen saknar (statyns veck, placering
+  0,38 mot 0,13–0,17). Vår 4B gör inte det än.
+
+## Försöksloggen
+
+### Träningskörningar (RunPod)
+
+| Körning | Datum | Kort | Steg | Data | Inställningar | Kostnad (USD) | Utfall |
+|---|---|---|---|---|---|---|---|
+| smoke | 11-08 | H100 NVL (community) | 0 → 200 | bucket 00 | LR 5e-5, 1024 px | 1,30 | 3,9 s/steg, 27 GB; priset för steg 3 |
+| run1, första försöket | 11-08 | H100 NVL | – | – | – | 0,10 | föll på modellnedladdningen (`--include`) |
+| run1 | 11-08–09 | H100 NVL | 0 → 10 000 | 00–05, 8 341 objekt | LR 5e-5 konstant, batch 1 | ≈32,6 | lär sig uppgiften tidigt; brusiga checkpoints (se utvärderingar) |
+| run2 | 11-09 | A100 PCIe (community) | 10 000 → 10 100 | 06–11 | LR 5e-5 | 1,33 | stoppad: startade från sämre checkpoint, 11,3 s/steg, 5 015 objekt packades inte upp (för liten disk) |
+| run3 | 11-09 | H100 SXM (secure) | – | 06–09 | LR 2e-5, EMA | 1,00 | föll direkt: vår `TASK` krockade med träningsskriptets |
+| run3b | 11-09 | H100 SXM (secure) | 8 000 → 13 000 | 06–09, 5 374 objekt | LR 2e-5, EMA 0,999 | pågår (tak 23,9) | – |
+| dec1 | 11-09 | A40 (secure) | – | 00 | dekoder | 0,15 | DeepSpeed letade efter MPI (`MAIN_PROCESS_PORT` saknades) |
+| dec1b | 11-09 | A40 | – | 00 | 8 dataladdare | 0,19 | dog av minnesbrist vid första mätningen |
+| dec1c | 11-09 | L40S | 2 | 00 | 2 dataladdare | 0,16 | stoppad för tidigt: 72 s/steg mättes under uppstarten |
+| dec2 | 11-09 | A40 | 0 → 1 000 | 00 | 2 dataladdare | pågår (ca 1,1) | ca 6 s/steg efter uppstarten |
+
+### Utvärderingar (gratis, på Darrowmere)
+
+| Prov | Vad | Resultat |
+|---|---|---|
+| Valideringsbilderna i run1 | staty och monster, steg 100–10 000 | steg 100 fel färger; från 5 000 rätt färg men slätt |
+| Maren 5 000 / 10 000 mot 9B | samma nät, frö och vyer | 4B fungerar och är 4 gånger snabbare (8,5 min mot 35); 9B skarpare |
+| Valideringsobjekten i 3D | staty och monster från TexVerse, 4B mot 9B mot original | 9B för över veck och mönster; 4B slät (statyns variation ±4 mot 9B ±23) |
+| Genomgång av checkpoints | Maren och statyn, steg 2 000–10 000 | Maren blir bättre fram till 8 000; statyn bäst vid 4 000 (detalj 2,3, färgavstånd 8) |
+| Dekodern | Maren 8 000 med bas-VAE:ns dekoder | linjära färger; som sRGB fylligare och mer detalj än forskarnas dekoder (mättnad 164 mot 118, referensen 100) |
+| Bakningen | Maren 8 000, tre bakningsinställningar från samma målning | pågår |
+
+Totalt hittills för RunPod: ca 38 USD, plus run3b och dec2.
+
+### Lärdomar för metoden
+
+1. **Ett kort med batch 1 och konstant LR 5e-5 ger brusiga checkpoints.** Forskarnas recept är troligen tänkt för flera
+   kort. Kvaliteten hoppar mellan checkpoints, och olika objekt är bäst vid olika steg. Lägre LR och EMA bör jämna ut det.
+   Utvärdera alltid flera checkpoints.
+2. **Utvärdera i 3D och med siffror.** Valideringsbilderna räckte inte. Compare i galleriet (samma vinkel, synkad
+   rotation) och `detail_score.py` (detalj, placering och färg mot originalet) visade skillnaderna.
+3. **Skilj modellfel från bakningsfel.** Fläckar på samma ställe med olika dekodrar kommer från målningen eller
+   bakningen, inte från dekodern. Bakningens inställningar kan provas på samma målning.
+4. **Dekoderns färgrymd.** Bas-VAE:ns dekoder ger linjära färger. Jämför i sRGB innan något döms ut.
+5. **Drift:**
+   - Vakten ska vara ett runnersteg, inte en lös process.
+   - Väntan efter träningen ska vara 20 minuter (två timmar kostade 5 USD).
+   - Disken ska räcka för zip-filer och uppackning samtidigt.
+   - Miljövariabler får inte krocka med skriptets.
+   - Ett misslyckat kommando ska ge felkod, så att `start && watch` inte startar vakter i onödan.
+   - Mät hastigheten först efter 15–20 minuter.
+   - Community-kort tar slut ofta: `start_when_free.sh` provar igen, och secure cloud fungerar när det brådskar.
+6. **Datalicensen.** G-buffer TexVerse är märkt CC0, men källobjekten har blandade licenser (ca 15 % NC). Se förbehållet nedan.
+
 
 ## Varför
 
