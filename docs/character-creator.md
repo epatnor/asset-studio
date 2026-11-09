@@ -112,10 +112,15 @@ de gemensamma. Omgång 2 (den lilla personliga förskjutningen per punkt) åters
 - **MPFB-fällan:** `feet_on_ground` flyttar nätet men inte skelettet, så armarna roterade kring bäckenets höjd. Figuren
   ställs nu på marken genom att skelettet flyttas, efter proxyn som exporteras.
 
-| Prov (body-gens Pixal3D-kroppar i baddräkt) | Medel före → efter | Bål | Ben | Armar | Huvud |
+| Prov (body-gens Pixal3D-kroppar) | Medel före → efter | Bål | Ben | Armar | Huvud |
 |---|---|---|---|---|---|
 | Man (`body_male_swim`) | 38,7 → 16,5 mm | 8,9 | 9,0 | 14,2 | 6,8 |
-| Kvinna (`body_female_swim`) | 31,9 → 22,9 mm | 18,0 (framåtböjd i AI-formen) | 8,1 | 23,9 | 11,8 |
+| Kvinna (`body_yvonne`, CFG 3,5) | 35,4 → 17,6 mm | 10,7 | 7,2 | 13,8 | 8,3 |
+
+Kvinnoprovet gjordes först mot `body_female_swim` (1 november, före CFG 3,5). Den kroppen har den extra rumpan fram och en
+framåtböjd bröstrygg, och receptet härmade felen. Patrik underkände den, så den är struken som provmål. Armarnas vinkel
+framåt (`arm_forward`) kom till efter Yvonne-provet: mallens armar hängde bakom ryggen, och felet i armarna gick från 28
+till 14 mm.
 
 Det tar ungefär 25 sekunder. Figurerna och AI-formerna finns i Darrowmeres galleri under `characters/creator`.
 

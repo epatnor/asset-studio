@@ -72,7 +72,10 @@ def posed():
     a = a.reshape(-1, 3)
     return a @ M[:3, :3].T + M[:3, 3]
 
-def set_pose(arm_deg, leg_deg):
+def set_pose(arm_deg, leg_deg, fwd_deg=None):
+    global ARM_FWD
+    if fwd_deg is not None:
+        ARM_FWD = fwd_deg
     for pb in rig.pose.bones:
         pb.matrix_basis = Matrix.Identity(4)
     bpy.context.view_layer.update()
@@ -81,11 +84,15 @@ def set_pose(arm_deg, leg_deg):
         pb, end = rig.pose.bones[up], rig.pose.bones[lo]
         cur = (W3 @ (end.head - pb.head)).normalized()
         sx = 1 if (W3 @ pb.head).x > 0 else -1
-        want = Vector((sx * sin(radians(ang)), 0, -cos(radians(ang))))
+        f = radians(ARM_FWD) if up.startswith("upperarm") else 0.0   # armarna kan också peka framåt (mot -y)
+        want = Vector((sx * sin(radians(ang)) * cos(f), -sin(f), -cos(radians(ang)) * cos(f)))
         Ra = (W3.inverted() @ cur.rotation_difference(want).to_matrix() @ W3).to_4x4()
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
         bpy.context.view_layer.update()
+
+ARM_FWD = 0.0
+
 
 def rest_angles():
     """Mallens egna vinklar (armar och ben mot lodlinjen), så att rutnätet börjar rätt."""
@@ -211,8 +218,12 @@ def pose_search(bvh):
         set_pose(arm, leg); P = posed()
         sel = np.nonzero(region_mask & USE)[0][::3]
         return float(np.mean([bvh.find_nearest(Vector(P[i]))[3] for i in sel]))
-    arm = min(range(30, 101, 5), key=lambda a: err(a, 3, REG["arms"]))
-    arm = min(np.arange(arm - 4, arm + 4.1, 2), key=lambda a: err(a, 3, REG["arms"]))
+    arm = min(range(15, 101, 5), key=lambda a: err(a, 3, REG["arms"]))
+    arm = min(np.arange(max(10, arm - 4), arm + 4.1, 2), key=lambda a: err(a, 3, REG["arms"]))
+    def err_f(fw):
+        set_pose(arm, 3, fw); return err(arm, 3, REG["arms"])
+    fwd = min(range(-10, 41, 5), key=err_f); set_pose(arm, 3, fwd)
+    arm = min(np.arange(max(10, arm - 6), arm + 6.1, 2), key=lambda a: err(a, 3, REG["arms"]))
     leg = min(np.arange(0, 20.1, 2), key=lambda l: err(arm, l, REG["legs"]))
     set_pose(arm, leg)
     return float(arm), float(leg)
@@ -329,7 +340,7 @@ im.pixels.foreach_set(px.ravel().astype(np.float32))
 im.filepath_raw = os.path.join(out, "overlay.png"); im.file_format = "PNG"; im.save()
 
 # --- receptet ----------------------------------------------------------------------------------------------------------
-recipe = {"sex": macro["gender"], "age": r.get("age", 25), "sliders": {}, "pose": round(arm), "leg_spread": round(leg, 1)}
+recipe = {"sex": macro["gender"], "age": r.get("age", 25), "sliders": {}, "pose": round(arm), "arm_forward": ARM_FWD, "leg_spread": round(leg, 1)}
 for m in cat["macro"]:
     if m["id"] in r and m["id"] not in recipe:
         recipe[m["id"]] = r[m["id"]]

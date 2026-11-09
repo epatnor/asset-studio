@@ -121,7 +121,8 @@ if arms and angle is not None:
         cur = (W3 @ (end.head - pb.head)).normalized()
         a_ = radians(angle)
         side_x = 1 if (W3 @ pb.head).x > 0 else -1
-        want = Vector((side_x * sin(a_), 0, -cos(a_)))
+        f_ = radians(float(r.get("arm_forward", 0))) if up.startswith("upperarm") else 0.0   # armarna framåt (grader)
+        want = Vector((side_x * sin(a_) * cos(f_), -sin(f_), -cos(a_) * cos(f_)))
         Ra = (W3.inverted() @ cur.rotation_difference(want).to_matrix() @ W3).to_4x4()
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
