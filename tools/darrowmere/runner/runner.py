@@ -180,6 +180,7 @@ def resolve(o, value, cache):
 # jobb släpper de andra korten sina modeller ur RAM. Stängs av när 48 GB sitter i.
 SERIAL = bool(CONF.get("serial_lanes"))
 HEAVY = threading.Lock()
+LAST_MODELS = {}  # kort (ComfyUI-adress) -> modellfilerna i det senaste jobbet där
 
 
 def free_other_lanes():
@@ -228,7 +229,19 @@ def _comfy_step(o, s):
             title += f" (retry {t['attempt']})"
         extra = {"job_title": title, "job_tool": "darrowmere-runner", "job_host": "darrowmere",
                  "pipeline": {"id": o.id, "step": s["key"]}, "use": o.order.get("use")}
-        r = http_json(f"{comfy_url()}/prompt", {"prompt": g, "extra_data": extra})
+        # Byter jobbet modeller på samma kort (t.ex. UltraTex med Klein 4B, sedan Krea-2) töms kortets modeller först:
+        # ComfyUI behåller annars de förra i RAM, och 2026-11-09 hängde Darrowmere när Krea-2 (14 GB) lades ovanpå Klein 4B
+        models = sorted({v for n in g.values() if isinstance(n, dict) for k, v in n.get("inputs", {}).items()
+                         if k.endswith("_name") and isinstance(v, str) and v.endswith((".safetensors", ".gguf", ".pt", ".ckpt", ".pth"))})
+        url = comfy_url()
+        if LAST_MODELS.get(url) != models:
+            try:
+                http_json(f"{url}/free", {"unload_models": True, "free_memory": True}, timeout=30)
+                log(o.id, s["key"], "freed models before a model change")
+            except Exception:
+                pass
+            LAST_MODELS[url] = models
+        r = http_json(f"{url}/prompt", {"prompt": g, "extra_data": extra})
         if r.get("node_errors"):
             raise RuntimeError("node errors: " + json.dumps(r["node_errors"])[:400])
         pid = r["prompt_id"]

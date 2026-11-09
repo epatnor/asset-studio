@@ -57,7 +57,7 @@ steps = [{"key": "img_1", "label": "Frost mage: image (Krea-2), seed 11", "kind"
          {"key": "mesh", "label": "Frost mage: Pixal3D model", "kind": "comfy", "graph": pixal_graph("$step:img_1", "3d/characters/frost_sister_pixal3d")}]
 steps += [{"key": f"img_{k}", "label": f"Frost mage: image (Krea-2), seed {s}", "kind": "comfy", "graph": krea_graph(s, f"characters/frost_sister/krea_s{s}")}
           for k, s in ((2, 23), (3, 57), (4, 91))]
-order = {"id": "frost-sister-r1", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
+order = {"id": "frost-sister-r2", "title": "Frost sister: Krea-2 images, review and a Pixal3D model", "project": "asset-studio",
          "asset": "frost-sister", "use": "test-only", "gpu": "t1000", "mission": "frost-sister", "mission_title": "The sorceress's sister, a frost mage",
          "inputs": {}, "steps": steps}
 (Path(__file__).parent / "order.json").write_text(json.dumps(order, indent=1))

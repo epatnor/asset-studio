@@ -177,10 +177,21 @@ class Gallery:
         if (self.dir / f"{key}.webp").exists():
             return (self.dir / f"{key}.webp").read_bytes()
         d = f"/data/utdata/{subfolder}" if subfolder else "/data/utdata"
+        # Bara när ComfyUI-korten är lediga, så att förhandsbilden aldrig konkurrerar med ett jobb om minnet
+        for port in (8188, 8189):
+            try:
+                base = re.sub(r":\d+$", f":{port}", self.comfy.rstrip("/"))
+                q = json.load(urllib.request.urlopen(f"{base}/queue", timeout=5))
+                if q.get("queue_running") or q.get("queue_pending"):
+                    raise RuntimeError("Darrowmere is busy; the preview is made when it is idle")
+            except RuntimeError:
+                raise
+            except Exception:
+                pass
         with self.rendering:
             job = {"glb": f"{d}/{filename}", "out_dir": d, "size": 512, "prefix": "render_",
                    "shots": [{"name": "a", "yaw": 30, "pitch": 10, "mode": "texture"}]}
-            cmd = (f"test -f {shlex.quote(d + '/' + render)} || nice -n 15 /data/blender/current/blender -b --factory-startup "
+            cmd = (f"test -f {shlex.quote(d + '/' + render)} || nice -n 15 systemd-run --user --scope -q -p MemoryMax=4G -p MemorySwapMax=0 /data/blender/current/blender -b --factory-startup "
                    f"-P /data/runner/render_views.py -- --json {shlex.quote(json.dumps(job))} > /dev/null 2>&1; test -f {shlex.quote(d + '/' + render)}")
             r = subprocess.run(self.ssh + [cmd] if self.ssh else ["bash", "-c", cmd], capture_output=True, text=True, timeout=300)
             if r.returncode:
