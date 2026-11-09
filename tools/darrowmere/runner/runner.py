@@ -285,6 +285,25 @@ def _comfy_step(o, s):
         err = next((m[1] for m in h["status"].get("messages", []) if m[0] == "execution_error"), {})
         raise RuntimeError(f"{err.get('node_type', '')}: {err.get('exception_message', 'failed')}"[:300])
     o.set(s["key"], status="done", end=time.time(), outputs=files, note=f"{len(files)} files")
+    gallery_previews(o, s, files)
+
+
+def gallery_previews(o, s, files):
+    """En förhandsbild för galleriet (<namn>_render_a.png bredvid modellen) direkt när en modell blivit klar, inom samma
+    tunga jobb, så att tumnageln finns innan någon öppnar galleriet (annars renderar panelen den först då)."""
+    blender = CONF.get("blender")
+    glbs = [f for f in files if f["filename"].lower().endswith((".glb", ".gltf"))][-4:]
+    if not glbs or not blender or not Path(blender).exists():
+        return
+    for f in glbs:
+        p = out_path(f)
+        if (p.parent / f"{p.stem}_render_a.png").exists():
+            continue
+        try:
+            run_blender_job({"glb": str(p), "out_dir": str(p.parent), "size": 512, "prefix": "render_",
+                             "shots": [{"name": "a", "yaw": 30, "pitch": 10, "mode": "texture"}]}, timeout=300)
+        except Exception as e:
+            log(o.id, s["key"], "gallery preview failed:", str(e)[:120])
 
 
 # ---- DeepSeek-granskning -------------------------------------------------------------------------------------------

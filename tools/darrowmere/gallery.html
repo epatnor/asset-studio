@@ -309,9 +309,17 @@ function pumpThumbs() {
   const img = mq.shift();
   if (!img.isConnected || img.src) return pumpThumbs();
   mbusy = true;
-  const done = ok => { mbusy = false; if (ok) { img.hidden = false; img.previousElementSibling?.remove(); } pumpThumbs(); };
+  const done = ok => {
+    mbusy = false;
+    if (ok) { img.hidden = false; img.previousElementSibling?.remove(); }
+    else if ((+img.dataset.tries || 0) < 5) {   // Darrowmere var upptagen: försök igen om en minut
+      img.dataset.tries = (+img.dataset.tries || 0) + 1;
+      setTimeout(() => { if (img.isConnected) { img.removeAttribute("src"); mq.push(img); pumpThumbs(); } }, 60000);
+    }
+    pumpThumbs();
+  };
   img.onload = () => done(true); img.onerror = () => done(false);
-  img.src = img.dataset.mt;
+  img.src = img.dataset.mt + (img.dataset.tries ? "&try=" + img.dataset.tries : "");
 }
 function pick(key, onOff, el) {
   if (onOff && picked.size >= 4) { el.checked = false; return; }

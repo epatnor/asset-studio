@@ -861,6 +861,26 @@ from auth import COOKIE, Auth, is_private  # noqa: E402
 AUTH = Auth(STORE.parent)
 from gallery import Gallery  # noqa: E402
 GALLERY = Gallery(SSH, COMFY, STORE.parent / "thumbs")
+
+
+def prewarm_previews():
+    """Förhandsbilder för 3D-modeller som saknar en, i bakgrunden, så att galleriet har dem när det öppnas: en i taget,
+    bara när ComfyUI är ledigt (model_thumb vägrar annars), högst 20 per varv, ett varv var femte minut."""
+    while True:
+        time.sleep(300)
+        try:
+            n = 0
+            for g in GALLERY.index(60):
+                for i in g["items"]:
+                    if i["kind"] != "model" or i.get("thumb") or n >= 20:
+                        continue
+                    GALLERY.model_thumb(i["filename"], i["subfolder"], str(round(i["mtime"])))
+                    n += 1
+        except Exception:
+            pass   # upptaget eller offline: nästa varv
+
+
+threading.Thread(target=prewarm_previews, daemon=True).start()
 PUBLIC_GET = {"/login", "/api/auth-state", "/favicon.ico"}
 PUBLIC_POST = {"/api/login", "/api/setup"}
 
