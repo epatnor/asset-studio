@@ -14,7 +14,10 @@ alla försök. Längre ner ligger planen och detaljerna i den ordning de hände.
   en skugga under bältet och en fläck vid näsan. De två första ser ut som bakningsfel och testas med bakningens
   inställningar. De två sista ser ut som inbakad skuggning från referensen. Bakningstestet visade att vyvikt 8
   (`view_weight_power`) tar bort fläckarna vid näsan och tinningen.
-- **Pågår:** run3b (från 8000, LR 2e-5, EMA), dec2 (egen dekoder) och bakningstestet.
+- **Beslut (Patrik, 2026-11-09):** bas-VAE:ns dekoder med färggradering gamma 1,3 (`tools/texture/grade_glb.py`), och
+  bakning med `view_weight_power` 8. Full sRGB var för ljus, och forskarnas dekoder slätade bort fräknarna.
+- **Pågår:** run3b (från 8000, LR 2e-5, EMA), dec2 (egen dekoder) och ett test med extra kameror vridna 45° mot
+  läckan från halsduken.
 - **Mot 9B:** 9B för fortfarande över detaljer från referensbilden till ytor som formen saknar (statyns veck, placering
   0,38 mot 0,13–0,17). Vår 4B gör inte det än.
 
