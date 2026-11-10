@@ -113,6 +113,11 @@ def pills(name, step_label="", engine=None, asset="", kind="", folder=""):
             add(SHORT.get(paint, paint), f"Painted by {paint}", "paint")
         if "_pxinit" in n:
             add("↳P3D", "Painting started from Pixal3D's own colours", "paint")
+            m = re.search(r"_d(\d{2})_", n)
+            if m:
+                add(f"d{m.group(1)}", f"Repainted {m.group(1)} % (denoise 0.{m.group(1)}) on top of the Pixal3D start", "paint")
+        if "_tone" in n:
+            add("≈P3D", "Tone of every view matched to Pixal3D's colours (detail from UltraTex)", "paint")
     elif kind == "image":
         paint = next((v for k, v in PAINTERS[5:] if k in n or k in lab), None)
         if paint:
@@ -138,6 +143,8 @@ def pills(name, step_label="", engine=None, asset="", kind="", folder=""):
         v = m.group(1)
         v = int(v) * 10 if len(v) == 2 and v[0] == "0" else int(v)
         add(f"m{v}", f"Best-view mix {v} %", "var")
+    if "_ema" in n:
+        add("EMA", "LoRA weights averaged over training (EMA)", "var")
     if "noring" in n:
         add("−R", "Without the extra camera ring", "var")
     elif "_ring" in n:
