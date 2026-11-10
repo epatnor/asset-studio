@@ -227,6 +227,11 @@ dem). `ai_transform` i resultatet har `base_scale` (skalan före inpassningens e
 (`hairtest_ponytail_false/true`): utan blev hjässan en hjälm i hårets form, med blev den rund; bålen 15,4 → 11,2 mm,
 AI-ytan till kroppen efter wrap 8,2 → 5,1 mm. Standard är false (skalliga referenser, som sysslingen).
 
+**Omgång 14 (munnen):** läppar och munhåla (cirka 6,4 cm under ögonen) följer grannarna i wrapen, som ringen runt
+ögonen; annars veks munnen in i hakan så att läppar stack ut genom den (omgång 12: 22 ytor vände sig över 78°, 8 helt).
+Resultatet har nu `folded_faces` (ytor över 1 mm² vars normal vänt sig mer än 78°), och kontrollen `no_folded_faces`
+fäller `ok`. Sysslingen: 0 vikta ytor; 14 mikroytor på 0,1–0,2 mm² i mungiporna vänder sig ändå, de syns inte.
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

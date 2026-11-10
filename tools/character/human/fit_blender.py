@@ -482,7 +482,10 @@ if job.get("wrap", True):
         brow = soft(dz, 0.004, 0.012) * (1 - soft(dz, 0.032, 0.042)) * (1 - soft(np.abs(dx), hw + 0.018, hw + 0.03)) * (1 - soft(dy, 0.0, 0.02))
         # öronen (tunna och fransiga i AI-nätet): på sidan av huvudet, bakom ögonen, i ögonens höjd
         ear = soft(np.abs(dx), hw + 0.03, hw + 0.042) * (1 - soft(np.abs(dz + 0.012), 0.035, 0.05)) * soft(dy, 0.03, 0.05) * (1 - soft(dy, 0.12, 0.14))
-        data_w *= (1 - brow) * (1 - ear)
+        # munnen (läppar och munhåla): vecks annars in i hakan, så att läppar sticker ut genom den (sysslingen r12: 22
+        # ytor vände sig, 8 helt); munnen ligger cirka 6,4 cm under ögonen
+        mouth = (1 - soft(np.abs(dx), 0.035, 0.047)) * soft(dz, -0.095, -0.083) * (1 - soft(dz, -0.047, -0.037)) * (1 - soft(dy, 0.05, 0.07))
+        data_w *= (1 - brow) * (1 - ear) * (1 - mouth)
         # bysten: mjukare utjämning, så att formen blir mer definierad
         band = (np.abs(dz + 0.30) < 0.06) & (np.abs(P0[:, 0] - ec[0]) < 0.16)
         ymid = float(np.median(P0[band, 1])) if band.any() else ec[1] + 0.1   # bålens mitt i djupled vid bysten
@@ -512,7 +515,7 @@ if job.get("wrap", True):
             rigid[sd] = (hm, ring)
         rigid_dbg[sd] = {"hand": int(hm.sum()), "ring": int(ring.sum()), "wrist_to_nearest_mm": round(1000 * float(np.linalg.norm(P0 - wri, axis=1).min()), 1),
                          "max_hand_w": round(float(handw[side].max()), 2)}
-        zones = {"brow_verts": int((brow > 0.5).sum()), "ear_verts": int((ear > 0.5).sum()), "bust_verts": int((chest > 0.5).sum())}
+        zones = {"mouth_verts": int((mouth > 0.5).sum()), "brow_verts": int((brow > 0.5).sum()), "ear_verts": int((ear > 0.5).sum()), "bust_verts": int((chest > 0.5).sum())}
     # hår på AI-formen (ignore_hair): hjässan följer MPFB:s form, och nacke och rygg dras bara när ytan ligger nära (långt
     # hår hänger annars över dem)
     hair_back = np.zeros(PN, bool)
@@ -582,7 +585,13 @@ if job.get("wrap", True):
     to_ai = np.array([bvh.find_nearest(Vector(q))[3] for q in PW])
     from_ai = np.array([pb.find_nearest(Vector(q))[3] for q in S])
     from_ai0 = np.array([pb0.find_nearest(Vector(q))[3] for q in S])
-    wrap_end = {"to_ai_mean_mm": round(1000 * float(to_ai.mean()), 1), "from_ai_mean_mm": round(1000 * float(from_ai.mean()), 1),
+    # vikta ytor: ytans normal före och efter wrapen (en kontroll; ska vara noll)
+    fn0 = np.cross(P0[lt[:, 1]] - P0[lt[:, 0]], P0[lt[:, 2]] - P0[lt[:, 0]]); fn1 = np.cross(PW[lt[:, 1]] - PW[lt[:, 0]], PW[lt[:, 2]] - PW[lt[:, 0]])
+    cosf = (fn0 * fn1).sum(1) / np.maximum(np.linalg.norm(fn0, axis=1) * np.linalg.norm(fn1, axis=1), 1e-12)
+    real = np.linalg.norm(fn0, axis=1) / 2 > 1e-6   # ytor över 1 mm² (mungiporna har trianglar på 0,1 mm² som vänder sig av sig själva)
+    folds = {"over_78deg": int((real & (cosf < np.cos(np.radians(78)))).sum()), "reversed": int((real & (cosf < 0)).sum()),
+             "micro_faces_turned": int((~real & (cosf < np.cos(np.radians(78)))).sum())}
+    wrap_end = {"folded_faces": folds, "to_ai_mean_mm": round(1000 * float(to_ai.mean()), 1), "from_ai_mean_mm": round(1000 * float(from_ai.mean()), 1),
                 "from_ai_p95_mm": round(1000 * float(np.percentile(from_ai, 95)), 1), "from_ai_over_3cm": round(float((from_ai > 0.03).mean()), 3),
                 "before_from_ai_mean_mm": round(1000 * float(from_ai0.mean()), 1), "before_from_ai_p95_mm": round(1000 * float(np.percentile(from_ai0, 95)), 1)}
     zr = (S[:, 2] - S[:, 2].min()) / np.ptp(S[:, 2])

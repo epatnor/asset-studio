@@ -43,7 +43,9 @@ def main():
     made = subprocess.run([sys.executable, "-I", str(HERE / "make_human.py"), json.dumps(recipe)], capture_output=True, text=True)
     human = json.loads(made.stdout.strip().splitlines()[-1]) if made.stdout.strip() else {"ok": False, "error": made.stderr[-400:]}
     better = fit["end"]["mean_mm"] < fit["start"]["mean_mm"]
-    print(json.dumps({"ok": bool(human.get("ok")) and better, "checks": {**human.get("checks", {}), "closer_than_start": better},
+    folds = ((fit.get("wrap") or {}).get("end") or {}).get("folded_faces") or {}
+    no_folds = folds.get("over_78deg", 0) == 0
+    print(json.dumps({"ok": bool(human.get("ok")) and better and no_folds, "checks": {**human.get("checks", {}), "closer_than_start": better, "no_folded_faces": no_folds},
                       "recipe": recipe, "ai_transform": fit.get("ai_transform"), "start": fit["start"], "end": fit["end"], "wrap": fit.get("wrap"), "overlay": str(Path(fit["overlay"]).relative_to(ROOT)),
                       "glb": human.get("glb"), "pose_glb": human.get("pose_glb")}))
 
