@@ -201,6 +201,13 @@ sidan, skinkornas spricka) i en gemensam normalkarta på MPFB:s UV, inte i geome
 topp på mittlinjen), så reglaget gäller alla kroppar. Sysslingen 0,8: 19 hörn rörde sig, högst 7,2 mm; utbuktningen syns
 svagt och vecket knappt, så vecket hör till normalkartan.
 
+**Detaljerna som normalkarta (omgång 11):** `tools/character/human/bake_detail.py` bakar AI-ytan (ur inpassningens
+`wrap_debug.npz`) som normalkarta i tangentrum på MPFB:s UV och lägger den på den riggade figuren; ögon och bryn tonas
+till plant. Sysslingen: nyckelben, navel, bystens form, ansiktets drag och underkläderna som svag relief; nätet är
+oförändrat. Kvar: lodräta ränder på låren, som är veck i Pixal3D-nätet. Inriktningen sker efter de omslutande lådornas
+mitt (exporten och passningens proxy är samma, 0,01 mm); närmaste punkt mellan två glesa punktmängder konvergerade fel.
+Inpassningen ställer också posen på nytt med receptets exakta vinklar innan wrapen.
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

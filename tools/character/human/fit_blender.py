@@ -365,7 +365,13 @@ for it in range(int(job.get("iterations", 5))):
         arm, leg = pose_search(bvh)
     P = posed(); V = place_target(P, yaw); bvh, S = surf(V)
     log.append({"it": it, **measure(P, bvh, S)})
-end = log[-1]
+# Posen på nytt med de exakta vinklarna som receptet sparar: reglagen flyttar skelettet (refit), så vinklarna gled under
+# varven, och exporten ställer in dem på nytt (benen låg annars 2 cm fel mot exporten, 2026-11-10)
+arm, leg = float(round(arm)), float(round(leg, 1))
+ELBOW_FLEX, ELBOW_CARRY = round(ELBOW_FLEX, 1), round(ELBOW_CARRY, 1)
+set_pose(arm, leg, ARM_FWD)
+P = posed(); V = place_target(P, yaw); bvh, S = surf(V)
+end = {**measure(P, bvh, S), "it": "final pose"}
 sheet.append(render_masks([(dense(V), 0), (template_dense(P), 2)], "after"))
 
 # --- wrap: det exporterade nätet tight mot AI-ytan (Patriks "kroppsstrumpa", som body-gens fit.py) -----------------------
