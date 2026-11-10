@@ -89,6 +89,42 @@ if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py)
     else:
         applied["wrap"] = f"skipped: {len(px_.data.vertices)} verts, wrap has {int(wz['nverts'])}"
     bpy.context.view_layer.update()
+if r.get("mons") and parts.get("proxy"):
+    # Skötet (mons pubis): en liten utbuktning framför blygdbenet och ett grunt veck vid ljumskarna, längs proxyns normaler
+    # (samma för alla kroppar: platsen räknas ur kroppen själv). mons 0..1 (1 = 9 mm buk, 3 mm veck). AI-formerna har ofta
+    # trosor här, så formen kan inte hämtas därifrån.
+    import numpy as np
+    px_ = bpy.data.objects[parts["proxy"]]; me_ = px_.data
+    M_ = np.array(px_.matrix_world); Mi_ = np.linalg.inv(M_)
+    co = np.empty(len(me_.vertices) * 3); me_.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
+    W_ = co @ M_[:3, :3].T + M_[:3, 3]
+    me_.calc_normals_split() if hasattr(me_, "calc_normals_split") else None
+    nr = np.empty(len(me_.vertices) * 3); me_.vertices.foreach_get("normal", nr); nr = nr.reshape(-1, 3) @ M_[:3, :3].T
+    nr /= np.maximum(np.linalg.norm(nr, axis=1, keepdims=True), 1e-9)
+    H_ = np.ptp(W_[:, 2]); z0_ = W_[:, 2].min()
+    # grenens topp: lägsta punkten på mittlinjen mellan benen (inom 1 cm från x = 0, mellan 40 och 60 % av längden)
+    mid = (np.abs(W_[:, 0]) < 0.01) & (W_[:, 2] > z0_ + 0.40 * H_) & (W_[:, 2] < z0_ + 0.60 * H_)
+    crotch = W_[mid][np.argmin(W_[mid][:, 2])] if mid.any() else None
+    if crotch is not None:
+        front = nr[:, 1] < -0.25   # Blender: framåt är -y
+        cz = crotch[2] + 0.045
+        dx, dz = W_[:, 0] / 0.055, (W_[:, 2] - cz) / 0.04
+        bulge = np.exp(-(dx ** 2 + dz ** 2) * 1.6) * front * (W_[:, 1] < crotch[1] + 0.02)
+        # vecket: två linjer från skötets sidor ned mot grenen, där låret möter
+        crease = np.zeros(len(W_))
+        for sx in (1, -1):
+            a_, b_ = np.array([sx * 0.065, cz + 0.025]), np.array([sx * 0.014, crotch[2] + 0.008])
+            q = np.stack([W_[:, 0], W_[:, 2]], 1); t = np.clip(((q - a_) @ (b_ - a_)) / ((b_ - a_) @ (b_ - a_)), 0, 1)
+            dd = np.linalg.norm(q - (a_ + t[:, None] * (b_ - a_)), axis=1)
+            crease = np.maximum(crease, np.exp(-(dd / 0.011) ** 2) * front * (W_[:, 1] < crotch[1] + 0.04))
+        w_ = float(r["mons"])
+        amount = w_ * (0.009 * bulge - 0.003 * crease)
+        W2 = W_ + nr * amount[:, None]
+        me_.vertices.foreach_set("co", (W2 @ Mi_[:3, :3].T + Mi_[:3, 3]).ravel()); me_.update()
+        applied["mons"] = {"weight": w_, "moved_verts": int((np.abs(amount) > 0.0005).sum()), "max_mm": round(1000 * float(np.abs(amount).max()), 1)}
+    else:
+        applied["mons"] = "skipped: no crotch found"
+    bpy.context.view_layer.update()
 if parts.get("proxy"):
     base.hide_set(True); base.hide_render = True
 # MPFB:s feet_on_ground flyttar nätet men inte skelettet (armarna roterade då kring bäckenets höjd): ställ i stället

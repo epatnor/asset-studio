@@ -166,6 +166,9 @@ Pixal3D-versionen i Compare. Därefter Maren (kläder som lager) och en man (kö
 
 **Body-gen inflyttad (2026-11-10):** mallpassningen med fast topologi finns nu i `tools/character/body/` ([body-generator.md](body-generator.md)). Den sitter tight (sysslingen 0,13 mm mot Pixal3D) där reglagen inte räcker (3–8 cm); nästa steg är samma passning på MPFB-nätet, sparad som shape key ovanpå reglagen.
 
+**I Asset Studio (2026-11-10):** avdelningen The Character Creator (`studio/human.js`) bygger figurer ur reglagen och
+kör inpassningen med overlay-bilden; se [asset-studio.md](asset-studio.md#the-character-creator-byggd-2026-11-10).
+
 ## Wrap: tight mot AI-formen (2026-11-10)
 
 Efter reglagen drar `fit_blender.py` det nät som exporteras tight mot AI-ytan (som body-gens `fit.py`): proxyn
@@ -192,6 +195,11 @@ målade brynen och de fransiga öronen i AI-nätet följer inte med) och bysten 
 4,4 mm i medel, p95 25 mm (omgång 6: 10,7 och 79); höfter 3,8, lår 8,8 mm. Kvar enligt Patrik: skötet ska bulla ut mer med
 ett litet veck vid ljumsken (eget reglage, Pixal3D har trosor där), och små detaljer (navel, nyckelben, revben, vecket i
 sidan, skinkornas spricka) i en gemensam normalkarta på MPFB:s UV, inte i geometrin.
+
+**Skötet (mons, omgång 10):** receptets `mons` (0..1) i `human_blender.py` buktar ut området framför blygdbenet (högst
+9 mm vid 1) och lägger ett grunt veck längs ljumskarna (3 mm), längs proxyns normaler; platsen räknas ur kroppen (grenens
+topp på mittlinjen), så reglaget gäller alla kroppar. Sysslingen 0,8: 19 hörn rörde sig, högst 7,2 mm; utbuktningen syns
+svagt och vecket knappt, så vecket hör till normalkartan.
 
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.

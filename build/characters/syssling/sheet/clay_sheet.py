@@ -27,13 +27,13 @@ sh = sc.display.shading; sh.light = "STUDIO"; sh.color_type = "SINGLE"; sh.singl
 sc.render.resolution_x, sc.render.resolution_y = a.get("size", [1200, 520])
 sc.world = bpy.data.worlds.new("w"); sc.render.film_transparent = False
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); sc.collection.objects.link(cam); sc.camera = cam
-cam.data.type = "ORTHO"; cam.data.ortho_scale = max(x, 1.9) * 1.02
+cam.data.type = "ORTHO"; cam.data.ortho_scale = a.get("ortho") or max(x, 1.9) * 1.02
 mid = Vector(((x - max(1.0, 0)) / 2 - 0.0, 0, 0.85))
 outs = []
 for i, (az, tag) in enumerate(((0, "front"), (35, "side"))):
     d = 6.0; r = math.radians(az)
     cx = (x - 1.0) / 2
-    cam.location = Vector((cx + d * math.sin(r), -d * math.cos(r), 0.9))
+    cam.location = Vector((cx + d * math.sin(r), -d * math.cos(r), a.get("cz", 0.9)))
     cam.rotation_euler = (math.radians(90), 0, r)
     sc.render.filepath = a["out"].replace(".png", f"_{tag}.png"); bpy.ops.render.render(write_still=True); outs.append(sc.render.filepath)
 print("SHEET", outs)
