@@ -182,6 +182,18 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
 - **Textures:** *Bake the detail normal map* kör `bake_detail.py` (AI-formens relief som normalkarta på MPFB:s UV) till
   en ny `<namn>_detail.glb` (`/api/human/bake`, några minuter); bakade filer listas med *Show*. Färgen beställs som
   UltraTex på Darrowmere och bakas med `transfer_texture.py`, som ännu inte är en knapp.
+- **Paint the skin** (Textures-kortet, `studio/human_paint.js`): ett målarläge där bara målningens kort syns. Penseln
+  arbetar i UV-rummet (2048 px, MPFB:s UV): varje texel räknar ut var den syns i vyn, prövas mot en djupkarta från
+  samma kamera (det skymda får ingen färg) och tonas efter hur mycket ytan vänder sig mot kameran (*Edge fade*), så en
+  bild framifrån inte smetas ut över sidorna. Penslar: Colour, Picture (från referensbilden), Blur och Erase (tillbaka
+  till grunden). *Mirror in x* målar den speglade punkten också. Referensbilden ligger över vyn som Blenders stencil:
+  Shift+dra flyttar, Ctrl+Shift+dra vrider, Shift+hjul skalar, *Fit to figure* passar den till figurens höjd och *Project
+  the picture* lägger hela bilden på det som syns. Vyerna Front/Left/Back/Right, Ctrl+klick tar en färg (ur bilden eller
+  figuren), ångra 12 steg, penna med tryck. Referensbilderna sparas per figur i `build/human/refs/<namn>/`
+  (`/api/human/ref`; släpp en bild i vyn eller klistra in den). Grunden är en färgkarta (bakning eller en tidigare
+  målning) eller en jämn hudfärg. *Save the painting* skriver en ny `<namn>_paint_v<n>_color.png` (`/api/human/paint`,
+  aldrig över) med 12 px påfyllning runt UV-öarna, och Finished model väljer den som färgkarta. Allt hålls som rått sRGB
+  i texturen (mätt: #c9a48c blir 201/164/140, en full klick #3a7bd5 blir 58/123/213).
 - **Finished model:** *Build the finished model* kör `make_final.py` (`/api/human/final`, ca 4 s): den riggade figuren
   med sina ändringar, ögonen och skelettet får hudens material (färgkartan eller en jämn hudfärg, normalkartan,
   ruffighet) i en ny `<namn>_final(_v<n>).glb` med en `.json` bredvid (källorna och kontrollerna: rigg, ögon, kartorna
@@ -209,8 +221,11 @@ saknas än:
 4. **Redigeringen:** referensbilderna glöms när sidan laddas om; inga val per område (huvud, händer) eller dölj; tätheten
    per område kan bara styras med en egen proxy (mhclo) som MPFB passar in på varje kropp; figurer utan wrap har ingen
    editorfil.
-5. **Färgen:** UltraTex beställs inte från studion, och `transfer_texture.py` (färgen bakad på MPFB:s UV) är ingen knapp
-   här än; ingen hudinställning (ruffighet, subsurface), ingen AO eller krökning i bakningen, fast 2048 px.
+5. **Färgen:** målningen finns (Paint the skin); UltraTex beställs inte från studion, och `transfer_texture.py` (färgen
+   bakad på MPFB:s UV) är ingen knapp här än; ingen subsurface, ingen AO eller krökning i bakningen, fast 2048 px. Nästa
+   steg för målningen: en ny referensbild för en udda vinkel, genererad ur vyn (figuren renderad från vinkeln, med det
+   som är målat) och de tidigare referenserna, så att den redan ligger rätt över vyn. Penseln saknar lager, smudge och
+   klon.
 6. **Den färdiga modellen:** en GLB med allt finns nu (`make_final.py`, kortet Finished model); kvar är exporten till
    Godot för figurer (`export_world.mjs` gäller världar), LOD-nivåer och figurerna i The Vault.
 7. **Kroppen:** ansiktet, håret och kläderna (flikarna är markerade som kommande); fingrarna sitter ihop i spelnätet;

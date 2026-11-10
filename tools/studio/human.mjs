@@ -15,6 +15,10 @@
 // POST /api/human/bake          { name } -> { job, out }: detaljernas normalkarta (bake_detail.py) till <namn>_detail.glb
 // POST /api/human/final         { name, normal, color, skin, roughness } -> { job, out }: den färdiga modellen (make_final.py):
 //                               figuren med normalkartan och färgen i en GLB, <namn>_final(_v<n>).glb + .json
+// POST /api/human/paint?name=&base=  PNG i kroppen -> <namn>_paint_v<n>_color.png: färgen målad i studion (studio/human_paint.js)
+//                               på MPFB:s UV, aldrig över; en .json bredvid minns grunden
+// POST /api/human/ref?name=&file=    en referensbild i kroppen (PNG, JPEG, WebP) -> build/human/refs/<namn>/: målningens
+//                               bilder sparas per figur och listas som refs
 // POST /api/human/thumb         { name, thumbnail } -> <name>_thumb.jpg för en sparad figur som saknar miniatyr
 // POST /api/human/editor        startar Body Editor på värden (tools/character/body/editor/launch.sh)
 // GET  /api/human/job?id=       ett jobbs status eller resultat
@@ -26,7 +30,7 @@ import path from 'node:path';
 
 const HUMAN = 'tools/character/human';
 const PREV = 'build/studio/human', KEEP = 24;
-const CHARS = 'assets/characters', FITS = 'build/human/fit', TARGETS = 'build/human/targets', EDITS = 'build/human/edits';
+const CHARS = 'assets/characters', FITS = 'build/human/fit', TARGETS = 'build/human/targets', EDITS = 'build/human/edits', REFS = 'build/human/refs';
 // Där AI-formerna (Pixal3D-GLB) brukar hamna: Darrowmeres nedladdningar och figurernas arbetsmappar
 const TARGET_DIRS = [TARGETS, 'build/darrowmere/pixal3d', 'build/characters', 'build/maren/pixal3d', 'build/body/build/pixal3d'];
 const NAME = /^[a-z0-9][a-z0-9_]{0,47}$/;
@@ -216,7 +220,12 @@ export function createHumanApi({ ROOT, onHost }) {
         }
       }
       for (const k of ['normal', 'color']) maps[k] = maps[k].sort((a, b) => b.t - a.t).map((m) => m.file);
-      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, maps, t: st.mtimeMs });
+      // Målningens referensbilder: figurens egna och dess ursprungs
+      const refs = [];
+      for (const d of [n, typeof recipe?.from === 'string' && recipe.from !== 'fit' ? recipe.from : null]) {
+        if (d && existsSync(path.join(ROOT, REFS, d))) for (const f of (await readdir(path.join(ROOT, REFS, d))).sort()) if (/\.(png|jpe?g|webp)$/i.test(f)) refs.push(`/${REFS}/${d}/${f}`);
+      }
+      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, maps, refs, t: st.mtimeMs });
     }
     return out.sort((a, b) => b.t - a.t);
   }
@@ -267,6 +276,44 @@ export function createHumanApi({ ROOT, onHost }) {
       return { ...res, url: res.out ? `/${res.out}` : null };
     });
     return { job: j.id, out };
+  }
+
+  // En kropp som binärdata, högst max byte
+  async function raw(req, max) {
+    const chunks = [];
+    let size = 0;
+    for await (const c of req) { size += c.length; if (size > max) return null; chunks.push(c); }
+    return Buffer.concat(chunks);
+  }
+  const IMG = { png: [0x89, 0x50, 0x4e, 0x47], jpg: [0xff, 0xd8, 0xff], webp: [0x52, 0x49, 0x46, 0x46] };
+  const kindOf = (b) => Object.entries(IMG).find(([, m]) => m.every((x, i) => b[i] === x))?.[0];
+
+  // Färgen målad i studion: en ny PNG på MPFB:s UV bredvid figuren (hittas av Finished model som en färgkarta)
+  async function paint(req, name, base) {
+    if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name, `${name}.glb`))) return { error: 'no such figure' };
+    const data = await raw(req, 64 * 1024 * 1024);
+    if (!data) return { error: 'the picture is larger than 64 MB' };
+    if (kindOf(data) !== 'png') return { error: 'not a PNG' };
+    let v = 1;
+    while (existsSync(path.join(ROOT, CHARS, name, `${name}_paint_v${v}_color.png`))) v++; // aldrig över
+    const f = `${CHARS}/${name}/${name}_paint_v${v}_color.png`;
+    await writeFile(path.join(ROOT, f), data);
+    await writeFile(path.join(ROOT, f.replace(/\.png$/, '.json')), JSON.stringify({ base: base || null, saved: new Date().toISOString(), bytes: data.length }, null, 1) + '\n');
+    return { ok: true, file: f, bytes: data.length };
+  }
+  // En referensbild till målningen, sparad per figur
+  async function ref(req, name, file) {
+    if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name))) return { error: 'no such figure' };
+    const data = await raw(req, 40 * 1024 * 1024);
+    if (!data) return { error: 'the picture is larger than 40 MB' };
+    const kind = kindOf(data);
+    if (!kind) return { error: 'not a PNG, JPEG or WebP picture' };
+    const stem = String(file ?? 'ref').toLowerCase().replace(/\.[a-z0-9]+$/, '').replace(/[^a-z0-9_-]/g, '_').slice(0, 40) || 'ref';
+    await mkdir(path.join(ROOT, REFS, name), { recursive: true });
+    let n = stem, k = 2;
+    while (existsSync(path.join(ROOT, REFS, name, `${n}.${kind}`))) n = `${stem}_${k++}`;
+    await writeFile(path.join(ROOT, REFS, name, `${n}.${kind}`), data);
+    return { ok: true, url: `/${REFS}/${name}/${n}.${kind}` };
   }
 
   // Egna ändringar (EDITS.md): en ny ändringsfil per version, sedan figuren byggd om med receptet plus "edits"
@@ -326,6 +373,8 @@ export function createHumanApi({ ROOT, onHost }) {
     else if (p === '/api/human/fit' && req.method === 'POST') json(res, 200, await fit(await body(req)));
     else if (p === '/api/human/upload' && req.method === 'POST') json(res, 200, await upload(req, url.searchParams.get('name')));
     else if (p === '/api/human/bake' && req.method === 'POST') json(res, 200, await bake(await body(req)));
+    else if (p === '/api/human/paint' && req.method === 'POST') json(res, 200, await paint(req, url.searchParams.get('name'), url.searchParams.get('base')));
+    else if (p === '/api/human/ref' && req.method === 'POST') json(res, 200, await ref(req, url.searchParams.get('name'), url.searchParams.get('file')));
     else if (p === '/api/human/final' && req.method === 'POST') json(res, 200, await final(await body(req)));
     else if (p === '/api/human/edits' && req.method === 'POST') json(res, 200, await edits(await body(req)));
     else if (p === '/api/human/thumb' && req.method === 'POST') json(res, 200, await thumb(await body(req)));

@@ -10,6 +10,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 import { createPointEditor } from './human_edit.js';
+import { createPainter } from './human_paint.js';
 
 export async function createHuman({ api, el, view, side, drawer, footer }) {
   const info = await api('/api/human');
@@ -392,10 +393,27 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   const bakeMsg = el('div', 'note'), bakedList = el('div', 'hu-baked');
   const colorNote = el('div', 'note');
   colorNote.append('Colour: order UltraTex for the figure\'s _pose.glb on ', Object.assign(el('a', 'hu-link', 'Darrowmere ↗'), { href: info.links.order.url, target: '_blank', rel: 'noopener' }), ', then bake it onto MPFB\'s UV (transfer_texture.py; not a button here yet).');
-  texBody.append(bakeBtn, bakeMsg, bakedList, colorNote);
+  // Målningen (studio/human_paint.js): färgen målas på figuren, ofta från referensbilder, till en ny _paint_v<n>_color.png
+  const paintBtn = el('button', 'primary', 'Paint the skin…');
+  paintBtn.title = 'Paint the colour straight onto the figure (MPFB\'s UV), with a brush, from reference pictures laid over the view, mirrored left and right; saved as a new colour map';
+  let painter = null;
+  const leavePaint = () => { if (!painter?.active) return true; if (painter.dirty && !confirm('Close the painting and drop what is not saved?')) return false; painter.close(); return true; };
+  paintBtn.onclick = async () => {
+    if (!openSaved || !figure) return;
+    if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); }
+    painter ??= createPainter({ el, api, side, view, renderer, controls, getCam: () => cam, getFigure: () => figure, say: (t) => lamp('ok', t) });
+    view3.clay = false; cards.sync();
+    if (view3.ai !== 'off') { view3.ai = 'off'; cards.sync(); placeAi(); }
+    await painter.start(openSaved, {
+      onSaved: async () => { await refreshSaved(); editState(); },
+      onClose: () => { styleFigure(); },
+    });
+  };
+  texBody.append(bakeBtn, bakeMsg, bakedList, paintBtn, colorNote);
   function renderTex() {
     const s = openSaved;
     bakeBtn.disabled = !s?.recipe?.wrap || !!baking;
+    paintBtn.disabled = !s;
     if (!baking) bakeMsg.textContent = !s ? 'Open a saved, fitted figure to bake its textures.' : !s.recipe?.wrap ? `${s.name} has no fit to bake the details from.` : bakeNote[s.name] ?? '';
     bakedList.replaceChildren(...(s?.baked ?? []).filter((b) => b.kind !== 'final').map((b) => {
       const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show');
@@ -492,7 +510,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   view.append(steps);
   const scrollTo = (b) => { const c = b.parentElement; c.classList.remove('closed'); c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   function stepList() {
-    const s = openSaved, r = s?.recipe, detail = s?.baked?.some((b) => b.kind === 'detail'), color = s?.baked?.some((b) => b.kind === 'color');
+    const s = openSaved, r = s?.recipe, detail = s?.baked?.some((b) => b.kind === 'detail'), color = s?.baked?.some((b) => b.kind === 'color') || !!s?.maps?.color?.length;
     const ver = (b) => Number(/_final_v(\d+)\.glb$/.exec(b.file)?.[1] ?? 1);
     const finals = (s?.baked ?? []).filter((b) => b.kind === 'final').sort((a, b) => ver(b) - ver(a)); // den senaste först
     return [
@@ -556,7 +574,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     sec('Ready-made', info.templates.map((t) => {
       const f = tile(t.id, t.label, t.help, t.id);
       f.title = t.help;
-      f.onclick = () => { if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); } load(t.recipe); fitXf = null; openSaved = null; editState(); from = t.id; mark(t.id); rebuild(); };
+      f.onclick = () => { if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); } if (!leavePaint()) return; load(t.recipe); fitXf = null; openSaved = null; editState(); from = t.id; mark(t.id); rebuild(); };
       return f;
     }));
     sec('Saved', info.saved.map((s) => {
@@ -565,6 +583,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       f.title = `${s.rigged}${s.overlay ? ' · has a fit overlay' : ''}`;
       f.onclick = async () => {
         if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); }
+        if (!leavePaint()) return;
         load(s.recipe ?? {}, { lock: s.recipe ? null : s.name });
         openSaved = s; editState();
         from = `saved:${s.name}`;
@@ -658,7 +677,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // --- Rendering ---
   let running = false;
-  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); editor?.resize(); }
+  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); editor?.resize(); painter?.relayout(); }
   addEventListener('resize', () => { if (running) resize(); });
   const gate = frameGate();
   function frame(now) { if (!gate(now)) return; controls.update(); renderer.render(scene, cam); }
@@ -678,7 +697,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
     get steps() { return stepList().map(([id, label, state]) => ({ id, label, state })); },
-    get editor() { return editor; }, get openSaved() { return openSaved; },
+    get editor() { return editor; }, get painter() { return painter; }, get openSaved() { return openSaved; },
     get building() { return building || again; }, get locked() { return locked; }, aiOffset, get fitXf() { return fitXf; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);

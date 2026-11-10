@@ -459,6 +459,16 @@
   .hu-lockmsg[hidden] { display: none; }
   /* Redigeringsläget (studio/human_edit.js): bara kortet Edit points syns, och en ruta för att välja punkter */
   #huside.hu-editing > .card:not(.hu-edit), #huside.hu-editing > .hu-lockmsg { display: none; }
+  #huside.hu-painting > .card:not(.hu-paint), #huside.hu-painting > .hu-lockmsg { display: none; }
+  .hu-pic { position: absolute; z-index: 0; pointer-events: none; transform-origin: 50% 50%; user-select: none; }
+  .hu-brush { position: absolute; z-index: 1; pointer-events: none; border: 1.5px solid #d1873a; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,0.35); }
+  .hu-sub { grid-column: 1 / -1; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); margin-top: 6px; }
+  .hu-pics { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .hu-picbtn { width: 52px; height: 52px; padding: 2px; border-radius: 6px; overflow: hidden; display: grid; place-items: center; font-size: 20px; }
+  .hu-picbtn img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+  .hu-picbtn.on { outline: 2px solid #d1873a; }
+  .hu-seg4 { display: grid !important; grid-template-columns: 1fr !important; gap: 4px; }
+  .hu-seg4 .seg { display: flex; width: 100%; } .hu-seg4 .seg button { flex: 1; min-width: 0; padding-inline: 4px; }
   #huside .card[hidden] { display: none; }
   .hu-seg { flex-wrap: wrap; }
   .hu-box { position: absolute; border: 1px dashed var(--accent); background: var(--accent-soft); pointer-events: none; z-index: 2; }
