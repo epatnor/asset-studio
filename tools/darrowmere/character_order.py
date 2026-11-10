@@ -55,6 +55,8 @@ def defaults():
 
 def merged(recipe):
     r = defaults()
+    for k, v in OPTIONS.get("levels", {}).get(get(recipe, "level") or r.get("level"), {}).items():   # nivåns inställningar, sedan receptets egna
+        put(r, k, copy.deepcopy(v))
     for g in OPTIONS["groups"]:
         for f in g["fields"]:
             v = get(recipe, f["id"])
@@ -183,8 +185,6 @@ def review_step(r):
     hard = []
     if p.get("bald"):
         hard.append("Completely bald: a smooth bald scalp with no hair at all on the head" + ("" if p.get("no_brows") else " (eyebrows are fine)") + ", no cap, no headwear.")
-    if p.get("no_brows"):
-        hard.append("No eyebrows and no eyelashes: smooth bare brow ridges and bare eyelids.")
     if v.get("hard_face"):
         hard.append("Nothing on the face: no jewellery, face paint or markings; round human ears, not pointed elf ears.")
     if p.get("pose") == "t":
@@ -199,6 +199,8 @@ def review_step(r):
     if p.get("no_brows"):
         avoid += [w for w in ("eyebrows", "eyelashes", "lashes", "brows") if w not in avoid]
     criteria = [c for c in v["criteria"] if c.strip()]
+    if p.get("no_brows"):    # mjukt: Krea ritar ögonbryn ändå (sysslingen), ett hårt krav ger bara omritningar
+        criteria.append("No eyebrows and no eyelashes: smooth bare brow ridges and bare eyelids.")
     if p.get("normal_head"):
         criteria.append("Head and eyes of normal adult size: the head about one seventh of the body height, not big-headed, chibi or cartoon-like.")
     s = {"key": "rev_1", "label": "Review: reference image", "kind": "review", "images": ["$step:img_1"],

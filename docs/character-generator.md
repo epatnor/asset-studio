@@ -181,3 +181,10 @@ referensbilden).
   längden), *Space around the figure* (luft runt huvud, händer och fötter för alla poser) och bildformatet `auto`
   (kvadrat för T-pose, 832×1216 annars). Efterbehandlingen kan göra spelmodellen som QuadriFlow-quads (*Quad mesh*,
   spegelsymmetriskt, ungefär hälften så många quads som trianglar, quads även som .blend).
+- **Sektioner och nivåer:** sidan är uppdelad i *1. Image reference* (med granskningen), *2. 3D model* (med spelmodellen)
+  och *3. Texture* (med gradering och ansiktsspegling); finliret ligger under Advanced. Överst väljs nivån *Quick* (~30 min:
+  en bild, inga extra vyringar, en bakning), *Standard* (~40 min: två bilder, 45°-ringen) eller *Best* (~55 min: tre bilder,
+  två ringar, två bakningar); värdena står under `levels` i `options.json` och fältens standardvärden är Standard.
+- **Ögonbryn och fransar:** Krea ritade dem på sysslingen trots prompten, och Pixal3D gjorde utstående fransgeometri.
+  Kravet i granskningen är därför mjukt; nästa steg är att ta bort dem ur referensen med Krea-2 General Edit V2
+  (`krea2_general_edit_v2.safetensors`, finns på Darrowmere) före Pixal3D.
