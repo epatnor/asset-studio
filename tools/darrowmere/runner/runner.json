@@ -10,6 +10,7 @@
  "blender": "/data/blender/current/blender",
  "serial_lanes": false,
  "auto_lanes": ["t1000", "m4000"],
+ "idle_free_s": 600,
  "defaults": {
   "routes": {
    "model": {

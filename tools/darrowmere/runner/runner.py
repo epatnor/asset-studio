@@ -1412,6 +1412,30 @@ def run_lane(lane, oids):
             log(oid, "operator crashed:", traceback.format_exc()[-600:])
 
 
+# A card that has had nothing to do for IDLE_FREE seconds drops its models from RAM: each ComfyUI keeps its own copy
+# (Krea-2 is about 21 GB per card), which otherwise sits there between jobs and squeezes Blender and the next model
+IDLE_FREE = float(CONF.get("idle_free_s", 600))
+IDLE_SINCE, IDLE_FREED = {}, set()
+
+
+def free_idle_lanes():
+    now = time.time()
+    for lane, url in LANES.items():
+        if not lane_free(lane):
+            IDLE_SINCE.pop(lane, None); IDLE_FREED.discard(lane)
+            continue
+        since = IDLE_SINCE.setdefault(lane, now)
+        if lane in IDLE_FREED or now - since < IDLE_FREE:
+            continue
+        try:   # ComfyUI answers with an empty body, so parsing throws; the memory is freed anyway
+            http_json(f"{url}/free", {"unload_models": True, "free_memory": True}, timeout=30)
+        except Exception:
+            pass
+        LAST_MODELS.pop(url, None)
+        IDLE_FREED.add(lane)
+        log(lane, f"idle for {round((now - since) / 60)} min: models freed")
+
+
 def tick():
     take_inbox()
     by_lane, auto = {}, []
@@ -1430,6 +1454,8 @@ def tick():
             break
         th = LANE_THREADS[lane] = threading.Thread(target=run_lane, args=(lane, [oid]), name=f"lane-{lane}", daemon=True)
         th.start()
+    if IDLE_FREE > 0:
+        free_idle_lanes()
 
 
 def rereview(oid, key):
