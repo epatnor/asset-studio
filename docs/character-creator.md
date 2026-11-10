@@ -185,3 +185,7 @@ mallen (p95 121 mm, troligen händerna, som är fasta och står annorlunda), arm
 MPFB-kroppens egen UV i samma pose och lägger bilden på den riggade figuren, med påfyllning runt öarna (16 px).
 UltraTex ska få figuren i referensens pose (`<namn>_pose.glb`), inte viloposen, annars hamnar projektionen fel på armarna.
 Prov på viloposens textur: 99,9 % täckning, rigg och ögon kvar (`assets/characters/syssling_fit/syssling_fit_tex_test.glb`).
+Sysslingen på riktigt: UltraTex (Best, `syssling-wrap-pose-1110-1116`) på `syssling_wrap4_pose.glb`, överbakad till
+`assets/characters/syssling_wrap4/syssling_wrap4_tex_mix70.glb` och `_mix90.glb`: riggad, MPFB-UV, täckning 100 %,
+underkläderna som målad textur (bild `build/characters/syssling/sheet/wrap_tex.png`). Ej granskat: närbild på ansikte,
+händer och sömmar, och hur huden ser ut i rörelse.
