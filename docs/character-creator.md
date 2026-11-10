@@ -263,10 +263,43 @@ wrap14–16 gick 6 kanter ut i mungiporna. Bygget (`human_blender.py`, `proxy_op
 
 - **Tungan:** samma form som före wrapen, flyttad stelt med munnen. Rör den ändå huden krymps den i små steg. Kontrollen
   `tongue_inside` finns i `make_human`-svaret.
-- **Ögon och hår** följer kroppens förflyttning. Ett öga flyttas stelt med medelförflyttningen inom 2 cm. Håret följer
-  de 8 närmaste kroppshörnen per hörn.
+- **Håret** följer de 8 närmaste kroppshörnen per hörn (`follow_wrap`).
+- **Ögonen** placeras sist, efter wrapen och Patriks ändringar (`fit_eyes`, se nedan).
 
 Prov `syssling_pn_edit1_t2`: tungan är 4,2 cm bred, ingen kant går genom huden och det är 23 mm till kinden. Ögonen
 flyttades 1,6 mm, och 46 ögonkanter går genom ögonlocken, lika många som i en ren MPFB-figur (globen går genom
 ögonöppningen). Ingen inpassad figur har MPFB-hår än, så hårregeln är inte provad. Gamla figurer blir rätt om de byggs om
 med sitt recept, under ett nytt namn.
+
+### Ögonen och ögonlocken (2026-11-10)
+
+Med den första regeln (medelförflyttningen inom 2 cm) hamnade ögonen 1,5 mm för långt fram i alla `_t`-figurer. Två hörn
+i varje nedre ögonlock låg då 0,87 mm inne i globen, och det var spetsen Patrik såg i Normals-vyn på `syssling_wrap20_t`.
+`hairtest_ponytail_false`, som byggdes före den regeln, hade ögonen kvar där MPFB satte dem medan wrapen drog ansiktet
+5 mm. Där låg 31 lockhörn inne i globen, upp till 5,4 mm.
+
+Mätningen görs utan bilder. Den tar varje kroppshörn inom 3 cm från ett öga vars normal pekar bort från ögats mitt, alltså
+lockets utsida och inte kanten som är instoppad i hålan, och räknar dess avstånd till globens yta med tecken. På en ren
+MPFB-figur (mallarna Woman, Man, Sturdy, Slender, Strong man och Elder) ligger inget sådant hörn inne i ögat. Luften är
+0,22–0,61 mm, utom Strong man som går 0,26 mm in.
+
+`proxy_ops.fit_eyes`, efter wrapen och ändringarna, gör så här:
+
+1. Ögat flyttas stelt med lockkanten, alltså kroppshörnen inom 5 mm från globen före ändringen, viktade så att de närmaste
+   väger mest.
+2. Ligger lockets utsida närmare än en ren figur (0,5 mm, eller glappet före ändringen om det var mindre), backar ögat
+   bort från de hörnen i steg om 0,2 mm, högst 4 mm.
+
+Utan wrap gör bara steg 2 något. `make_human` svarar med `eyes_fit` och `eye_gaps` (minsta glapp och antal hörn inne i
+ögat, nedre och övre lock) och kontrollen `eyes_clear`.
+
+Resultat:
+
+| Figur | Ögat följde wrapen | Ögat backade | Luft i locken |
+|---|---|---|---|
+| `syssling_wrap20` | 1,5 mm | 1,6 mm | 0,22 mm, som mallen Woman |
+| `hairtest_ponytail_false` | 5,5 mm | 3,0 mm | 0,47 mm |
+
+Globens framsida ligger 1,0–2,5 mm bakom lockkanten. På en ren figur är det 1,6 mm.
+
+De påverkade figurerna är ombyggda som `<namn>_e`. De gamla ligger kvar.

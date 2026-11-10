@@ -9,6 +9,7 @@ Recept: name, makroreglagen (sex, age i år, minst 18, muscle, weight, height, p
 sliders (-1..1, se human_sliders.json), targets (vilket MakeHuman-mål som helst med vikt), macro (råa MPFB-värden),
 proxy (standard female1605 eller male1591 efter sex), subdiv (1: proxyn delas en gång, ca 12 700 trianglar; 0: ca 3 200),
 eyes ("low-poly"), hair (standard inget: håret blir ett eget lager), rig ("game_engine"), pose ("T", "A" eller vinkel).
+The eyes are placed in the final socket, clear of the lids (proxy_ops.fit_eyes; check eyes_clear).
 Skriver assets/characters/<name>/<name>.glb (riggad), <name>_pose.glb (bakad pose) och recipe.json (receptet). Svarar med en rad JSON med checks.
 """
 import json, os, shutil, subprocess, sys
@@ -49,6 +50,9 @@ def main():
     tongue = (res.get("sliders") or {}).get("tongue")
     if isinstance(tongue, dict):   # after a wrap: the tongue stays inside the mouth (crossing the cheeks gave streaks)
         checks["tongue_inside"] = tongue.get("crossing_tris") == 0
+    gaps = (res.get("sliders") or {}).get("eye_gaps")
+    if isinstance(gaps, list) and gaps:   # no lid skin inside an eyeball (the eye poking through the lower lid as a spike)
+        checks["eyes_clear"] = all(g.get("inside") == 0 for g in gaps)
     # Receptet bredvid figuren: varje figur är en egen enhet som kan byggas om (studions The Character Creator läser det)
     (out / "recipe.json").write_text(json.dumps({k: v for k, v in r.items() if k != "out_dir"}, indent=1) + "\n")
     print(json.dumps({"ok": all(checks.values()), "checks": checks, **res,

@@ -73,12 +73,13 @@ for kind, sub, atype, ext, nm in (("proxy", "proxymeshes", "Proxymeshes", "proxy
         if md.type == "SUBSURF":
             md.levels = md.render_levels
 bpy.context.view_layer.update()
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import proxy_ops
+pre_wrap = None   # the proxy (world) before the wrap, for the eyes
 if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py): proxyn tight mot AI-formen, inbakad i nätet
     import numpy as np
     wz = np.load(r["wrap"])
     px_ = bpy.data.objects[parts["proxy"]]
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    import proxy_ops
     proxy_ops.apply_subdiv(px_)   # samma topologisteg som i inpassningen
     if "hands_low" in wz.files and bool(wz["hands_low"]):
         applied["hands_low"] = proxy_ops.reduce_hands(px_)
@@ -87,10 +88,10 @@ if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py)
         px_.data.vertices.foreach_set("co", (co.reshape(-1, 3) + wz["offsets"]).ravel()); px_.data.update()
         applied["wrap"] = True
         applied["tongue"] = proxy_ops.keep_tongue(px_, co.reshape(-1, 3))   # the tongue follows the mouth rigidly, not the wrap
+        pre_wrap = proxy_ops._world(px_, co.reshape(-1, 3))   # the eyes are placed after the edits (fit_eyes below)
         after_ = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", after_)
-        for kind_ in ("eyes", "hair"):   # every other MPFB part follows the wrapped body too
-            if parts.get(kind_):
-                applied[f"{kind_}_follow"] = proxy_ops.follow_wrap(bpy.data.objects[parts[kind_]], px_, co.reshape(-1, 3), after_.reshape(-1, 3))
+        if parts.get("hair"):   # hair follows the wrapped body per vertex
+            applied["hair_follow"] = proxy_ops.follow_wrap(bpy.data.objects[parts["hair"]], px_, co.reshape(-1, 3), after_.reshape(-1, 3))
     else:
         applied["wrap"] = f"skipped: {len(px_.data.vertices)} verts, wrap has {int(wz['nverts'])}"
     bpy.context.view_layer.update()
@@ -154,6 +155,14 @@ if parts.get("proxy") and applied.get("wrap") is True:
     tri = np.empty(len(px_.data.loop_triangles) * 3, dtype=np.int64); px_.data.loop_triangles.foreach_get("vertices", tri)
     edit_info = {"base_rest": base_rest, "offsets": offs, "faces": tri, "obj": px_.name}
     bpy.context.view_layer.update()
+if parts.get("eyes") and parts.get("proxy"):
+    # The eyes into the final socket (after the wrap and the edits), clear of the lids; then the clearance as a check
+    px_, eo_ = bpy.data.objects[parts["proxy"]], bpy.data.objects[parts["eyes"]]
+    B1_, N1_ = proxy_ops.body_state(px_)
+    B0_ = pre_wrap if pre_wrap is not None and len(pre_wrap) == len(B1_) else B1_
+    applied["eyes_fit"] = proxy_ops.fit_eyes(eo_, B0_, B1_, N1_)
+    bpy.context.view_layer.update()
+    applied["eye_gaps"] = proxy_ops.eye_gaps(eo_, B1_, N1_)
 if parts.get("proxy"):
     base.hide_set(True); base.hide_render = True
 # MPFB:s feet_on_ground flyttar nätet men inte skelettet (armarna roterade då kring bäckenets höjd): ställ i stället
