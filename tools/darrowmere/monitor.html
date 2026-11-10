@@ -66,6 +66,10 @@
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
   .ph { height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
   .ph .right { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .spans { display: inline-flex; gap: 2px; margin-left: 10px; text-transform: none; letter-spacing: 0; }
+  .spans button { font: inherit; font-weight: 500; font-size: 11px; padding: 2px 7px; border-radius: 6px; border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+  .spans button:hover { color: var(--text); border-color: var(--line); }
+  .spans button.on { color: var(--text); background: var(--line); }
   .pb { padding: 10px 12px; }
 
   /* Mätare */
@@ -460,7 +464,7 @@
 
 
   <section class="panel">
-    <div class="ph">Last 10 minutes<span class="right">percent of capacity</span></div>
+    <div class="ph"><span id="spanTitle">Last 10 minutes</span><span class="spans" id="spans"></span><span class="right">percent of capacity</span></div>
     <div class="chartwrap">
       <div class="cv"><canvas id="chart"></canvas></div>
       <div class="legend" id="legend"></div>
@@ -811,7 +815,7 @@ function render(s) {
     document.querySelectorAll(".arc.inner").forEach(el => el.setAttribute("stroke-dasharray", `0 ${C2}`));
     document.querySelectorAll(".dial .core").forEach(el => el.setAttribute("stroke-opacity", ".12"));
     $("netRate").textContent = "–";
-    drawSparks(s.history || []);
+    drawChart();
     return;
   }
   if (!p) { pill("netPill", "bad", `<span class="dot"></span><b class="ell" style="max-width:300px">${esc(s.probe_error || "no data yet")}</b>`); return; }
@@ -896,9 +900,39 @@ function render(s) {
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">ComfyUI not answering</span>`);
   }
 
-  drawSparks(s.history || []);
+  drawChart();
 }
 
+// Time scale of the chart: up to 10 minutes from the status points, longer spans from /api/history (averaged tiers)
+const SPANS = [[600, "10 min", "Last 10 minutes"], [3600, "1 h", "Last hour"], [21600, "6 h", "Last 6 hours"],
+               [86400, "24 h", "Last 24 hours"], [604800, "7 d", "Last 7 days"], [2592000, "30 d", "Last 30 days"]];
+let SPAN = (() => { try { return +localStorage.getItem("dm.span") || 600; } catch { return 600; } })();
+if (!SPANS.some(([v]) => v === SPAN)) SPAN = 600;
+let longHist = [], longAt = 0;
+function spanButtons() {
+  $("spans").innerHTML = SPANS.map(([v, l]) => `<button data-span="${v}" class="${v === SPAN ? "on" : ""}">${l}</button>`).join("");
+  $("spanTitle").textContent = SPANS.find(([v]) => v === SPAN)[2];
+  $("spans").querySelectorAll("button").forEach(b => b.onclick = () => {
+    SPAN = +b.dataset.span; try { localStorage.setItem("dm.span", SPAN); } catch {}
+    longHist = []; longAt = 0; spanButtons(); drawChart();
+  });
+}
+async function loadLong() {
+  if (SPAN <= 600 || Date.now() - longAt < 30000) return;
+  longAt = Date.now();
+  try {
+    const r = await fetch("/api/history?span=" + SPAN, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+    if (r.ok) { longHist = (await r.json()).history || []; drawChart(false); }
+  } catch {}
+}
+function drawChart(fetchLong = true) {
+  if (SPAN <= 600) return drawSparks((lastStatus && lastStatus.history) || []);
+  if (fetchLong) loadLong();
+  // The latest status point keeps the legend and the right edge current between the 30 s fetches
+  const now = lastStatus && lastStatus.history && lastStatus.history.slice(-1);
+  drawSparks(longHist.concat(now && now.length && (!longHist.length || now[0].t > longHist[longHist.length - 1].t) ? now : []));
+}
+const spanLabel = s => s >= 86400 ? `${s / 86400} d` : s >= 3600 ? `${s / 3600} h` : `${s / 60} min`;
 function drawSparks(h) {
   const st = css(), last = h[h.length - 1] || {}, tEnd = last.t || 0;
   SERIES.forEach(([k]) => $("lg_" + k).textContent = last[k] == null ? "–" : last[k].toFixed(0) + " %");
@@ -912,13 +946,13 @@ function drawSparks(h) {
     g.beginPath(); g.moveTo(padL, y); g.lineTo(w, y); g.stroke();
     g.fillText(v + "%", 0, y + 3.5);
   });
-  ["10 min ago", "5 min", "now"].forEach((l, i) => {
+  [`${spanLabel(SPAN)} ago`, spanLabel(SPAN / 2), "now"].forEach((l, i) => {
     const tw = g.measureText(l).width, x = padL + pw * i / 2 - tw / 2;
     g.fillText(l, Math.min(w - tw, Math.max(padL, x)), ht - 2);
   });
-  const X = t => padL + pw * (1 - (tEnd - t) / 600), Y = v => 4 + ph - ph * Math.min(100, Math.max(0, v)) / 100;
+  const X = t => padL + pw * (1 - (tEnd - t) / SPAN), Y = v => 4 + ph - ph * Math.min(100, Math.max(0, v)) / 100;
   for (const [k, , col] of SERIES) {
-    const raw = h.filter(pt => pt[k] != null && tEnd - pt.t <= 600);
+    const raw = h.filter(pt => pt[k] != null && tEnd - pt.t <= SPAN);
     if (raw.length < 2) continue;
     // Mjukare kurva: glidande medel över fem mätpunkter och kvadratiska kurvor genom mittpunkterna
     const pts = raw.map((pt, i) => {
@@ -1241,7 +1275,8 @@ async function tick() {
     $("age").textContent = lastOk ? `no answer for ${fmtDur((Date.now() - lastOk) / 1000)}` : "";
   } finally { ticking = false; }
 }
-addEventListener("resize", () => lastStatus && drawSparks(lastStatus.history || []));
+addEventListener("resize", () => lastStatus && drawChart(false));
+spanButtons();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });   // direkt när fliken syns igen
 tick(); setInterval(tick, 3000);
 </script>

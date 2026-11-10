@@ -159,14 +159,66 @@ except (OSError, ValueError):
     pass
 
 
-def save_metrics():
+# Long chart history for the time-scale buttons: averaged points in tiers (30 s for a day, 5 min for a week, 30 min for
+# a month), saved to disk when a tier gains a point, so the history survives a panel restart
+TIERS = [{"step": 30, "span": 86400, "file": "metrics_30s.json"}, {"step": 300, "span": 7 * 86400, "file": "metrics_5min.json"},
+         {"step": 1800, "span": 31 * 86400, "file": "metrics_30min.json"}]
+LONG_SPAN = TIERS[-1]["span"]
+for tier in TIERS:
+    tier["pts"] = deque(maxlen=tier["span"] // tier["step"])
+    tier["path"] = STORE.with_name(tier["file"])
     try:
-        METRICS.parent.mkdir(parents=True, exist_ok=True)
-        tmp = METRICS.with_suffix(".tmp")
-        tmp.write_text(json.dumps(list(hist)))
-        tmp.replace(METRICS)
+        tier["pts"].extend(p for p in json.loads(tier["path"].read_text()) if time.time() - p.get("t", 0) < tier["span"])
+    except (OSError, ValueError):
+        pass
+
+
+def average(pts, now):
+    """One point with the mean of every numeric field; "off" only when Darrowmere was away the whole time."""
+    num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+    avg = {"t": now}
+    for k in {k for p in pts for k, v in p.items() if k != "t" and num(v)}:
+        vals = [p[k] for p in pts if num(p.get(k))]
+        avg[k] = round(sum(vals) / len(vals), 1)
+    if all(p.get("off") for p in pts):
+        avg["off"] = True
+    return avg
+
+
+def write_json(path, data):
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(list(data)))
+        tmp.replace(path)
     except OSError:
         pass
+
+
+def add_long_points():
+    """Each tier takes a new point once its step has passed, averaged from the fine 3 s points of that step."""
+    now = time.time()
+    for tier in TIERS:
+        if tier["pts"] and now - tier["pts"][-1]["t"] < tier["step"]:
+            continue
+        src = [p for p in hist if now - p.get("t", 0) <= tier["step"]]
+        if src:
+            tier["pts"].append(average(src, now))
+            write_json(tier["path"], tier["pts"])
+
+
+def history_for(span):
+    """Chart points for the last span seconds from the finest source that covers it."""
+    if span <= 600:
+        return list(hist)
+    now = time.time()
+    tier = next(t for t in TIERS if t["span"] >= span or t is TIERS[-1])
+    return [p for p in tier["pts"] if now - p["t"] <= span]
+
+
+def save_metrics():
+    write_json(METRICS, hist)
+
 
 
 def save_jobs():
@@ -833,6 +885,7 @@ def poller():
                          comfy_error=cerr, rates=rates if probe else {}, updated=time.time(), online=probe is not None)
             # Diagrammet fortsätter även när Darrowmere är borta: då ligger alla kurvor på noll
             hist.append(point if probe else {"t": time.time(), "cpu": 0, "ram": 0, "swap": 0, "gpu": 0, "vram": 0, "net": 0, "off": True})
+            add_long_points()
             if len(hist) % 5 == 0:
                 save_metrics()
                 save_snapshot()
@@ -1083,6 +1136,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, json.dumps({"lines": lines, "error": r.stderr.strip()[-200:] if r.returncode else None}), "application/json")
         if self.path.startswith("/api/file?"):
             return self.proxy_file()
+        if self.path.startswith("/api/history?"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            try:
+                span = max(60, min(LONG_SPAN, int(q.get("span", ["600"])[0])))
+            except ValueError:
+                span = 600
+            with lock:
+                body = {"span": span, "history": history_for(span), "now": time.time()}
+            return self.send(200, json.dumps(body), "application/json")
         if self.path == "/api/status":
             with lock:
                 body = {**state, "history": list(hist), "host": HOST, "comfy_url": COMFY, "now": time.time(),
