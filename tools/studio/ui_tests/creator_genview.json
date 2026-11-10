@@ -1,0 +1,25 @@
+{
+  "_doc": "UI-test av Generate this view i målningen (studio/human_paint.js, /api/human/genview), utan att något genereras (det kostar pengar; testets dialoger godkänns alltid, så knappen klickas inte): syssling_wrap20 i målarläget, vyn från en udda vinkel blir en bild av figurens ruta (2:3, 1:1 eller 3:2, 1024 px på längden), servern ger ett prisförslag utan confirm och nekar felaktiga referenser, och en genererad vy (view_<n>.png med .json) ställer tillbaka sin kamera och läggs på sin ruta. Kräver att build/human/refs/syssling_wrap20/view_99.png och .json finns (se steget innan i docs/asset-studio.md); ta bort build/human/refs/syssling_wrap20 och build/human/genview/syssling_wrap20 efteråt. Kör mot studio-test: url med port 8771.",
+  "name": "creator_genview",
+  "url": "http://localhost:8771/studio/#figurer",
+  "size": [1600, 1000],
+  "steps": [
+    {"until": "window.__studio?.human?.lastBuild && !__studio.human.building", "timeout": 90000},
+    {"eval": "(() => { document.querySelector('#hudrawer .wprof[data-id=\"saved:syssling_wrap20\"]').click(); return 1; })()"},
+    {"until": "__studio.human.from === 'saved:syssling_wrap20' && !!__studio.human.figure", "timeout": 30000},
+    {"wait": 1000},
+    {"eval": "(() => { [...document.querySelectorAll('#huside button')].find((b) => b.textContent === 'Paint the skin…').click(); return 1; })()"},
+    {"until": "!!__studio.human.painter?.active", "timeout": 20000},
+    {"eval": "(() => { const c = __studio.human.camera, t = __studio.human.controls.target; t.set(0, 0.9, 0); c.position.set(2.2, 2.0, 2.6); c.lookAt(t); __studio.human.controls.update(); return 1; })()"},
+    {"wait": 400},
+    {"eval": "(() => { const s = __studio.human.painter.test.viewShot(); window.__shot = s; return { aspect: s.aspect, size: s.size, rect: s.rect, bytes: s.png.length, camera: s.camera }; })()"},
+    {"expect": "['2:3', '1:1', '3:2'].includes(__shot.aspect) && Math.max(...__shot.size) === 1024 && Math.abs(__shot.size[0] / __shot.size[1] - eval(__shot.aspect.replace(':', '/'))) < 0.01 && __shot.png.length > 20000 && __shot.rect.nh > 0.3", "label": "the view becomes a picture of the figure's box in a model aspect, 1024 px long"},
+    {"eval": "(async () => { window.__q = await fetch('/api/human/genview', { method: 'POST', body: JSON.stringify({ name: 'syssling_wrap20', render: __shot.png, refs: ['/assets/characters/syssling_wrap20/syssling_wrap20_thumb.jpg'], prompt: __studio.human.painter.test.prompt, aspect: __shot.aspect, camera: __shot.camera, rect: __shot.rect }) }).then((r) => r.json()); return __q; })()"},
+    {"expect": "__q.quote?.model === 'openai/gpt-image-2' && __q.quote.refs === 1 && /USD/.test(__q.quote.price) && !__q.job", "label": "without confirm the server only quotes the price (gpt-image-2, one reference)"},
+    {"eval": "(async () => { window.__bad = await fetch('/api/human/genview', { method: 'POST', body: JSON.stringify({ name: 'syssling_wrap20', render: __shot.png, refs: ['/tools/studio/server.mjs'], prompt: __studio.human.painter.test.prompt, aspect: __shot.aspect, confirm: true }) }).then((r) => r.json()); return __bad; })()"},
+    {"expect": "/not a reference picture/.test(__bad.error ?? '') && !__bad.job", "label": "a file that is not a reference picture is refused, even with confirm"},
+    {"eval": "(async () => { await __studio.human.painter.test.setPic('/build/human/refs/syssling_wrap20/view_99.png'); const c = __studio.human.camera; return { pos: c.position.toArray(), pic: __studio.human.painter.test.pic, W: innerWidth, H: innerHeight }; })()"},
+    {"expect": "(() => { const c = __studio.human.camera.position, p = __studio.human.painter.test.pic; return Math.abs(c.x - 2) < 0.01 && Math.abs(c.y - 1.5) < 0.01 && Math.abs(c.z - 3) < 0.01 && Math.abs(p.h - 0.5 * innerHeight) < 1 && Math.abs(p.cx - (innerWidth / 2 + 0.05 * innerHeight)) < 1 && Math.abs(p.cy - innerHeight / 2) < 1; })()", "label": "a generated view puts the camera back where it was made and lies on its box"},
+    {"expect": "[...document.querySelectorAll('.hu-paint button')].some((b) => b.textContent === 'Generate this view…' && !b.disabled)", "label": "the paint card has Generate this view"}
+  ]
+}

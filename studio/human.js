@@ -401,7 +401,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   paintBtn.onclick = async () => {
     if (!openSaved || !figure) return;
     if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); }
-    painter ??= createPainter({ el, api, side, view, renderer, controls, getCam: () => cam, getFigure: () => figure, say: (t) => lamp('ok', t) });
+    painter ??= createPainter({ el, api, side, view, renderer, controls, getCam: () => cam, getFigure: () => figure, draw: () => renderer.render(scene, cam), say: (t) => lamp('ok', t) });
     view3.clay = false; cards.sync();
     if (view3.ai !== 'off') { view3.ai = 'off'; cards.sync(); placeAi(); }
     await painter.start(openSaved, {

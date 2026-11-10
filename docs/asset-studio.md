@@ -194,6 +194,16 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   målning) eller en jämn hudfärg. *Save the painting* skriver en ny `<namn>_paint_v<n>_color.png` (`/api/human/paint`,
   aldrig över) med 12 px påfyllning runt UV-öarna, och Finished model väljer den som färgkarta. Allt hålls som rått sRGB
   i texturen (mätt: #c9a48c blir 201/164/140, en full klick #3a7bd5 blir 58/123/213).
+- **Generate this view…** (i målningens kort): en ny referensbild för en udda vinkel. Studion renderar figuren som den
+  syns nu (med det som är målat), skär ut en ruta runt kroppen i 2:3, 1:1 eller 3:2 (1024 px på längden) och skickar den
+  först, följd av upp till fyra referenser (Patriks egna före tidigare genererade), till gpt-image-2 via OpenRouter
+  (`/api/human/genview`, `tools/texture/openrouter_image.py`) med en prompt som går att ändra i kortet (samma person och
+  stil, exakt pose, vinkel och utsnitt, grå bakgrund, inget hår över ansiktet, inga smycken). Det kostar pengar: utan
+  `confirm` svarar servern bara med ett prisförslag, och appen frågar med priset innan bilden beställs. Bilden hamnar i
+  `build/human/refs/<namn>/view_<n>.png` med en `.json` (kameran, rutan i förhållande till vyns höjd, prompten,
+  referenserna, kostnaden), renderingen i `build/human/genview/<namn>/`. Bilden läggs över vyn på rutan den ritades för,
+  och när den väljs igen ställs kameran tillbaka, så att man målar från den direkt med Picture-penseln. Testet
+  `creator_genview.json` provar allt utom själva beställningen.
 - **Finished model:** *Build the finished model* kör `make_final.py` (`/api/human/final`, ca 4 s): den riggade figuren
   med sina ändringar, ögonen och skelettet får hudens material (färgkartan eller en jämn hudfärg, normalkartan,
   ruffighet) i en ny `<namn>_final(_v<n>).glb` med en `.json` bredvid (källorna och kontrollerna: rigg, ögon, kartorna
@@ -222,10 +232,9 @@ saknas än:
    per område kan bara styras med en egen proxy (mhclo) som MPFB passar in på varje kropp; figurer utan wrap har ingen
    editorfil.
 5. **Färgen:** målningen finns (Paint the skin); UltraTex beställs inte från studion, och `transfer_texture.py` (färgen
-   bakad på MPFB:s UV) är ingen knapp här än; ingen subsurface, ingen AO eller krökning i bakningen, fast 2048 px. Nästa
-   steg för målningen: en ny referensbild för en udda vinkel, genererad ur vyn (figuren renderad från vinkeln, med det
-   som är målat) och de tidigare referenserna, så att den redan ligger rätt över vyn. Penseln saknar lager, smudge och
-   klon.
+   bakad på MPFB:s UV) är ingen knapp här än; ingen subsurface, ingen AO eller krökning i bakningen, fast 2048 px.
+   Penseln saknar lager, smudge och klon; de genererade vyerna (gpt-image-2) är inte prövade med en riktig beställning
+   än, och hur exakt modellen håller renderingens kontur är inte mätt.
 6. **Den färdiga modellen:** en GLB med allt finns nu (`make_final.py`, kortet Finished model); kvar är exporten till
    Godot för figurer (`export_world.mjs` gäller världar), LOD-nivåer och figurerna i The Vault.
 7. **Kroppen:** ansiktet, håret och kläderna (flikarna är markerade som kommande); fingrarna sitter ihop i spelnätet;

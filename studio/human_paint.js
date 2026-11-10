@@ -68,7 +68,7 @@ void main() {
   gl_FragColor = vec4(col, clamp(w * uStrength, 0.0, 1.0));
 }`;
 
-export function createPainter({ el, api, side, view, renderer, controls, getCam, getFigure, say }) {
+export function createPainter({ el, api, side, view, renderer, controls, getCam, getFigure, draw, say }) {
   let active = false, name = null, fig = null, body = null, dirty = false;
   const P = { tool: 'color', color: '#b98a72', radius: 40, strength: 0.6, hard: 0.5, face: 0.15, mirror: true, lit: true,
     opacity: 0.55, size: 1, rot: 0, flip: false, base: null, skin: '#c9a48c' };
@@ -206,7 +206,15 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     pic = { url, tex, aspect: img.naturalWidth / img.naturalHeight, canvas: cv };
     picEl.src = url;
     dabMat.uniforms.uPic.value = tex;
-    fitPic();
+    // En genererad vy minns kameran och rutan den ritades för: vyn ställs tillbaka och bilden läggs exakt där
+    const meta = /\/view_\d+\.png$/.test(url) ? await fetch(url.replace(/\.png$/, '.json')).then((x) => (x.ok ? x.json() : null)).catch(() => null) : null;
+    if (meta?.camera && meta?.rect) {
+      const cam = getCam();
+      cam.position.fromArray(meta.camera.position); controls.target.fromArray(meta.camera.target);
+      if (meta.camera.fov && cam.isPerspectiveCamera) { cam.fov = meta.camera.fov; cam.updateProjectionMatrix(); }
+      cam.lookAt(controls.target); controls.update();
+      placeAt(meta.rect);
+    } else fitPic();
     renderPicList();
   }
   // Bilden lika hög som figuren på skärmen, mitt över den
@@ -228,6 +236,13 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     picEl.hidden = !active;
     Object.assign(picEl.style, { left: `${pic.cx - w / 2}px`, top: `${pic.cy - h / 2}px`, width: `${w}px`, height: `${h}px`, opacity: P.opacity,
       transform: `rotate(${P.rot}deg)${P.flip ? ' scaleX(-1)' : ''}` });
+  }
+  // En bild som lagts på en bestämd ruta i vyn (en genererad vy): rutan sparas i förhållande till vyns höjd
+  function placeAt(rect) {
+    const r = view.getBoundingClientRect();
+    Object.assign(pic, { cx: r.width / 2 + rect.nx * r.height, cy: r.height / 2 + rect.ny * r.height, h0: rect.nh * r.height });
+    P.size = 1; P.rot = 0; P.flip = false;
+    placePic(); cardsSync();
   }
   // Färgen i bilden under en punkt i vyn (CSS-pixlar), eller null utanför
   function picColor(x, y) {
@@ -465,6 +480,65 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   fitBtn.title = 'Scales the picture to the figure\'s height on screen and centres it over it';
   fitBtn.onclick = fitPic;
   const picBtns = el('div', 'hu-btns'); picBtns.append(fitBtn, projBtn);
+  // --- En ny referensbild för vinkeln i vyn (gpt-image-2 via OpenRouter, kostar pengar: priset visas och frågas först) ---
+  const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. No hair over the face, no jewellery, and no clothes that are not in the reference pictures.';
+  const promptEl = Object.assign(el('textarea', 'hu-prompt'), { rows: 4, value: PROMPT });
+  promptEl.title = 'What the picture model is asked for (the render comes first, then the reference pictures)';
+  const genBtn = el('button', 'primary', 'Generate this view…');
+  genBtn.title = 'Renders the figure as you see it now and asks gpt-image-2 for a reference picture of this angle in the style of the reference pictures; it lands over the view, lined up, and is kept with the figure. Costs money: the price is shown first';
+  const genMsg = el('div', 'note');
+  // Figurens del av vyn: en ruta runt kroppen (2:3, 1:1 eller 3:2), som bild och som läge i vyn
+  function viewShot() {
+    const cam = getCam(), r = view.getBoundingClientRect(), p = geo.attributes.position, v = new THREE.Vector3();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < p.count; i += 7) {
+      v.fromBufferAttribute(p, i).project(cam);
+      const x = (v.x + 1) / 2 * r.width, y = (1 - v.y) / 2 * r.height;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    }
+    let w = (x1 - x0) * 1.08, h = (y1 - y0) * 1.08;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    const [aspect, a] = [['2:3', 2 / 3], ['1:1', 1], ['3:2', 3 / 2]].reduce((b, c) => (Math.abs(Math.log(w / h / c[1])) < Math.abs(Math.log(w / h / b[1])) ? c : b));
+    if (w / h < a) w = h * a; else h = w / a;
+    draw();
+    const src = renderer.domElement, k = src.width / r.width, out = document.createElement('canvas');
+    const W = a >= 1 ? 1024 : Math.round(1024 * a), H = a >= 1 ? Math.round(1024 / a) : 1024;
+    out.width = W; out.height = H;
+    const g = out.getContext('2d');
+    g.fillStyle = '#c8ccd0'; g.fillRect(0, 0, W, H);
+    g.drawImage(src, (cx - w / 2) * k, (cy - h / 2) * k, w * k, h * k, 0, 0, W, H);
+    return { aspect, png: out.toDataURL('image/png'), rect: { nx: (cx - r.width / 2) / r.height, ny: (cy - r.height / 2) / r.height, nh: h / r.height }, size: [W, H],
+      camera: { position: cam.position.toArray(), target: controls.target.toArray(), fov: cam.fov ?? null } };
+  }
+  // Referenserna som följer med: Patriks egna först, sedan genererade vyer, högst fyra
+  const genRefs = () => [...refs.filter((u) => !/\/view_\d+\.png$/.test(u)), ...refs.filter((u) => /\/view_\d+\.png$/.test(u))].slice(0, 4);
+  let genJob = null;
+  genBtn.onclick = async () => {
+    const shot = viewShot(), list = genRefs();
+    if (!list.length && !confirm('There are no reference pictures yet, so the model only sees the render. Go on?')) return;
+    const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect };
+    const q = await api('/api/human/genview', req);
+    if (q.error) { genMsg.textContent = `Not started: ${q.error}`; return; }
+    if (!confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.model} and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
+    const r = await api('/api/human/genview', { ...req, confirm: true });
+    if (r.error) { genMsg.textContent = `Not started: ${r.error}`; return; }
+    genJob = r.job; genBtn.disabled = true;
+    const t0 = Date.now();
+    let res;
+    for (;;) {
+      res = await api(`/api/human/job?id=${r.job}`);
+      if (!res.pending) break;
+      genMsg.textContent = `Generating ${r.out.split('/').pop()}… ${Math.round((Date.now() - t0) / 1000)} s`;
+      await new Promise((ok) => setTimeout(ok, 2000));
+    }
+    genJob = null; genBtn.disabled = false;
+    if (!res.url) { genMsg.textContent = `Not generated: ${res.error ?? 'no picture'}`; return; }
+    genMsg.textContent = `Generated ${res.url.split('/').pop()} in ${Math.round((res.ms ?? 0) / 1000)} s${res.cost != null ? `, ${res.cost.toFixed(3)} USD` : ''}; it lies over the view: paint with the Picture brush`;
+    refs.push(res.url);
+    await setPic(res.url);
+    P.tool = 'picture'; cardsSync();
+  };
+
   const undoBtn = el('button', null, 'Undo'), redoBtn = el('button', null, 'Redo');
   undoBtn.title = 'Ctrl+Z'; redoBtn.title = 'Ctrl+Shift+Z';
   undoBtn.onclick = () => step(undo, redo); redoBtn.onclick = () => step(redo, undo);
@@ -491,6 +565,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     slider('Picture turn', 'rot', -180, 180, 0.5, 'The picture\'s angle in degrees (Ctrl+Shift+drag)', placePic),
     toggle('Flip the picture', 'mirror it left to right', 'flip', 'A picture of the other side', placePic),
     picBtns,
+    el('div', 'hu-sub', 'A new picture for this angle'), promptEl, genBtn, genMsg,
     toggle('Lit', 'off shows the flat colour', 'lit', 'With lighting, or the painted colour alone', () => applyMat()),
     hist, infoEl, help, endRow, msg,
   );
@@ -585,7 +660,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
       texel: (u, v) => { const px = new Uint8Array(4); renderer.readRenderTargetPixels(rt, Math.min(N - 1, Math.floor(u * N)), Math.min(N - 1, Math.floor(v * N)), 1, 1, px); return [...px.slice(0, 3)]; },
       hit: (x, y) => { const h = hit(x, y); return h ? { uv: [h.uv.x, h.uv.y], p: h.point.toArray() } : null; },
       screen: (p) => { const r = view.getBoundingClientRect(), v = new THREE.Vector3(...p).project(getCam()); return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height]; },
-      setPic, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
+      setPic, viewShot, genRefs, get prompt() { return promptEl.value; }, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
       undo: () => step(undo, redo), get P() { return { ...P }; }, picColor,
     },
   };
