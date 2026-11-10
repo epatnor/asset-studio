@@ -40,6 +40,18 @@ def main():
         recipe["subdiv"] = int(r["subdiv"])
     if r.get("out_dir"):
         recipe["out_dir"] = r["out_dir"]
+    # AI-formen och dess placering, så att studion (flödet och vyn "AI shape: Over") hittar den och skalar den lika
+    try:
+        recipe["target"] = str(target.relative_to(ROOT))
+    except ValueError:
+        recipe["target"] = str(target)
+    recipe["ai_transform"] = fit.get("ai_transform")
+    if recipe.get("wrap"):
+        try:
+            recipe["wrap"] = str(Path(recipe["wrap"]).resolve().relative_to(ROOT))
+        except ValueError:
+            pass
+    json.dump(recipe, open(out / "recipe.json", "w"), indent=1)
     made = subprocess.run([sys.executable, "-I", str(HERE / "make_human.py"), json.dumps(recipe)], capture_output=True, text=True)
     human = json.loads(made.stdout.strip().splitlines()[-1]) if made.stdout.strip() else {"ok": False, "error": made.stderr[-400:]}
     better = fit["end"]["mean_mm"] < fit["start"]["mean_mm"]
