@@ -34,6 +34,7 @@
   <b id="name">…</b><span class="info" id="info"></span>
   <button id="tex" class="on" title="Show the texture or plain clay">Texture</button>
   <button id="wire" title="Show the triangles">Wireframe</button>
+  <button id="thru" class="on" hidden title="On: see the triangles on the far side too. Off: a solid surface with only the edges facing you">See through</button>
   <button id="spin" title="Turn the model slowly">Rotate</button>
   <button id="light" title="Light or dark background">Background</button>
   <button id="reset" title="Frame the model again">Reset view</button>
@@ -143,9 +144,28 @@ new GLTFLoader().load(url, gltf => {
 
 const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); redraw(); }; };
 toggle("tex", on => originals.forEach((m, o) => o.material = on ? m : clay));
-toggle("wire", on => { originals.forEach(m => (Array.isArray(m) ? m : [m]).forEach(x => x.wireframe = on)); clay.wireframe = on; });
+// Trådmodellen: genomskinlig (bara trådarna, även de på baksidan) eller på en hel yta med bara de synliga kanterna ovanpå
+let wireOn = false, seeThrough = true;
+const overlays = new Map();
+const wireMat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.35, depthWrite: false });
+function applyWire() {
+  const solid = wireOn && !seeThrough;
+  wireMat.color.set(darkBg ? 0xe6e6e6 : 0x1a1a1a);
+  originals.forEach((m, o) => {
+    for (const x of [m].flat().concat([clay])) {
+      x.wireframe = wireOn && seeThrough;
+      x.polygonOffset = solid; x.polygonOffsetFactor = 1; x.polygonOffsetUnits = 1; x.needsUpdate = true;
+    }
+    let w = overlays.get(o);
+    if (solid && !w) { w = o.clone(false); w.material = wireMat; o.parent.add(w); overlays.set(o, w); }
+    if (w) w.visible = solid;
+  });
+  document.getElementById("thru").hidden = !wireOn;
+}
+toggle("wire", on => { wireOn = on; applyWire(); });
+toggle("thru", on => { seeThrough = on; applyWire(); });
 toggle("spin", on => controls.autoRotate = on);
-document.getElementById("light").onclick = () => { darkBg = !darkBg; setBg(); redraw(); };
+document.getElementById("light").onclick = () => { darkBg = !darkBg; setBg(); applyWire(); redraw(); };
 document.getElementById("reset").onclick = () => { if (!home) return; camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); };
 
 addEventListener("resize", () => {
