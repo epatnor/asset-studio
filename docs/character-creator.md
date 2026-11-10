@@ -216,6 +216,9 @@ samma nät): sysslingen 10 554 trianglar i stället för 12 672, händerna 2 586
 armbågsbula kommer med normalkartan. Tätheten per område styrs på riktigt bara med en egen proxy (mhclo), som MPFB
 passar in på varje kropp.
 
+**Omgång 13:** normalkartan är plan på händer och fötter (vikterna sparas i `wrap_debug.npz` som `hand` och `foot`):
+Pixal3D:s ihopsmälta händer bakade ränder och block på MPFB:s fingrar i omgång 12, och fötterna hade sulor.
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

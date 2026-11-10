@@ -548,7 +548,9 @@ if job.get("wrap", True):
     np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN, hands_low=hands_low)
     np.savez_compressed(os.path.join(out, "wrap_debug.npz"), ai=V.astype(np.float32), ai_faces=TF.astype(np.int32), tpl0=P0.astype(np.float32),
                         tpl=PW.astype(np.float32), use=np.ones(PN, bool), lab=np.zeros(PN, int), pin=(1 - data_w).astype(np.float32),
-                        tpl_faces=lt.astype(np.int32), regions=np.array(["all"]))
+                        tpl_faces=lt.astype(np.int32), regions=np.array(["all"]),
+                        hand=np.clip(pregion(handbones), 0, 1).astype(np.float32),
+                        foot=np.clip(pregion(["foot_l", "foot_r", "ball_l", "ball_r"]), 0, 1).astype(np.float32))
     w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
     sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
     wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,

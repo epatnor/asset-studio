@@ -70,6 +70,12 @@ if E is not None:
             # brynen: ovanför ögat
             up = np.linalg.norm((B - c - np.array([0, 0, 0.022])) * np.array([0.8, 1.0, 1.6]), axis=1)
             mask = np.maximum(mask, np.clip((0.03 - up) / 0.012, 0, 1))
+# händer och fötter: AI-formens händer är ihopsmälta klumpar och fötterna har sulor, så där blir kartan plan
+# (sysslingen r12: ränder och block på fingrarna). Vikterna kommer ur inpassningen, hörn för hörn via närmaste punkt.
+if "hand" in d.files:
+    idx_ = np.array([kd.find(Vector(p))[1] for p in B])
+    limb = np.maximum(np.clip(d["hand"][idx_] * 1.6 - 0.1, 0, 1), np.clip(d["foot"][idx_] * 1.6 - 0.1, 0, 1))
+    mask = np.maximum(mask, limb)
 ca = body.data.color_attributes.new("mask", "FLOAT_COLOR", "POINT")
 ca.data.foreach_set("color", np.repeat(mask[:, None], 4, 1).astype(np.float32).ravel())
 
