@@ -125,6 +125,30 @@ if r.get("mons") and parts.get("proxy"):
     else:
         applied["mons"] = "skipped: no crotch found"
     bpy.context.view_layer.update()
+# Patriks egna ändringar (Body Editor i Character Creator): förflyttning per proxyhörn i glTF-rummet (y uppåt), i vilan,
+# lagda sist. Filen: {"proxy", "nverts", "offsets": [x, y, z, ...]} (tools/character/human/EDITS.md)
+import numpy as np
+GLTF = np.array([[1.0, 0, 0], [0, 0, 1.0], [0, -1.0, 0]])   # Blender (z upp) -> glTF (y upp)
+edit_info = None
+if parts.get("proxy") and applied.get("wrap") is True:
+    px_ = bpy.data.objects[parts["proxy"]]
+    L3 = np.array(px_.matrix_world)[:3, :3]
+    co = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
+    base_rest = (co @ L3.T + np.array(px_.matrix_world)[:3, 3]) @ GLTF.T
+    offs = np.zeros_like(co)
+    if r.get("edits"):
+        ed = json.load(open(r["edits"]))
+        if int(ed.get("nverts", -1)) == len(co) and ed.get("proxy") == proxy:
+            offs = np.array(ed["offsets"], float).reshape(-1, 3)
+            local = (offs @ np.linalg.inv(GLTF).T) @ np.linalg.inv(L3).T
+            px_.data.vertices.foreach_set("co", (co + local).ravel()); px_.data.update()
+            applied["edits"] = {"moved_verts": int((np.linalg.norm(offs, axis=1) > 1e-5).sum()), "max_mm": round(1000 * float(np.linalg.norm(offs, axis=1).max()), 1)}
+        else:
+            applied["edits"] = f"skipped: {len(co)} verts, edits have {ed.get('nverts')}"
+    px_.data.calc_loop_triangles()
+    tri = np.empty(len(px_.data.loop_triangles) * 3, dtype=np.int64); px_.data.loop_triangles.foreach_get("vertices", tri)
+    edit_info = {"base_rest": base_rest, "offsets": offs, "faces": tri, "obj": px_.name}
+    bpy.context.view_layer.update()
 if parts.get("proxy"):
     base.hide_set(True); base.hide_render = True
 # MPFB:s feet_on_ground flyttar nätet men inte skelettet (armarna roterade då kring bäckenets höjd): ställ i stället
@@ -196,6 +220,11 @@ if arms and angle is not None:
             lo.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ lo.matrix
             bpy.context.view_layer.update()
     dg = bpy.context.evaluated_depsgraph_get()
+    if edit_info:
+        po = bpy.data.objects[edit_info["obj"]]; e = po.evaluated_get(dg).to_mesh()
+        a_ = np.empty(len(e.vertices) * 3); e.vertices.foreach_get("co", a_); po.evaluated_get(dg).to_mesh_clear()
+        Mw = np.array(po.matrix_world)
+        edit_info["pose"] = (a_.reshape(-1, 3) @ Mw[:3, :3].T + Mw[:3, 3]) @ GLTF.T
     baked = []
     for o in [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.hide_get()]:
         me = bpy.data.meshes.new_from_object(o.evaluated_get(dg), depsgraph=dg)
@@ -207,6 +236,22 @@ if arms and angle is not None:
         o.select_set(o in baked)
     bpy.ops.export_scene.gltf(filepath=os.path.join(out, f"{name}_pose.glb"), export_format="GLB", use_selection=True, export_apply=True,
                               export_animations=False, export_skins=False, export_vertex_color="NONE")
+if edit_info:
+    # Editorfilen: nätet i vila och i posen (samma hörnordning som bygget), trianglarna, de sparade ändringarna och, från
+    # inpassningen, matriserna som för en förflyttning i posen till vilan (glTF-rummet, per hörn, rad för rad)
+    doc = {"name": name, "proxy": proxy, "nverts": len(edit_info["base_rest"]), "space": "glTF, y up, metres",
+           "rest": np.round(edit_info["base_rest"] + edit_info["offsets"], 5).ravel().tolist(),
+           "base_rest": np.round(edit_info["base_rest"], 5).ravel().tolist(),
+           "offsets": np.round(edit_info["offsets"], 5).ravel().tolist(), "faces": edit_info["faces"].tolist()}
+    if "pose" in edit_info:
+        doc["pose"] = np.round(edit_info["pose"], 5).ravel().tolist()
+    wz_ = np.load(r["wrap"]) if r.get("wrap") else None
+    if wz_ is not None and "pose_to_rest_local" in wz_.files and len(wz_["pose_to_rest_local"]) == doc["nverts"]:
+        Pl = wz_["pose_to_rest_local"]; L3 = np.array(bpy.data.objects[edit_info["obj"]].matrix_world)[:3, :3]
+        # glTF-förflyttning i posen -> Blender-värld -> proxyns vila (inpassningen) -> Blender-värld i vila -> glTF
+        M = np.einsum("ij,njk,kl,lm->nim", GLTF, np.einsum("ij,njk->nik", L3, Pl), np.eye(3), np.linalg.inv(GLTF))
+        doc["pose_to_rest"] = np.round(M, 5).reshape(len(M), 9).ravel().tolist()
+    json.dump(doc, open(os.path.join(out, f"{name}_edit.json"), "w"))
 print("HUMAN_RESULT " + json.dumps({"proxy": proxy, "meshes": meshes, "tris": tris, "bones": len(arms[0].data.bones) if arms else 0,
                                     "height_m": round(zmax - zmin, 3), "feet_z": round(zmin, 4), "asym_m": round(asym, 4),
                                     "sliders": applied, "pose": pose, "macro": {k: round(v, 3) for k, v in macro.items() if isinstance(v, (int, float))}}))

@@ -5,7 +5,7 @@ docs/character-creator.md. Reglagen och deras namn: human_sliders.json.
   python3 -I tools/character/human/make_human.py '{"name": "cousin_base", "sex": 0, "age": 25, "weight": 0.35,
       "bust_size": 0.65, "sliders": {"thighs": -0.4, "hips": -0.3}, "pose": "T"}'
 
-Recept: name, makroreglagen (sex, age i år, minst 18, muscle, weight, height, proportions, bust_size, bust_firmness), mons (0..1: skötet, utbuktning och veck vid ljumsken), wrap (inpassningens wrap.npz),
+Recept: name, makroreglagen (sex, age i år, minst 18, muscle, weight, height, proportions, bust_size, bust_firmness), mons (0..1: skötet, utbuktning och veck vid ljumsken), wrap (inpassningens wrap.npz), edits (Patriks egna ändringar per hörn, tools/character/human/EDITS.md),
 sliders (-1..1, se human_sliders.json), targets (vilket MakeHuman-mål som helst med vikt), macro (råa MPFB-värden),
 proxy (standard female1605 eller male1591 efter sex), subdiv (1: proxyn delas en gång, ca 12 700 trianglar; 0: ca 3 200),
 eyes ("low-poly"), hair (standard inget: håret blir ett eget lager), rig ("game_engine"), pose ("T", "A" eller vinkel).
@@ -30,6 +30,9 @@ def blender_cmd():
 
 def main():
     r = json.loads(sys.argv[1])
+    for k in ("wrap", "edits"):   # filer i receptet: relativt projektet, eftersom Blender körs i en annan mapp
+        if r.get(k):
+            r[k] = str((ROOT / r[k]).resolve())
     name = r.get("name") or "human"
     out = ROOT / r.get("out_dir", f"assets/characters/{name}")
     job = {"recipe": r, "name": name, "out": str(out), "catalog": str(HERE / "human_sliders.json")}

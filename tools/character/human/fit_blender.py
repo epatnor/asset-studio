@@ -598,7 +598,11 @@ if job.get("wrap", True):
     for nm_, a_, b_ in (("head", .87, 1.01), ("chest", .68, .87), ("hips", .50, .68), ("thighs", .28, .50), ("shins", .06, .28)):
         sel = (zr >= a_) & (zr < b_)
         wrap_end[f"from_ai_{nm_}_mm"] = round(1000 * float(from_ai[sel].mean()), 1)
-    np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN, hands_low=hands_low)
+    # posens förflyttning (Blenders världsrum) -> vilans förflyttning (proxyns egna koordinater), per hörn: för editorn, som
+    # låter Patrik dra i punkterna i AI-posen och sparar ändringen i vilan
+    p2r = np.zeros((PN, 3, 3), np.float32); p2r[good] = np.linalg.inv(Mv[good])
+    np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN, hands_low=hands_low,
+                        pose_to_rest_local=p2r)
     np.savez_compressed(os.path.join(out, "wrap_debug.npz"), ai=V.astype(np.float32), ai_faces=TF.astype(np.int32), tpl0=P0.astype(np.float32),
                         tpl=PW.astype(np.float32), use=np.ones(PN, bool), lab=np.zeros(PN, int), pin=(1 - data_w).astype(np.float32),
                         tpl_faces=lt.astype(np.int32), regions=np.array(["all"]),
