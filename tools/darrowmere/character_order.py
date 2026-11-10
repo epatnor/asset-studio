@@ -62,6 +62,9 @@ def merged(recipe):
             v = get(recipe, f["id"])
             if v is not None:
                 put(r, f["id"], v)
+    if get(recipe, "finish.mirror_face") is None and r["source"]["mode"] == "prompt":
+        # spegling som standard för grundkroppar; kläder och utrustning får vara osymmetriska (Patrik 2026-11-10)
+        r["finish"]["mirror_face"] = r["prompt"].get("outfit_preset") != "custom"
     for kind in ("style", "outfit"):   # äldre recept: egen text utan förval
         if (get(recipe, f"prompt.{kind}") or "").strip() and get(recipe, f"prompt.{kind}_preset") is None:
             r["prompt"][f"{kind}_preset"] = "custom"

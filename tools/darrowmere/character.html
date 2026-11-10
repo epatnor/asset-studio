@@ -323,6 +323,11 @@ function rigsControl(f) {
 // ---- planen från servern ------------------------------------------------------------------------------------------
 let planTimer = 0, planSeq = 0, lastPlan = null;
 function changed(id) {
+  if (id === "prompt.outfit_preset") {   // spegling som standard för grundkroppar, inte för egna kläder och utrustning
+    put(recipe, "finish.mirror_face", recipe.prompt.outfit_preset !== "custom");
+    const c = document.querySelector('.field[data-id="finish.mirror_face"] input');
+    if (c) { c.checked = recipe.finish.mirror_face; c.dispatchEvent(new Event("change")); }
+  }
   if (id === "level") {   // nivån väljer de prövade inställningarna; allt går att ändra efteråt
     for (const [k, v] of Object.entries((OPTS.levels || {})[recipe.level] || {})) put(recipe, k, clone(v));
     const open = [...document.querySelectorAll("details.adv")].map(d => d.open);
