@@ -128,6 +128,12 @@ eftersom armspannet är lika långt som kroppen (i stående format kapades händ
 motivet står först och kort ("bald young woman, straight-on front view, ..."). `tools/mesh/clean_floaters.py` tar bort
 lösa bitar om några ändå finns kvar.
 
+**Formfelen hos kusinen (mätt 2026-11-10)** beror inte på bildstorleken: i alla tre storlekarna gör Pixal3D armspannet
+107–110 % av längden (bilden 90,5 %, så händerna ungefär dubbelt så långa) och skallen 12–13 % bred mot MPFB:s 9,7 %, med
+vanligt djup (brett, platt kranium). Krea ritade redan huvudet 11,6 % brett. Figuren fyllde 98 % av bildhöjden med fötterna
+7 px från kanten. Felen sitter vid bildkanterna; oprövat är om det är T-posen eller den täta bildrutan (prov: T-pose tät,
+T-pose med marginal, A-pose med marginal). Vår Pixal3D-graf bygger på TRELLIS.2, så ett byte till TRELLIS ändrar troligen inget.
+
 Steg för en stiliserad figur, som det körs för trollkvinnan, frostsystern och kusinen (`build/characters/`):
 
 1. **Koncept:** Krea-2-bilder med regler i prompten: inget hår eller smycken i ansiktet, få skrymslen, gärna symmetrisk
