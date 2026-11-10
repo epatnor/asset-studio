@@ -358,7 +358,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   };
   editBody.append(editBtn, editMsg);
   function editState() {
-    renderSteps(); renderTex();
+    renderSteps(); renderTex(); renderFinal();
     const ok = !!openSaved?.edit;
     editBtn.disabled = !ok;
     editMsg.textContent = ok ? `Edit ${openSaved.name}${openSaved.recipe?.edits ? ' (it already has edits; you continue from them)' : ''}.` : openSaved ? `${openSaved.name} has no editor file: only fitted figures with a wrap can be edited.` : 'Open a saved, fitted figure in the drawer to edit its points.';
@@ -397,7 +397,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     const s = openSaved;
     bakeBtn.disabled = !s?.recipe?.wrap || !!baking;
     if (!baking) bakeMsg.textContent = !s ? 'Open a saved, fitted figure to bake its textures.' : !s.recipe?.wrap ? `${s.name} has no fit to bake the details from.` : bakeNote[s.name] ?? '';
-    bakedList.replaceChildren(...(s?.baked ?? []).map((b) => {
+    bakedList.replaceChildren(...(s?.baked ?? []).filter((b) => b.kind !== 'final').map((b) => {
       const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show');
       btn.title = `Show ${b.file} with its own materials (Clay off)`;
       btn.onclick = async () => { view3.clay = false; cards.sync(); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
@@ -421,6 +421,71 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     editState();
   };
 
+  // Den färdiga modellen (make_final.py): figuren med sina ändringar, ögonen och skelettet, normalkartan och färgen i en GLB
+  const finBody = cards.card('Finished model', '#3a9d6e', { help: 'The end of the flow: the rigged figure (with its edits and eyes) and its skin material, the detail normal map and the colour, in one GLB with checks (make_final.py). A new <name>_final.glb each time, never overwritten' });
+  keepCard(finBody);
+  const fin = { normal: 'auto', color: 'auto', skin: '#c9a48c', roughness: 0.55 };
+  const finGet = (k) => fin[k], finSet = (k, v) => { fin[k] = v; };
+  const finRows = el('div', 'rows');
+  const finBtn = el('button', 'primary', 'Build the finished model');
+  finBtn.title = 'One GLB with the rig, the eyes, the normal map and the colour; checked for rig, maps and a clean surface (check_normals)';
+  const finMsg = el('div', 'note'), finList = el('div', 'hu-baked');
+  finBody.append(finRows, finBtn, finMsg, finList);
+  const finNote = {};
+  let finishing = null, finFor = null;
+  const short = (f) => f.split('/').slice(-2).join('/');
+  function renderFinal() {
+    const s = openSaved, maps = s?.maps ?? { normal: [], color: [] };
+    if (finFor !== s?.name) { // en ny figur: de senaste kartorna förvalda
+      finFor = s?.name; fin.normal = maps.normal[0] ?? null; fin.color = maps.color[0] ?? null;
+    }
+    // Ett val bland kartorna, alltid som lista (filnamnen är långa)
+    const pick = (key, label, help, list, none) => {
+      const row = el('div', 'row span2'), sel = el('select');
+      row.title = help;
+      for (const f of list) sel.append(Object.assign(el('option', null, short(f)), { value: f, title: f }));
+      sel.append(Object.assign(el('option', null, none), { value: '' }));
+      sel.value = fin[key] ?? '';
+      sel.onchange = () => { fin[key] = sel.value || null; renderFinal(); };
+      row.append(el('label', null, label), sel);
+      return row;
+    };
+    finRows.replaceChildren(
+      pick('normal', 'Normal map', 'The detail normal map baked in the Textures card (MPFB\'s UV, so one from the figure this was built from fits too)', maps.normal, 'None'),
+      pick('color', 'Colour', 'A colour map baked onto MPFB\'s UV (transfer_texture.py); without one the skin gets one even colour', maps.color, 'Even skin colour'),
+      ...(fin.color ? [] : [cards.colorRow({ key: 'skin', label: 'Skin colour', help: 'The skin\'s even colour when there is no colour map' }, finGet, finSet)]),
+      cards.slider({ key: 'roughness', label: 'Roughness', min: 0.2, max: 1, step: 0.01, help: 'The skin\'s roughness (glTF metallic-roughness; 0.55 is a soft sheen)' }, finGet, finSet));
+    cards.sync();
+    finBtn.disabled = !s || !!finishing;
+    if (!finishing) finMsg.textContent = !s ? 'Open a saved figure to build its finished model.' : finNote[s.name] ?? (fin.normal || fin.color ? '' : 'No maps yet: bake the detail normal map first (Textures), or build it with the even skin colour.');
+    finList.replaceChildren(...(s?.baked ?? []).filter((b) => b.kind === 'final').map((b) => {
+      const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show'), a = Object.assign(el('a', 'hu-link', '⤓'), { href: b.file, download: b.file.split('/').pop(), title: 'Download the GLB' });
+      const i = b.info;
+      row.title = i ? `${i.tris} triangles, ${i.bones} bones, ${i.mb} MB; normal map: ${i.normal ?? 'none'}; colour: ${i.color ?? i.skin}; checks ${i.ok ? 'ok' : 'failed: ' + Object.entries(i.checks).filter(([, v]) => !v).map(([k]) => k).join(', ')}` : b.file;
+      btn.title = `Show ${b.file} with its own materials (Clay off)`;
+      btn.onclick = async () => { view3.clay = false; cards.sync(); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
+      row.append(el('span', `hu-kind final${i && !i.ok ? ' bad' : ''}`, i ? (i.ok ? 'ok' : 'check') : 'final'), el('span', null, b.file.split('/').pop()), el('span', 'hu-btns', ''));
+      row.lastChild.append(a, btn);
+      return row;
+    }));
+  }
+  finBtn.onclick = async () => {
+    const s = openSaved;
+    const r = await api('/api/human/final', { name: s.name, normal: fin.normal, color: fin.color, skin: fin.color ? undefined : fin.skin, roughness: fin.roughness });
+    if (r.error) { finMsg.textContent = `Not started: ${r.error}`; return; }
+    finishing = r.job; renderFinal();
+    finMsg.textContent = `Building ${r.out.split('/').pop()}…`;
+    const res = await poll(r.job);
+    finishing = null;
+    const bad = res.checks ? Object.entries(res.checks).filter(([, v]) => !v).map(([k]) => k) : [];
+    finNote[s.name] = res.url ? `Built ${res.out.split('/').pop()}: ${res.tris} triangles, ${res.bones} bones, ${res.mb} MB, ${res.ok ? 'all checks ok' : `failed: ${bad.join(', ')}`}` : `Not built: ${res.error ?? 'no model'}`;
+    await refreshSaved();
+    openSaved = info.saved.find((x) => x.name === s.name) ?? openSaved;
+    editState();
+    if (res.url) { view3.clay = false; cards.sync(); await showFigure({ url: res.url, rigged: res.url }); }
+    lamp(res.ok ? 'ok' : 'bad', finNote[s.name]);
+  };
+
   // --- Flödet (Patrik 2026-11-10): varje figur börjar som ett koncept och slutar som en färdig, redigerad och bakad
   // modell med alla texturer. Stegen överst i vyn visar var den öppnade figuren står, och ett klick tar en dit.
   const steps = el('div', 'hu-steps');
@@ -428,13 +493,15 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   const scrollTo = (b) => { const c = b.parentElement; c.classList.remove('closed'); c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   function stepList() {
     const s = openSaved, r = s?.recipe, detail = s?.baked?.some((b) => b.kind === 'detail'), color = s?.baked?.some((b) => b.kind === 'color');
+    const ver = (b) => Number(/_final_v(\d+)\.glb$/.exec(b.file)?.[1] ?? 1);
+    const finals = (s?.baked ?? []).filter((b) => b.kind === 'final').sort((a, b) => ver(b) - ver(a)); // den senaste först
     return [
       ['concept', 'Concept', r?.target ? 'done' : 'todo', r?.target ? 'The concept became an AI model (see AI model)' : 'Every figure starts as a concept: order reference pictures or a Krea picture on Darrowmere', () => { if (!r?.target) open(info.links.order.url, '_blank'); else scrollTo(fitBody); }],
       ['model', 'AI model', r?.target ? 'done' : 'todo', r?.target ? `AI shape: ${r.target}` : 'A Pixal3D model from the concept, ordered on Darrowmere (it lands in the Fit card\'s list)', () => { if (!r?.target) open(info.links.order.url, '_blank'); else scrollTo(fitBody); }],
       ['body', 'Body', s || lastBuild ? (r?.wrap ? 'done' : 'part') : 'todo', r?.wrap ? 'Fitted: sliders and a wrap to the AI shape' : 'Sliders only; fit an AI shape for the wrap', () => scrollTo(r?.wrap ? fitBody : side.querySelector('.card .rows'))],
       ['edit', 'Edit', r?.edits ? 'done' : s?.edit ? 'todo' : 'na', r?.edits ? `Edited by hand (${r.edits})` : s?.edit ? 'Drag points by hand where the fit is off' : 'Needs a saved, fitted figure', () => { if (s?.edit) editBtn.click(); else scrollTo(editBody); }],
       ['textures', 'Textures', detail && color ? 'done' : detail || color ? 'part' : s?.recipe?.wrap ? 'todo' : 'na', `${detail ? 'Detail normal map: baked' : 'Detail normal map: not baked'} · ${color ? 'colour: baked' : 'colour: missing'}`, () => scrollTo(texBody)],
-      ['done', 'Finished', detail && color ? 'done' : 'todo', 'A finished model: edited, rigged, with its normal map and colour in one GLB (not built yet: see the list in docs/asset-studio.md)', () => scrollTo(texBody)],
+      ['done', 'Finished', finals.some((b) => b.info?.ok && b.info.normal && b.info.color) ? 'done' : finals.length ? 'part' : 'todo', finals.length ? `Finished model: ${finals[0].file.split('/').pop()}${finals[0].info?.color ? '' : ' (no colour map yet)'}` : 'A finished model: the rigged figure with its edits, normal map and colour in one GLB', () => scrollTo(finBody)],
     ];
   }
   function renderSteps() {

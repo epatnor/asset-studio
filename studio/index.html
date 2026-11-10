@@ -476,6 +476,8 @@
   .hu-bakedrow > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hu-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--ink-2); }
   .hu-kind.color { background: color-mix(in srgb, var(--warn) 25%, transparent); }
+  .hu-kind.final { background: color-mix(in srgb, var(--good, #3a9d6e) 30%, transparent); }
+  .hu-kind.final.bad { background: color-mix(in srgb, var(--bad, #d9534f) 30%, transparent); }
   .hu-btns { display: flex; gap: 6px; } .hu-btns button { flex: 1; justify-content: center; }
   .hu-link { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 12.5px; padding: 2px 0; } .hu-link:hover { text-decoration: underline; }
   .hu-overlay { position: fixed; z-index: 2; left: calc(288px + var(--gap) * 2); right: calc(350px + var(--gap) * 2); top: calc(var(--head) + var(--gap)); bottom: calc(var(--foot) + var(--gap));

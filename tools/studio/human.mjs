@@ -13,6 +13,8 @@
 //                               (tools/character/human/EDITS.md) som en ny fil build/human/edits/<namn>_v<n>.json, och
 //                               figuren byggd om med dem till <namn>_e<n>
 // POST /api/human/bake          { name } -> { job, out }: detaljernas normalkarta (bake_detail.py) till <namn>_detail.glb
+// POST /api/human/final         { name, normal, color, skin, roughness } -> { job, out }: den färdiga modellen (make_final.py):
+//                               figuren med normalkartan och färgen i en GLB, <namn>_final(_v<n>).glb + .json
 // POST /api/human/thumb         { name, thumbnail } -> <name>_thumb.jpg för en sparad figur som saknar miniatyr
 // POST /api/human/editor        startar Body Editor på värden (tools/character/body/editor/launch.sh)
 // GET  /api/human/job?id=       ett jobbs status eller resultat
@@ -202,8 +204,19 @@ export function createHumanApi({ ROOT, onHost }) {
       const edit = existsSync(path.join(ROOT, CHARS, n, `${n}_edit.json`)) ? `/${CHARS}/${n}/${n}_edit.json` : null;
       // Bakade varianter bredvid figuren: detaljernas normalkarta (bake_detail.py) och färg (transfer_texture.py)
       const baked = (await readdir(path.join(ROOT, CHARS, n))).filter((f) => f.endsWith('.glb') && f !== `${n}.glb` && f !== `${n}_pose.glb`)
-        .map((f) => ({ file: `/${CHARS}/${n}/${f}`, kind: /_detail(_v\d+)?\.glb$/.test(f) ? 'detail' : /_tex/.test(f) ? 'color' : 'other' }));
-      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, t: st.mtimeMs });
+        .map((f) => ({ file: `/${CHARS}/${n}/${f}`, kind: /_final(_v\d+)?\.glb$/.test(f) ? 'final' : /_detail(_v\d+)?\.glb$/.test(f) ? 'detail' : /_tex/.test(f) ? 'color' : 'other' }));
+      for (const b of baked) if (b.kind === 'final') b.info = await readJson(b.file.slice(1).replace(/\.glb$/, '.json')).catch(() => null);
+      // Kartorna som den färdiga modellen kan använda: bredvid figuren och hos figuren den byggdes ur (samma UV)
+      const maps = { normal: [], color: [] };
+      for (const d of [n, typeof recipe?.from === 'string' && recipe.from !== 'fit' ? recipe.from : null]) {
+        if (!d || !existsSync(path.join(ROOT, CHARS, d))) continue;
+        for (const f of await readdir(path.join(ROOT, CHARS, d))) {
+          const kind = /_detail(_v\d+)?_normal\.png$/.test(f) ? 'normal' : /_color\.png$/.test(f) ? 'color' : null;
+          if (kind) maps[kind].push({ file: `${CHARS}/${d}/${f}`, t: (await stat(path.join(ROOT, CHARS, d, f))).mtimeMs });
+        }
+      }
+      for (const k of ['normal', 'color']) maps[k] = maps[k].sort((a, b) => b.t - a.t).map((m) => m.file);
+      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, maps, t: st.mtimeMs });
     }
     return out.sort((a, b) => b.t - a.t);
   }
@@ -235,6 +248,24 @@ export function createHumanApi({ ROOT, onHost }) {
       return { ...res, url: res.out ? `/${res.out}` : null, png: res.png ? `/${res.png}` : null };
     });
     baking = j.id;
+    return { job: j.id, out };
+  }
+
+  // Den färdiga modellen (make_final.py): figuren, ögonen och skelettet med normalkartan och färgen i en GLB
+  async function final({ name, normal, color, skin, roughness }) {
+    if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name, `${name}.glb`))) return { error: 'no such figure' };
+    const map = (v, re) => v === undefined || v === 'auto' ? 'auto' : v === null ? null : typeof v === 'string' && re.test(v) && inside(v) && existsSync(inside(v)) ? v : undefined;
+    const r = { name, normal: map(normal, /^assets\/characters\/[\w-]+\/[\w-]+_normal\.png$/), color: map(color, /^assets\/characters\/[\w-]+\/[\w-]+_color\.png$/) };
+    if (r.normal === undefined || r.color === undefined) return { error: 'a map must be a _normal.png or _color.png under assets/characters' };
+    if (skin != null) { if (!/^#[0-9a-f]{6}$/i.test(skin)) return { error: 'skin must be a hex colour like #c9a48c' }; r.skin = skin; }
+    if (roughness != null) { const x = Number(roughness); if (!(x >= 0 && x <= 1)) return { error: 'roughness must be 0..1' }; r.roughness = x; }
+    let out = `${CHARS}/${name}/${name}_final.glb`, v = 2;
+    while (existsSync(path.join(ROOT, out))) out = `${CHARS}/${name}/${name}_final_v${v++}.glb`; // aldrig över
+    r.out = out;
+    const j = job('final', name, async () => {
+      const res = await run(`${HUMAN}/make_final.py`, r);
+      return { ...res, url: res.out ? `/${res.out}` : null };
+    });
     return { job: j.id, out };
   }
 
@@ -295,6 +326,7 @@ export function createHumanApi({ ROOT, onHost }) {
     else if (p === '/api/human/fit' && req.method === 'POST') json(res, 200, await fit(await body(req)));
     else if (p === '/api/human/upload' && req.method === 'POST') json(res, 200, await upload(req, url.searchParams.get('name')));
     else if (p === '/api/human/bake' && req.method === 'POST') json(res, 200, await bake(await body(req)));
+    else if (p === '/api/human/final' && req.method === 'POST') json(res, 200, await final(await body(req)));
     else if (p === '/api/human/edits' && req.method === 'POST') json(res, 200, await edits(await body(req)));
     else if (p === '/api/human/thumb' && req.method === 'POST') json(res, 200, await thumb(await body(req)));
     else if (p === '/api/human/editor' && req.method === 'POST') json(res, 200, await editor());

@@ -182,8 +182,16 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
 - **Textures:** *Bake the detail normal map* kör `bake_detail.py` (AI-formens relief som normalkarta på MPFB:s UV) till
   en ny `<namn>_detail.glb` (`/api/human/bake`, några minuter); bakade filer listas med *Show*. Färgen beställs som
   UltraTex på Darrowmere och bakas med `transfer_texture.py`, som ännu inte är en knapp.
+- **Finished model:** *Build the finished model* kör `make_final.py` (`/api/human/final`, ca 4 s): den riggade figuren
+  med sina ändringar, ögonen och skelettet får hudens material (färgkartan eller en jämn hudfärg, normalkartan,
+  ruffighet) i en ny `<namn>_final(_v<n>).glb` med en `.json` bredvid (källorna och kontrollerna: rigg, ögon, kartorna
+  kopplade, kvadratiska texturer, ytan med `check_normals.mjs`, under 40 MB). Kortet förväljer de senaste kartorna
+  bredvid figuren eller hos figuren den byggdes ur (receptets `from`; alla delar MPFB:s UV). Den färdiga filen listas
+  med *Show* och nedladdning. `syssling_wrap20_final.glb`: 10 806 trianglar, 53 ben, 2,9 MB, alla kontroller ok (än
+  utan färgkarta).
 - **Flödet:** en rad överst i vyn, Concept → AI model → Body → Edit → Textures → Finished, med status för den öppnade
-  figuren och ett klick till steget (Concept och AI model leder till beställningen på Darrowmere).
+  figuren och ett klick till steget (Concept och AI model leder till beställningen på Darrowmere). Finished är klart när
+  en färdig modell med normalkarta och färgkarta klarar alla kontroller, och delvis klart med en färdig modell utan dem.
 
 ### Från koncept till färdig modell: brister (2026-11-10)
 
@@ -203,8 +211,8 @@ saknas än:
    editorfil.
 5. **Färgen:** UltraTex beställs inte från studion, och `transfer_texture.py` (färgen bakad på MPFB:s UV) är ingen knapp
    här än; ingen hudinställning (ruffighet, subsurface), ingen AO eller krökning i bakningen, fast 2048 px.
-6. **Den färdiga modellen:** ingen fil som samlar ändringarna, riggen, ögonen, normalkartan och färgen i en GLB; ingen
-   export till Godot för figurer (`export_world.mjs` gäller världar); inga LOD-nivåer; figurerna finns inte i The Vault.
+6. **Den färdiga modellen:** en GLB med allt finns nu (`make_final.py`, kortet Finished model); kvar är exporten till
+   Godot för figurer (`export_world.mjs` gäller världar), LOD-nivåer och figurerna i The Vault.
 7. **Kroppen:** ansiktet, håret och kläderna (flikarna är markerade som kommande); fingrarna sitter ihop i spelnätet;
    armhålorna kläms när armarna rör sig (deformationstestet finns inte än).
 
