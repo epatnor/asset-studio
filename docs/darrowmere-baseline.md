@@ -4,6 +4,12 @@ Utgångsläge 2026-11-07, före Xeon X5680 och 48 GB minne (beställda 2026-11-0
 Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/bench.py`
 (`python3 -I tools/darrowmere/bench.py --remote`, körs när Darrowmere är ledig).
 
+**2026-11-10: minnet isatt, processorn kvar.** 48 GB sitter i: 6 × 8 GB, två moduler i var och en av de tre kanalerna, och
+EDAC ser alla sex (49 152 MB, kärnan 47 GiB). Processorn är fortfarande i7-920. bench.py 16:52 (last 0,4) ger samma värden
+som före, som väntat, eftersom mängden minne inte ändrar bandbredden: Python 1,82 s, sha256 230/814 MB/s, AES 192 MB/s,
+minneskopiering 1,69 GB/s, NVMe 1 500 MB/s, nedladdning 91 Mbit/s. Båda korten och båda ComfyUI-tjänsterna (8188 T1000,
+8189 M4000) kom upp. Minnesskyddet (taken 14G/10G och earlyoom) sitter kvar tills vidare.
+
 ## Hårdvara
 
 | Del | Före (2026-11-07) | Efter |
