@@ -179,3 +179,9 @@ Sysslingen (`syssling_wrap4`, mall→AI i medel): bål 5,8 → 0,3 mm, huvud 7,4
 ben 8,6 → 6,1 mm; kontrollerna (fötter på marken, symmetri, budget, rigg) håller. Kvar: AI-ytans punkter långt från
 mallen (p95 121 mm, troligen händerna, som är fasta och står annorlunda), armar och ben som inte når hela vägen
 (symmetrin tar medel av två olika sidor), och ingen textur än (UltraTex-order `syssling-wrap-1110-1103`).
+
+**Texturen på MPFB:s UV (2026-11-10):** UltraTex lägger en egen UV och tappar riggen (och flyttar nätet 0,83 m uppåt).
+`tools/character/human/transfer_texture.py` bakar därför källans färg (selected to active, Cycles på processorn) till
+MPFB-kroppens egen UV i samma pose och lägger bilden på den riggade figuren, med påfyllning runt öarna (16 px).
+UltraTex ska få figuren i referensens pose (`<namn>_pose.glb`), inte viloposen, annars hamnar projektionen fel på armarna.
+Prov på viloposens textur: 99,9 % täckning, rigg och ögon kvar (`assets/characters/syssling_fit/syssling_fit_tex_test.glb`).
