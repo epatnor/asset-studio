@@ -219,6 +219,14 @@ passar in på varje kropp.
 **Omgång 13:** normalkartan är plan på händer och fötter (vikterna sparas i `wrap_debug.npz` som `hand` och `foot`):
 Pixal3D:s ihopsmälta händer bakade ränder och block på MPFB:s fingrar i omgång 12, och fötterna hade sulor.
 
+**AI-former med hår (`ignore_hair`, 2026-11-10):** med `{"ignore_hair": true}` skalas AI-formen efter halsens höjd (det
+smalaste snittet under huvudets bredaste) i stället för hela höjden, AI-ytan ovanför brynen räknas inte i mätningen och
+reglagen, hjässan följer MPFB:s form i wrapen, och nacke och rygg dras bara mot ytan inom 2 cm (långt hår hänger över
+dem). `ai_transform` i resultatet har `base_scale` (skalan före inpassningens egen) och `scale_from` ("neck" eller
+"height"), så att studions vy kan skala likadant. Prov på body-gens bikinikvinna med uppstående hästsvans
+(`hairtest_ponytail_false/true`): utan blev hjässan en hjälm i hårets form, med blev den rund; bålen 15,4 → 11,2 mm,
+AI-ytan till kroppen efter wrap 8,2 → 5,1 mm. Standard är false (skalliga referenser, som sysslingen).
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

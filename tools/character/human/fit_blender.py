@@ -201,13 +201,39 @@ TV0, TF = np.concatenate(tv), np.concatenate(tf)
 
 XF = {"s": 1.0, "t": np.zeros(3), "rx": 0.0}   # AI-formens extra skala och förflyttning, som inpassningen själv letar fram
 
+IGNORE_HAIR = bool(job.get("ignore_hair", False))
+HAIR = {"brow": None}
+
+
+def neck_z(X):
+    """Halsens höjd: det smalaste vågräta snittet (bredd i x nära mitten) mellan axlarna och huvudets bredaste ställe.
+    Hår och knut ovanför huvudet räknas inte, eftersom sökningen slutar vid huvudets bredaste snitt."""
+    z0, h = X[:, 2].min(), np.ptp(X[:, 2]); cx = np.median(X[:, 0])
+    fs = np.arange(0.70, 1.0, 0.005); w = np.zeros(len(fs))
+    for k, f in enumerate(fs):
+        sl = (np.abs(X[:, 2] - (z0 + f * h)) < 0.004 * h / 1.65) & (np.abs(X[:, 0] - cx) < 0.15 * h / 1.65)
+        w[k] = np.ptp(X[sl, 0]) if sl.sum() > 6 else 0
+    head = np.argmax(np.where(fs >= 0.84, w, 0))
+    cand = [k for k in range(len(fs)) if fs[k] >= 0.72 and k < head and w[k] > 0]
+    k = min(cand, key=lambda k: w[k]) if cand else int(0.86 / 0.005)
+    return float(z0 + fs[k] * h)
+
+
 def place_target(P, yaw):
     """AI-formen skalad till mallens längd, på marken, centrerad efter kroppen under axlarna (hår och knut räknas inte),
-    och sedan XF: den skala och förflyttning som inpassningen har letat fram."""
+    och sedan XF: den skala och förflyttning som inpassningen har letat fram. Med ignore_hair skalas den efter halsens höjd
+    i stället för hela höjden (en knut eller hög frisyr gjorde annars kroppen för liten)."""
     V = TV0.copy()
     if yaw:
         V[:, :2] *= -1
-    s = (P[:, 2].max() - P[:, 2].min()) / (V[:, 2].max() - V[:, 2].min())
+    if IGNORE_HAIR:
+        PB = P[idx]
+        s = (neck_z(PB) - PB[:, 2].min()) / (neck_z(V) - V[:, 2].min())
+        top = PB[REG["head"][idx], 2].max() if REG["head"][idx].any() else PB[:, 2].max()
+        HAIR["brow"] = top - 0.40 * (top - neck_z(PB))   # ungefär brynens höjd: ovanför är det hår på AI-formen
+    else:
+        s = (P[:, 2].max() - P[:, 2].min()) / (V[:, 2].max() - V[:, 2].min())
+    HAIR["base_scale"] = float(s)
     V *= s; V[:, 2] -= V[:, 2].min() - P[:, 2].min()
     lowV = V[V[:, 2] < V[:, 2].min() + 0.75 * np.ptp(V[:, 2])]; lowP = P[idx][P[idx, 2] < P[:, 2].min() + 0.75 * np.ptp(P[:, 2])]
     for k in (0, 1):
@@ -219,21 +245,31 @@ def place_target(P, yaw):
 def surf(V):
     bvh = BVHTree.FromPolygons([tuple(p) for p in V], [tuple(f) for f in TF], all_triangles=True)
     S = V[rng.choice(len(V), min(len(V), 40000), replace=False)]
+    if IGNORE_HAIR and HAIR["brow"] is not None:   # AI-ytan ovanför brynen är hår: räknas inte
+        S = S[S[:, 2] < HAIR["brow"]]
     return bvh, S
+
+
+def fit_idx(P):
+    """Mallens punkter som mäts och dras: utan hjässan när AI-formen har hår (den följer MPFB:s form)."""
+    if IGNORE_HAIR and HAIR["brow"] is not None:
+        return idx[P[idx, 2] < HAIR["brow"]]
+    return idx
 
 def measure(P, bvh, S):
     """Avstånd åt båda hållen, per område: mallens punkter till AI-ytan och AI-ytans punkter till mallens närmaste punkt."""
-    fw = np.array([bvh.find_nearest(Vector(P[i]))[3] for i in idx])
+    keep = set(fit_idx(P).tolist())
+    fw = np.array([bvh.find_nearest(Vector(P[i]))[3] if i in keep else np.nan for i in idx])
     kd = KDTree(len(idx))
     for j, i in enumerate(idx):
         kd.insert(P[i], j)
     kd.balance()
     bw = np.array([kd.find(Vector(q))[2] for q in S])
-    res = {"mean_mm": round(1000 * float((fw.mean() + bw.mean()) / 2), 1), "to_ai_p95_mm": round(1000 * float(np.percentile(fw, 95)), 1),
+    res = {"mean_mm": round(1000 * float((np.nanmean(fw) + bw.mean()) / 2), 1), "to_ai_p95_mm": round(1000 * float(np.nanpercentile(fw, 95)), 1),
            "from_ai_p95_mm": round(1000 * float(np.percentile(bw, 95)), 1)}
     for k, m in REG.items():
         sel = m[idx] & True
-        res[k + "_mm"] = round(1000 * float(fw[sel].mean()), 1)
+        res[k + "_mm"] = round(1000 * float(np.nanmean(fw[sel])), 1) if np.isfinite(fw[sel]).any() else None
     return res
 
 def pose_search(bvh):
@@ -322,9 +358,10 @@ for it in range(int(job.get("iterations", 5))):
     J = np.concatenate([J, np.eye(3)[None].repeat(NV, 0), P[:, :, None], rot[:, :, None]], -1)   # tx, ty, tz, skala, lutning
     # mallens punkter mot AI-ytan, längs ytans normal (glider längs ytan, fastnar inte)
     rows, rhs, wts = [], [], []
-    near = [bvh.find_nearest(Vector(P[i])) for i in idx]
+    fi_ = fit_idx(P)
+    near = [bvh.find_nearest(Vector(P[i])) for i in fi_]
     d = np.array([n[3] for n in near]); cut = np.percentile(d, 95)
-    for i, n in zip(idx, near):
+    for i, n in zip(fi_, near):
         if n[3] > cut:
             continue
         nn = np.array(n[1]); t = np.array(n[0])
@@ -476,6 +513,13 @@ if job.get("wrap", True):
         rigid_dbg[sd] = {"hand": int(hm.sum()), "ring": int(ring.sum()), "wrist_to_nearest_mm": round(1000 * float(np.linalg.norm(P0 - wri, axis=1).min()), 1),
                          "max_hand_w": round(float(handw[side].max()), 2)}
         zones = {"brow_verts": int((brow > 0.5).sum()), "ear_verts": int((ear > 0.5).sum()), "bust_verts": int((chest > 0.5).sum())}
+    # hår på AI-formen (ignore_hair): hjässan följer MPFB:s form, och nacke och rygg dras bara när ytan ligger nära (långt
+    # hår hänger annars över dem)
+    hair_back = np.zeros(PN, bool)
+    if IGNORE_HAIR and HAIR["brow"] is not None:
+        data_w[P0[:, 2] > HAIR["brow"]] = 0
+        nz = neck_z(P0); ymid = float(np.median(P0[np.abs(P0[:, 2] - (nz - 0.08)) < 0.02, 1]))
+        hair_back = (P0[:, 2] > nz - 0.18) & (P0[:, 1] > ymid)
     # spegelpar
     kd = KDTree(PN)
     for i in range(PN):
@@ -500,7 +544,7 @@ if job.get("wrap", True):
                 if data_w[i] <= 0:
                     continue
                 loc, nrm, fi, dist = bvh.find_nearest(Vector(X[i]))
-                if loc is None or dist > cap or float(np.dot(np.array(nrm), Nx[i])) < 0.3:
+                if loc is None or dist > cap or float(np.dot(np.array(nrm), Nx[i])) < 0.3 or (hair_back[i] and dist > 0.02):
                     continue
                 r_[i] = np.array(loc) - X[i]; conf[i] = data_w[i]
             dlt = np.zeros_like(X)
@@ -554,7 +598,7 @@ if job.get("wrap", True):
     w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
     sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
     wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,
-            "eyes": len(eyes), "zones": zones, "hands_low": hand_info, "rigid_hands": len(rigid), "rigid_dbg": rigid_dbg, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
+            "eyes": len(eyes), "zones": zones, "hands_low": hand_info, "rigid_hands": len(rigid), "ignore_hair": IGNORE_HAIR, "brow_z": None if HAIR["brow"] is None else round(HAIR["brow"], 3), "rigid_dbg": rigid_dbg, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
             "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1).mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]
@@ -579,5 +623,5 @@ recipe["sliders"] = {k: v for k, v in recipe["sliders"].items() if abs(v) >= 0.0
 if wrap:
     recipe["wrap"] = wrap["file"]
 json.dump(recipe, open(os.path.join(out, "recipe.json"), "w"), indent=1)
-print("FIT_RESULT " + json.dumps({"recipe": recipe, "ai_transform": {"scale": round(XF["s"], 4), "move_mm": (XF["t"] * 1000).round(1).tolist(), "lean_deg": round(float(np.degrees(XF["rx"])), 2)}, "start": start, "end": end, "log": log, "facing_flipped": bool(yaw), "wrap": wrap,
+print("FIT_RESULT " + json.dumps({"recipe": recipe, "ai_transform": {"base_scale": round(HAIR.get("base_scale", 1.0), 5), "scale_from": "neck" if IGNORE_HAIR else "height", "scale": round(XF["s"], 4), "move_mm": (XF["t"] * 1000).round(1).tolist(), "lean_deg": round(float(np.degrees(XF["rx"])), 2)}, "start": start, "end": end, "log": log, "facing_flipped": bool(yaw), "wrap": wrap,
                                   "overlay": os.path.join(out, "overlay.png")}))

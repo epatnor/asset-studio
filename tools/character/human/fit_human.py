@@ -4,7 +4,7 @@ grundnät likt en AI-form (Pixal3D-GLB) och bygger figuren med make_human.py.
   python3 -I tools/character/human/fit_human.py '{"name": "cousin_fit", "target": "<pixal3d.glb>", "sex": 0}'
 
 Recept: name, target (GLB), sex (låst), age (låst, år), wrap (standard true: grundnätet tight mot AI-ytan efter reglagen,
-sparat som wrap.npy och shape key), symmetric (standard true), fine (standard true: två finare steg), subdiv (proxyns uppdelning, 1), övriga makron som startvärden, fit_macros (standard muscle,
+sparat som wrap.npy och shape key), symmetric (standard true), fine (standard true: två finare steg), ignore_hair (standard false: AI-formen har hår; skalan efter halsen, hjässan följer MPFB), subdiv (proxyns uppdelning, 1), övriga makron som startvärden, fit_macros (standard muscle,
 weight, proportions, bust_size), skip_sliders, iterations (5), reg (dragningen mot standardvärdena, 1e-5).
 Skriver build/human/fit/<name>/recipe.json och overlay.png (före och efter: rött = AI, blått = mallen, vitt = båda),
 och figuren i assets/characters/<name>/ (eller out_dir). Svarar med en rad JSON.
@@ -23,7 +23,7 @@ def main():
     name = r.get("name") or "fit"
     target = Path(r["target"]).expanduser().resolve()
     out = ROOT / "build/human/fit" / name
-    job = {**{k: v for k, v in r.items() if k in ("fit_macros", "skip_sliders", "iterations", "reg", "wrap", "symmetric", "fine", "subdiv", "elbows")},
+    job = {**{k: v for k, v in r.items() if k in ("fit_macros", "skip_sliders", "iterations", "reg", "wrap", "symmetric", "fine", "subdiv", "elbows", "ignore_hair")},
            "start": r, "target": str(target), "out": str(out), "catalog": str(HERE / "human_sliders.json")}
     cmd = blender_cmd()
     if cmd[:1] == ["host-spawn"] or cmd[:1] == ["flatpak"]:
