@@ -64,7 +64,8 @@ def build(raw):
     for p in plans.values():
         for s in p["steps"]:
             for f in s.get("files") or []:
-                owner[(f.get("subfolder") or "", f.get("filename"))] = (p["id"], s.get("key"))
+                if isinstance(f, dict):   # en trasig plan får aldrig fälla galleriet
+                    owner[(f.get("subfolder") or "", f.get("filename"))] = (p["id"], s.get("key"))
     groups = {}
     by_dir = {}
     for f in raw["files"]:

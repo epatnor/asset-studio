@@ -25,7 +25,7 @@ def main():
                                                 "project": "asset-studio", "use": "test-only", "created": time.time(), "steps": []}
     plan["steps"] = [s for s in plan["steps"] if s["key"] != r["key"]] + [
         {"key": r["key"], "label": r["label"], "kind": "script", "status": "done", "note": r.get("note", ""),
-         "files": list(r["files"].values()), "end": time.time()}]
+         "files": [{"filename": n, "subfolder": f"orders/{OID}/{r['key']}"} for n in r["files"].values()], "end": time.time()}]
     plan["steps"].sort(key=lambda s: s["key"])
     plan["updated"] = time.time(); plan["order_status"] = "done"
     subprocess.run(SSH + [f"mkdir -p /data/utdata/pipelines && cat > {plan_path}.tmp && mv {plan_path}.tmp {plan_path}"],
