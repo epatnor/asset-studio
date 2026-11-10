@@ -224,7 +224,10 @@ function heroes(g) {
     return Object.values(byStem);
   }
   if (!g.order) return [];
-  const pics = g.items.filter(i => i.kind === "render" || i.kind === "image");
+  // An image order (no model): every image as its own card, in the order they were made, not hidden under Files
+  const imgs = g.items.filter(i => i.kind === "image").sort((a, b) => a.mtime - b.mtime);
+  if (imgs.length) return imgs;
+  const pics = g.items.filter(i => i.kind === "render");
   return pics.length ? [pics.reduce((a, b) => b.mtime > a.mtime ? b : a)] : [];
 }
 function rcard(g, i, rank) {
