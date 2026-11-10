@@ -19,7 +19,7 @@
 //                               på MPFB:s UV, aldrig över; en .json bredvid minns grunden
 // POST /api/human/ref?name=&file=    en referensbild i kroppen (PNG, JPEG, WebP) -> build/human/refs/<namn>/: målningens
 //                               bilder sparas per figur och listas som refs
-// POST /api/human/genview      { name, render, refs, prompt, aspect, camera, rect, confirm } -> utan confirm ett prisförslag
+// POST /api/human/genview      { name, render, refs, prompt, aspect, camera, rect, model, confirm } -> utan confirm ett prisförslag
 //                               { quote }, med confirm ett jobb: gpt-image-2 (OpenRouter, tools/texture/openrouter_image.py)
 //                               ritar vyn (render, en bild av figuren från en udda vinkel) som en ny referens i samma stil
 //                               som refs -> build/human/refs/<namn>/view_<n>.png + .json (kameran, rutan, prompten, kostnaden)
@@ -322,9 +322,11 @@ export function createHumanApi({ ROOT, onHost }) {
 
   // En ny referensbild för en udda vinkel: renderingen från studion (figuren i vinkeln, med det som är målat) och de
   // tidigare referenserna till gpt-image-2, som ritar vyn i samma stil. Kostar pengar: utan confirm bara ett prisförslag.
-  const GEN_MODEL = 'openai/gpt-image-2', GEN_QUOTE = 'about 0.03-0.06 USD (OpenRouter; earlier gpt-image-2 pictures with reference images cost 0.02-0.03 USD)';
   let generating = null;
-  async function genview({ name, render, refs = [], prompt, aspect, camera, rect, confirm }) {
+  async function genview({ name, render, refs = [], prompt, aspect, camera, rect, model, confirm }) {
+    const models = (await readJson(`${HUMAN}/params.json`)).paint?.models ?? [];
+    const M = models.find((x) => x.id === (model ?? models[0]?.id));
+    if (!M) return { error: `unknown picture model ${model}` };
     if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name))) return { error: 'no such figure' };
     const m = /^data:image\/png;base64,(.+)$/.exec(render ?? '');
     if (!m) return { error: 'the view must be a PNG data URL' };
@@ -337,7 +339,7 @@ export function createHumanApi({ ROOT, onHost }) {
       files.push(f);
     }
     if (typeof prompt !== 'string' || prompt.length < 20 || prompt.length > 4000) return { error: 'the prompt must be 20 to 4000 characters' };
-    if (!confirm) return { quote: { model: GEN_MODEL, price: GEN_QUOTE, refs: files.length } };
+    if (!confirm) return { quote: { model: M.id, label: M.label, price: `${M.price} (OpenRouter)`, refs: files.length } };
     if (generating) return { error: 'a picture is already being generated; wait for it', job: generating };
     const dir = `build/human/genview/${name}`;
     await mkdir(path.join(ROOT, dir), { recursive: true });
@@ -347,10 +349,10 @@ export function createHumanApi({ ROOT, onHost }) {
     const shot = `${dir}/render_${v}.png`, out = `${REFS}/${name}/view_${v}.png`;
     await writeFile(path.join(ROOT, shot), Buffer.from(m[1], 'base64'));
     const j = job('gen', name, async () => {
-      const res = await run('tools/texture/openrouter_image.py', { prompt, out, model: GEN_MODEL, aspect, refs: [shot, ...files] });
+      const res = await run('tools/texture/openrouter_image.py', { prompt, out, model: M.id, aspect, refs: [shot, ...files] });
       generating = null;
       if (!res.out) return { ok: false, error: res.error ?? 'no picture' };
-      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: GEN_MODEL, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
+      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: M.id, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
       return { ok: true, url: `/${out}`, cost: res.cost ?? null, ms: res.ms };
     });
     generating = j.id;

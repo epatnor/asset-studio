@@ -196,9 +196,12 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   i texturen (mätt: #c9a48c blir 201/164/140, en full klick #3a7bd5 blir 58/123/213).
 - **Generate this view…** (i målningens kort): en ny referensbild för en udda vinkel. Studion renderar figuren som den
   syns nu (med det som är målat), skär ut en ruta runt kroppen i 2:3, 1:1 eller 3:2 (1024 px på längden) och skickar den
-  först, följd av upp till fyra referenser (Patriks egna före tidigare genererade), till gpt-image-2 via OpenRouter
-  (`/api/human/genview`, `tools/texture/openrouter_image.py`) med en prompt som går att ändra i kortet (samma person och
-  stil, exakt pose, vinkel och utsnitt, grå bakgrund, inget hår över ansiktet, inga smycken). Det kostar pengar: utan
+  först, följd av upp till fyra referenser (Patriks egna före tidigare genererade), till en bildmodell via OpenRouter
+  (`/api/human/genview`, `tools/texture/openrouter_image.py`; modellerna och priserna under `paint.models` i
+  `tools/character/human/params.json`: Qwen Image 3, Krea K3 Edit, FLUX 3, gpt-image-2) med en prompt som går att ändra
+  i kortet (samma person och stil, samma kläder som referensen, exakt pose, vinkel och utsnitt, grå bakgrund, inget hår
+  över ansiktet, inga smycken). gpt-image-2 nekade första provet 2026-11-10 (sysslingen snett bakifrån, referensen i
+  grått underkläde): OpenAIs säkerhetsfilter, "sexual". Det kostar pengar: utan
   `confirm` svarar servern bara med ett prisförslag, och appen frågar med priset innan bilden beställs. Bilden hamnar i
   `build/human/refs/<namn>/view_<n>.png` med en `.json` (kameran, rutan i förhållande till vyns höjd, prompten,
   referenserna, kostnaden), renderingen i `build/human/genview/<namn>/`. Bilden läggs över vyn på rutan den ritades för,

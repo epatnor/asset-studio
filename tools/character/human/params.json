@@ -64,6 +64,15 @@
     {"key": "ignore_hair", "label": "Ignore hair", "type": "bool", "default": false, "sub": "the AI shape has hair: scale from the neck", "help": "For an AI shape with hair: the scale comes from the neck instead of the full height, the surface above the brows is not measured, the scalp keeps MPFB's shape and the neck and back are pulled only within 2 cm"},
     {"key": "fine", "label": "Fine passes", "type": "bool", "default": true, "sub": "two finer steps at the end", "help": "Two finer Gauss-Newton steps after the coarse ones (slower, a closer fit)"}
   ],
+  "paint": {
+    "_doc": "Modellerna för Generate this view i målningen (studio/human_paint.js, /api/human/genview), via OpenRouter. price visas i appen innan något beställs. gpt-image-2 nekade 2026-11-10 en kropp i underkläder (safety: sexual).",
+    "models": [
+      {"id": "qwen/qwen-image-3", "label": "Qwen Image 3", "price": "about 0.01-0.03 USD", "help": "Strong at editing with several input pictures, keeps the layout"},
+      {"id": "krea/k3-edit", "label": "Krea K3 Edit", "price": "about 0.02-0.04 USD", "help": "Krea's edit model (the concepts are Krea-2)"},
+      {"id": "black-forest-labs/flux-3-image", "label": "FLUX 3", "price": "about 0.02-0.05 USD", "help": "Black Forest Labs, several reference pictures"},
+      {"id": "openai/gpt-image-2", "label": "gpt-image-2", "price": "about 0.03-0.06 USD", "help": "OpenAI; refuses bodies in underwear (safety)"}
+    ]
+  },
   "links": {
     "order": {"label": "Order a character on Darrowmere", "url": "http://192.168.0.17:8790/character", "help": "New reference pictures and AI models (Krea, Pixal3D, Tripo, Meshy) are ordered on Darrowmere's control panel"},
     "editor": {"label": "Open the Body Editor", "url": "http://127.0.0.1:8772/", "help": "The mesh editor for the bodies (body-gen), in its own window on the RTX card"}

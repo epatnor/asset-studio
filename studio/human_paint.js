@@ -68,7 +68,7 @@ void main() {
   gl_FragColor = vec4(col, clamp(w * uStrength, 0.0, 1.0));
 }`;
 
-export function createPainter({ el, api, side, view, renderer, controls, getCam, getFigure, draw, say }) {
+export function createPainter({ el, api, side, view, renderer, controls, getCam, getFigure, draw, models = [], say }) {
   let active = false, name = null, fig = null, body = null, dirty = false;
   const P = { tool: 'color', color: '#b98a72', radius: 40, strength: 0.6, hard: 0.5, face: 0.15, mirror: true, lit: true,
     opacity: 0.55, size: 1, rot: 0, flip: false, base: null, skin: '#c9a48c' };
@@ -481,12 +481,16 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   fitBtn.onclick = fitPic;
   const picBtns = el('div', 'hu-btns'); picBtns.append(fitBtn, projBtn);
   // --- En ny referensbild för vinkeln i vyn (gpt-image-2 via OpenRouter, kostar pengar: priset visas och frågas först) ---
-  const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. No hair over the face, no jewellery, and no clothes that are not in the reference pictures.';
+  const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. Dressed exactly like the person in the reference pictures (for example the same underwear), nothing more. No hair over the face and no jewellery.';
   const promptEl = Object.assign(el('textarea', 'hu-prompt'), { rows: 4, value: PROMPT });
   promptEl.title = 'What the picture model is asked for (the render comes first, then the reference pictures)';
   const genBtn = el('button', 'primary', 'Generate this view…');
   genBtn.title = 'Renders the figure as you see it now and asks gpt-image-2 for a reference picture of this angle in the style of the reference pictures; it lands over the view, lined up, and is kept with the figure. Costs money: the price is shown first';
   const genMsg = el('div', 'note');
+  const modelSel = el('select'), modelRow = el('div', 'row span2');
+  for (const m of models) modelSel.append(Object.assign(el('option', null, `${m.label} · ${m.price}`), { value: m.id, title: m.help ?? '' }));
+  modelRow.title = 'The picture model on OpenRouter (tools/character/human/params.json, paint.models); the price is asked before anything is ordered';
+  modelRow.append(el('label', null, 'Model'), modelSel);
   // Figurens del av vyn: en ruta runt kroppen (2:3, 1:1 eller 3:2), som bild och som läge i vyn
   function viewShot() {
     const cam = getCam(), r = view.getBoundingClientRect(), p = geo.attributes.position, v = new THREE.Vector3();
@@ -516,10 +520,10 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   genBtn.onclick = async () => {
     const shot = viewShot(), list = genRefs();
     if (!list.length && !confirm('There are no reference pictures yet, so the model only sees the render. Go on?')) return;
-    const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect };
+    const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect, model: modelSel.value || undefined };
     const q = await api('/api/human/genview', req);
     if (q.error) { genMsg.textContent = `Not started: ${q.error}`; return; }
-    if (!confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.model} and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
+    if (!confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.label} (${q.quote.model}) and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
     const r = await api('/api/human/genview', { ...req, confirm: true });
     if (r.error) { genMsg.textContent = `Not started: ${r.error}`; return; }
     genJob = r.job; genBtn.disabled = true;
@@ -565,7 +569,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     slider('Picture turn', 'rot', -180, 180, 0.5, 'The picture\'s angle in degrees (Ctrl+Shift+drag)', placePic),
     toggle('Flip the picture', 'mirror it left to right', 'flip', 'A picture of the other side', placePic),
     picBtns,
-    el('div', 'hu-sub', 'A new picture for this angle'), promptEl, genBtn, genMsg,
+    el('div', 'hu-sub', 'A new picture for this angle'), modelRow, promptEl, genBtn, genMsg,
     toggle('Lit', 'off shows the flat colour', 'lit', 'With lighting, or the painted colour alone', () => applyMat()),
     hist, infoEl, help, endRow, msg,
   );
@@ -660,7 +664,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
       texel: (u, v) => { const px = new Uint8Array(4); renderer.readRenderTargetPixels(rt, Math.min(N - 1, Math.floor(u * N)), Math.min(N - 1, Math.floor(v * N)), 1, 1, px); return [...px.slice(0, 3)]; },
       hit: (x, y) => { const h = hit(x, y); return h ? { uv: [h.uv.x, h.uv.y], p: h.point.toArray() } : null; },
       screen: (p) => { const r = view.getBoundingClientRect(), v = new THREE.Vector3(...p).project(getCam()); return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height]; },
-      setPic, viewShot, genRefs, get prompt() { return promptEl.value; }, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
+      setPic, viewShot, genRefs, setModel: (id) => { modelSel.value = id; }, get prompt() { return promptEl.value; }, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
       undo: () => step(undo, redo), get P() { return { ...P }; }, picColor,
     },
   };
