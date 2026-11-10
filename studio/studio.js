@@ -20,6 +20,7 @@ import { createWeather } from './weather.js';
 import { createWaterTab } from './water.js';
 import { createTerrainTab } from './terrain.js';
 import { createHuman } from './human.js';
+import { createViewModes } from './viewmodes.js';
 import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
@@ -90,7 +91,7 @@ const loader = shareTextures(new GLTFLoader().setMeshoptDecoder(MeshoptDecoder))
 let composer = null, aoDepth = null;
 const depthMats = new WeakMap();
 const depthMatFor = (m) => {
-  if (!depthMats.has(m)) depthMats.set(m, new THREE.MeshDepthMaterial({ map: m.map ?? null, alphaTest: m.alphaTest || 0, side: m.side }));
+  if (!depthMats.has(m)) depthMats.set(m, new THREE.MeshDepthMaterial({ map: m.map ?? m.userData?.vmAlpha ?? null, alphaTest: m.alphaTest || 0, side: m.side }));
   return depthMats.get(m);
 };
 function renderAoDepth() {
@@ -270,6 +271,10 @@ const ACTIONS = {
 // --- Modellerna: den aktuella i mitten, fästa till vänster för jämförelse ---
 let current = null, currentUrl = null; // currentUrl: verkstadens materiallabb kan visa det aktuella trädet
 const pinned = [];
+// The view-mode bar (studio/viewmodes.js): how the models are drawn, apart from the cards; the shadow shapes are left alone
+const viewModes = createViewModes({ el, view: $('app'), cls: 'vm-forge', storageKey: 'forge-viewmode', initial: 'material',
+  roots: () => [current, ...pinned], skip: (o) => !!o.userData.own?.userData?.shadowProxy,
+  active: () => $('app').checkVisibility?.() !== false && !document.body.classList.contains('home-mode') });
 const spacing = () => (kind.height ?? 8) * 1.6;
 
 // Skuggor: vilka delar som kastar och tar emot, efter kortet Rendering och skuggor
@@ -296,12 +301,12 @@ function applyView(root) {
     if (lod) o.visible = Number(lod[1]) === Number(state.view.lod ?? 0);
     const part = partOf(o.name);
     if (part && !shownParts[part]) o.visible = false;
-    if (!o.isMesh) return;
+    if (!o.isMesh || o.userData.vmOverlay) return;
     shadowRoles(o);
     // Trådram på skuggformen bara när den visas: skuggpasset ritar annars skuggan i trådram
     if (o.material.userData?.shadowProxy) o.material.colorWrite = o.material.wireframe = !!state.view.showShadowProxy;
-    else o.material.wireframe = !!state.view.wireframe;
   });
+  viewModes.apply(root); // after the shadow roles: Wireframe and X-ray take the shadows away, the others give them back
 }
 const QUALITY = { low: [1024, THREE.PCFShadowMap], medium: [2048, THREE.PCFShadowMap], high: [4096, THREE.PCFShadowMap], vsm: [2048, THREE.VSMShadowMap] };
 function applyViewAll() {
@@ -336,7 +341,7 @@ async function showModel(url) {
   current = root;
   scene.add(root);
 }
-function dispose(root) { root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); }
+function dispose(root) { viewModes.release(root); root.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); }
 function frame(...roots) {
   const box = new THREE.Box3();
   for (const r of roots.filter(Boolean)) box.expandByObject(r, true);
@@ -1131,7 +1136,7 @@ async function save() {
 
 // För felsökning och automatiska tester. shot(name) sparar 3D-vyn som build/shots/studio_<name>.png.
 window.__studio = {
-  camera, controls, state, frame: () => frame(current, ...pinned), measure,
+  camera, controls, state, frame: () => frame(current, ...pinned), measure, viewModes, get current() { return current; },
   get workshop() { return workshop; }, // texturverkstaden (lab = materiallabbet), när den har öppnats
   get windmill() { return windmill; }, // Väderkvarnen (wind, scene, stats), när den har öppnats
   get weather() { return weather; }, // Väderfliken (vals, apply, shafts, stats), när den har öppnats

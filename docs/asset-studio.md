@@ -153,7 +153,15 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   *X-ray* (genomskinlig). **Z** öppnar en cirkelmeny vid pekaren (håll och släpp över ett läge, eller tryck och klicka,
   eller 1–7), **Shift+Z** slår av och på kanterna och **Alt+Z** X-ray. Valet minns per webbläsare. Målningen döljer
   listen och visar figurens egna material medan den pågår; Show-knapparna i Textures och Finished model byter till
-  Material. Modulen är generell (rötter, vilka nät som behåller sitt material) och kan sättas på studions andra vyer.
+  Material. Samma list finns i Smedjan och Kartrummet (se nedan); modulen är generell (rötter, vilka nät som behåller
+  sitt material, vilka som lämnas orörda, vilka lägen som finns) och fungerar med både WebGL och WebGPU.
+- **Vylägena i Smedjan och Kartrummet (2026-11-10):** *Smedjan* (`studio/studio.js`) har alla sju lägen och börjar i
+  Material. Lövkort och strån behåller sin kontur i alla lägen (den egna färgkartans alfa blir alfakarta), skuggformerna
+  lämnas orörda och skuggrollerna (kortet Rendering) står kvar; Wireframe och X-ray tar bara bort skuggorna så länge de
+  är på. Listen ersätter trädens gamla reglage Wireframe (`view.wireframe` i `tools/tree/params.json`). *Kartrummet*
+  (`studio/terrain.js`, WebGPU) har Wireframe, Clay, Matcap, Normals och Material för marken, blocket och havsbotten;
+  Material är datavyn som valts i raden ovanför (Shaded, Height, Slope …), och Clay behåller penselns ring, så att man
+  kan skulptera i lera. Naturen (träd, gräs) och vattnet ritas som vanligt. Test: `tools/studio/ui_tests/viewmodes.json`.
 - **View:** viloposen (den riggade figuren i stället för poskopian) och AI-formen bredvid eller som ett rött spöke över
   figuren; AI-formen bredvid ritas i samma vyläge som figuren.
   AI-formen får inpassningens egen skala (`ai_transform`: `base_scale × scale`, sparad i figurens `recipe.json`), annars

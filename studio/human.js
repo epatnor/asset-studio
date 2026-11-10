@@ -80,7 +80,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   // The eyes (MPFB's low-poly, material Human.low-poly) keep their own texture in Clay and Matcap
   const isEye = (o) => /eye|low-poly/i.test(`${o.name} ${o.userData.own?.name ?? o.material?.name ?? ''}`);
   // The view-mode bar on the view: wireframe, clay, matcap, normals, UV checker, albedo, material (Z for the pie)
-  const modes = createViewModes({ el, view, clay, keep: isEye, storageKey: 'creator-viewmode', active: () => running,
+  const modes = createViewModes({ el, view, clay, keep: isEye, cls: 'vm-low', storageKey: 'creator-viewmode', active: () => running,
     roots: () => [figure, view3.ai !== 'overlay' ? aiShape?.children[0] : null] });
   const dispose = (o) => { modes.release(o); o?.traverse((m) => { if (m.isMesh) { m.geometry.dispose(); for (const x of [m.material].flat()) if (x !== ghost && !modes.owns(x)) x.dispose?.(); } }); };
   function styleFigure() {
@@ -88,7 +88,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       if (!o.isMesh || o.userData.vmOverlay) return;
       o.userData.own ??= o.material;
       if (isEye(o) && o.userData.own) Object.assign(o.userData.own, { transparent: false, depthWrite: true });
-      o.receiveShadow = true;
+      o.castShadow = o.receiveShadow = true;
     });
     modes.apply(figure);
   }

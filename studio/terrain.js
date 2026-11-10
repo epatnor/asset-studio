@@ -10,7 +10,7 @@
 // sparade landskap i assets/terrain/. Egen renderare (WebGPU, WebGL2 som reserv). Texten i appen är på engelska.
 import * as THREE from 'three/webgpu';
 import {
-  pass, texture, positionWorld, normalWorld, attribute, mix, smoothstep, mx_noise_float, vec3, vec4, float, uniform, triplanarTexture, color, max, select, length, abs, Fn,
+  pass, texture, positionWorld, normalWorld, positionLocal, normalLocal, attribute, mix, smoothstep, mx_noise_float, vec3, vec4, float, uniform, triplanarTexture, color, max, select, length, abs, Fn,
 } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -31,6 +31,7 @@ import { createWind } from '../shared/effects/wind.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 import { createSplash } from './splash.js';
+import { createViewModes } from './viewmodes.js';
 
 const DEG = Math.PI / 180;
 // Spakar som kräver att höjdfältet räknas om; övriga ändrar bara materialet, havet eller vyn
@@ -208,7 +209,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   function rebuildShaded() {
     const old = shaded;
     shaded = MATS.shaded = buildShaded();
-    if (ground.material === old) ground.material = shaded;
+    if ((ground.userData.own ?? ground.material) === old) viewModes.setOwn(ground, shaded);
     old.dispose();
   }
   // Felsökningsvyerna
@@ -238,6 +239,16 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   const sides = new THREE.Mesh(new THREE.BufferGeometry(), sideMat);
   sides.receiveShadow = true;
   scene.add(ground, sides);
+  // The view-mode bar (studio/viewmodes.js): how the ground, the block and the seabed are drawn (Material is the stage
+  // view picked above). Clay keeps the brush ring; the edges overlay is pushed out along the normal (WebGPU has no
+  // onBeforeCompile)
+  const vmClay = new THREE.MeshStandardNodeMaterial({ roughness: 0.62, side: THREE.DoubleSide });
+  vmClay.colorNode = mix(color('#c9a58e'), color('#ffffff'), brushRing.mul(0.85));
+  const vmEdge = new THREE.MeshBasicNodeMaterial({ color: '#15181c', wireframe: true, transparent: true, opacity: 0.16, depthWrite: false });
+  vmEdge.positionNode = positionLocal.add(normalLocal.mul(0.06));
+  const viewModes = createViewModes({ el, view, three: THREE, cls: 'vm-low2', storageKey: 'maproom-viewmode', initial: 'material',
+    only: ['wire', 'clay', 'matcap', 'normals', 'material'], clay: vmClay, edgeMaterial: vmEdge, active: () => running,
+    help: { material: 'The stage view picked above (Shaded, Height, Slope …)' }, roots: () => [ground, sides, seabed] });
 
   function sideGeometry(f, base) {
     const { n, cell, heights } = f, pos = [], idx = [];
@@ -507,7 +518,8 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
     }
     U.sea.value = vals.seaLevel; U.seaOn.value = vals.sea ? 1 : 0; U.sand.value = vals.sandBand; U.snow.value = vals.snowline;
     U.cliff.value = Math.cos(vals.cliffAngle * DEG); U.tone.value = vals.grassTone;
-    ground.material = MATS[vals.view] ?? MATS.shaded;
+    const stageMat = MATS[vals.view] ?? MATS.shaded;
+    if ((ground.userData.own ?? ground.material) !== stageMat) viewModes.setOwn(ground, stageMat);
     markView();
   }
 
@@ -1479,6 +1491,7 @@ export async function createTerrainTab({ api, el, view, side, drawer, footer }) 
   }, 4000);
 
   return {
+    viewModes,
     show() { running = true; resize(); last = performance.now(); renderer.setAnimationLoop(frame); },
     hide() { running = false; renderer.setAnimationLoop(null); },
     scene, camera, controls, renderer, vals, apply, regenerate, atm, water, setStep, setBrush,

@@ -2,17 +2,18 @@
 // switches how the models are drawn (wireframe, clay, matcap, normals, UV checker, albedo, material), with two
 // overlays (edges on top, X-ray). Z opens a pie menu at the pointer (as in Blender), Shift+Z toggles the edges and
 // Alt+Z the X-ray. Only the display changes: the models' own materials are kept in userData.own and come back in
-// Material. The choice is remembered per viewer (localStorage). Used by The Character Creator (studio/human.js).
-import * as THREE from 'three';
+// Material. The choice is remembered per viewer and view (localStorage). Used by The Character Creator
+// (studio/human.js), the Forge (studio/studio.js) and The Map Room (studio/terrain.js, WebGPU: pass its THREE).
+import * as THREE_GL from 'three';
 
-const MODES = [
-  { id: 'wire', label: 'Wireframe', key: '1', help: 'The mesh\'s edges only' },
-  { id: 'clay', label: 'Clay', key: '2', help: 'One neutral material, lit: the shape only' },
-  { id: 'matcap', label: 'Matcap', key: '3', help: 'A studio sphere around the model: reads the form and its normal map, whatever the light' },
-  { id: 'normals', label: 'Normals', key: '4', help: 'The surface\'s direction as colour (view space), with the normal map' },
-  { id: 'uv', label: 'UV checker', key: '5', help: 'A checker on the UV: stretching and seams show' },
-  { id: 'albedo', label: 'Albedo', key: '6', help: 'The colour map as it is, without light' },
-  { id: 'material', label: 'Material', key: '7', help: 'The model\'s own materials, lit' },
+const ALL = [
+  { id: 'wire', label: 'Wireframe', help: 'The mesh\'s edges only' },
+  { id: 'clay', label: 'Clay', help: 'One neutral material, lit: the shape only' },
+  { id: 'matcap', label: 'Matcap', help: 'A studio sphere around the model: reads the form and its normal map, whatever the light' },
+  { id: 'normals', label: 'Normals', help: 'The surface\'s direction as colour (view space), with the normal map' },
+  { id: 'uv', label: 'UV checker', help: 'A checker on the UV: stretching and seams show' },
+  { id: 'albedo', label: 'Albedo', help: 'The colour map as it is, without light' },
+  { id: 'material', label: 'Material', help: 'The model\'s own materials, lit' },
 ];
 
 // Small sphere icons in the spirit of Blender's shading buttons
@@ -29,26 +30,33 @@ const ICON = {
 };
 const svg = (id) => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3">${ICON[id]}</svg>`;
 
+const canvas = (n) => { const c = document.createElement('canvas'); c.width = c.height = n; return c; };
 // A clay-coloured studio matcap: a lit sphere with a soft key from the upper left, a dark rim and a little bounce below
-function matcapTexture() {
-  const c = document.createElement('canvas');
-  c.width = c.height = 256;
-  const g = c.getContext('2d');
+function drawMatcap() {
+  const c = canvas(256), g = c.getContext('2d');
   let r = g.createRadialGradient(96, 84, 6, 128, 128, 128);
   r.addColorStop(0, '#fbeee2'); r.addColorStop(0.35, '#d9b8a2'); r.addColorStop(0.8, '#8a6a58'); r.addColorStop(1, '#3d2f28');
   g.fillStyle = r; g.beginPath(); g.arc(128, 128, 128, 0, Math.PI * 2); g.fill();
   r = g.createRadialGradient(150, 225, 4, 150, 225, 90);
   r.addColorStop(0, 'rgba(190,200,215,0.45)'); r.addColorStop(1, 'rgba(190,200,215,0)');
   g.fillStyle = r; g.fillRect(0, 0, 256, 256);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return c;
+}
+// The normals as a matcap: each point of the disc is the view-space normal pointing there, as colour (n × 0.5 + 0.5).
+// A matcap rather than MeshNormalMaterial, so that it takes the alpha of leaf cards like the other modes
+function drawNormalcap() {
+  const n = 128, c = canvas(n), g = c.getContext('2d'), img = g.createImageData(n, n);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = (x + 0.5) / n * 2 - 1, v = 1 - (y + 0.5) / n * 2, z = Math.sqrt(Math.max(0, 1 - u * u - v * v)), k = (y * n + x) * 4;
+    const l = Math.hypot(u, v, z) || 1;
+    img.data[k] = (u / l * 0.5 + 0.5) * 255; img.data[k + 1] = (v / l * 0.5 + 0.5) * 255; img.data[k + 2] = (z / l * 0.5 + 0.5) * 255; img.data[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
 }
 // A UV checker: grey squares, with a coloured line every fourth square so that rotated and mirrored islands show
-function checkerTexture() {
-  const n = 16, s = 32, c = document.createElement('canvas');
-  c.width = c.height = n * s;
-  const g = c.getContext('2d');
+function drawChecker() {
+  const n = 16, s = 32, c = canvas(n * s), g = c.getContext('2d');
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { g.fillStyle = (x + y) % 2 ? '#8c9096' : '#d7dade'; g.fillRect(x * s, y * s, s, s); }
   g.lineWidth = 3;
   for (let i = 0; i <= n; i += 4) {
@@ -57,56 +65,79 @@ function checkerTexture() {
   }
   g.fillStyle = '#2b2b2b'; g.font = 'bold 20px sans-serif';
   for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) g.fillText(`${'ABCD'[x]}${4 - y}`, x * 4 * s + 6, y * 4 * s + 24);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
-  return t;
+  return c;
 }
 
-export function createViewModes({ el, view, roots, keep = () => false, onChange = () => {}, active = () => true, storageKey = 'viewmodes', clay = null }) {
+// WebGL only: the alpha map is read from the alpha channel (a leaf card's own colour map) instead of green
+function alphaFromA(sh) { sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', '#ifdef USE_ALPHAMAP\n\tdiffuseColor.a *= texture2D( alphaMap, vAlphaMapUv ).a;\n#endif'); }
+// WebGL only: the edges overlay is drawn a hair closer to the camera, so that it wins the depth test against its own
+// surface (polygon offset does not apply to lines). The Map Room passes its own node material for WebGPU
+function nearer(sh) { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\ngl_Position.z -= 0.0006 * gl_Position.w;'); }
+
+export function createViewModes({
+  el, view, roots, three = THREE_GL, only = null, help = {}, keep = () => false, skip = () => false, cls = '',
+  onChange = () => {}, active = () => true, storageKey = 'viewmodes', clay = null, edgeMaterial = null, initial = 'clay',
+}) {
+  const THREE = three;
+  const MODES = ALL.filter((m) => !only || only.includes(m.id)).map((m, i) => ({ ...m, key: String(i + 1), help: help[m.id] ?? m.help }));
+  const has = (id) => MODES.some((m) => m.id === id);
   const load = () => { try { return JSON.parse(localStorage.getItem(storageKey) ?? 'null'); } catch { return null; } };
   const saved = load() ?? {};
-  const S = { mode: MODES.some((m) => m.id === saved.mode) ? saved.mode : 'clay', edges: !!saved.edges, xray: !!saved.xray, suspended: false };
+  const S = { mode: has(saved.mode) ? saved.mode : has(initial) ? initial : MODES[0].id, edges: !!saved.edges, xray: !!saved.xray, suspended: false };
   const store = () => { try { localStorage.setItem(storageKey, JSON.stringify({ mode: S.mode, edges: S.edges, xray: S.xray })); } catch { /* private window */ } };
 
   // --- The materials: shared ones per mode, and per-mesh ones where the own maps are needed ---
-  const own = new Set(); // every material made here (none of them belongs to the models)
-  const mk = (m) => { own.add(m); return m; };
+  const mine = new Set(); // every material made here (none of them belongs to the models)
+  const mk = (m) => { mine.add(m); return m; };
+  const tex = (c, srgb = true) => { const t = new THREE.CanvasTexture(c); t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; return t; };
+  const matcap = tex(drawMatcap()), normalcap = tex(drawNormalcap(), false), checker = tex(drawChecker());
+  checker.wrapS = checker.wrapT = THREE.RepeatWrapping;
+  checker.anisotropy = 4;
   const shared = {
     clay: clay ?? mk(new THREE.MeshStandardMaterial({ color: '#c9a58e', roughness: 0.62, metalness: 0, side: THREE.DoubleSide })),
     wire: mk(new THREE.MeshBasicMaterial({ color: '#1f2328', wireframe: true })),
-    uv: mk(new THREE.MeshStandardMaterial({ map: checkerTexture(), roughness: 0.8, side: THREE.DoubleSide })),
-    edge: mk(new THREE.MeshBasicMaterial({ color: '#15181c', wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })),
+    uv: mk(new THREE.MeshStandardMaterial({ map: checker, roughness: 0.8, side: THREE.DoubleSide })),
+    edge: edgeMaterial ?? mk(new THREE.MeshBasicMaterial({ color: '#15181c', wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })),
   };
-  if (clay) own.add(clay);
-  const matcap = matcapTexture();
-  // The edges overlay is drawn a hair closer to the camera, so that it wins the depth test against its own surface
-  // (polygon offset does not apply to lines)
-  shared.edge.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\ngl_Position.z -= 0.0006 * gl_Position.w;'); };
+  mine.add(shared.clay); mine.add(shared.edge);
+  if (!edgeMaterial) { shared.edge.onBeforeCompile = nearer; shared.edge.customProgramCacheKey = () => 'vm-nearer'; }
   const xrayOf = new WeakMap();
   function xray(m) {
     let x = xrayOf.get(m);
-    if (!x) { x = mk(m.clone()); Object.assign(x, { transparent: true, opacity: Math.min(m.opacity ?? 1, 1) * 0.4, depthWrite: false }); xrayOf.set(m, x); }
+    if (!x) {
+      x = mk(m.clone());
+      Object.assign(x, { transparent: true, opacity: Math.min(m.opacity ?? 1, 1) * 0.4, depthWrite: false, onBeforeCompile: m.onBeforeCompile, customProgramCacheKey: m.customProgramCacheKey });
+      x.userData = { ...m.userData };
+      xrayOf.set(m, x);
+    }
     return x;
   }
-  // Per mesh: the model's own maps on a display material (normal map for matcap and normals, colour map for albedo)
+  // A leaf card, a blade of grass: the own colour map has the shape in its alpha
+  const cutout = (b) => !!b?.map && (b.alphaTest > 0 || b.transparent);
+  // Per mesh: the model's own maps on a display material (normal map for matcap and normals, colour map for albedo,
+  // the alpha of cut-out cards for every mode)
   function perMesh(o, mode) {
     const base = [o.userData.own].flat()[0] ?? {};
     o.userData.vm ??= {};
     if (o.userData.vm[mode]) return o.userData.vm[mode];
     const nm = base.normalMap ? { normalMap: base.normalMap, normalScale: base.normalScale?.clone?.() ?? new THREE.Vector2(1, 1) } : {};
+    const cut = cutout(base) && mode !== 'albedo' ? { alphaMap: base.map, alphaTest: base.alphaTest || 0.5, side: base.side ?? THREE.DoubleSide } : null;
     let m;
-    if (mode === 'matcap') m = new THREE.MeshMatcapMaterial({ matcap, side: THREE.DoubleSide, ...nm });
-    else if (mode === 'normals') m = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide, ...nm });
+    if (mode === 'clay') m = new THREE.MeshStandardMaterial({ color: shared.clay.color, roughness: shared.clay.roughness, metalness: 0, side: THREE.DoubleSide, ...cut });
+    else if (mode === 'uv') m = new THREE.MeshStandardMaterial({ map: checker, roughness: 0.8, side: THREE.DoubleSide, ...cut });
+    else if (mode === 'matcap') m = new THREE.MeshMatcapMaterial({ matcap, side: THREE.DoubleSide, ...nm, ...cut });
+    else if (mode === 'normals') m = new THREE.MeshMatcapMaterial({ matcap: normalcap, side: THREE.DoubleSide, toneMapped: false, ...nm, ...cut });
     else m = new THREE.MeshBasicMaterial({ map: base.map ?? null, color: base.color?.clone?.() ?? new THREE.Color('#ffffff'), side: base.side ?? THREE.FrontSide,
       transparent: !!base.transparent, alphaTest: base.alphaTest ?? 0, toneMapped: false });
+    if (cut) { m.onBeforeCompile = alphaFromA; m.customProgramCacheKey = () => 'vm-alpha-a'; m.userData.vmAlpha = base.map; }
     o.userData.vm[mode] = mk(m);
     return m;
   }
   function materialFor(o, mode) {
+    const base = [o.userData.own].flat()[0];
     if (mode === 'material' || ((mode === 'clay' || mode === 'matcap') && keep(o))) return o.userData.own;
-    if (mode === 'clay' || mode === 'wire' || mode === 'uv') return shared[mode];
+    if (mode === 'wire') return shared.wire;
+    if ((mode === 'clay' || mode === 'uv') && !cutout(base)) return shared[mode];
     return perMesh(o, mode);
   }
 
@@ -115,47 +146,63 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
     let e = o.userData.vmEdge;
     if (!on) { if (e) { e.removeFromParent(); o.userData.vmEdge = null; } return; }
     if (e) return;
-    if (o.isSkinnedMesh) { e = new THREE.SkinnedMesh(o.geometry, shared.edge); e.bind(o.skeleton, o.bindMatrix); e.bindMode = o.bindMode; }
+    if (o.isInstancedMesh) { e = new THREE.InstancedMesh(o.geometry, shared.edge, o.count); e.instanceMatrix = o.instanceMatrix; }
+    else if (o.isSkinnedMesh) { e = new THREE.SkinnedMesh(o.geometry, shared.edge); e.bind(o.skeleton, o.bindMatrix); e.bindMode = o.bindMode; }
     else e = new THREE.Mesh(o.geometry, shared.edge);
     if (o.morphTargetInfluences) { e.morphTargetInfluences = o.morphTargetInfluences; e.morphTargetDictionary = o.morphTargetDictionary; }
     e.raycast = () => {};
     e.castShadow = e.receiveShadow = false;
+    e.frustumCulled = o.frustumCulled;
     e.renderOrder = 3;
     e.userData.vmOverlay = true;
     o.userData.vmEdge = e;
     o.add(e);
   }
 
-  // Applies the current mode to one root (or all): call it after a model is loaded or its materials are replaced
+  // Applies the current mode to one root (or all): call it after a model is loaded, or after its own materials or
+  // shadows were set again (the Forge's view, the Map Room's stage view)
   function apply(root) {
     const list = root ? [root] : roots().filter(Boolean);
     const mode = S.suspended ? 'material' : S.mode;
+    const ghost = S.xray && !S.suspended && mode !== 'wire';
     for (const r of list) {
       const meshes = [];
       r.traverse((o) => { if (o.isMesh && !o.userData.vmOverlay) meshes.push(o); });
       for (const o of meshes) {
         o.userData.own ??= o.material;
+        if (skip(o)) continue;
         let m = materialFor(o, mode);
-        if (S.xray && !S.suspended && mode !== 'wire') m = Array.isArray(m) ? m.map(xray) : xray(m);
+        if (ghost) m = Array.isArray(m) ? m.map(xray) : xray(m);
         o.material = m;
-        o.castShadow = mode !== 'wire' && !(S.xray && !S.suspended);
+        // Wireframe and X-ray cast no shadow; the model's own shadow comes back after
+        if (mode === 'wire' || ghost) { o.userData.vmShadow ??= o.castShadow; o.castShadow = false; }
+        else if (o.userData.vmShadow !== undefined) { o.castShadow = o.userData.vmShadow; delete o.userData.vmShadow; }
         setEdges(o, S.edges && !S.suspended && mode !== 'wire');
       }
     }
   }
+  // A mesh gets a new own material (the Map Room's stage views): what was made from the old one is dropped
+  function setOwn(o, m) {
+    for (const x of Object.values(o.userData.vm ?? {})) { mine.delete(x); x.dispose(); }
+    o.userData.vm = null;
+    o.userData.own = m;
+    o.material = m;
+    apply(o);
+  }
   // Drops what was made for a root's meshes (before the root is disposed); the root's own materials are left
   function release(root) {
     root?.traverse((o) => {
-      if (!o.isMesh) return;
-      for (const m of Object.values(o.userData.vm ?? {})) { own.delete(m); m.dispose(); }
+      if (!o.isMesh || o.userData.vmOverlay) return;
+      for (const m of Object.values(o.userData.vm ?? {})) { mine.delete(m); m.dispose(); }
       o.userData.vm = null;
       setEdges(o, false);
       if (o.userData.own) o.material = o.userData.own;
+      if (o.userData.vmShadow !== undefined) { o.castShadow = o.userData.vmShadow; delete o.userData.vmShadow; }
     });
   }
 
   // --- The bar ---
-  const bar = el('div', 'vm-bar glass');
+  const bar = el('div', `vm-bar glass ${cls}`.trim());
   const btns = {};
   const modeGroup = el('div', 'vm-group');
   for (const m of MODES) {
@@ -169,10 +216,10 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
     modeGroup.append(b);
   }
   const optGroup = el('div', 'vm-group');
-  const opt = (id, label, help) => {
+  const opt = (id, label, text) => {
     const b = el('button', 'vm-btn');
     b.innerHTML = svg(id);
-    b.title = `${label}: ${help}`;
+    b.title = `${label}: ${text}`;
     b.setAttribute('aria-label', label);
     b.onclick = () => toggle(id);
     btns[id] = b;
@@ -193,7 +240,7 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
     bar.hidden = S.suspended;
   }
   function set(mode) {
-    if (!MODES.some((m) => m.id === mode) || S.mode === mode) { sync(); return; }
+    if (!has(mode) || S.mode === mode) { sync(); return; }
     S.mode = mode; store(); sync(); apply(); onChange(S);
   }
   function toggle(k, v) {
@@ -203,7 +250,7 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
   // --- The pie menu (Z): the modes on a ring around the pointer; release Z over one to pick it, or click ---
   const pie = el('div', 'vm-pie');
   pie.hidden = true;
-  const R = 92;
+  const R = MODES.length > 5 ? 92 : 78;
   const slices = MODES.map((m, i) => {
     const a = -Math.PI / 2 + (i / MODES.length) * Math.PI * 2;
     const b = el('button', 'vm-slice glass');
@@ -236,12 +283,13 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
     pie.hidden = false;
   }
   function closePie() { pie.hidden = true; pieAt = null; hot = null; }
+  const isZ = (e) => e.code === 'KeyZ' || e.key?.toLowerCase() === 'z';
   const typing = (e) => e.target.closest?.('input, select, textarea, [contenteditable]');
   addEventListener('keydown', (e) => {
     if (!active() || S.suspended || typing(e) || e.ctrlKey || e.metaKey) return;
     if (pieAt && e.key === 'Escape') { closePie(); return; }
-    if (pieAt && /^[1-7]$/.test(e.key)) { set(MODES[Number(e.key) - 1].id); closePie(); return; }
-    if (e.code !== 'KeyZ' || e.repeat) return;
+    if (pieAt && /^[1-9]$/.test(e.key) && MODES[Number(e.key) - 1]) { set(MODES[Number(e.key) - 1].id); closePie(); return; }
+    if (!isZ(e) || e.repeat) return;
     e.preventDefault();
     if (e.shiftKey) { toggle('edges'); return; }
     if (e.altKey) { toggle('xray'); return; }
@@ -250,16 +298,17 @@ export function createViewModes({ el, view, roots, keep = () => false, onChange 
     openPie();
   });
   addEventListener('keyup', (e) => {
-    if (e.code !== 'KeyZ' || !pieAt) return;
+    if (!isZ(e) || !pieAt) return;
     // Held and released over a slice picks it; a quick tap leaves the pie open for a click (as in Blender)
     if (hot) { set(hot); closePie(); } else if (performance.now() - zDown > 350) closePie();
   });
   addEventListener('pointerdown', (e) => { if (pieAt && !e.target.closest('.vm-slice')) closePie(); });
 
   sync();
+  apply(); // the roots that exist now get their own materials noted (and the remembered mode)
   return {
-    el: bar, apply, release, set, toggle, sync,
-    owns: (m) => own.has(m),
+    el: bar, apply, release, setOwn, set, toggle, sync,
+    owns: (m) => mine.has(m),
     get mode() { return S.mode; }, get edges() { return S.edges; }, get xray() { return S.xray; }, get pie() { return !pie.hidden; },
     // While another tool draws the model its own way (the paint mode), the bar hides and the own materials come back
     suspend(on) { S.suspended = !!on; if (on) closePie(); sync(); apply(); },
