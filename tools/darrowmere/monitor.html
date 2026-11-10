@@ -416,6 +416,7 @@
   <div class="menu" id="menu">
     <button id="menuBtn" title="Menu" aria-haspopup="true" aria-expanded="false"><span class="burger"></span>Menu</button>
     <div class="menulist" id="menuList" role="menu" hidden>
+      <button id="charBtn" role="menuitem" title="Order a 3D character: references or a prompt, model, texture projection and game model">Order a character</button>
       <button id="galBtn" role="menuitem" title="Everything Darrowmere has made: generations, renders, models and texture maps">Gallery</button>
       <button id="histBtn" role="menuitem" title="All jobs, also acknowledged ones">History</button>
       <button id="logBtn" role="menuitem" title="Open the ComfyUI log in its own window">Log</button>
@@ -755,6 +756,7 @@ $("acctBtn").onclick =() => window.open("/accounts", "darrowmere-accounts", "wid
 $("outBtn").onclick = async () => { await fetch("/api/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); location.href = "/login"; };
 fetch("/api/auth-state").then(r => r.json()).then(a => { if (a.user) $("meName").textContent = a.user; }).catch(() => {});
 $("galBtn").onclick = () => window.open("/gallery", "darrowmere-gallery");
+$("charBtn").onclick = () => window.open("/character", "darrowmere-character");
 $("histBtn").onclick = () => window.open("/history", "darrowmere-history", "width=1000,height=720");
 document.addEventListener("click", async e => {
   const b = e.target.closest("button.ack");

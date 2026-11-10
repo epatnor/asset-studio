@@ -11,6 +11,9 @@ rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/in
 rsync -a "$HERE/tools/" $DM:/data/runner/tools/
 rsync -a "$HERE/playbooks/" $DM:/data/runner/playbooks/
 rsync -a "$HERE/../../texture/project_views.py" $DM:/data/runner/tools/project_views.py
+# Efterbehandlingen av figurer (finish_character.py) kör samma verktyg som på laptopen
+rsync -a --mkpath "$HERE/../../texture/grade_glb.py" "$HERE/../../texture/mirror_face.py" $DM:/data/runner/tools/texture/
+rsync -a --mkpath "$HERE/../../mesh/clean_floaters.py" "$HERE/../../mesh/make_low.py" "$HERE/../../mesh/bake_low_blender.py" $DM:/data/runner/tools/mesh/
 if ! ssh -o BatchMode=yes $DM 'test -s /data/runner/.env'; then
   grep '^OPENROUTER_API_KEY=' "$ENV" | ssh -o BatchMode=yes $DM 'umask 077; cat > /data/runner/.env'
   echo "key copied"

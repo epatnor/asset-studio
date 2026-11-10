@@ -17,6 +17,7 @@ En fil /data/orders/<id>/cancel stoppar beställningen före nästa steg.
 """
 import base64
 import copy
+import fnmatch
 import io
 import json, re
 import os
@@ -159,6 +160,8 @@ def resolve(o, value, cache):
     if value in cache:
         return cache[value]
     kind, _, name = value[1:].partition(":")
+    if kind == "path":  # en fil som noden läser själv (t.ex. UltraTexLoadMesh): sökvägen, ingen uppladdning
+        return path_for(o, "$step:" + name)
     if kind == "in":
         src = o.dir / "in" / name
     elif kind == "step":
@@ -833,7 +836,7 @@ def render_previews(o, s, files):
     return files + [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in names]
 
 
-SCRIPTS = {"split_sheet.py", "project_views.py", "import_model.py"}  # verktyg som får köras som steg, ur /data/runner/tools
+SCRIPTS = {"split_sheet.py", "project_views.py", "import_model.py", "finish_character.py"}  # verktyg som får köras som steg, ur /data/runner/tools
 
 
 def path_for(o, ref):
@@ -843,7 +846,8 @@ def path_for(o, ref):
         return str(o.dir / "in" / name)
     key, _, part = name.partition("/")
     outs = o.st(key).get("outputs", [])
-    hit = [f for f in outs if part in f["filename"]] if part else outs
+    # "<nyckel>/<del>": filnamnet innehåller delen, eller matchar den om den har * (t.ex. "texture/nora_ut4b_mix70_*.glb")
+    hit = [f for f in outs if (fnmatch.fnmatch(f["filename"], part) if "*" in part else part in f["filename"])] if part else outs
     if not hit:
         raise RuntimeError(f"no file {ref}")
     return str(out_path(hit[0]))
@@ -975,7 +979,7 @@ def routed_step(o, s):
     route = st["routes"][s["kind"]]
     use = s.get("force") or route["use"]
     if s["kind"] == "texture" and use == "cloud":
-        if route.get("cloud") == "meshy":
+        if ((s.get("cloud") or {}).get("provider") or route.get("cloud")) == "meshy":
             cost = meshy_cost((s.get("cloud") or {}).get("resolution") or (route.get("meshy") or {}).get("resolution", "2k"))
             cloud_gate(o, s, "meshy", cost)
             o.set(s["key"], status="running", route="cloud", provider="meshy", start=time.time(), end=None)

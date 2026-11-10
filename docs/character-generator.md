@@ -141,3 +141,30 @@ Steg för en stiliserad figur, som det körs för trollkvinnan, frostsystern och
    det fungerar bäst i symmetrisk pose.
 6. **Spelmodell:** `tools/mesh/make_low.py` med 12 000 trianglar, 2048-textur och `voxel: 0.0035`. Med standardvärdet
    (1/140) försvann frostsysterns öra. Färg och normalkarta bakas från högpolyversionen.
+
+## Beställningssidan på Darrowmere (2026-11-10)
+
+Kusinen lades ner 2026-11-10 (alla försök misslyckades). I stället görs hela figurflödet ovan till en beställning
+från panelen: **Menu → Order a character** (`/character` på http://192.168.0.17:8790). Man laddar upp en eller
+flera referenser (fram, bak, sidor, detalj) eller skriver ett motiv så att Krea-2 ritar referensen, och väljer
+modell, textur och efterbehandling. Sidan visar planen innan något körs: stegen, ungefärlig tid, molnkrediter,
+varningar, den färdiga Krea-prompten och en 3D-vy med en docka i vald pose och UltraTex-kamerorna som plan runt den
+(blått = de sex basvyerna, en färg per extra ring, streckat = vyer som inte bakas in; framplanet visar
+referensbilden).
+
+- **Spakarna är data** i `tools/darrowmere/character/options.json` (punktade vägar in i receptet, `show_if`, `adv`).
+  Checkpoints och dekodrar hämtas från Darrowmere när sidan öppnas.
+- **Receptet blir en runner-beställning** i `tools/darrowmere/character_order.py` (`plan` och `submit`, går också
+  från kommandoraden). Grafmallarna ligger i `tools/darrowmere/character/graphs/` (Krea-2, Pixal3D, UltraTex).
+  Reglerna ovan är inbyggda: motivet först (skalligt först i motivet och "hair" förbjudet i omskrivningen), kvadratisk
+  bild för T-pose, Pixal3D får alltid 1024 px (uppladdade bilder skalas i webbläsaren, större Krea-bilder i grafen),
+  och granskningen får hårda krav och närbild av huvudet från valen.
+- **Modell:** Pixal3D (gratis), Tripo P1/P2 eller Meshy (moln, flera vyer). **Textur:** UltraTex 4B med valbar
+  checkpoint, dekoder, extra vyringar, vyval och en bakning per best-view-mix, modellens egen, Meshy retexture eller
+  ingen. Molnsteg väntar som vanligt på godkännande i panelen.
+- **Efterbehandlingen körs nu på Darrowmere** som runner-steget `finish_character.py` (gradering, lösa bitar,
+  ansiktsspegling, spelmodell med Blender), i stället för run_after.sh på laptopen. Ett steg per bakning; i galleriet
+  ligger `<namn>_high.glb` och `<namn>_low_<k>k.glb` under `orders/<id>/finish_*`. Ansiktsspeglingen behöver paketet
+  `rtree` i Darrowmeres venv och hoppas över (med en notering) tills det finns.
+- Runnern fick för detta: `$path:<steg>/<mönster>` (sökvägen till en fil som noden läser själv, t.ex. UltraTexLoadMesh),
+  `*` i filmönster och `"cloud": {"provider": "meshy"}` för texturen per beställning.

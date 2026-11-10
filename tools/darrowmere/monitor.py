@@ -861,6 +861,38 @@ from auth import COOKIE, Auth, is_private  # noqa: E402
 AUTH = Auth(STORE.parent)
 from gallery import Gallery  # noqa: E402
 GALLERY = Gallery(SSH, COMFY, STORE.parent / "thumbs")
+import character_order  # noqa: E402
+
+# Valen som hämtas från Darrowmere till beställningssidan (UltraTex-checkpoints och dekodrar), sparade en stund
+CHAR_CHOICES = {"t": 0, "v": {}}
+CHAR_LS = r'''
+import glob, json, os
+print(json.dumps({"loras": sorted(os.path.basename(f) for f in glob.glob("/data/modeller/loras/ultratex4b_*.safetensors")),
+                  "decoders": sorted(os.path.basename(f) for f in glob.glob("/data/ComfyUI/models/ultratex/*.pt"))}))
+'''
+
+
+def character_options():
+    if time.time() - CHAR_CHOICES["t"] > 300:
+        try:
+            r = subprocess.run(rcmd(["python3", "-c", CHAR_LS]), capture_output=True, text=True, timeout=20)
+            CHAR_CHOICES.update(t=time.time(), v=json.loads(r.stdout))
+        except Exception:
+            pass
+    opts = json.loads((HERE / "character" / "options.json").read_text())
+    for g in opts["groups"]:
+        for f in g["fields"]:
+            have = CHAR_CHOICES["v"].get(f.get("dynamic"))
+            if have:
+                known = dict(f["choices"])
+                lab = lambda n: (lambda m: f"{m[1]} step {int(m[2])}" if m else n.rsplit(".", 1)[0])(re.search(r"(run\w*?)_(\d+)\.", n))
+                f["choices"] = [[n, known.get(n) or lab(n)] for n in have]
+    return opts
+
+
+def character_ssh(cmd, data):
+    r = subprocess.run(rcmd(cmd), input=data, capture_output=True, timeout=180)
+    return (r.stdout + r.stderr).decode(errors="replace")
 
 
 def prewarm_previews():
@@ -933,7 +965,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def body_json(self):
         n = int(self.headers.get("Content-Length") or 0)
-        if n > 100_000:
+        # Beställningssidan skickar referensbilderna (base64), bara inloggad
+        if n > (40_000_000 if self.path == "/api/character/submit" and self.user() else 100_000):
             raise ValueError("too large")
         return json.loads(self.rfile.read(n) or b"{}") if n else {}
 
@@ -997,6 +1030,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, (HERE / "history.html").read_bytes(), "text/html; charset=utf-8")
         if path == "/gallery":
             return self.send(200, (HERE / "gallery.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/character":
+            return self.send(200, (HERE / "character.html").read_bytes(), "text/html; charset=utf-8")
+        if path == "/api/character/options":
+            return self.send(200, json.dumps(character_options()), "application/json")
         if path == "/api/gallery":
             try:
                 fresh = "fresh" in urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -1160,6 +1197,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, json.dumps({"ok": r.get("ok", False), "message": r.get("message", "")}), "application/json")
             except Exception as e:
                 return bad(502, f"Darrowmere: {e}")
+        if self.path == "/api/character/plan":
+            try:
+                return self.send(200, json.dumps(character_order.plan(data.get("recipe") or {}, data.get("refs") or [])), "application/json")
+            except Exception as e:
+                return bad(400, f"Could not plan: {e}")
+        if self.path == "/api/character/submit":
+            import base64
+            try:
+                files = {k: base64.b64decode(v.split(",", 1)[-1]) for k, v in (data.get("files") or {}).items()
+                         if k in character_order.ROLES + ("front_1024",)}
+                r = character_order.submit(data.get("recipe") or {}, files, character_ssh)
+            except Exception as e:
+                return bad(502, f"Could not order: {e}")
+            if r.get("ok"):
+                audit(me, f"character order {r['id']}")
+            return self.send(200 if r.get("ok") else 400, json.dumps({**r, "message": r.get("error") or f"Ordered {r.get('id')}."}), "application/json")
         ap = re.match(r"^/api/orders/([A-Za-z0-9._-]+)/approve$", self.path)
         if ap:
             step, credits = str(data.get("step", "")), data.get("credits")

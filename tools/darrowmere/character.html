@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>/* Tema: menyvalet i panelen (darrowmere-theme: dark, light, system), mörkt om inget valts */(function(){var m;try{m=localStorage.getItem("darrowmere-theme")}catch(e){}if(m!=="light"&&m!=="system")m="dark";var t=m==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):m;var r=document.documentElement;r.dataset.theme=t;r.dataset.themeMode=m})()</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order a Character</title>
+<style>
+  :root { --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4c5560;
+          --blue: #4f8dff; --red: #ef4f5f; --green: #2bd46b; --amber: #f2a93b; --violet: #b07cff; --view-bg: #12161b; }
+  :root[data-theme="light"] { --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
+          --blue: #2563eb; --red: #dc2626; --green: #16a34a; --amber: #b45309; --violet: #7c3aed; --view-bg: #e6e9ed; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 13px; letter-spacing: .14em; margin: 0; text-transform: uppercase; }
+  header a { color: var(--muted); text-decoration: none; }
+  header a:hover { color: var(--text); }
+  .grow { flex: 1; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; }
+  #form { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  #side { display: grid; gap: 12px; align-content: start; position: sticky; top: 62px; max-height: calc(100vh - 78px); overflow: auto; min-width: 0; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 12px; }
+  section[hidden] { display: none; }
+  h2 { margin: 0; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .field { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 12px; align-items: start; }
+  .field[hidden] { display: none; }
+  .field > label { padding-top: 6px; color: var(--text); }
+  .field .help { grid-column: 2; color: var(--muted); font-size: 12px; }
+  input[type=text], input[type=number], textarea, select { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font: inherit; min-width: 0; }
+  textarea { min-height: 64px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--blue); outline-offset: -1px; }
+  .seg { display: flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; width: max-content; max-width: 100%; }
+  .seg button { border: 0; border-radius: 0; padding: 6px 12px; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--blue); color: #fff; }
+  .switch { display: inline-flex; align-items: center; gap: 8px; padding-top: 5px; cursor: pointer; }
+  .switch input { width: 16px; height: 16px; accent-color: var(--blue); }
+  details.adv { border-top: 1px dashed var(--line); padding-top: 8px; }
+  details.adv > summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  details.adv > div { display: grid; gap: 12px; }
+  button.btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.btn:hover { border-color: var(--muted); }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; padding: 9px 18px; }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); cursor: pointer; }
+  .drop.over { border-color: var(--blue); color: var(--text); }
+  .refs { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 8px; }
+  .ref { border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--panel2); display: grid; }
+  .ref img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--view-bg); display: block; }
+  .ref .row { display: flex; gap: 4px; padding: 4px; }
+  .ref select { padding: 3px 4px; font-size: 12px; }
+  .ref .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; }
+  .ref .size { font-size: 11px; color: var(--muted); padding: 0 6px 4px; }
+  .rings { display: grid; gap: 6px; }
+  .ring { display: grid; grid-template-columns: 64px repeat(4, minmax(0, 1fr)) 24px; gap: 4px; align-items: center; }
+  .ring .lab { font-size: 12px; color: var(--muted); }
+  .ring input { padding: 4px 6px; text-align: right; }
+  .ring .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .ringbar { display: flex; gap: 6px; flex-wrap: wrap; }
+  #view { position: relative; height: 430px; background: var(--view-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+  #view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #legend { position: absolute; left: 10px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+  #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  #viewNote { position: absolute; right: 10px; top: 8px; font-size: 11.5px; color: var(--muted); text-align: right; pointer-events: none; }
+  #hover { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 3px 7px; font-size: 12px; display: none; }
+  ol.steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: s; }
+  ol.steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 8px; border-radius: 6px; background: var(--panel2); }
+  ol.steps li::before { counter-increment: s; content: counter(s); color: var(--dim); font-variant-numeric: tabular-nums; text-align: right; }
+  ol.steps .where { color: var(--muted); font-size: 12px; }
+  ol.steps .meta { color: var(--muted); font-size: 12px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  ol.steps .cost { color: var(--amber); }
+  .totals { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
+  .totals b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .totals span { color: var(--muted); font-size: 12px; }
+  .msg { border-radius: 6px; padding: 8px 10px; font-size: 12.5px; }
+  .msg.err { background: color-mix(in srgb, var(--red) 15%, transparent); border: 1px solid color-mix(in srgb, var(--red) 40%, transparent); }
+  .msg.warn { background: color-mix(in srgb, var(--amber) 13%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent); }
+  .msg.ok { background: color-mix(in srgb, var(--green) 13%, transparent); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+  .msg a { color: inherit; }
+  .prompt { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--panel2); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; color: var(--muted); }
+  .orderbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  @media (max-width: 980px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    #side { position: static; max-height: none; order: -1; }
+    #view { height: 320px; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 12px 16px; }
+    .field { grid-template-columns: minmax(0, 1fr); }
+    .field .help { grid-column: 1; }
+    .field > label { padding-top: 0; }
+    .ring { grid-template-columns: 48px repeat(4, minmax(0, 1fr)) 22px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <a href="/" title="Back to the control panel">← Panel</a>
+  <h1>Order a character</h1>
+  <span class="grow"></span>
+  <button class="btn" id="resetBtn" title="Back to the default settings">Reset</button>
+</header>
+<main>
+  <div id="form"></div>
+  <div id="side">
+    <section>
+      <h2>Preview</h2>
+      <div id="view"><div id="viewNote"></div><div id="legend"></div><div id="hover"></div></div>
+    </section>
+    <section>
+      <h2>Plan</h2>
+      <div id="msgs" style="display:grid;gap:6px"></div>
+      <div class="totals" id="totals"></div>
+      <ol class="steps" id="steps"></ol>
+      <div id="promptBox" hidden><h2 style="margin-bottom:6px">Prompt for Krea-2</h2><div class="prompt" id="prompt"></div></div>
+      <div class="orderbar">
+        <button class="btn primary" id="orderBtn" disabled>Order</button>
+        <span id="orderNote" class="where" style="color:var(--muted);font-size:12px"></span>
+      </div>
+      <div id="result"></div>
+    </section>
+  </div>
+</main>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const get = (o, p) => p.split(".").reduce((d, k) => (d && typeof d === "object" ? d[k] : undefined), o);
+const put = (o, p, v) => { const ks = p.split("."); const last = ks.pop(); ks.reduce((d, k) => (d[k] ??= {}), o)[last] = v; };
+const clone = v => JSON.parse(JSON.stringify(v));
+const DRAFT = "darrowmere-character-draft";
+const ROLES = [["front", "Front"], ["back", "Back"], ["left", "Left side"], ["right", "Right side"], ["detail", "Detail"]];
+const RING_COLORS = ["--amber", "--green", "--violet", "--red"];
+
+let OPTS = null, recipe = {}, refs = [];   // refs: {role, name, url, w, h, file}
+
+// ---- formuläret, byggt ur options.json ------------------------------------------------------------------------
+function defaults() {
+  const r = {};
+  for (const g of OPTS.groups) for (const f of g.fields) if ("default" in f) put(r, f.id, clone(f.default));
+  return r;
+}
+function shown(cond) {
+  if (!cond) return true;
+  return Object.entries(cond).every(([k, v]) => {
+    const cur = get(recipe, k);
+    return Array.isArray(v) ? v.includes(cur) : cur === v;
+  });
+}
+function control(f) {
+  const v = get(recipe, f.id);
+  const set = val => { put(recipe, f.id, val); changed(f.id); };
+  if (f.type === "choice" && f.choices.length <= 4 && f.choices.every(c => c[1].length < 34)) {
+    const seg = document.createElement("div"); seg.className = "seg";
+    for (const [val, lab] of f.choices) {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.className = val === v ? "on" : "";
+      b.onclick = () => { set(val); seg.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); };
+      seg.append(b);
+    }
+    return seg;
+  }
+  if (f.type === "choice") {
+    const s = document.createElement("select");
+    for (const [val, lab] of f.choices) s.add(new Option(lab, val, false, val === v));
+    if (!f.choices.some(c => c[0] === v)) s.add(new Option(String(v), v, false, true));
+    s.onchange = () => set(s.value);
+    return s;
+  }
+  if (f.type === "bool") {
+    const l = document.createElement("label"); l.className = "switch";
+    const c = document.createElement("input"); c.type = "checkbox"; c.checked = !!v; c.onchange = () => set(c.checked);
+    l.append(c, document.createTextNode(c.checked ? "On" : "Off"));
+    c.addEventListener("change", () => (l.lastChild.textContent = c.checked ? "On" : "Off"));
+    return l;
+  }
+  if (f.type === "number") {
+    const i = document.createElement("input"); i.type = "number"; Object.assign(i, { min: f.min, max: f.max, step: f.step }); i.value = v;
+    i.oninput = () => { if (i.value !== "" && !isNaN(+i.value)) set(+i.value); };
+    return i;
+  }
+  if (f.type === "textarea" || f.type === "lines") {
+    const t = document.createElement("textarea"); t.value = f.type === "lines" ? (v || []).join("\n") : (v || "");
+    if (f.type === "lines") t.rows = Math.max(3, (v || []).length + 1);
+    t.oninput = () => set(f.type === "lines" ? t.value.split("\n").map(x => x.trim()).filter(Boolean) : t.value);
+    return t;
+  }
+  if (f.type === "numbers") {
+    const i = document.createElement("input"); i.type = "text"; i.value = (v || []).join(", ");
+    i.oninput = () => set(i.value.split(/[,\s]+/).filter(Boolean).map(Number).filter(x => !isNaN(x) && x >= 0 && x <= 1));
+    return i;
+  }
+  if (f.type === "refs") return refsControl();
+  if (f.type === "rigs") return rigsControl(f);
+  const i = document.createElement("input"); i.type = "text"; i.value = v ?? ""; i.oninput = () => set(i.value);
+  if (f.id === "prompt.subject") i.placeholder = "e.g. young woman, dwarf blacksmith";
+  return i;
+}
+function fieldEl(f) {
+  const d = document.createElement("div"); d.className = "field"; d.dataset.id = f.id;
+  const l = document.createElement("label"); l.textContent = f.label || f.id;
+  d.append(l, control(f));
+  if (f.help) { const h = document.createElement("div"); h.className = "help"; h.textContent = f.help; d.append(h); }
+  return d;
+}
+function render() {
+  const form = $("form"); form.innerHTML = "";
+  for (const g of OPTS.groups) {
+    const s = document.createElement("section"); s.dataset.group = g.id;
+    s.innerHTML = `<h2>${esc(g.label)}</h2>`;
+    const adv = document.createElement("details"); adv.className = "adv";
+    adv.innerHTML = "<summary>Advanced</summary><div></div>";
+    for (const f of g.fields) (f.adv ? adv.lastChild : s).append(fieldEl(f));
+    if (adv.lastChild.children.length) s.append(adv);
+    form.append(s);
+  }
+  visibility();
+}
+function visibility() {
+  for (const g of OPTS.groups) {
+    const s = document.querySelector(`section[data-group="${g.id}"]`);
+    s.hidden = !shown(g.show_if);
+    for (const f of g.fields) s.querySelector(`.field[data-id="${CSS.escape(f.id)}"]`).hidden = !shown(f.show_if);
+    const adv = s.querySelector("details.adv");
+    if (adv) adv.hidden = ![...adv.querySelectorAll(".field")].some(x => !x.hidden);
+  }
+}
+
+// ---- referensbilder -----------------------------------------------------------------------------------------
+function refsControl() {
+  const wrap = document.createElement("div");
+  const drop = document.createElement("div"); drop.className = "drop"; drop.textContent = "Drop images here or tap to choose (PNG, JPG, WebP)";
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/png,image/jpeg,image/webp"; inp.multiple = true; inp.hidden = true;
+  const list = document.createElement("div"); list.className = "refs"; list.id = "refList";
+  drop.onclick = () => inp.click();
+  inp.onchange = () => { addFiles(inp.files); inp.value = ""; };
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+  wrap.append(drop, inp, list);
+  setTimeout(drawRefs);
+  return wrap;
+}
+function addFiles(files) {
+  for (const file of files) {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) continue;
+    const used = new Set(refs.map(r => r.role));
+    const role = (ROLES.find(([r]) => !used.has(r)) || ["detail"])[0];
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { refs.push({ role, name: file.name, url, w: img.naturalWidth, h: img.naturalHeight, file, img }); drawRefs(); changed("source.refs"); };
+    img.src = url;
+  }
+}
+function drawRefs() {
+  const list = $("refList"); if (!list) return;
+  list.innerHTML = "";
+  refs.forEach((r, i) => {
+    const d = document.createElement("div"); d.className = "ref";
+    const sel = document.createElement("select");
+    for (const [v, l] of ROLES) sel.add(new Option(l, v, false, v === r.role));
+    sel.onchange = () => { r.role = sel.value; changed("source.refs"); };
+    const x = document.createElement("button"); x.className = "x"; x.textContent = "×"; x.title = "Remove";
+    x.onclick = () => { URL.revokeObjectURL(r.url); refs.splice(i, 1); drawRefs(); changed("source.refs"); };
+    d.innerHTML = `<img src="${r.url}" alt="">`;
+    const row = document.createElement("div"); row.className = "row"; row.append(sel, x);
+    const sz = document.createElement("div"); sz.className = "size"; sz.textContent = `${r.w} × ${r.h}${Math.max(r.w, r.h) > 1024 ? " · Pixal3D gets 1024" : ""}`;
+    d.append(row, sz); list.append(d);
+  });
+}
+
+// ---- extra vyringar för UltraTex ----------------------------------------------------------------------------------
+function rigsControl(f) {
+  const wrap = document.createElement("div"); wrap.className = "rings";
+  const draw = () => {
+    wrap.innerHTML = "";
+    const rigs = get(recipe, f.id) || [];
+    const head = document.createElement("div"); head.className = "ring";
+    head.innerHTML = `<span></span>${[1, 2, 3, 4].map(n => `<span class="lab" style="text-align:right">view ${n}</span>`).join("")}<span></span>`;
+    if (rigs.length) wrap.append(head);
+    rigs.forEach((ring, i) => {
+      for (const key of ["azimuths", "elevations"]) {
+        const row = document.createElement("div"); row.className = "ring";
+        const col = getComputedStyle(document.documentElement).getPropertyValue(RING_COLORS[i % 4]);
+        row.innerHTML = `<span class="lab">${key === "azimuths" ? `<i class="sw" style="background:${col}"></i>${i + 1} turn°` : "height°"}</span>`;
+        ring[key].forEach((val, j) => {
+          const inp = document.createElement("input"); inp.type = "number"; inp.value = val; inp.step = 5;
+          inp.min = key === "azimuths" ? -360 : -60; inp.max = key === "azimuths" ? 360 : 60;
+          inp.oninput = () => { if (inp.value !== "" && !isNaN(+inp.value)) { ring[key][j] = +inp.value; changed(f.id); } };
+          row.append(inp);
+        });
+        if (key === "azimuths") {
+          const x = document.createElement("button"); x.className = "btn"; x.textContent = "×"; x.title = "Remove this ring"; x.style.padding = "2px 6px";
+          x.onclick = () => { rigs.splice(i, 1); draw(); changed(f.id); };
+          row.append(x);
+        } else row.append(document.createElement("span"));
+        wrap.append(row);
+      }
+    });
+    const bar = document.createElement("div"); bar.className = "ringbar";
+    for (const [lab, ring] of [["+ 45° ring", { azimuths: [45, 135, 225, 315], elevations: [0, 0, 0, 0] }],
+                               ["+ from above 40°", { azimuths: [60, 300, 120, 240], elevations: [40, 40, 40, 40] }],
+                               ["+ from below 30°", { azimuths: [30, 150, 210, 330], elevations: [-30, -30, -30, -30] }]]) {
+      const b = document.createElement("button"); b.className = "btn"; b.type = "button"; b.textContent = lab;
+      b.onclick = () => { put(recipe, f.id, [...(get(recipe, f.id) || []), clone(ring)]); draw(); changed(f.id); };
+      if (rigs.length < 4) bar.append(b);
+    }
+    wrap.append(bar);
+  };
+  draw();
+  return wrap;
+}
+
+// ---- planen från servern ------------------------------------------------------------------------------------------
+let planTimer = 0, planSeq = 0, lastPlan = null;
+function changed(id) {
+  try { localStorage.setItem(DRAFT, JSON.stringify(recipe)); } catch (e) {}
+  visibility();
+  clearTimeout(planTimer);
+  planTimer = setTimeout(plan, id && /prompt\.|review\.|name|title/.test(id) ? 350 : 60);
+}
+async function plan() {
+  const seq = ++planSeq;
+  const body = { recipe: { ...recipe, source: { ...recipe.source, refs: [] } }, refs: refs.map(r => ({ role: r.role, name: r.name })) };
+  try {
+    const r = await fetch("/api/character/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.status === 401) return (location.href = "/login?next=/character");
+    const p = await r.json();
+    if (seq !== planSeq) return;
+    lastPlan = p; showPlan(p); scene.update(p);
+  } catch (e) { $("msgs").innerHTML = `<div class="msg err">Could not reach the panel: ${esc(e.message)}</div>`; }
+}
+function showPlan(p) {
+  if (p.ok === undefined && p.message) { $("msgs").innerHTML = `<div class="msg err">${esc(p.message)}</div>`; $("orderBtn").disabled = true; return; }
+  $("msgs").innerHTML = (p.errors || []).map(e => `<div class="msg err">${esc(e)}</div>`).join("") +
+                       (p.warnings || []).map(e => `<div class="msg warn">${esc(e)}</div>`).join("");
+  const cr = Object.entries(p.credits || {});
+  const h = Math.floor(p.minutes / 60), m = p.minutes % 60;
+  $("totals").innerHTML = `<div><b>${h ? `${h} h ${m} min` : `${m} min`}</b> <span>about, if nothing waits</span></div>` +
+    (cr.length ? cr.map(([k, v]) => `<div><b class="cost" style="color:var(--amber)">${v}</b> <span>${esc(k[0].toUpperCase() + k.slice(1))} credits, approved per step</span></div>`).join("")
+               : `<div><b style="color:var(--green)">Free</b> <span>runs on Darrowmere</span></div>`);
+  $("steps").innerHTML = (p.steps || []).map(s => `<li><div>${esc(s.label)}<div class="where">${esc(s.where)}${s.note ? " · " + esc(s.note) : ""}</div></div>` +
+    `<div class="meta">${s.minutes} min${s.credits ? ` · <span class="cost">${s.credits} cr</span>` : ""}</div></li>`).join("");
+  $("promptBox").hidden = !p.prompt;
+  $("prompt").textContent = p.prompt || "";
+  $("orderBtn").disabled = !p.ok || !(p.steps || []).length;
+  $("orderNote").textContent = p.ok ? `${p.id} · results in the gallery under ${p.gallery}` : "";
+}
+
+// ---- beställningen ----------------------------------------------------------------------------------------------
+function toPng(img, max) {
+  const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+  const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/png");
+}
+$("orderBtn").onclick = async () => {
+  const p = lastPlan; if (!p || !p.ok) return;
+  const cr = Object.entries(p.credits || {});
+  if (cr.length && !confirm(`This order uses cloud credits: ${cr.map(([k, v]) => `${v} ${k}`).join(", ")}. Each cloud step still waits for your approval in the panel. Order?`)) return;
+  const btn = $("orderBtn"); btn.disabled = true; btn.textContent = "Sending…";
+  const files = {};
+  if (recipe.source.mode === "upload") {
+    for (const r of refs) files[r.role] = toPng(r.img, 4096);
+    const front = refs.find(r => r.role === "front");
+    if (front) files.front_1024 = toPng(front.img, 1024);
+  }
+  try {
+    const r = await fetch("/api/character/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipe, files }) });
+    const d = await r.json();
+    $("result").innerHTML = d.ok
+      ? `<div class="msg ok">Ordered <b>${esc(d.id)}</b>. Follow it in the <a href="/">panel</a>; the files land in the <a href="/gallery" target="_blank">gallery</a> under ${esc(d.plan.gallery)}.</div>`
+      : `<div class="msg err">${esc(d.message || d.error || "The order failed.")}</div>`;
+  } catch (e) { $("result").innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+  btn.textContent = "Order"; btn.disabled = false;
+};
+$("resetBtn").onclick = () => { if (!confirm("Back to the default settings?")) return; recipe = defaults(); render(); changed(); };
+
+// ---- 3D: en docka i posen och UltraTex-kamerorna som plan runt den -------------------------------------------------
+const scene = (() => {
+  const el = $("view");
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  el.prepend(renderer.domElement);
+  const sc = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+  cam.position.set(2.6, 1.5, 3.4);
+  const ctl = new OrbitControls(cam, renderer.domElement);
+  ctl.target.set(0, 0, 0); ctl.enableDamping = true; ctl.minDistance = 1; ctl.maxDistance = 9;
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x404850, 2.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(2, 4, 3); sc.add(sun);
+  const grid = new THREE.PolarGridHelper(1.2, 8, 4, 48, 0x556070, 0x3a424c); grid.position.y = -0.5; sc.add(grid);
+  const css = v => new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue(v).trim() || "#888");
+
+  // Dockan: höjd 1 (UltraTex skalar modellen till enhetsstorlek), fötterna på -0.5, ansiktet mot +Z (framvyn)
+  const doll = new THREE.Group(); sc.add(doll);
+  const skin = new THREE.MeshStandardMaterial({ color: 0xb9bec6, roughness: 0.75 });
+  const face = new THREE.MeshStandardMaterial({ color: 0x4f8dff, roughness: 0.5 });
+  const cap = (r, len, a, b) => {
+    const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.001, A.distanceTo(B)), 6, 14), skin);
+    m.position.copy(A).add(B).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+    return m;
+  };
+  let pose = null;
+  function buildDoll(p) {
+    if (p === pose) return; pose = p;
+    doll.clear();
+    const y = v => v - 0.5;
+    doll.add(cap(0.075, 0.22, [0, y(0.50), 0], [0, y(0.80), 0]));                      // bål
+    doll.add(cap(0.06, 0.05, [0, y(0.47), 0], [0, y(0.53), 0]));                       // höft
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.062, 24, 16), skin); head.position.set(0, y(0.905), 0); head.scale.set(0.9, 1.1, 0.95); doll.add(head);
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.012, 0.03, 10), face); nose.rotation.x = Math.PI / 2; nose.position.set(0, y(0.9), 0.064); doll.add(nose);
+    doll.add(cap(0.025, 0.03, [0, y(0.82), 0], [0, y(0.86), 0]));                      // hals
+    const down = { t: 0, a: 45, free: 62 }[p] ?? 0;
+    for (const s of [-1, 1]) {
+      const sh = [s * 0.11, y(0.80), 0];
+      const ang = THREE.MathUtils.degToRad(down);
+      const tip = [s * (0.11 + 0.36 * Math.cos(ang)), y(0.80) - 0.36 * Math.sin(ang), 0];
+      doll.add(cap(0.028, 0.3, sh, tip));                                                   // arm
+      doll.add(cap(0.045, 0.02, [s * 0.11, y(0.80), 0], [s * 0.07, y(0.80), 0]));          // axel
+      const hip = [s * 0.055, y(0.47), 0], foot = [s * 0.09, y(0.04), 0];
+      doll.add(cap(0.04, 0.36, hip, foot));                                                 // ben
+      const ft = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, 0.1), skin); ft.position.set(s * 0.09, y(0.015), 0.025); doll.add(ft);
+    }
+  }
+
+  // Kamerorna: avstånd 1,67 och ca 35,5° bildvinkel (UltraTex), planet visar bildrutan vid figurens mitt
+  const DIST = 1.67, HALF = Math.tan(THREE.MathUtils.degToRad(35.5 / 2)) * DIST;
+  const views = new THREE.Group(); sc.add(views);
+  const pickables = [];
+  const tex = new THREE.TextureLoader();
+  let frontTex = null, frontUrl = null;
+  function dir(az, el) {
+    const a = THREE.MathUtils.degToRad(az), e = THREE.MathUtils.degToRad(el);
+    return new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e));
+  }
+  function label(text, color) {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 64;
+    const g = c.getContext("2d"); g.font = "600 30px system-ui, sans-serif"; g.fillStyle = color; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText(text, 128, 32);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+    s.scale.set(0.42, 0.105, 1);
+    return s;
+  }
+  function update(p) {
+    buildDoll(p.pose || "t");
+    views.clear(); pickables.length = 0;
+    const list = p.views || [];
+    const front = refs.find(r => r.role === "front");
+    if (front && front.url !== frontUrl) { frontUrl = front.url; frontTex = tex.load(front.url); frontTex.colorSpace = THREE.SRGBColorSpace; }
+    if (!front) { frontUrl = null; frontTex = null; }
+    const rings = new Set(list.filter(v => v.pass === 2).map(v => v.ring));
+    for (const v of list) {
+      const colVar = v.pass === 1 ? "--blue" : RING_COLORS[(v.ring - 1) % 4];
+      const col = css(colVar);
+      const d = dir(v.az, v.el);
+      const g = new THREE.Group();
+      const center = d.clone().multiplyScalar(DIST);
+      g.position.copy(center);
+      g.lookAt(0, 0, 0);
+      if (Math.abs(v.el) > 89) g.up.set(0, 0, v.el > 0 ? -1 : 1), g.lookAt(0, 0, 0);
+      const sz = HALF * 2 * (v.pass === 1 ? 1 : 0.92);
+      const showImg = v.pass === 1 && v.name === "front" && frontTex;
+      const mat = showImg ? new THREE.MeshBasicMaterial({ map: frontTex, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false })
+                          : new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: v.used ? 0.13 : 0.035, side: THREE.DoubleSide, depthWrite: false });
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), mat);
+      plane.rotateY(Math.PI);   // planet vänt mot figuren
+      plane.userData = v;
+      g.add(plane); pickables.push(plane);
+      const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(sz, sz)),
+        v.used ? new THREE.LineBasicMaterial({ color: col }) : new THREE.LineDashedMaterial({ color: col, dashSize: 0.03, gapSize: 0.03, transparent: true, opacity: 0.5 }));
+      if (!v.used) edge.computeLineDistances();
+      g.add(edge);
+      if (v.used) {   // synstrålar från hörnen mot mitten
+        const h = sz / 2, pts = [];
+        for (const [x, y] of [[-h, -h], [h, -h], [h, h], [-h, h]]) pts.push(new THREE.Vector3(x, y, 0), new THREE.Vector3(-x * 0.1, y * 0.1, DIST * 0.9));
+        g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.22 })));
+      }
+      if (v.pass === 1) {
+        const lab = label(v.name, "#" + col.getHexString());
+        lab.position.set(0, sz / 2 + 0.08, 0);
+        g.add(lab);
+      }
+      views.add(g);
+    }
+    const blue = getComputedStyle(document.documentElement).getPropertyValue("--blue");
+    $("legend").innerHTML = list.length ? `<span><i style="background:${blue}"></i>6 base views</span>` +
+      [...rings].map(n => `<span><i style="background:${getComputedStyle(document.documentElement).getPropertyValue(RING_COLORS[(n - 1) % 4])}"></i>ring ${n}</span>`).join("") +
+      (list.some(v => !v.used) ? `<span>dashed = not baked</span>` : "") : "";
+    const used = list.filter(v => v.used).length;
+    $("viewNote").innerHTML = list.length ? `${used} views painted and projected<br>drag to turn · scroll to zoom`
+      : (recipe.texture?.engine === "ultratex" ? "" : `No projection views: texture is “${esc((OPTS.groups.find(g => g.id === "texture").fields[0].choices.find(c => c[0] === recipe.texture?.engine) || [])[1] || "none")}”`);
+    grid.visible = true;
+  }
+  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  renderer.domElement.addEventListener("pointermove", e => {
+    const r = renderer.domElement.getBoundingClientRect();
+    mouse.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+    ray.setFromCamera(mouse, cam);
+    const hit = ray.intersectObjects(pickables)[0];
+    const hv = $("hover");
+    if (!hit) { hv.style.display = "none"; return; }
+    const v = hit.object.userData;
+    hv.style.display = "block"; hv.style.left = (e.clientX - r.left + 12) + "px"; hv.style.top = (e.clientY - r.top + 12) + "px";
+    hv.textContent = `${v.name} · turn ${v.az}° · height ${v.el}°${v.used ? "" : " · not baked"}`;
+  });
+  function size() {
+    const w = el.clientWidth, h = el.clientHeight;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  }
+  new ResizeObserver(size).observe(el); size();
+  renderer.setAnimationLoop(() => { ctl.update(); renderer.render(sc, cam); });
+  buildDoll("t");
+  return { update };
+})();
+
+// ---- start --------------------------------------------------------------------------------------------------------
+(async () => {
+  const r = await fetch("/api/character/options");
+  if (r.status === 401) return (location.href = "/login?next=/character");
+  OPTS = await r.json();
+  recipe = defaults();
+  try {
+    const saved = JSON.parse(localStorage.getItem(DRAFT) || "null");
+    if (saved) for (const g of OPTS.groups) for (const f of g.fields) { const v = get(saved, f.id); if (v !== undefined && f.type !== "refs") put(recipe, f.id, v); }
+  } catch (e) {}
+  render();
+  plan();
+})();
+</script>
+</body>
+</html>

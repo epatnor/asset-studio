@@ -1,0 +1,72 @@
+{
+ "about": "Beställningssidan för figurer (/character i Darrowmere-panelen). Fälten är data: id är en punktad väg in i receptet, show_if döljer fält som inte gäller, adv lägger dem under Advanced. character_order.py läser samma fil för standardvärdena.",
+ "groups": [
+  {"id": "order", "label": "Order", "fields": [
+   {"id": "name", "type": "text", "default": "", "label": "Name", "help": "Short id for the files (letters, digits, dashes), e.g. nora. Empty: taken from the subject."},
+   {"id": "title", "type": "text", "default": "", "label": "Title", "help": "Shown in the job list and the gallery. Empty: made from the subject."},
+   {"id": "gpu", "type": "choice", "default": "t1000", "label": "Graphics card", "choices": [["t1000", "T1000 (8 GB)"], ["m4000", "M4000 (8 GB)"]], "help": "The runner's lane. Both cards run one heavy job at a time."}
+  ]},
+  {"id": "source", "label": "Reference", "fields": [
+   {"id": "source.mode", "type": "choice", "default": "prompt", "label": "Start from", "choices": [["prompt", "A prompt (Krea-2 draws the reference)"], ["upload", "My own reference images"]]},
+   {"id": "source.refs", "type": "refs", "label": "Reference images", "show_if": {"source.mode": "upload"}, "help": "One or more images. Give each a view: the front image drives Pixal3D and the texture; Tripo and Meshy also use back and side views. Pixal3D gets a copy scaled to 1024 px (larger input gave loose strands)."},
+   {"id": "prompt.subject", "type": "text", "default": "young woman", "label": "Subject", "show_if": {"source.mode": "prompt"}, "help": "Who, short. It goes first in the prompt: Krea-2 follows the first words best (that is how bald finally worked)."},
+   {"id": "prompt.bald", "type": "bool", "default": true, "label": "Bald (hair is a separate layer)", "show_if": {"source.mode": "prompt"}, "help": "Puts bald first in the subject and bans the word hair in prompt rewrites. Krea has no negative prompt: 'no hair' draws hair."},
+   {"id": "prompt.body", "type": "text", "default": "", "label": "Body", "show_if": {"source.mode": "prompt"}, "help": "Optional, e.g. slender legs, narrow hips, fairly full bust."},
+   {"id": "prompt.outfit", "type": "text", "default": "a high-cut one-piece bathing suit", "label": "Wearing", "show_if": {"source.mode": "prompt"}, "help": "Tight clothes give clean surfaces for the texture. Matte fabric: highlights get painted into the texture."},
+   {"id": "prompt.pose", "type": "choice", "default": "t", "label": "Pose", "show_if": {"source.mode": "prompt"}, "choices": [["t", "T-pose (square frame)"], ["a", "A-pose"], ["free", "As written"]], "help": "Symmetric poses make rigging and the face mirror work. T-pose needs a square frame or the hands get cut off."},
+   {"id": "prompt.front", "type": "bool", "default": true, "label": "Straight-on front view", "show_if": {"source.mode": "prompt"}, "help": "Body and face square to the camera. Without it Krea often turns the figure a little."},
+   {"id": "prompt.style", "type": "text", "default": "stylized 3D game character render, hand-painted stylized PBR textures, whole figure visible from head to toe, soft even lighting", "label": "Style", "show_if": {"source.mode": "prompt"}},
+   {"id": "prompt.final", "type": "textarea", "default": "", "label": "Final prompt (override)", "show_if": {"source.mode": "prompt"}, "adv": true, "help": "Empty: built from the fields above (shown in the plan). Anything here is sent to Krea-2 as is."},
+   {"id": "prompt.count", "type": "number", "default": 2, "min": 1, "max": 6, "step": 1, "label": "Images", "show_if": {"source.mode": "prompt"}, "help": "The first one is reviewed and goes on to the model; the rest are alternatives in the gallery."},
+   {"id": "prompt.size", "type": "choice", "default": "1024x1024", "label": "Image size", "show_if": {"source.mode": "prompt"}, "choices": [["1024x1024", "1024 × 1024 (square)"], ["832x1216", "832 × 1216 (portrait, A-pose)"], ["1440x1440", "1440 × 1440 (sharper texture reference)"]], "help": "Pixal3D always gets 1024 px; larger images only help the texture."},
+   {"id": "prompt.seed", "type": "number", "default": 11, "min": 0, "max": 999999, "step": 1, "label": "First seed", "show_if": {"source.mode": "prompt"}, "adv": true},
+   {"id": "stop_after_images", "type": "bool", "default": false, "label": "Stop after the images", "show_if": {"source.mode": "prompt"}, "help": "Only draw and review. Pick a favourite in the gallery and order the model from it with My own reference images."}
+  ]},
+  {"id": "review", "label": "Review", "show_if": {"source.mode": "prompt"}, "fields": [
+   {"id": "review.enabled", "type": "bool", "default": true, "label": "AI review of the first image", "help": "Claude Haiku checks the image against the rules and redraws it with a new seed when it fails."},
+   {"id": "review.hard_face", "type": "bool", "default": true, "label": "Clean face rule", "show_if": {"review.enabled": true}, "help": "No jewellery, paint or markings on the face, round human ears. Bald and pose rules are added from the reference settings."},
+   {"id": "review.criteria", "type": "lines", "default": ["Exactly one character, shown whole from head to toe and centered, both hands and feet inside the frame.", "Plain even background, no other objects or text; no strong white highlights on clothes or skin; correct hands and face."], "label": "Criteria", "show_if": {"review.enabled": true}, "help": "One per line. Soft criteria give a score; hard rules (from the toggles) fail the image outright."},
+   {"id": "review.max", "type": "number", "default": 6, "min": 0, "max": 12, "step": 1, "label": "Redraws", "show_if": {"review.enabled": true}},
+   {"id": "review.min_score", "type": "number", "default": 7, "min": 1, "max": 10, "step": 1, "label": "Pass score", "show_if": {"review.enabled": true}, "adv": true},
+   {"id": "review.rewrite", "type": "bool", "default": true, "label": "Repair the prompt on fail", "show_if": {"review.enabled": true}, "adv": true, "help": "The reviewer rewrites the prompt from what went wrong."},
+   {"id": "review.avoid", "type": "text", "default": "", "label": "Words the rewrite may not use", "show_if": {"review.enabled": true}, "adv": true, "help": "Comma separated. hair, hairstyle and haircut are added when Bald is on."}
+  ]},
+  {"id": "model", "label": "3D model", "show_if": {"stop_after_images": false}, "fields": [
+   {"id": "model.engine", "type": "choice", "default": "pixal3d", "label": "Model", "choices": [["pixal3d", "Pixal3D (Darrowmere, free)"], ["tripo-p1", "Tripo P1 (cloud)"], ["tripo-p2", "Tripo P2 (cloud)"], ["meshy", "Meshy (cloud)"]], "help": "Pixal3D gives a dense mesh of about 700 000 triangles from the front image. Tripo and Meshy can use several views."},
+   {"id": "model.pixal3d.seed", "type": "number", "default": 142, "min": 0, "max": 999999, "step": 1, "label": "Seed", "show_if": {"model.engine": "pixal3d"}},
+   {"id": "model.pixal3d.cfg", "type": "number", "default": 3.5, "min": 1, "max": 10, "step": 0.5, "label": "Shape CFG", "show_if": {"model.engine": "pixal3d"}, "adv": true, "help": "3.5 gave the cleanest pelvis in the Nora tests."},
+   {"id": "model.pixal3d.faces", "type": "number", "default": 700000, "min": 100000, "max": 1500000, "step": 50000, "label": "Triangles", "show_if": {"model.engine": "pixal3d"}, "adv": true},
+   {"id": "model.pixal3d.tex", "type": "choice", "default": "4096", "label": "Own texture size", "show_if": {"model.engine": "pixal3d"}, "adv": true, "choices": [["2048", "2048"], ["4096", "4096"]]},
+   {"id": "model.tripo.face_limit", "type": "number", "default": 30000, "min": 1000, "max": 200000, "step": 1000, "label": "Face limit", "show_if": {"model.engine": ["tripo-p1", "tripo-p2"]}},
+   {"id": "model.meshy.ai_model", "type": "choice", "default": "meshy-6", "label": "Meshy model", "show_if": {"model.engine": "meshy"}, "choices": [["meshy-6", "meshy-6 (20 credits)"], ["meshy-7.1", "meshy-7.1 (20)"], ["meshy-t2.5", "meshy-t2.5 smart topology, one image (5)"], ["meshy-6-lite", "meshy-6-lite (5)"]]},
+   {"id": "model.meshy.target_polycount", "type": "number", "default": 30000, "min": 1000, "max": 300000, "step": 1000, "label": "Polycount", "show_if": {"model.engine": "meshy"}},
+   {"id": "model.meshy.pose_mode", "type": "choice", "default": "", "label": "Pose", "show_if": {"model.engine": "meshy"}, "adv": true, "choices": [["", "As in the image"], ["t-pose", "T-pose"], ["a-pose", "A-pose"]]}
+  ]},
+  {"id": "texture", "label": "Texture", "show_if": {"stop_after_images": false}, "fields": [
+   {"id": "texture.engine", "type": "choice", "default": "ultratex", "label": "Texture", "choices": [["ultratex", "UltraTex 4B projection (Darrowmere, free)"], ["model", "The model's own texture"], ["meshy", "Meshy retexture (cloud)"], ["none", "None (shape only)"]], "help": "UltraTex paints views around the model from the front reference and bakes them into the UV map (the planes in the preview)."},
+   {"id": "texture.ultratex.lora", "type": "choice", "default": "ultratex4b_run1_08000.safetensors", "label": "Checkpoint", "show_if": {"texture.engine": "ultratex"}, "choices": [["ultratex4b_run1_08000.safetensors", "run1 step 8000"]], "dynamic": "loras", "help": "Our own UltraTex 4B LoRA. Step 8000 is the tested one."},
+   {"id": "texture.ultratex.decoder", "type": "choice", "default": "flux2_base_decoder.pt", "label": "Decoder", "show_if": {"texture.engine": "ultratex"}, "choices": [["flux2_base_decoder.pt", "Base decoder"], ["ultratex_flux2_decoder.pt", "UltraTex decoder"]], "dynamic": "decoders"},
+   {"id": "texture.ultratex.rigs", "type": "rigs", "default": [{"azimuths": [45, 135, 225, 315], "elevations": [0, 0, 0, 0]}, {"azimuths": [60, 300, 120, 240], "elevations": [40, 40, 40, 40]}], "label": "Extra view rings", "show_if": {"texture.engine": "ultratex"}, "help": "The six base views (front, sides, back, top, bottom) always run. Each ring adds four views at the given angles (0 = front, 90 = right side; elevation > 0 is from above)."},
+   {"id": "texture.ultratex.views_2_use", "type": "choice", "default": "no top/bottom", "label": "Extra rings' views", "show_if": {"texture.engine": "ultratex"}, "choices": [["no top/bottom", "Side views only (no top/bottom)"], ["all", "All"], ["front + back", "Front + back"], ["front only", "Front only"], ["back only", "Back only"]], "help": "Each ring also renders a top and bottom view; dropping them fixed blotchy shoulders and crown."},
+   {"id": "texture.ultratex.mixes", "type": "numbers", "default": [0.7, 0.9], "label": "Best-view mix (one bake each)", "show_if": {"texture.engine": "ultratex"}, "help": "0 = smooth blend of views, 1 = sharpest view only (more visible seams). Every value gives its own model."},
+   {"id": "texture.ultratex.view_weight_power", "type": "number", "default": 8, "min": 0, "max": 16, "step": 0.5, "label": "View weight", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.views_2_weight", "type": "number", "default": 0.6, "min": 0.1, "max": 1, "step": 0.05, "label": "Extra views' weight", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.edge_feather_px", "type": "number", "default": 16, "min": 0, "max": 64, "step": 1, "label": "Edge feather (px)", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.texture_size", "type": "choice", "default": "2048", "label": "Texture size", "show_if": {"texture.engine": "ultratex"}, "choices": [["2048", "2048"], ["4096", "4096"]]},
+   {"id": "texture.ultratex.steps", "type": "number", "default": 4, "min": 1, "max": 30, "step": 1, "label": "Steps", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.guidance", "type": "number", "default": 4, "min": 1, "max": 10, "step": 0.5, "label": "Guidance", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.seed", "type": "number", "default": 12345, "min": 0, "max": 999999, "step": 1, "label": "Seed", "show_if": {"texture.engine": "ultratex"}, "adv": true},
+   {"id": "texture.ultratex.alignment", "type": "choice", "default": "fit_front_silhouette", "label": "Reference alignment", "show_if": {"texture.engine": "ultratex"}, "adv": true, "choices": [["fit_front_silhouette", "Fit to the front silhouette"], ["center", "Center"]]},
+   {"id": "texture.meshy.resolution", "type": "choice", "default": "2k", "label": "Resolution", "show_if": {"texture.engine": "meshy"}, "choices": [["2k", "2K (10 credits)"], ["4k", "4K (10)"], ["8k", "8K (15)"]]}
+  ]},
+  {"id": "finish", "label": "Finishing", "show_if": {"stop_after_images": false}, "fields": [
+   {"id": "finish.gamma", "type": "number", "default": 1.3, "min": 0.5, "max": 2, "step": 0.05, "label": "Colour gamma", "show_if": {"texture.engine": ["ultratex", "model", "meshy"]}, "help": "1.3 brightened the UltraTex skin to match the reference. 1 = untouched."},
+   {"id": "finish.clean", "type": "bool", "default": true, "label": "Remove loose bits", "help": "Strands and flakes smaller than 2 % of the body."},
+   {"id": "finish.mirror_face", "type": "bool", "default": true, "label": "Mirror the face", "show_if": {"texture.engine": ["ultratex", "model", "meshy"]}, "help": "Copies the better half of the face to the other side. Needs a symmetric pose."},
+   {"id": "finish.game", "type": "bool", "default": true, "label": "Game model", "help": "A low-poly copy with colour and normal map baked from the dense model (Blender on Darrowmere)."},
+   {"id": "finish.tris", "type": "number", "default": 12000, "min": 2000, "max": 60000, "step": 1000, "label": "Game triangles", "show_if": {"finish.game": true}},
+   {"id": "finish.tex", "type": "choice", "default": "2048", "label": "Game texture", "show_if": {"finish.game": true}, "choices": [["1024", "1024"], ["2048", "2048"]]},
+   {"id": "finish.voxel", "type": "number", "default": 0.0035, "min": 0.002, "max": 0.01, "step": 0.0005, "label": "Remesh voxel (m)", "show_if": {"finish.game": true}, "adv": true, "help": "Fine voxels keep ears and fingers (1/140 lost the frost sister's ear)."}
+  ]}
+ ]
+}
