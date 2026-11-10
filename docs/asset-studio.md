@@ -166,12 +166,49 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   figur valts visas inte.
 - **Footern:** figurens längd, bredd och djup i meter, trianglar, kontrollerna (fötterna på marken, symmetri, budget,
   rigg, vuxen) och byggtiden.
-- **Prov:** `creator_hair.json` (Ignore hair på body-gens kvinna med hästsvans: skalan efter halsen, vyn följer inpassningens skala), `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar
+- **Prov:** `creator_edit.json` (editorn på syssling_wrap16: nätets läge, en tinning i posen med spegling, Point och Brush med pekardrag, Undo, Save till `_e<n>`, flödesraden och bakningen), `creator_hair.json` (Ignore hair på body-gens kvinna med hästsvans: skalan efter halsen, vyn följer inpassningens skala), `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar
   bort `assets/characters/ui_test_creator` efteråt) och `creator_fit.json` (en riktig inpassning av sysslingens Pixal3D-form,
   några minuter). Båda mot `studio-test` (port 8771).
 
-Kvar: ansiktet och hår och kläder (flikarna är markerade som kommande), figurerna i The Vault, och Pixal3D-beställning
-direkt från avdelningen (i dag via Darrowmeres sida).
+- **Edit points (2026-11-10, `studio/human_edit.js`):** Body Editors verktyg på en sparad, inpassad figur, utan
+  topologiverktygen: Point (klick, Shift+klick, Shift+ruta, dra med falloff), Brush, Smooth och In/out längs normalen,
+  radie, hårdhet och styrka, spegling i x (paren ur MPFB:s symmetriska vila), See through (X), vyerna 1/3/7 (Ctrl för
+  motsatt sida, 5 för 3D) med låst vy (L), Undo/Redo (Ctrl+Z, Ctrl+Shift+Z) och referensbilder framifrån och från sidan.
+  Nätet ritas ur `<namn>_edit.json` ([EDITS.md](../tools/character/human/EDITS.md)) i inpassningens pose (med AI-formen
+  som spöke) eller i vila; en dragning i posen räknas om med `pose_to_rest`, och allt lagras som förflyttning i vila.
+  *Save edits and build* skriver `build/human/edits/<namn>_v<n>.json` (aldrig över) och bygger `<namn>_e<n>` med
+  receptet plus `"edits"` (`/api/human/edits`). Vilans hörn ligger i den riggade figurens nätrum, 0,83 m under marken;
+  editorn lyfter dem bara när de visas.
+- **Textures:** *Bake the detail normal map* kör `bake_detail.py` (AI-formens relief som normalkarta på MPFB:s UV) till
+  en ny `<namn>_detail.glb` (`/api/human/bake`, några minuter); bakade filer listas med *Show*. Färgen beställs som
+  UltraTex på Darrowmere och bakas med `transfer_texture.py`, som ännu inte är en knapp.
+- **Flödet:** en rad överst i vyn, Concept → AI model → Body → Edit → Textures → Finished, med status för den öppnade
+  figuren och ett klick till steget (Concept och AI model leder till beställningen på Darrowmere).
+
+### Från koncept till färdig modell: brister (2026-11-10)
+
+Slutprodukten är en färdig, redigerad och bakad modell med alla texturer. Varje figur börjar som ett koncept. Det här
+saknas än:
+
+1. **Koncept:** konceptet (referensbilderna eller Krea-bilden) beställs på Darrowmere och syns inte i studion; figurens
+   recept minns inte vilken beställning den kom från, så editorns referensbilder måste läggas in för hand (och sparas
+   inte).
+2. **AI-modellen:** Pixal3D-resultatet hämtas inte in automatiskt från Darrowmere till listan över AI-former, och
+   beställningens läge syns inte i studion.
+3. **Inpassningen:** en åt gången, utan steg i förloppet och utan avbryt. (Korsningarna efter wrapen är borta sedan
+   omgång 19, och `fit_human.py` kör `check_normals.mjs` själv: `no_self_intersect`, `no_folded_faces`. Hästsvansprovet
+   har fortfarande 12 vikta ytor, vid grenen, i munhålan, vid kinder och öron.)
+4. **Redigeringen:** referensbilderna glöms när sidan laddas om; inga val per område (huvud, händer) eller dölj; tätheten
+   per område kan bara styras med en egen proxy (mhclo) som MPFB passar in på varje kropp; figurer utan wrap har ingen
+   editorfil.
+5. **Färgen:** UltraTex beställs inte från studion, och `transfer_texture.py` (färgen bakad på MPFB:s UV) är ingen knapp
+   här än; ingen hudinställning (ruffighet, subsurface), ingen AO eller krökning i bakningen, fast 2048 px.
+6. **Den färdiga modellen:** ingen fil som samlar ändringarna, riggen, ögonen, normalkartan och färgen i en GLB; ingen
+   export till Godot för figurer (`export_world.mjs` gäller världar); inga LOD-nivåer; figurerna finns inte i The Vault.
+7. **Kroppen:** ansiktet, håret och kläderna (flikarna är markerade som kommande); fingrarna sitter ihop i spelnätet;
+   armhålorna kläms när armarna rör sig (deformationstestet finns inte än).
+
+Kvar utöver listan: Pixal3D-beställning direkt från avdelningen (i dag via Darrowmeres sida).
 
 ## Idé: Darrowmere i en liten ruta (2026-11-09)
 

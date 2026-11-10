@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
+import { createPointEditor } from './human_edit.js';
 
 export async function createHuman({ api, el, view, side, drawer, footer }) {
   const info = await api('/api/human');
@@ -35,6 +36,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 100);
   camera.position.set(0.9, 1.3, 4.6);
+  let cam = camera; // perspektivet, eller redigeringslägets platta kamera (1/3/7)
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 0.9, 0);
   controls.enableDamping = true;
@@ -191,7 +193,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       const j = await api(`/api/human/job?id=${id}`);
       if (!j.pending) return j;
       onWait?.(j);
-      await new Promise((r) => setTimeout(r, j.kind === 'fit' ? 2000 : 400));
+      await new Promise((r) => setTimeout(r, j.kind === 'fit' || j.kind === 'bake' ? 2000 : 400));
     }
   }
   async function rebuild() {
@@ -204,6 +206,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     try {
       const { job, error } = await api('/api/human/build', { recipe: recipe() });
       const res = error ? { error } : await poll(job);
+      renderSteps();
       if (gen !== selGen) { /* en annan figur valdes medan bygget pågick: det gamla visas inte (ett nytt bygge följer vid behov) */ }
       else if (res.glb) { lastBuild = res; await showFigure(res); lamp(res.ok ? 'ok' : 'bad', res.ok ? `Built in ${((performance.now() - t0) / 1000).toFixed(1)} s` : 'Built, but a check failed'); checksOf(res); }
       else { lamp('bad', 'Not built'); note.textContent = res.error ?? 'The build failed'; }
@@ -212,7 +215,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       if (again) { again = false; rebuild(); }
     }
   }
-  const changed = () => { mark(null); rebuild(); };
+  const changed = () => { mark(null); openSaved = null; editState(); rebuild(); };
 
   // --- Korten till höger ---
   const cards = createCards({ el, side });
@@ -342,6 +345,108 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   toolBody.append(tBtns, order, toolMsg);
 
   // Spara: figuren byggs med sitt namn i assets/characters/<namn>/ (ett namn som finns skrivs aldrig över)
+  // Redigeringsläget (studio/human_edit.js): punkterna på en sparad, inpassad figur
+  let openSaved = null, editor = null;
+  const editBody = cards.card('Edit points', '#e0507a', { help: 'Drag the points of a saved, fitted figure yourself (the Body Editor\'s tools, without the topology tools): the edits are kept as moves in the rest pose and built in last' });
+  keepCard(editBody);
+  const editBtn = el('button', 'primary', 'Edit points…');
+  const editMsg = el('div', 'note');
+  editBtn.onclick = async () => {
+    editor ??= createPointEditor({ el, api, side, view, scene, renderer, controls, persp: camera, setCam: (c) => { cam = c; controls.object = c; }, getCam: () => cam,
+      hideFigure: (h) => { if (figure) figure.visible = !h; }, aiShow: aiForEdit, onSaved: editSaved, say: (t) => lamp('ok', t) });
+    await editor.start(openSaved);
+  };
+  editBody.append(editBtn, editMsg);
+  function editState() {
+    renderSteps(); renderTex();
+    const ok = !!openSaved?.edit;
+    editBtn.disabled = !ok;
+    editMsg.textContent = ok ? `Edit ${openSaved.name}${openSaved.recipe?.edits ? ' (it already has edits; you continue from them)' : ''}.` : openSaved ? `${openSaved.name} has no editor file: only fitted figures with a wrap can be edited.` : 'Open a saved, fitted figure in the drawer to edit its points.';
+  }
+  // AI-formen som spöke över det redigerade nätet (posen), och tillbaka till vyns val efteråt
+  let aiBefore = null;
+  async function aiForEdit(on) {
+    if (on === null) { if (aiBefore !== null) { view3.ai = aiBefore; aiBefore = null; cards.sync(); placeAi(); } return; }
+    aiBefore ??= view3.ai;
+    view3.ai = on ? 'overlay' : 'off';
+    if (on) await loadAi(targetSel.value);
+    placeAi();
+  }
+  // Sparade ändringar: bygget till det nya namnet följs, figuren öppnas i lådan
+  async function editSaved(r) {
+    lamp('busy', `Building ${r.name} with the edits…`);
+    const res = await poll(r.job);
+    if (!res.glb) { lamp('bad', 'The build failed'); return res; }
+    await refreshSaved();
+    editor.close();
+    const tile = body.querySelector(`.wprof[data-id="saved:${r.name}"]`);
+    if (tile) await tile.onclick();
+    lamp(res.ok ? 'ok' : 'bad', res.ok ? `Built ${r.name} with the edits` : `Built ${r.name}, but a check failed`);
+    return res;
+  }
+  // Texturerna: detaljernas normalkarta bakas här (bake_detail.py); färgen kommer från UltraTex på Darrowmere
+  const texBody = cards.card('Textures', '#c99a1c', { help: 'The finished model: the AI shape\'s detail as a normal map on MPFB\'s UV (bake_detail.py), and the colour from a textured model (UltraTex on Darrowmere, then transfer_texture.py)' });
+  keepCard(texBody);
+  const bakeBtn = el('button', 'primary', 'Bake the detail normal map');
+  bakeBtn.title = 'The AI shape\'s relief (collarbones, navel, ribs) as a normal map on MPFB\'s UV, without a denser mesh; a new <name>_detail.glb, never overwritten. Takes a few minutes';
+  const bakeMsg = el('div', 'note'), bakedList = el('div', 'hu-baked');
+  const colorNote = el('div', 'note');
+  colorNote.append('Colour: order UltraTex for the figure\'s _pose.glb on ', Object.assign(el('a', 'hu-link', 'Darrowmere ↗'), { href: info.links.order.url, target: '_blank', rel: 'noopener' }), ', then bake it onto MPFB\'s UV (transfer_texture.py; not a button here yet).');
+  texBody.append(bakeBtn, bakeMsg, bakedList, colorNote);
+  function renderTex() {
+    const s = openSaved;
+    bakeBtn.disabled = !s?.recipe?.wrap || !!baking;
+    if (!baking) bakeMsg.textContent = !s ? 'Open a saved, fitted figure to bake its textures.' : !s.recipe?.wrap ? `${s.name} has no fit to bake the details from.` : bakeNote[s.name] ?? '';
+    bakedList.replaceChildren(...(s?.baked ?? []).map((b) => {
+      const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show');
+      btn.title = `Show ${b.file} with its own materials (Clay off)`;
+      btn.onclick = async () => { view3.clay = false; cards.sync(); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
+      row.append(el('span', `hu-kind ${b.kind}`, b.kind === 'detail' ? 'detail' : b.kind === 'color' ? 'colour' : 'model'), el('span', null, b.file.split('/').pop()), btn);
+      return row;
+    }));
+  }
+  let baking = null;
+  const bakeNote = {}; // det senaste beskedet per figur (står kvar när kortet ritas om)
+  bakeBtn.onclick = async () => {
+    const s = openSaved;
+    const r = await api('/api/human/bake', { name: s.name });
+    if (r.error) { bakeMsg.textContent = `Not started: ${r.error}`; return; }
+    baking = r.job; renderTex();
+    const clock = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+    const res = await poll(r.job, (j) => { bakeMsg.textContent = `Baking ${r.out.split('/').pop()}… ${clock(Date.now() - j.since)}`; });
+    baking = null;
+    bakeNote[s.name] = bakeMsg.textContent = res.url ? `Baked ${res.out} in ${clock(res.ms)}${res.align_mm != null ? ` (alignment ${res.align_mm} mm)` : ''}` : `The bake failed: ${res.error ?? 'no model'}`;
+    await refreshSaved();
+    openSaved = info.saved.find((x) => x.name === s.name) ?? openSaved;
+    editState();
+  };
+
+  // --- Flödet (Patrik 2026-11-10): varje figur börjar som ett koncept och slutar som en färdig, redigerad och bakad
+  // modell med alla texturer. Stegen överst i vyn visar var den öppnade figuren står, och ett klick tar en dit.
+  const steps = el('div', 'hu-steps');
+  view.append(steps);
+  const scrollTo = (b) => { const c = b.parentElement; c.classList.remove('closed'); c.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+  function stepList() {
+    const s = openSaved, r = s?.recipe, detail = s?.baked?.some((b) => b.kind === 'detail'), color = s?.baked?.some((b) => b.kind === 'color');
+    return [
+      ['concept', 'Concept', r?.target ? 'done' : 'todo', r?.target ? 'The concept became an AI model (see AI model)' : 'Every figure starts as a concept: order reference pictures or a Krea picture on Darrowmere', () => { if (!r?.target) open(info.links.order.url, '_blank'); else scrollTo(fitBody); }],
+      ['model', 'AI model', r?.target ? 'done' : 'todo', r?.target ? `AI shape: ${r.target}` : 'A Pixal3D model from the concept, ordered on Darrowmere (it lands in the Fit card\'s list)', () => { if (!r?.target) open(info.links.order.url, '_blank'); else scrollTo(fitBody); }],
+      ['body', 'Body', s || lastBuild ? (r?.wrap ? 'done' : 'part') : 'todo', r?.wrap ? 'Fitted: sliders and a wrap to the AI shape' : 'Sliders only; fit an AI shape for the wrap', () => scrollTo(r?.wrap ? fitBody : side.querySelector('.card .rows'))],
+      ['edit', 'Edit', r?.edits ? 'done' : s?.edit ? 'todo' : 'na', r?.edits ? `Edited by hand (${r.edits})` : s?.edit ? 'Drag points by hand where the fit is off' : 'Needs a saved, fitted figure', () => { if (s?.edit) editBtn.click(); else scrollTo(editBody); }],
+      ['textures', 'Textures', detail && color ? 'done' : detail || color ? 'part' : s?.recipe?.wrap ? 'todo' : 'na', `${detail ? 'Detail normal map: baked' : 'Detail normal map: not baked'} · ${color ? 'colour: baked' : 'colour: missing'}`, () => scrollTo(texBody)],
+      ['done', 'Finished', detail && color ? 'done' : 'todo', 'A finished model: edited, rigged, with its normal map and colour in one GLB (not built yet: see the list in docs/asset-studio.md)', () => scrollTo(texBody)],
+    ];
+  }
+  function renderSteps() {
+    steps.replaceChildren(...stepList().map(([id, label, state, tip, go], i) => {
+      const b = el('button', `hu-step ${state}`);
+      b.dataset.step = id; b.dataset.state = state; b.title = tip;
+      b.append(el('i', null, String(i + 1)), document.createTextNode(label));
+      b.onclick = go;
+      return b;
+    }));
+  }
+
   const saveBody = cards.card('Save', '#4a90d9');
   const saveBtn = el('button', 'primary', 'Save figure…');
   saveBtn.title = 'Builds the figure under its own name in assets/characters/<name>/ (rigged .glb and posed _pose.glb) with recipe.json and a thumbnail';
@@ -355,11 +460,11 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     lamp('busy', 'Saving…');
     const res = await poll(r.job);
     if (!res.glb) { lamp('bad', 'Not saved'); saveMsg.textContent = `Not saved: ${res.error}`; return; }
-    saveMsg.textContent = `Saved: ${res.glb}`;
-    lamp('ok', 'Saved');
     from = `saved:${res.name}`;
     await refreshSaved();
     mark(from);
+    saveMsg.textContent = `Saved: ${res.glb}`; // efter lådan, så att figuren redan står där när beskedet kommer
+    lamp('ok', 'Saved');
   };
   saveBody.append(saveBtn, saveMsg);
 
@@ -384,7 +489,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     sec('Ready-made', info.templates.map((t) => {
       const f = tile(t.id, t.label, t.help, t.id);
       f.title = t.help;
-      f.onclick = () => { load(t.recipe); fitXf = null; from = t.id; mark(t.id); rebuild(); };
+      f.onclick = () => { if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); } load(t.recipe); fitXf = null; openSaved = null; editState(); from = t.id; mark(t.id); rebuild(); };
       return f;
     }));
     sec('Saved', info.saved.map((s) => {
@@ -392,7 +497,9 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       const f = tile(`saved:${s.name}`, s.name, meta(s.recipe), tpl, s.thumbnail);
       f.title = `${s.rigged}${s.overlay ? ' · has a fit overlay' : ''}`;
       f.onclick = async () => {
+        if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); }
         load(s.recipe ?? {}, { lock: s.recipe ? null : s.name });
+        openSaved = s; editState();
         from = `saved:${s.name}`;
         mark(from);
         overlayUrl = s.overlay;
@@ -419,7 +526,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     const box = body.querySelector(`.wprof[data-id="saved:${name}"] .ticon`);
     if (box) { const img = Object.assign(el('img'), { src: r.thumbnail, alt: '' }); box.classList.remove('letter'); box.replaceChildren(img); }
   }
-  async function refreshSaved() { const r = await api('/api/human'); info.saved = r.saved; info.targets = r.targets; renderDrawer(); }
+  async function refreshSaved() { const r = await api('/api/human'); info.saved = r.saved; info.targets = r.targets; renderDrawer(); if (openSaved) openSaved = info.saved.find((x) => x.name === openSaved.name) ?? openSaved; renderSteps(); }
   renderDrawer();
 
   // Overlay-bilden från inpassningen, över vyn
@@ -484,13 +591,14 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // --- Rendering ---
   let running = false;
-  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); editor?.resize(); }
   addEventListener('resize', () => { if (running) resize(); });
   const gate = frameGate();
-  function frame(now) { if (!gate(now)) return; controls.update(); renderer.render(scene, camera); }
+  function frame(now) { if (!gate(now)) return; controls.update(); renderer.render(scene, cam); }
 
   // Start: den första mallen, eller en inpassning som redan pågår
   cards.sync();
+  editState();
   load(info.templates[0]?.recipe ?? {});
   mark(from);
   const started = rebuild();
@@ -502,6 +610,8 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
+    get steps() { return stepList().map(([id, label, state]) => ({ id, label, state })); },
+    get editor() { return editor; }, get openSaved() { return openSaved; },
     get building() { return building || again; }, get locked() { return locked; }, aiOffset, get fitXf() { return fitXf; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);

@@ -457,6 +457,25 @@
   #huside.hu-locked .card:not(.hu-keep) > .rows { opacity: 0.45; pointer-events: none; }
   .hu-lockmsg { margin: 10px 12px 2px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink-2); font-size: 12px; line-height: 1.4; flex: none; }
   .hu-lockmsg[hidden] { display: none; }
+  /* Redigeringsläget (studio/human_edit.js): bara kortet Edit points syns, och en ruta för att välja punkter */
+  #huside.hu-editing > .card:not(.hu-edit), #huside.hu-editing > .hu-lockmsg { display: none; }
+  #huside .card[hidden] { display: none; }
+  .hu-seg { flex-wrap: wrap; }
+  .hu-box { position: absolute; border: 1px dashed var(--accent); background: var(--accent-soft); pointer-events: none; z-index: 2; }
+  .hu-box[hidden] { display: none; }
+  /* Flödet: stegen från koncept till färdig modell, överst i vyn */
+  .hu-steps { position: fixed; z-index: 1; top: calc(var(--head) + var(--gap)); left: calc(288px + var(--gap) * 2); right: calc(350px + var(--gap) * 2); display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; pointer-events: none; }
+  body.drawer-closed .hu-steps { left: var(--gap); }
+  .hu-step { pointer-events: auto; height: 26px; border-radius: 13px; padding: 0 10px 0 4px; gap: 6px; background: var(--surface); backdrop-filter: blur(10px); color: var(--ink-2); }
+  .hu-step i { font-style: normal; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; background: var(--field); color: var(--muted); border: 1px solid var(--line-strong); }
+  .hu-step.done i { background: var(--good); color: #fff; border-color: transparent; }
+  .hu-step.part i { background: var(--warn); color: #fff; border-color: transparent; }
+  .hu-step.na { opacity: 0.5; }
+  .hu-baked { display: grid; gap: 4px; }
+  .hu-bakedrow { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; font-size: 11.5px; color: var(--ink-2); }
+  .hu-bakedrow > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hu-kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--ink-2); }
+  .hu-kind.color { background: color-mix(in srgb, var(--warn) 25%, transparent); }
   .hu-btns { display: flex; gap: 6px; } .hu-btns button { flex: 1; justify-content: center; }
   .hu-link { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 12.5px; padding: 2px 0; } .hu-link:hover { text-decoration: underline; }
   .hu-overlay { position: fixed; z-index: 2; left: calc(288px + var(--gap) * 2); right: calc(350px + var(--gap) * 2); top: calc(var(--head) + var(--gap)); bottom: calc(var(--foot) + var(--gap));

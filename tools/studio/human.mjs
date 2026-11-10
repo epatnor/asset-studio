@@ -9,6 +9,10 @@
 // POST /api/human/fit           { name, target, sex, age, subdiv, wrap, symmetric, fine, ignore_hair } -> { job }: fit_human.py
 //                               (minuter); figuren i assets/characters/<name>/, beviset build/human/fit/<name>/overlay.png
 // POST /api/human/upload?name=  GLB i kroppen -> build/human/targets/<name>.glb (en AI-form att passa in)
+// POST /api/human/edits         { name, proxy, nverts, offsets } -> { job, name, file }: egna ändringar på punkterna
+//                               (tools/character/human/EDITS.md) som en ny fil build/human/edits/<namn>_v<n>.json, och
+//                               figuren byggd om med dem till <namn>_e<n>
+// POST /api/human/bake          { name } -> { job, out }: detaljernas normalkarta (bake_detail.py) till <namn>_detail.glb
 // POST /api/human/thumb         { name, thumbnail } -> <name>_thumb.jpg för en sparad figur som saknar miniatyr
 // POST /api/human/editor        startar Body Editor på värden (tools/character/body/editor/launch.sh)
 // GET  /api/human/job?id=       ett jobbs status eller resultat
@@ -20,7 +24,7 @@ import path from 'node:path';
 
 const HUMAN = 'tools/character/human';
 const PREV = 'build/studio/human', KEEP = 24;
-const CHARS = 'assets/characters', FITS = 'build/human/fit', TARGETS = 'build/human/targets';
+const CHARS = 'assets/characters', FITS = 'build/human/fit', TARGETS = 'build/human/targets', EDITS = 'build/human/edits';
 // Där AI-formerna (Pixal3D-GLB) brukar hamna: Darrowmeres nedladdningar och figurernas arbetsmappar
 const TARGET_DIRS = [TARGETS, 'build/darrowmere/pixal3d', 'build/characters', 'build/maren/pixal3d', 'build/body/build/pixal3d'];
 const NAME = /^[a-z0-9][a-z0-9_]{0,47}$/;
@@ -48,14 +52,15 @@ export function createHumanApi({ ROOT, onHost }) {
 
   // Jobben: bygg och spara i en kö (Blender, ca 4 s styck), en inpassning i taget vid sidan av
   const jobs = new Map();
-  let counter = 0, queue = Promise.resolve(), fitting = null;
+  let counter = 0, queue = Promise.resolve(), fitting = null, baking = null;
   function job(kind, name, fn) {
     const id = `h${++counter}`, j = { id, kind, name, t0: Date.now(), done: false, result: null };
     jobs.set(id, j);
-    const p = kind === 'fit' ? fn() : (queue = queue.then(fn, fn));
+    const p = kind === 'fit' || kind === 'bake' ? fn() : (queue = queue.then(fn, fn)); // inpassning och bakning vid sidan av kön
     p.then((r) => r, (e) => ({ ok: false, error: String(e?.message ?? e) })).then((r) => {
       Object.assign(j, { done: true, result: { ...r, ms: Date.now() - j.t0 } });
       if (fitting === id) fitting = null;
+      if (baking === id) baking = null;
       setTimeout(() => jobs.delete(id), 3600_000);
     });
     return j;
@@ -77,7 +82,7 @@ export function createHumanApi({ ROOT, onHost }) {
     // Nycklar som studion inte har spakar för (t.ex. elbow_flex, elbow_carry ur inpassningen) följer med, så att en
     // figur byggs om som den var: tal och sant/falskt, råa makron och mål med vikter, och namnen på nät och rigg
     for (const [k, v] of Object.entries(r)) {
-      if (k in out || ['name', 'out_dir', 'catalog', 'wrap'].includes(k) || !/^[a-z][a-z0-9_]{0,31}$/.test(k)) continue;
+      if (k in out || ['name', 'out_dir', 'catalog', 'wrap', 'edits'].includes(k) || !/^[a-z][a-z0-9_]{0,31}$/.test(k)) continue;
       if ((typeof v === 'number' && Number.isFinite(v)) || typeof v === 'boolean') out[k] = v;
       else if (['proxy', 'eyes', 'hair', 'rig'].includes(k) && typeof v === 'string' && /^[\w-]{1,48}$/.test(v)) out[k] = v;
       else if (['macro', 'targets'].includes(k) && v && typeof v === 'object')
@@ -86,6 +91,9 @@ export function createHumanApi({ ROOT, onHost }) {
     // Inpassningens wrap (fit_blender.py): bara en wrap.npz under build/human/fit/
     const w = typeof r.wrap === 'string' && inside(r.wrap);
     if (w && rel(w).startsWith(`${FITS}/`) && w.endsWith('/wrap.npz') && existsSync(w)) out.wrap = w;
+    // Egna ändringar på punkterna (EDITS.md): bara en ändringsfil under build/human/edits/
+    const ed = typeof r.edits === 'string' && inside(r.edits);
+    if (ed && rel(ed).startsWith(`${EDITS}/`) && ed.endsWith('.json') && existsSync(ed)) out.edits = rel(ed);
     return out;
   }
   const withUrls = (res) => (res.glb ? { ...res, url: `/${res.pose_glb ?? res.glb}`, rigged: `/${res.glb}` } : res);
@@ -191,7 +199,11 @@ export function createHumanApi({ ROOT, onHost }) {
       const thumb = ['jpg', 'png'].map((x) => `${CHARS}/${n}/${n}_thumb.${x}`).find((f) => existsSync(path.join(ROOT, f)));
       const overlay = existsSync(path.join(ROOT, FITS, n, 'overlay.png')) ? `/${FITS}/${n}/overlay.png` : null;
       const pose = existsSync(path.join(ROOT, CHARS, n, `${n}_pose.glb`)) ? `/${CHARS}/${n}/${n}_pose.glb` : null;
-      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, t: st.mtimeMs });
+      const edit = existsSync(path.join(ROOT, CHARS, n, `${n}_edit.json`)) ? `/${CHARS}/${n}/${n}_edit.json` : null;
+      // Bakade varianter bredvid figuren: detaljernas normalkarta (bake_detail.py) och färg (transfer_texture.py)
+      const baked = (await readdir(path.join(ROOT, CHARS, n))).filter((f) => f.endsWith('.glb') && f !== `${n}.glb` && f !== `${n}_pose.glb`)
+        .map((f) => ({ file: `/${CHARS}/${n}/${f}`, kind: /_detail(_v\d+)?\.glb$/.test(f) ? 'detail' : /_tex/.test(f) ? 'color' : 'other' }));
+      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, t: st.mtimeMs });
     }
     return out.sort((a, b) => b.t - a.t);
   }
@@ -205,6 +217,51 @@ export function createHumanApi({ ROOT, onHost }) {
       P.params.push({ key: s.id, label: s.label, group: String(s.group ?? 'body').toLowerCase(), in: 'sliders', min: -1, max: 1, step: 0.01, default: 0 });
     }
     return { ...P, added, saved: await saved(), targets: await targets(), fitting: fitting ? status(jobs.get(fitting)) : null };
+  }
+
+  // Detaljernas normalkarta (bake_detail.py): AI-formens relief på MPFB:s UV, för en inpassad figur (wrap_debug.npz)
+  async function bake({ name }) {
+    if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name, `${name}.glb`))) return { error: 'no such figure' };
+    if (baking) return { error: 'a bake is already running; wait for it to finish', job: baking };
+    const recipe = await readJson(`${CHARS}/${name}/recipe.json`).catch(() => readJson(`${FITS}/${name}/recipe.json`).catch(() => null));
+    const w = typeof recipe?.wrap === 'string' && inside(recipe.wrap);
+    const fit = w && path.dirname(w);
+    if (!fit || !existsSync(path.join(fit, 'wrap_debug.npz'))) return { error: `${name} has no fit with an AI shape to bake from (wrap_debug.npz)` };
+    let out = `${CHARS}/${name}/${name}_detail.glb`, v = 2;
+    while (existsSync(path.join(ROOT, out))) out = `${CHARS}/${name}/${name}_detail_v${v++}.glb`; // aldrig över
+    const r = { fit: rel(fit), pose: `${CHARS}/${name}/${name}_pose.glb`, rigged: `${CHARS}/${name}/${name}.glb`, out };
+    const j = job('bake', name, async () => {
+      const res = await run(`${HUMAN}/bake_detail.py`, r);
+      return { ...res, url: res.out ? `/${res.out}` : null, png: res.png ? `/${res.png}` : null };
+    });
+    baking = j.id;
+    return { job: j.id, out };
+  }
+
+  // Egna ändringar (EDITS.md): en ny ändringsfil per version, sedan figuren byggd om med receptet plus "edits"
+  async function edits({ name, proxy, nverts, offsets }) {
+    if (!NAME.test(name ?? '') || !existsSync(path.join(ROOT, CHARS, name, `${name}_edit.json`))) return { error: 'no such figure with an editor file' };
+    const recipe = await readJson(`${CHARS}/${name}/recipe.json`).catch(() => readJson(`${FITS}/${name}/recipe.json`).catch(() => null));
+    if (!recipe) return { error: `${name} has no recipe, so it cannot be built again` };
+    const n = Number(nverts);
+    if (!Number.isInteger(n) || n < 1 || !Array.isArray(offsets) || offsets.length !== 3 * n) return { error: 'offsets must have three numbers per point' };
+    if (!offsets.every((x) => Number.isFinite(x) && Math.abs(x) < 0.3)) return { error: 'an offset is not a number or larger than 30 cm' };
+    if (!/^[\w-]{1,48}$/.test(String(proxy ?? ''))) return { error: 'bad proxy name' };
+    const stem = name.replace(/_e\d+$/, '');
+    await mkdir(path.join(ROOT, EDITS), { recursive: true });
+    let v = 1;
+    while (existsSync(path.join(ROOT, EDITS, `${stem}_v${v}.json`)) || taken(`${stem}_e${v}`)) v++; // aldrig över
+    const file = `${EDITS}/${stem}_v${v}.json`, out = `${stem}_e${v}`;
+    await writeFile(path.join(ROOT, file), JSON.stringify({ proxy, nverts: n, from: name, saved: new Date().toISOString(), offsets }) + '\n');
+    const r = await cleanRecipe({ ...recipe, edits: file });
+    return { file, name: out, job: job('save', out, async () => {
+      const res = await run(`${HUMAN}/make_human.py`, { ...r, name: out });
+      if (res.glb) {
+        const keep = Object.fromEntries(Object.entries(recipe).filter(([k]) => ['target', 'overlay', 'ai_transform', 'ignore_hair', 'fit'].includes(k)));
+        await writeFile(path.join(ROOT, CHARS, out, 'recipe.json'), JSON.stringify({ ...r, ...keep, wrap: r.wrap ? rel(r.wrap) : undefined, name: out, from: name, saved: new Date().toISOString(), tris: res.tris, checks: res.checks }, null, 1) + '\n');
+      }
+      return withUrls(res);
+    }).id };
   }
 
   // En miniatyr till en sparad figur som saknar en (inpassningar), gjord av studion när figuren öppnas
@@ -237,6 +294,8 @@ export function createHumanApi({ ROOT, onHost }) {
     else if (p === '/api/human/save' && req.method === 'POST') json(res, 200, await save(await body(req)));
     else if (p === '/api/human/fit' && req.method === 'POST') json(res, 200, await fit(await body(req)));
     else if (p === '/api/human/upload' && req.method === 'POST') json(res, 200, await upload(req, url.searchParams.get('name')));
+    else if (p === '/api/human/bake' && req.method === 'POST') json(res, 200, await bake(await body(req)));
+    else if (p === '/api/human/edits' && req.method === 'POST') json(res, 200, await edits(await body(req)));
     else if (p === '/api/human/thumb' && req.method === 'POST') json(res, 200, await thumb(await body(req)));
     else if (p === '/api/human/editor' && req.method === 'POST') json(res, 200, await editor());
     else if (p === '/api/human/job' && req.method === 'GET') {
