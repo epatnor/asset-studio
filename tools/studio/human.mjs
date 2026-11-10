@@ -19,7 +19,7 @@
 //                               på MPFB:s UV, aldrig över; en .json bredvid minns grunden
 // POST /api/human/ref?name=&file=    en referensbild i kroppen (PNG, JPEG, WebP) -> build/human/refs/<namn>/: målningens
 //                               bilder sparas per figur och listas som refs
-// POST /api/human/genview      { name, render, refs, prompt, aspect, camera, rect, model, confirm } -> utan confirm ett prisförslag
+// POST /api/human/genview      { name, render, refs, prompt, aspect, camera, rect, model, denoise, confirm } -> utan confirm ett prisförslag
 //                               { quote }, med confirm ett jobb: gpt-image-2 (OpenRouter, tools/texture/openrouter_image.py)
 //                               ritar vyn (render, en bild av figuren från en udda vinkel) som en ny referens i samma stil
 //                               som refs -> build/human/refs/<namn>/view_<n>.png + .json (kameran, rutan, prompten, kostnaden)
@@ -56,6 +56,21 @@ export function createHumanApi({ ROOT, onHost }) {
       p.on('close', () => {
         const last = (s) => { try { return JSON.parse(s.trim().split('\n').pop()); } catch { return null; } };
         resolve(last(out) ?? last(err) ?? { ok: false, error: (err || out).trim().slice(-500) || 'no response' });
+      });
+    });
+  }
+
+  // A tool with plain command-line arguments (krea2.py); the answer is its last JSON line
+  function runArgs(script, args) {
+    return new Promise((resolve) => {
+      const p = spawn('python3', ['-I', path.join(ROOT, script), ...args.map(String)], { cwd: ROOT });
+      let out = '', err = '';
+      p.stdout.on('data', (d) => (out += d));
+      p.stderr.on('data', (d) => (err += d));
+      p.on('error', (e) => resolve({ ok: false, error: String(e.message ?? e) }));
+      p.on('close', () => {
+        const last = (x) => { try { return JSON.parse(x.trim().split('\n').pop()); } catch { return null; } };
+        resolve(last(out) ?? { ok: false, error: (err || out).trim().slice(-500) || 'no response' });
       });
     });
   }
@@ -229,9 +244,20 @@ export function createHumanApi({ ROOT, onHost }) {
       for (const d of [n, typeof recipe?.from === 'string' && recipe.from !== 'fit' ? recipe.from : null]) {
         if (d && existsSync(path.join(ROOT, REFS, d))) for (const f of (await readdir(path.join(ROOT, REFS, d))).sort()) if (/\.(png|jpe?g|webp)$/i.test(f)) refs.push(`/${REFS}/${d}/${f}`);
       }
-      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, maps, refs, t: st.mtimeMs });
+      out.push({ name: n, url: pose ?? `/${glb}`, rigged: `/${glb}`, recipe, thumbnail: thumb ? `/${thumb}` : null, overlay, edit, baked, maps, refs, concept: await concept(recipe), t: st.mtimeMs });
     }
     return out.sort((a, b) => b.t - a.t);
+  }
+
+  // The figure's concept as a picture prompt: the Darrowmere order (order_recipe.json) next to its AI shape, if any
+  async function concept(recipe) {
+    if (typeof recipe?.target !== 'string') return null;
+    const f = path.join(path.dirname(path.resolve(ROOT, recipe.target)), 'order_recipe.json');
+    if (!f.startsWith(ROOT + path.sep) || !existsSync(f)) return null;
+    const o = JSON.parse(await readFile(f, 'utf8').catch(() => '{}')).prompt;
+    if (!o?.subject) return null;
+    const parts = [o.style, `a ${o.subject}${o.bald ? ' with a smooth bald head' : ''}`, o.outfit && `wearing ${o.outfit}`];
+    return { order: rel(f), prompt: `${parts.filter(Boolean).join(', ')}, the same pose and camera angle as the picture, plain light grey background, soft even light` };
   }
 
   async function info() {
@@ -323,7 +349,7 @@ export function createHumanApi({ ROOT, onHost }) {
   // En ny referensbild för en udda vinkel: renderingen från studion (figuren i vinkeln, med det som är målat) och de
   // tidigare referenserna till gpt-image-2, som ritar vyn i samma stil. Kostar pengar: utan confirm bara ett prisförslag.
   let generating = null;
-  async function genview({ name, render, refs = [], prompt, aspect, camera, rect, model, confirm }) {
+  async function genview({ name, render, refs = [], prompt, aspect, camera, rect, model, denoise, confirm }) {
     const models = (await readJson(`${HUMAN}/params.json`)).paint?.models ?? [];
     const M = models.find((x) => x.id === (model ?? models[0]?.id));
     if (!M) return { error: `unknown picture model ${model}` };
@@ -339,7 +365,8 @@ export function createHumanApi({ ROOT, onHost }) {
       files.push(f);
     }
     if (typeof prompt !== 'string' || prompt.length < 20 || prompt.length > 4000) return { error: 'the prompt must be 20 to 4000 characters' };
-    if (!confirm) return { quote: { model: M.id, label: M.label, price: `${M.price} (OpenRouter)`, refs: files.length } };
+    const d = Math.min(0.95, Math.max(0.15, Number(denoise ?? 0.55)));
+    if (!confirm) return { quote: { model: M.id, label: M.label, local: !!M.local, price: M.local ? 'free (local ComfyUI)' : `${M.price} (OpenRouter)`, refs: M.local ? 0 : files.length } };
     if (generating) return { error: 'a picture is already being generated; wait for it', job: generating };
     const dir = `build/human/genview/${name}`;
     await mkdir(path.join(ROOT, dir), { recursive: true });
@@ -349,10 +376,14 @@ export function createHumanApi({ ROOT, onHost }) {
     const shot = `${dir}/render_${v}.png`, out = `${REFS}/${name}/view_${v}.png`;
     await writeFile(path.join(ROOT, shot), Buffer.from(m[1], 'base64'));
     const j = job('gen', name, async () => {
-      const res = await run('tools/texture/openrouter_image.py', { prompt, out, model: M.id, aspect, refs: [shot, ...files] });
+      // Local Krea-2 repaints the render picture-to-picture at an exact aspect (multiples of 16), so the framing stays
+      const [W, H] = { '2:3': [832, 1248], '1:1': [1024, 1024], '3:2': [1248, 832] }[aspect];
+      const res = M.local
+        ? await runArgs('tools/texture/krea2.py', [prompt, W, H, path.join(ROOT, out), Math.floor(Math.random() * 2 ** 31), '--base', path.join(ROOT, shot), '--denoise', d]).then((r) => (r.out ? { ...r, out } : r))
+        : await run('tools/texture/openrouter_image.py', { prompt, out, model: M.id, aspect, refs: [shot, ...files] });
       generating = null;
       if (!res.out) return { ok: false, error: res.error ?? 'no picture' };
-      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: M.id, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
+      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: M.id, denoise: M.local ? d : undefined, seed: res.seed, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
       return { ok: true, url: `/${out}`, cost: res.cost ?? null, ms: res.ms };
     });
     generating = j.id;

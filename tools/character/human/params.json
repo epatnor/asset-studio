@@ -65,8 +65,9 @@
     {"key": "fine", "label": "Fine passes", "type": "bool", "default": true, "sub": "two finer steps at the end", "help": "Two finer Gauss-Newton steps after the coarse ones (slower, a closer fit)"}
   ],
   "paint": {
-    "_doc": "Modellerna för Generate this view i målningen (studio/human_paint.js, /api/human/genview), via OpenRouter. price visas i appen innan något beställs. gpt-image-2 nekade 2026-11-10 en kropp i underkläder (safety: sexual).",
+    "_doc": "Modellerna för Generate this view i målningen (studio/human_paint.js, /api/human/genview), via OpenRouter. price visas i appen innan något beställs. gpt-image-2 och Qwen Image 3 nekade 2026-11-10 en kropp i underkläder (moderation); local/krea-2 körs med tools/texture/krea2.py --base (bild till bild) och kostar inget.",
     "models": [
+      {"id": "local/krea-2", "label": "Krea-2 (local, free)", "local": true, "price": "free", "help": "Krea-2 Turbo on ComfyUI (Darrowmere or the laptop) repaints the render picture-to-picture: no filter and the framing stays, but it does not see the reference pictures (the prompt comes from the figure's order)"},
       {"id": "qwen/qwen-image-3", "label": "Qwen Image 3", "price": "about 0.01-0.03 USD", "help": "Strong at editing with several input pictures, keeps the layout"},
       {"id": "krea/k3-edit", "label": "Krea K3 Edit", "price": "about 0.02-0.04 USD", "help": "Krea's edit model (the concepts are Krea-2)"},
       {"id": "black-forest-labs/flux-3-image", "label": "FLUX 3", "price": "about 0.02-0.05 USD", "help": "Black Forest Labs, several reference pictures"},

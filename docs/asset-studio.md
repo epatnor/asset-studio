@@ -201,7 +201,18 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   `tools/character/human/params.json`: Qwen Image 3, Krea K3 Edit, FLUX 3, gpt-image-2) med en prompt som går att ändra
   i kortet (samma person och stil, samma kläder som referensen, exakt pose, vinkel och utsnitt, grå bakgrund, inget hår
   över ansiktet, inga smycken). gpt-image-2 nekade första provet 2026-11-10 (sysslingen snett bakifrån, referensen i
-  grått underkläde): OpenAIs säkerhetsfilter, "sexual". Det kostar pengar: utan
+  grått underkläde): OpenAIs säkerhetsfilter, "sexual".
+  Qwen Image 3 nekades likaså (Alibabas moderering). `local/krea-2` (förvald, gratis) målar om renderingen med
+  `krea2.py --base` på ComfyUI.
+
+  **Jämförelsen 2026-11-10** (beställningen `genview-klein-vs-krea-1110` på Darrowmere, M4000, frö 11, sysslingen snett
+  bakifrån, Krea-bilden som referens; bilderna och kontaktarket i `build/human/genview_test/`): Krea-2 bild till bild vid
+  0,55 och 0,65 vände figuren (ryggen blev en framsida med ansikte), vid 0,45 höll ryggvyn men kroppen gled ur konturen.
+  FLUX.2 Klein 4B med `ReferenceLatent` (renderingen och referensen som referenslatenter, redan installerat) höll
+  konturen: ren redigering 0,855 i överlapp och 2,6 px i snitt mellan kanterna, hudfärgen 5,2 ΔE från referensen (Krea
+  11–20), men underkläderna blev en baddräkt; från renderingen vid 0,75 behöll den referensens bralette och trosor och
+  marken (ingen bakgrund strax innanför konturen). Tid på M4000: Krea-2 cirka 550 s per bild, Klein 350 s (redigering)
+  och 250 s (från renderingen). Rekommendationen är Klein 4B från renderingen; den är inte inkopplad i studion än. Det kostar pengar: utan
   `confirm` svarar servern bara med ett prisförslag, och appen frågar med priset innan bilden beställs. Bilden hamnar i
   `build/human/refs/<namn>/view_<n>.png` med en `.json` (kameran, rutan i förhållande till vyns höjd, prompten,
   referenserna, kostnaden), renderingen i `build/human/genview/<namn>/`. Bilden läggs över vyn på rutan den ritades för,

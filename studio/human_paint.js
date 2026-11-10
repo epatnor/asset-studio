@@ -482,6 +482,9 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   const picBtns = el('div', 'hu-btns'); picBtns.append(fitBtn, projBtn);
   // --- En ny referensbild för vinkeln i vyn (gpt-image-2 via OpenRouter, kostar pengar: priset visas och frågas först) ---
   const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. Dressed exactly like the person in the reference pictures (for example the same underwear), nothing more. No hair over the face and no jewellery.';
+  // Local Krea-2 does not see the reference pictures: it gets a description instead (from the figure's order when there is one)
+  const LOCAL = 'Semi-stylized realistic 3D game character render, natural human anatomy, the same person, the same pose and camera angle as the picture, plain light grey background, soft even light';
+  const prompts = { cloud: PROMPT, local: LOCAL };
   const promptEl = Object.assign(el('textarea', 'hu-prompt'), { rows: 4, value: PROMPT });
   promptEl.title = 'What the picture model is asked for (the render comes first, then the reference pictures)';
   const genBtn = el('button', 'primary', 'Generate this view…');
@@ -491,6 +494,17 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   for (const m of models) modelSel.append(Object.assign(el('option', null, `${m.label} · ${m.price}`), { value: m.id, title: m.help ?? '' }));
   modelRow.title = 'The picture model on OpenRouter (tools/character/human/params.json, paint.models); the price is asked before anything is ordered';
   modelRow.append(el('label', null, 'Model'), modelSel);
+  const isLocal = () => !!models.find((m) => m.id === modelSel.value)?.local;
+  let promptKind = 'cloud';
+  const denRow = slider('Repaint', 'denoise', 0.15, 0.95, 0.01, 'Local Krea-2: how much of the render is painted over (low keeps the shape and framing, high follows the prompt more)');
+  P.denoise = 0.55;
+  function syncModel() {
+    prompts[promptKind] = promptEl.value;
+    promptKind = isLocal() ? 'local' : 'cloud';
+    promptEl.value = prompts[promptKind];
+    denRow.hidden = !isLocal();
+  }
+  modelSel.onchange = syncModel;
   // Figurens del av vyn: en ruta runt kroppen (2:3, 1:1 eller 3:2), som bild och som läge i vyn
   function viewShot() {
     const cam = getCam(), r = view.getBoundingClientRect(), p = geo.attributes.position, v = new THREE.Vector3();
@@ -519,11 +533,11 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   let genJob = null;
   genBtn.onclick = async () => {
     const shot = viewShot(), list = genRefs();
-    if (!list.length && !confirm('There are no reference pictures yet, so the model only sees the render. Go on?')) return;
-    const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect, model: modelSel.value || undefined };
+    if (!list.length && !isLocal() && !confirm('There are no reference pictures yet, so the model only sees the render. Go on?')) return;
+    const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect, model: modelSel.value || undefined, denoise: P.denoise };
     const q = await api('/api/human/genview', req);
     if (q.error) { genMsg.textContent = `Not started: ${q.error}`; return; }
-    if (!confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.label} (${q.quote.model}) and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
+    if (!q.quote.local && !confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.label} (${q.quote.model}) and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
     const r = await api('/api/human/genview', { ...req, confirm: true });
     if (r.error) { genMsg.textContent = `Not started: ${r.error}`; return; }
     genJob = r.job; genBtn.disabled = true;
@@ -537,7 +551,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     }
     genJob = null; genBtn.disabled = false;
     if (!res.url) { genMsg.textContent = `Not generated: ${res.error ?? 'no picture'}`; return; }
-    genMsg.textContent = `Generated ${res.url.split('/').pop()} in ${Math.round((res.ms ?? 0) / 1000)} s${res.cost != null ? `, ${res.cost.toFixed(3)} USD` : ''}; it lies over the view: paint with the Picture brush`;
+    genMsg.textContent = `Generated ${res.url.split('/').pop()} in ${Math.round((Date.now() - t0) / 1000)} s${res.cost != null ? `, ${res.cost.toFixed(3)} USD` : ''}; it lies over the view: paint with the Picture brush`;
     refs.push(res.url);
     await setPic(res.url);
     P.tool = 'picture'; cardsSync();
@@ -569,7 +583,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     slider('Picture turn', 'rot', -180, 180, 0.5, 'The picture\'s angle in degrees (Ctrl+Shift+drag)', placePic),
     toggle('Flip the picture', 'mirror it left to right', 'flip', 'A picture of the other side', placePic),
     picBtns,
-    el('div', 'hu-sub', 'A new picture for this angle'), modelRow, promptEl, genBtn, genMsg,
+    el('div', 'hu-sub', 'A new picture for this angle'), modelRow, denRow, promptEl, genBtn, genMsg,
     toggle('Lit', 'off shows the flat colour', 'lit', 'With lighting, or the painted colour alone', () => applyMat()),
     hist, infoEl, help, endRow, msg,
   );
@@ -641,6 +655,9 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
       setScenes(); renderMask();
       for (const x of [...undo.splice(0), ...redo.splice(0)]) spare.push(x);
       refs = [...(f.refs ?? [])];
+      prompts.local = f.concept?.prompt ?? LOCAL;
+      if (promptKind === 'local') promptEl.value = prompts.local;
+      syncModel();
       baseSel.replaceChildren(...(f.maps?.color ?? []).map((m) => Object.assign(el('option', null, m.split('/').slice(-1)[0]), { value: m })), Object.assign(el('option', null, 'Even skin colour'), { value: '' }));
       await setBase(f.maps?.color?.[0] ?? null);
       baseSel.value = P.base ?? '';
@@ -664,7 +681,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
       texel: (u, v) => { const px = new Uint8Array(4); renderer.readRenderTargetPixels(rt, Math.min(N - 1, Math.floor(u * N)), Math.min(N - 1, Math.floor(v * N)), 1, 1, px); return [...px.slice(0, 3)]; },
       hit: (x, y) => { const h = hit(x, y); return h ? { uv: [h.uv.x, h.uv.y], p: h.point.toArray() } : null; },
       screen: (p) => { const r = view.getBoundingClientRect(), v = new THREE.Vector3(...p).project(getCam()); return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height]; },
-      setPic, viewShot, genRefs, setModel: (id) => { modelSel.value = id; }, get prompt() { return promptEl.value; }, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
+      setPic, viewShot, genRefs, setModel: (id) => { modelSel.value = id; syncModel(); }, get prompt() { return promptEl.value; }, get pic() { return pic && { url: pic.url, cx: pic.cx, cy: pic.cy, w: pic.w, h: pic.h }; }, get cx() { return dabMat.uniforms.uCx.value; },
       undo: () => step(undo, redo), get P() { return { ...P }; }, picColor,
     },
   };
