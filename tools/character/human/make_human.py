@@ -46,6 +46,9 @@ def main():
     budget = int(r.get("budget", 14000))
     checks = {"feet_on_ground": abs(res["feet_z"]) < 0.01, "symmetric": res["asym_m"] < 0.002 or bool(r.get("asymmetric")),
               "within_budget": res["tris"] <= budget, "rigged": res["bones"] > 0, "adult": float(r.get("age", 25)) >= 18}
+    tongue = (res.get("sliders") or {}).get("tongue")
+    if isinstance(tongue, dict):   # after a wrap: the tongue stays inside the mouth (crossing the cheeks gave streaks)
+        checks["tongue_inside"] = tongue.get("crossing_tris") == 0
     # Receptet bredvid figuren: varje figur är en egen enhet som kan byggas om (studions The Character Creator läser det)
     (out / "recipe.json").write_text(json.dumps({k: v for k, v in r.items() if k != "out_dir"}, indent=1) + "\n")
     print(json.dumps({"ok": all(checks.values()), "checks": checks, **res,

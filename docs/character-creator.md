@@ -253,3 +253,20 @@ Sysslingen på riktigt: UltraTex (Best, `syssling-wrap-pose-1110-1116`) på `sys
 `assets/characters/syssling_wrap4/syssling_wrap4_tex_mix70.glb` och `_mix90.glb`: riggad, MPFB-UV, täckning 100 %,
 underkläderna som målad textur (bild `build/characters/syssling/sheet/wrap_tex.png`). Ej granskat: närbild på ansikte,
 händer och sömmar, och hur huden ser ut i rörelse.
+
+## Wrapen och MPFB:s andra delar (2026-11-10)
+
+Wrapen flyttar bara proxyn, men figuren har fler delar. Proxyn har en tunga som en egen lös del inne i munnen, och sedan
+finns ögonen, håret och senare kläderna. I wrap6–13 (även `syssling_pn_edit1` och `syssling_wrap10_mons`) drogs tungan
+med ansiktet från 4,2 till 6,6 cm bredd, och 222 av 538 kanter gick ut genom kinderna. Det var strecken vid munnen. I
+wrap14–16 gick 6 kanter ut i mungiporna. Bygget (`human_blender.py`, `proxy_ops.py`) gör nu så här efter wrapen:
+
+- **Tungan:** samma form som före wrapen, flyttad stelt med munnen. Rör den ändå huden krymps den i små steg. Kontrollen
+  `tongue_inside` finns i `make_human`-svaret.
+- **Ögon och hår** följer kroppens förflyttning. Ett öga flyttas stelt med medelförflyttningen inom 2 cm. Håret följer
+  de 8 närmaste kroppshörnen per hörn.
+
+Prov `syssling_pn_edit1_t2`: tungan är 4,2 cm bred, ingen kant går genom huden och det är 23 mm till kinden. Ögonen
+flyttades 1,6 mm, och 46 ögonkanter går genom ögonlocken, lika många som i en ren MPFB-figur (globen går genom
+ögonöppningen). Ingen inpassad figur har MPFB-hår än, så hårregeln är inte provad. Gamla figurer blir rätt om de byggs om
+med sitt recept, under ett nytt namn.

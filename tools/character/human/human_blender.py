@@ -86,6 +86,11 @@ if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py)
         co = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", co)
         px_.data.vertices.foreach_set("co", (co.reshape(-1, 3) + wz["offsets"]).ravel()); px_.data.update()
         applied["wrap"] = True
+        applied["tongue"] = proxy_ops.keep_tongue(px_, co.reshape(-1, 3))   # the tongue follows the mouth rigidly, not the wrap
+        after_ = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", after_)
+        for kind_ in ("eyes", "hair"):   # every other MPFB part follows the wrapped body too
+            if parts.get(kind_):
+                applied[f"{kind_}_follow"] = proxy_ops.follow_wrap(bpy.data.objects[parts[kind_]], px_, co.reshape(-1, 3), after_.reshape(-1, 3))
     else:
         applied["wrap"] = f"skipped: {len(px_.data.vertices)} verts, wrap has {int(wz['nverts'])}"
     bpy.context.view_layer.update()
