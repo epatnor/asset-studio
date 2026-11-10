@@ -232,6 +232,15 @@ AI-ytan till kroppen efter wrap 8,2 → 5,1 mm. Standard är false (skalliga ref
 Resultatet har nu `folded_faces` (ytor över 1 mm² vars normal vänt sig mer än 78°), och kontrollen `no_folded_faces`
 fäller `ok`. Sysslingen: 0 vikta ytor; 14 mikroytor på 0,1–0,2 mm² i mungiporna vänder sig ändå, de syns inte.
 
+**Korsningar (2026-11-10):** wrapen kunde trycka läpparna igenom varandra och käkens undersida in i munhålan (sysslingen
+49 korsande trianglar, formen före wrapen 0). Efter wrapen letar `fit_blender.py` upp trianglar som skär varandra
+(`BVHTree.overlap`) och backar förflyttningen mjukt där (medel av grannarna, 80 %), tills inga finns kvar (`untangle` i
+resultatet: 49, 24, 18, 8, 10, 0). `fit_human.py` kör sedan `tools/mesh/check_normals.mjs` på de exporterade filerna:
+kontrollen `no_self_intersect` (högst 10, en ren MPFB-figur har några få) och `self_intersect` i svaret. Sysslingen
+(`syssling_wrap19`): 0 korsningar, 0 vikta ytor, alla kontroller gröna. Hästsvansprovet: 0 korsningar men 12 vikta ytor
+(grenen, munhålan, kinder och öron), så `ok` är false där. Node:s WebAssembly klarar inte en `ulimit -v` på 16 GB, så
+kör inte inpassningen under den gränsen.
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

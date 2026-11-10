@@ -564,6 +564,31 @@ if job.get("wrap", True):
             X = X + dlt
         wlog.append({"lam": lam_w, "cap_mm": int(cap * 1000), "moved_mm": round(1000 * float(np.linalg.norm(X - P0, axis=1).mean()), 2),
                      "data_share": round(float((conf > 0).mean()), 3)})
+    # Korsningar (trianglar som skär varandra utan att dela hörn): förflyttningen backas mot formen före wrapen där, tills
+    # inga finns kvar (före wrapen: inga). Läpparna trycktes annars igenom varandra och käkens undersida in i munhålan.
+    nb_sum = None
+    def tangled(Xc):
+        b_ = BVHTree.FromPolygons([tuple(q) for q in Xc], [tuple(t) for t in lt], all_triangles=True)
+        hit_ = set()
+        for i, j in b_.overlap(b_):
+            if i < j and not (set(lt[i]) & set(lt[j])):
+                hit_.add(i); hit_.add(j)
+        return hit_
+    untangle = []
+    for _ in range(30):
+        hit = tangled(X)
+        untangle.append(len(hit))
+        if not hit:
+            break
+        vs = np.zeros(PN, bool); vs[lt[list(hit)].ravel()] = True
+        grow = np.zeros(PN); np.add.at(grow, ev[:, 0], vs[ev[:, 1]]); np.add.at(grow, ev[:, 1], vs[ev[:, 0]])
+        vs |= grow > 0   # och grannarna, så att det blir en mjuk övergång
+        # mjukt bakåt: medel av grannarna och lite mindre förflyttning, så att inga nya veck uppstår
+        Dt = X - P0
+        acc = np.zeros_like(Dt); np.add.at(acc, ev[:, 0], Dt[ev[:, 1]]); np.add.at(acc, ev[:, 1], Dt[ev[:, 0]])
+        nbm = acc / np.maximum(deg, 1)[:, None]
+        Dt[vs] = 0.8 * (0.5 * Dt[vs] + 0.5 * nbm[vs])
+        X = P0 + Dt
     D = X - P0
     # posens förflyttning -> vilopose, med provnycklar på proxyn
     if not pm.shape_keys:
@@ -611,7 +636,7 @@ if job.get("wrap", True):
     w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
     sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
     wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,
-            "eyes": len(eyes), "zones": zones, "hands_low": hand_info, "rigid_hands": len(rigid), "ignore_hair": IGNORE_HAIR, "brow_z": None if HAIR["brow"] is None else round(HAIR["brow"], 3), "rigid_dbg": rigid_dbg, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
+            "eyes": len(eyes), "zones": zones, "hands_low": hand_info, "rigid_hands": len(rigid), "untangle": untangle, "ignore_hair": IGNORE_HAIR, "brow_z": None if HAIR["brow"] is None else round(HAIR["brow"], 3), "rigid_dbg": rigid_dbg, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
             "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1).mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]

@@ -43,9 +43,21 @@ def main():
     made = subprocess.run([sys.executable, "-I", str(HERE / "make_human.py"), json.dumps(recipe)], capture_output=True, text=True)
     human = json.loads(made.stdout.strip().splitlines()[-1]) if made.stdout.strip() else {"ok": False, "error": made.stderr[-400:]}
     better = fit["end"]["mean_mm"] < fit["start"]["mean_mm"]
+    # korsande trianglar i de exporterade filerna (tools/mesh/check_normals.mjs; en ren MPFB-figur har några få)
+    selfx = None
+    if human.get("glb"):
+        cn = subprocess.run(["node", str(ROOT / "tools/mesh/check_normals.mjs"), json.dumps({"paths": [human["glb"], human.get("pose_glb") or human["glb"]]})],
+                            capture_output=True, text=True, cwd=ROOT)
+        try:
+            res = json.loads(cn.stdout.strip().splitlines()[-1])
+            selfx = max([b.get("self_intersect", 0) for b in res.get("bad", [])] or [0])
+        except Exception as e:
+            selfx = None
+            human.setdefault("notes", []).append(f"check_normals: {e}: {cn.stdout[-200:]} {cn.stderr[-200:]}")
     folds = ((fit.get("wrap") or {}).get("end") or {}).get("folded_faces") or {}
     no_folds = folds.get("over_78deg", 0) == 0
-    print(json.dumps({"ok": bool(human.get("ok")) and better and no_folds, "checks": {**human.get("checks", {}), "closer_than_start": better, "no_folded_faces": no_folds},
+    print(json.dumps({"ok": bool(human.get("ok")) and better and no_folds and selfx is not None and selfx <= 10, "checks": {**human.get("checks", {}), "closer_than_start": better, "no_folded_faces": no_folds,
+                                 "no_self_intersect": selfx is not None and selfx <= 10}, "self_intersect": selfx, "notes": human.get("notes"),
                       "recipe": recipe, "ai_transform": fit.get("ai_transform"), "start": fit["start"], "end": fit["end"], "wrap": fit.get("wrap"), "overlay": str(Path(fit["overlay"]).relative_to(ROOT)),
                       "glb": human.get("glb"), "pose_glb": human.get("pose_glb")}))
 
