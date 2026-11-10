@@ -57,10 +57,15 @@ def main():
     shutil.copyfile(cur, high)
     files = [high.name]
     if a.get("game", True):
-        low = out / f"{name}_low_{int(a.get('tris', 12000)) // 1000}k.glb"
+        quad = bool(a.get("quad"))
+        low = out / f"{name}_{'quad' if quad else 'low'}_{int(a.get('tris', 12000)) // 1000}k.glb"
         res = tool([HERE / "mesh/make_low.py", json.dumps({"high": str(high), "out": str(low), "tris": int(a.get("tris", 12000)),
-                                                           "tex": int(a.get("tex", 2048)), "voxel": float(a.get("voxel", 0.0035))})], "game model")
-        files.append(low.name); done.append(f"game model {res.get('tris', a.get('tris'))} tris")
+                                                           "tex": int(a.get("tex", 2048)), "voxel": float(a.get("voxel", 0.0035)),
+                                                           "quad": quad, "symmetry": quad})], "game model")
+        files.append(low.name)
+        if quad and (out / f"{low.stem}_quads.blend").exists():
+            files.append(f"{low.stem}_quads.blend")
+        done.append(f"game model {res.get('tris', a.get('tris'))} tris" + (f", {res.get('quads')} quads" if quad else ""))
     print(json.dumps({"ok": True, "files": files, "done": done}))
 
 

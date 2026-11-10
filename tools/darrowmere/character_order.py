@@ -241,7 +241,7 @@ def finish_args(r, glb, name, textured):
     f = r["finish"]
     return {"glb": glb, "name": name, "gamma": float(f["gamma"]) if textured else 1.0, "clean": bool(f["clean"]),
             "mirror_face": bool(f["mirror_face"]) and textured, "game": bool(f["game"]), "tris": int(f["tris"]),
-            "tex": int(f["tex"]), "voxel": float(f["voxel"])}
+            "tex": int(f["tex"]), "voxel": float(f["voxel"]), "quad": bool(f.get("quad"))}
 
 
 def build(recipe, refs=None, now=None):
@@ -325,7 +325,7 @@ def build(recipe, refs=None, now=None):
             for i, (glb, name) in enumerate(finals):
                 add({"key": f"finish_{i + 1}" if len(finals) > 1 else "finish", "label": f"Finish {name}: " + ", ".join(
                     x for x, on in (("colour", textured and abs(float(f["gamma"]) - 1) > 1e-3), ("loose bits", f["clean"]),
-                                    ("face mirror", textured and f["mirror_face"]), (f"game model {int(f['tris']) // 1000}k", f["game"])) if on),
+                                    ("face mirror", textured and f["mirror_face"]), (f"game model {int(f['tris']) // 1000}k" + (" quads" if f.get("quad") else ""), f["game"])) if on),
                      "kind": "script", "script": "finish_character.py", "args": finish_args(r, glb, name, textured)}, "Darrowmere CPU", MINUTES["finish"])
     for s in imgs[1:]:
         add(s, lane, MINUTES["krea"])

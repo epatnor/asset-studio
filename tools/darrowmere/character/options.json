@@ -65,6 +65,7 @@
    {"id": "finish.mirror_face", "type": "bool", "default": true, "label": "Mirror the face", "show_if": {"texture.engine": ["ultratex", "model", "meshy"]}, "help": "Copies the better half of the face to the other side. Needs a symmetric pose."},
    {"id": "finish.game", "type": "bool", "default": true, "label": "Game model", "help": "A low-poly copy with colour and normal map baked from the dense model (Blender on Darrowmere)."},
    {"id": "finish.tris", "type": "number", "default": 12000, "min": 2000, "max": 60000, "step": 1000, "label": "Game triangles", "show_if": {"finish.game": true}},
+   {"id": "finish.quad", "type": "bool", "default": false, "label": "Quad mesh", "show_if": {"finish.game": true}, "help": "QuadriFlow quads (about half as many quads as triangles), mirror-symmetric; the quads are also saved as a .blend, since glTF stores triangles."},
    {"id": "finish.tex", "type": "choice", "default": "2048", "label": "Game texture", "show_if": {"finish.game": true}, "choices": [["1024", "1024"], ["2048", "2048"]]},
    {"id": "finish.voxel", "type": "number", "default": 0.0035, "min": 0.002, "max": 0.01, "step": 0.0005, "label": "Remesh voxel (m)", "show_if": {"finish.game": true}, "adv": true, "help": "Fine voxels keep ears and fingers (1/140 lost the frost sister's ear)."}
   ]}
