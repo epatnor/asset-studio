@@ -20,6 +20,7 @@ import { createWeather } from './weather.js';
 import { createWaterTab } from './water.js';
 import { createTerrainTab } from './terrain.js';
 import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
+import { createJobsButton } from './jobs.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -1104,6 +1105,7 @@ regenerate();
 // Landningssidan (studio/home.js): visas vid start och när man klickar på märket i headern
 const home = createHome({ el, api, root: $('home'), open: openDept });
 createGpuMenu({ el, api, button: $('gpu'), root: document.body });
+createJobsButton({ api, button: $('jobs') });
 function goHome() {
   leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   homeMode = true;

@@ -1,8 +1,9 @@
 """Väljer vilken ComfyUI verktygen skickar jobb till.
 
 Målen står i tools/comfy.json. Utan inställning provas de i ordning ("order") och det första som svarar
-används: laptopens egen ComfyUI om den är igång, annars Darrowmere. COMFY_TARGET=darrowmere (eller local)
-väljer ett mål, COMFY_URL=http://... en exakt adress.
+används: Darrowmere som standard, annars laptopens egen ComfyUI. Asset Studios jobbknapp sparar ett val i
+build/studio/jobs.json ({"target": "local"}), som då provas först (så att RTX 4070 kan arbeta samtidigt som
+Darrowmere). COMFY_TARGET=darrowmere (eller local) väljer bara det målet, COMFY_URL=http://... en exakt adress.
 
 Verktygen körs med python3 -I, så de lägger själva till tools/ i sys.path innan de importerar modulen.
 """
@@ -12,6 +13,7 @@ import urllib.request
 from pathlib import Path
 
 CONF = Path(__file__).with_name("comfy.json")
+CHOICE = Path(__file__).resolve().parents[1] / "build/studio/jobs.json"   # studions val, per dator
 _cache: dict[str, str | None] = {}
 
 
@@ -30,7 +32,14 @@ def targets() -> list[tuple[str, str]]:
         return [("COMFY_URL", os.environ["COMFY_URL"].rstrip("/"))]
     conf = json.loads(CONF.read_text())
     want = os.environ.get("COMFY_TARGET")
-    names = [want] if want else conf["order"]
+    names = [want] if want else list(conf["order"])
+    if not want:
+        try:
+            first = json.loads(CHOICE.read_text()).get("target")
+        except Exception:
+            first = None
+        if first in conf["targets"]:
+            names = [first] + [n for n in names if n != first]
     return [(n, conf["targets"][n].rstrip("/")) for n in names if n in conf["targets"]]
 
 

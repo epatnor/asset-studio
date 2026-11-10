@@ -43,7 +43,7 @@ En bild kostar ungefär bredd × höjd / 750 tokens (1024×1024 ≈ 1 400), oavs
 - Claude körs i toolbox-containern `claude-desktop` (Ubuntu 24.04, Python 3.12). Värden är Fedora med Python 3.14.
 - Blender är en Flatpak på värden. Kör den med `host-spawn flatpak run --filesystem=<projektrot> org.blender.Blender --background ...`. `make_tree.py` gör det automatiskt (överstyr med env `BLENDER`).
 - Systemd-tjänster körs på värden via `host-spawn systemctl --user ...`.
-- ComfyUI: `127.0.0.1:8188` på laptopen, annars jobbdatorn Darrowmere (`192.168.0.33:8188`, en tjänst som alltid är igång, T1000 8 GB). Verktygen väljer via `tools/comfy_target.py` och `tools/comfy.json` (först den som svarar); `COMFY_TARGET=darrowmere` väljer Darrowmere. Krea-2 Turbo: UNET `krea2_turbo_int8_convrot.safetensors`, CLIP `qwen3vl_4b_fp8_scaled.safetensors` (typ `krea2`), VAE `qwen_image_vae.safetensors`, 8 steg, cfg 1, euler/simple.
+- ComfyUI: jobbdatorn Darrowmere (`192.168.0.33:8188`, en tjänst som alltid är igång, T1000 8 GB) eller `127.0.0.1:8188` på laptopen. Verktygen väljer via `tools/comfy_target.py` och `tools/comfy.json`: Darrowmere först (standard sedan 2026-11-10), annars laptopen. Asset Studios knapp i headern (Darrowmere / This PC, sparad i `build/studio/jobs.json`) sätter laptopen först, så att RTX 4070 kan arbeta samtidigt som T1000; `COMFY_TARGET=local` eller `darrowmere` väljer bara det målet. Krea-2 Turbo: UNET `krea2_turbo_int8_convrot.safetensors`, CLIP `qwen3vl_4b_fp8_scaled.safetensors` (typ `krea2`), VAE `qwen_image_vae.safetensors`, 8 steg, cfg 1, euler/simple.
 - Python-verktyg som behöver paket körs med `uv run --no-project --python 3.12 --with ...` för att fungera både i containern och på värden.
 
 ## Verktyg

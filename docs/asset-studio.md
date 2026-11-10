@@ -165,3 +165,12 @@ Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärm
 3. **Panel:** lil-gui för att komma igång snabbt, eller ett eget utseende från början?
 4. **Bibliotekets namn och taggar:** räcker art, biom och årstid, eller behövs mer?
 5. **Ska en sparad tillgång kunna bli en ny art** (en post i `species.json`) som andra träd utgår från, eller räcker det att varje sparat träd är ett fristående recept?
+
+## Var jobben körs (2026-11-10)
+
+Studions ComfyUI-jobb (texturverkstaden, Krea-material, byggnadernas texturer) körs som standard på Darrowmere. Knappen
+till vänster om grafikkortet i headern växlar till **This PC**, laptopens egen ComfyUI (RTX 4070), så att den kan arbeta
+samtidigt som Darrowmeres T1000. Valet sparas per dator i `build/studio/jobs.json` (servern: `/api/jobs`) och läses av
+`tools/comfy_target.py`, som provar det valda målet först och faller tillbaka på nästa som svarar. Svarar inte det valda
+målet stryks namnet över i knappen. Laptopens ComfyUI är ingen tjänst; den startas för hand (distrobox `comfyui`).
+Figurbeställningarna går alltid genom runnern på Darrowmere.

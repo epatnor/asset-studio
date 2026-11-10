@@ -1,6 +1,6 @@
 {
-  "_doc": "Var verktygens ComfyUI-jobb körs. comfy_target.py provar målen i order-ordningen och tar det första som svarar. COMFY_TARGET=<namn> väljer ett mål, COMFY_URL=<adress> en adress.",
-  "order": ["local", "darrowmere"],
+  "_doc": "Var verktygens ComfyUI-jobb körs. comfy_target.py provar målen i order-ordningen och tar det första som svarar: Darrowmere som standard. Asset Studios jobbknapp (build/studio/jobs.json) sätter ett annat mål först, COMFY_TARGET=<namn> väljer bara det målet, COMFY_URL=<adress> en adress.",
+  "order": ["darrowmere", "local"],
   "targets": {
     "local": "http://127.0.0.1:8188",
     "darrowmere": "http://192.168.0.33:8188"
