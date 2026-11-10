@@ -298,7 +298,7 @@ def build(recipe, refs=None, now=None):
         steps.append(step)
         plan.append({"key": step["key"], "label": step["label"], "where": where, "minutes": minutes, **({"credits": cost} if cost else {})})
 
-    lane = r["gpu"].upper()
+    lane = "FIRST FREE GPU" if r["gpu"] == "auto" else r["gpu"].upper()
     by_role = {x["role"]: x for x in refs}
     if mode == "prompt":
         imgs = krea_steps(r, asset, prompt)

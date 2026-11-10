@@ -21,7 +21,7 @@
    {"id": "name", "type": "text", "default": "", "label": "Name", "help": "Short id for the files (letters, digits, dashes), e.g. nora. Empty: taken from the subject."},
    {"id": "title", "type": "text", "default": "", "label": "Title", "help": "Shown in the job list and the gallery. Empty: made from the subject."},
    {"id": "level", "type": "choice", "default": "standard", "label": "Level", "choices": [["quick", "Quick (~30 min)"], ["standard", "Standard (~40 min)"], ["best", "Best (~55 min)"]], "help": "Picks the tested settings for the time you have: fewer images and texture views when quick, more alternatives, view rings and texture bakes when best. Everything can still be changed below."},
-   {"id": "gpu", "type": "choice", "default": "t1000", "label": "Graphics card", "choices": [["t1000", "T1000 (8 GB)"], ["m4000", "M4000 (8 GB)"]], "help": "The runner's lane. Both cards run one heavy job at a time.", "adv": true}
+   {"id": "gpu", "type": "choice", "default": "auto", "label": "Graphics card", "choices": [["auto", "First free card (T1000 first)"], ["t1000", "T1000 (8 GB)"], ["m4000", "M4000 (8 GB)"]], "help": "The runner's lane. First free card takes the T1000 when it is free (faster, runs every flow), otherwise the M4000. Each card runs one job at a time, both at once.", "adv": true}
   ]},
   {"id": "source", "label": "1. Image reference", "fields": [
    {"id": "source.mode", "type": "choice", "default": "prompt", "label": "Start from", "choices": [["prompt", "A prompt (Krea-2 draws the reference)"], ["upload", "My own reference images"]]},

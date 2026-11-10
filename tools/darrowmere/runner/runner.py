@@ -36,9 +36,12 @@ HERE = Path(__file__).resolve().parent
 CONF = json.loads((HERE / "runner.json").read_text())
 COMFY = CONF.get("comfy", "http://127.0.0.1:8188")
 # Ett körspår per grafikkort: varje spår har sin ComfyUI och kör en beställning i taget, spåren går samtidigt.
-# Beställningen väljer spår med "gpu" (t.ex. "m4000"); utan det går den på det första.
+# An order picks its lane with "gpu" (e.g. "m4000"). Without "gpu", or with "auto", it goes to the first free card
+# (assign_lane: no runner job on the lane and an empty ComfyUI queue), in the order of "auto_lanes" (default: all lanes).
+# The T1000 comes first: it is faster and runs more flows (the M4000 is Maxwell, sm_52), so it wins when both are free.
 LANES = CONF.get("lanes") or {"t1000": COMFY}
 DEFAULT_LANE = next(iter(LANES))
+AUTO_LANES = [x for x in (CONF.get("auto_lanes") or LANES) if x in LANES]
 _lane = threading.local()
 
 
@@ -180,7 +183,7 @@ def resolve(o, value, cache):
 
 # Bara ett tungt ComfyUI-jobb åt gången över alla kort ("serial_lanes" i runner.json): med 18 GB RAM räcker minnet inte till
 # Krea-2 på T1000 och Klein 4B på M4000 samtidigt (2026-11-08 hängde sig Darrowmere i swap och tappade nätet). Före varje
-# jobb släpper de andra korten sina modeller ur RAM. Stängs av när 48 GB sitter i.
+# jobb släpper de andra korten sina modeller ur RAM. Turned off 2026-11-10 once 48 GB was installed.
 SERIAL = bool(CONF.get("serial_lanes"))
 HEAVY = threading.Lock()
 LAST_MODELS = {}  # kort (ComfyUI-adress) -> modellfilerna i det senaste jobbet där
@@ -1357,14 +1360,43 @@ def active():
 
 
 def lane_of(oid):
+    """The order's lane, or None when it should take the first free card ("gpu" missing or "auto")."""
     try:
         lane = json.loads((ORDERS / oid / "order.json").read_text()).get("gpu")
     except (OSError, ValueError):
-        lane = None
+        return DEFAULT_LANE
+    if lane in (None, "", "auto"):
+        return None
     return lane if lane in LANES else DEFAULT_LANE
 
 
 LANE_THREADS = {}
+
+
+def lane_free(lane):
+    """A free card: no runner job on the lane and an empty queue in its ComfyUI (the laptop may queue jobs there directly)."""
+    th = LANE_THREADS.get(lane)
+    if th and th.is_alive():
+        return False
+    try:
+        q = http_json(f"{LANES[lane]}/queue", timeout=5)
+    except Exception:
+        return False
+    return not (q.get("queue_running") or q.get("queue_pending"))
+
+
+def assign_lane(oid):
+    """The first free card for an order without one. Written into order.json ("gpu", "gpu_auto") so that a restart,
+    the gallery and the operator's next round see the same card. None when every card is busy (the order waits)."""
+    for lane in AUTO_LANES:
+        if lane_free(lane):
+            p = ORDERS / oid / "order.json"
+            od = json.loads(p.read_text())
+            od["gpu"], od["gpu_auto"] = lane, True
+            p.write_text(json.dumps(od, indent=1, ensure_ascii=False))
+            log(oid, "free lane:", lane)
+            return lane
+    return None
 
 
 def run_lane(lane, oids):
@@ -1382,14 +1414,21 @@ def run_lane(lane, oids):
 
 def tick():
     take_inbox()
-    by_lane = {}
+    by_lane, auto = {}, []
     for oid in active():
-        by_lane.setdefault(lane_of(oid), []).append(oid)
+        lane = lane_of(oid)
+        (auto if lane is None else by_lane.setdefault(lane, [])).append(oid)
     for lane, oids in by_lane.items():
         th = LANE_THREADS.get(lane)
         if th and th.is_alive():
             continue  # spåret jobbar redan; nya beställningar tas vid nästa varv
         th = LANE_THREADS[lane] = threading.Thread(target=run_lane, args=(lane, oids), name=f"lane-{lane}", daemon=True)
+        th.start()
+    for oid in auto:  # oldest first, one per free card; the rest wait for the next tick
+        lane = assign_lane(oid)
+        if not lane:
+            break
+        th = LANE_THREADS[lane] = threading.Thread(target=run_lane, args=(lane, [oid]), name=f"lane-{lane}", daemon=True)
         th.start()
 
 
