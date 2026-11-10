@@ -116,6 +116,11 @@ def pills(name, step_label="", engine=None, asset="", kind="", folder=""):
             m = re.search(r"_d(\d{2})_", n)
             if m:
                 add(f"d{m.group(1)}", f"Repainted {m.group(1)} % (denoise 0.{m.group(1)}) on top of the Pixal3D start", "paint")
+        m = re.search(r"_headk(\d+)", n)
+        if m:
+            add(f"H{m.group(1)}", f"Head and neck kept {int(m.group(1))} % to Pixal3D's own paint", "paint")
+        if "_align" in n:
+            add("⇄P3D", "Painting moved onto Pixal3D's features (optical flow)", "paint")
         if "_tone" in n:
             add("≈P3D", "Tone of every view matched to Pixal3D's colours (detail from UltraTex)", "paint")
     elif kind == "image":

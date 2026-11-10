@@ -51,14 +51,17 @@ class UltraTexInitFromMeshColours:
         }, "optional": {
             "colour": (["compensate", "as_is"], {"default": "compensate", "tooltip": "compensate: lift the colours by the inverse of the darkening in UltraTex's encode/decode; as_is: the mesh colours unchanged."}),
             "lift": ("FLOAT", {"default": 1.7, "min": 1.0, "max": 3.0, "step": 0.05, "tooltip": "Exponent of the lift (colour ** (1 / lift)): 1 = none; the darkening measured on the man needs about 1.7."}),
+            "head_from": ("FLOAT", {"default": 0.80, "min": 0.5, "max": 1.0, "step": 0.01, "tooltip": "keep_mask: the head and neck from this share of the figure's height (0.80 is just below the collar of an adult)."}),
+            "head_feather": ("FLOAT", {"default": 0.03, "min": 0.0, "max": 0.2, "step": 0.005, "tooltip": "keep_mask: soft edge, as a share of the height."}),
+            "head_keep": ("FLOAT", {"default": 0.6, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "keep_mask value on the head (1 = the mesh's own paint exactly, 0 = repaint freely); the body is 0."}),
         }}
 
-    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK")
-    RETURN_NAMES = ("init_views", "colour_views", "cover")
+    RETURN_TYPES = ("IMAGE", "IMAGE", "MASK", "MASK")
+    RETURN_NAMES = ("init_views", "colour_views", "cover", "head_keep")
     FUNCTION = "render"
     CATEGORY = "UltraTex"
 
-    def render(self, prep, glb_path, resolution, texture_size, colour="compensate", lift=1.7):
+    def render(self, prep, glb_path, resolution, texture_size, colour="compensate", lift=1.7, head_from=0.80, head_feather=0.03, head_keep=0.6):
         import trimesh
         from scipy.spatial import cKDTree
         bake = _ultratex("bake")
@@ -81,6 +84,19 @@ class UltraTexInitFromMeshColours:
             # (the full sRGB inverse overshot: 74.2; lift is the exponent, 1 = unchanged, about 1.7 lands near UltraTex's own)
             rig = None if np.allclose(prep.rig, np.eye(3)) else prep.rig
             plain, cover, _ = baker.render_views(tex.astype(np.float32), None, resolution, rig)
+            # keep_mask: the head and neck (up is +y, as in the glTF the mesh came from), rendered like a texture
+            yy = baker.texel_pos[:, 1]
+            t = (yy - yy.min()) / max(float(np.ptp(yy)), 1e-9)
+            hk = np.clip((t - head_from) / max(head_feather, 1e-6), 0, 1)
+            hk = hk * hk * (3 - 2 * hk) * float(head_keep)
+            htex = np.zeros((texture_size, texture_size, 3)); htex[baker.cover] = hk[:, None]
+            htex = htex[iy, ix]
+            hv, _, _ = baker.render_views(htex.astype(np.float32), None, resolution, rig)
+            keep = hv[..., 0] * cover
+            rows = np.arange(resolution)[:, None] * np.ones((1, resolution))
+            print(f"[azshara] head keep: {float((hk > 0).mean()):.3f} of the texels; front view: head mean row "
+                  f"{float((rows * (keep[0] > 0.3)).sum() / max((keep[0] > 0.3).sum(), 1)):.0f} of {resolution} "
+                  f"(figure {float((rows * cover[0]).sum() / max(cover[0].sum(), 1)):.0f})", flush=True)
             if colour == "compensate":
                 tex = np.power(np.clip(tex, 0, 1), 1.0 / max(float(lift), 0.1))
                 views, _, _ = baker.render_views(tex.astype(np.float32), None, resolution, rig)
@@ -91,7 +107,7 @@ class UltraTexInitFromMeshColours:
         print(f"[azshara] init views from {glb_path.rsplit('/', 1)[-1]}: {len(col)} coloured vertices, "
               f"texel match median {np.median(d[:, 0]) / float(prep.scale) * 1000:.2f} mm", flush=True)
         return (torch.from_numpy(np.ascontiguousarray(views)), torch.from_numpy(np.ascontiguousarray(plain)),
-                torch.from_numpy(np.ascontiguousarray(cover.astype(np.float32))))
+                torch.from_numpy(np.ascontiguousarray(cover.astype(np.float32))), torch.from_numpy(np.ascontiguousarray(keep.astype(np.float32))))
 
 
 class UltraTexMatchViewTone:
