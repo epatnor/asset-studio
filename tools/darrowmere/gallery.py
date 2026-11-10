@@ -56,6 +56,111 @@ def kind_of(name):
     return "image"
 
 
+# Pills on the gallery cards: which 3D engine made the shape, which model painted it, low-poly or not, wrapped MPFB figure,
+# and the variant (mix, ring, seed). Read from the file name and the order's step labels, so long file names need not be read.
+ENGINES = (("pixal3d", "Pixal3D"), ("tripo", "Tripo"), ("meshy", "Meshy"), ("hunyuan", "Hunyuan"), ("trellis", "TRELLIS"),
+           ("mpfb", "MPFB"), ("syssling", "MPFB"), ("creator", "MPFB"))
+PAINTERS = (("_pxinit", "UltraTex 4B"), ("_ut4b", "UltraTex 4B"), ("ultratex", "UltraTex"), ("_vcol", "Pixal3D colours"),
+            ("meshy_tex", "Meshy"), ("krea", "Krea-2"), ("klein", "Klein 4B"))
+
+
+def order_engine(steps):
+    """The engine that made the order's shape, from the labels of its model steps."""
+    for s in steps:
+        lab = (s.get("label") or "").lower()
+        if s.get("kind") == "review" or "texture" in lab and "model" not in lab:
+            continue
+        for key, name in ENGINES[:5]:
+            if key in lab or key in (s.get("provider") or "").lower():
+                return name
+    return None
+
+
+SHORT = {"Pixal3D": "P3D", "Tripo": "TRP", "Meshy": "MSH", "Hunyuan": "HY3D", "TRELLIS": "TRL", "MPFB": "MPFB",
+         "UltraTex 4B": "UT4B", "UltraTex": "UT", "Pixal3D colours": "P3Dc", "Krea-2": "K2", "Klein 4B": "KL4"}
+
+
+def pills(name, step_label="", engine=None, asset="", kind="", folder=""):
+    """Small badges in the order of the chain: shape, wrap, paint (and its start), finish, low-poly, variant.
+    Each is {"s": short text on the badge, "t": full text for the tooltip, "c": category (colour)}."""
+    n, lab, a = name.lower(), (step_label or "").lower(), (asset or "").lower()
+    out = []
+    add = lambda s_, t, c: out.append({"s": s_, "t": t, "c": c})
+    three_d = kind in ("model", "render", "inspect", "map")
+    eng = next((v for k, v in ENGINES if k in n), None) or (engine if three_d else None)
+    if "wrap" in n or "wrap" in a or "mpfb" in lab:
+        eng = "MPFB"
+    # 1 shape
+    if eng:
+        add(SHORT.get(eng, eng), f"Shape: {eng}", "eng")
+    if "voxel" in n:
+        add("vox", "Coarse voxel shape (no paint)", "var")
+    # 2 wrap
+    if eng == "MPFB" and ("wrap" in n or "wrap" in a):
+        add("wrap", "MPFB figure wrapped tight onto the AI shape", "wrap")
+    elif re.search(r"(^|_)fit(_|\.|$)", n):
+        add("fit", "Template fitted to the AI shape", "wrap")
+    # 3 paint
+    if three_d and "voxel" not in n:
+        paint = next((v for k, v in PAINTERS if k in n), None)
+        if not paint and (folder.split("/")[0] == "ultratex4b" or re.search(r"mix\d", n)):
+            paint = "UltraTex 4B"
+        if not paint and re.search(r"_pixal3d_0", n):
+            paint = "Pixal3D"
+        if not paint and eng in ("Tripo", "Meshy") and "texture" in lab:
+            paint = eng
+        if paint:
+            add(SHORT.get(paint, paint), f"Painted by {paint}", "paint")
+        if "_pxinit" in n:
+            add("↳P3D", "Painting started from Pixal3D's own colours", "paint")
+    elif kind == "image":
+        paint = next((v for k, v in PAINTERS[5:] if k in n or k in lab), None)
+        if paint:
+            add(SHORT.get(paint, paint), f"Image by {paint}", "paint")
+    # 4 finish (file name, or the finish step's label for its outputs)
+    fin = lab.startswith("finish")
+    if "_graded" in n or re.search(r"_g\d\.\d", n) or fin and "colour" in lab:
+        add("grd", "Colour graded", "fin")
+    if "_clean" in n or fin and "loose" in lab:
+        add("cln", "Loose bits removed", "fin")
+    if "_mirror" in n or fin and "mirror" in lab:
+        add("mir", "Face mirrored (symmetric)", "fin")
+    # 5 low-poly
+    m = re.search(r"_low_?(\d+)k", n)
+    if m:
+        q = "quad" in lab
+        add(f"{m.group(1)}k" + ("□" if q else ""), f"Low-poly game model, {m.group(1)}k " + ("quads" if q else "triangles"), "low")
+    elif "_high" in n:
+        add("hi", "Full-resolution model", "var")
+    # 6 variant
+    m = re.search(r"mix(\d+)", n)
+    if m:   # mix07 is the old spelling of 0.7
+        v = m.group(1)
+        v = int(v) * 10 if len(v) == 2 and v[0] == "0" else int(v)
+        add(f"m{v}", f"Best-view mix {v} %", "var")
+    if "noring" in n:
+        add("−R", "Without the extra camera ring", "var")
+    elif "_ring" in n:
+        add("+R", "With the extra camera ring", "var")
+    m = re.search(r"(?:^|_)s(\d+)_", n)
+    if m and len(m.group(1)) == 5:   # s08000: an UltraTex LoRA checkpoint, not a seed
+        add(f"L{int(m.group(1)) // 1000}k", f"UltraTex LoRA checkpoint {int(m.group(1))}", "var")
+    elif m:
+        add(f"s{m.group(1)}", f"Seed {m.group(1)}", "var")
+    return out
+
+
+def short_name(name, asset=""):
+    """The file name without the asset prefix, run numbers and extension: 'ut4b mix70 low 12k'."""
+    st = name.rsplit(".", 1)[0]
+    for pre in {asset, asset.replace("-", "_")} - {""}:
+        if st.lower().startswith(pre.lower()):
+            st = st[len(pre):]
+    st = re.sub(r"_?\d{5}_?", "_", st)
+    st = re.sub(r"[_-]+", " ", st).strip()
+    return st or name
+
+
 def build(raw):
     """Filerna grupperade per beställning (eller lösa genereringar per dag), nyast först."""
     plans = {p["id"]: p for p in raw["plans"] if p.get("id")}
@@ -128,9 +233,12 @@ def build(raw):
         if gid.startswith("o:"):
             p = plans.get(gid[2:]) or {}
             steps = {s.get("key"): s for s in p.get("steps", [])}
+            eng = order_engine(p.get("steps", []))
             for i in items:
                 s = steps.get(i["step"]) or {}
                 i["step_label"] = s.get("label") or i["step"]
+                i["pills"] = pills(i["filename"], i["step_label"], eng, p.get("asset") or "", i["kind"], i["subfolder"])
+                i["short"] = short_name(i["filename"], p.get("asset") or "")
                 if s.get("note"):
                     i["note"] = s["note"]
                 if s.get("route") == "cloud":
@@ -155,6 +263,8 @@ def build(raw):
             day = gid.split(":", 1)[1]
             g.update(title=("3D models" if gid.startswith("3d:") else "ComfyUI generations") + " · " + day, order=None,
                      asset="", status="", time=last, mission="", mission_title="", score=None, verdict="", operator=None)
+        for i in items:
+            i.setdefault("pills", pills(i["filename"], "", None, "", i["kind"], i["subfolder"]))
         items.sort(key=lambda i: (i["step"], {"model": 0, "render": 1, "image": 2, "map": 3, "inspect": 4}[i["kind"]], i["filename"]))
         out.append(g)
     out.sort(key=lambda g: -g["time"])

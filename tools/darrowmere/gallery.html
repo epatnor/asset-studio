@@ -32,6 +32,13 @@
   .gh .meta { color: var(--muted); }
   .tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
   .tag.cloud { border-style: dashed; color: var(--cyan); }
+  .pills { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 6px 0; }
+  .pill { font: 600 9.5px/13px ui-monospace, "SF Mono", Menlo, monospace; padding: 0 3px; border-radius: 3px; white-space: nowrap;
+          color: color-mix(in srgb, var(--p) 80%, var(--text)); background: color-mix(in srgb, var(--p) 18%, transparent); cursor: help; }
+  .pill.eng { --p: var(--blue); } .pill.wrap { --p: var(--amber); } .pill.paint { --p: var(--violet); } .pill.fin { --p: var(--cyan); }
+  .pill.low { --p: var(--green); } .pill.var { --p: var(--muted); font-weight: 500; }
+  .rbody .pills { padding: 2px 0 0; }
+  #legend { display: inline-flex; gap: 3px; align-items: center; color: var(--muted); font-size: 11px; }
   /* Uppdrag: flera beställningar med ett syfte, sorterade efter granskningens betyg */
   details.mission { background: color-mix(in srgb, var(--blue) 5%, var(--bg)); border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
                     border-radius: 12px; padding: 8px 10px 10px; }
@@ -132,6 +139,8 @@
   <span class="wordmark" role="img" aria-label="Darrowmere"></span><b>GALLERY</b>
   <span class="seg" id="views"><button data-v="results" title="The finished model (or image) of every order">Results</button><button data-v="files" title="Every file of every step">All files</button></span>
   <span id="chips"></span>
+  <span id="legend" title="The badges on each card follow the chain; hover a badge for its full meaning">
+    <span class="pill eng">shape</span>→<span class="pill wrap">wrap</span>→<span class="pill paint">paint</span>→<span class="pill fin">finish</span>→<span class="pill low">low-poly</span>·<span class="pill var">variant</span></span>
   <select id="asset" title="Show one asset"></select>
   <input id="q" placeholder="Search name, order or step" spellcheck="false">
   <button id="cmpHead" disabled title="Tick Compare on 2–4 models, then open them side by side">Compare 0/4</button><button id="cmpReset" hidden title="Untick all models">✕ Reset</button>
@@ -168,6 +177,9 @@ const stamp = t => {
 };
 const mb = n => n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.round(n / 1e3) + " kB";
 
+// Pills: engine, painter, low-poly, wrapped, variant (gallery.py pills()); the full file name stays in the tooltip
+const pillText = i => (i.pills || []).map(p => `${p.s} ${p.t}`).join(" ");
+const pillsHtml = i => (i.pills || []).length ? `<div class="pills">${i.pills.map(p => `<span class="pill ${esc(p.c)}" title="${esc(p.t)}">${esc(p.s)}</span>`).join("")}</div>` : "";
 function chips() {
   const n = {}; groups.forEach(g => g.items.forEach(i => n[i.kind] = (n[i.kind] || 0) + 1));
   $("chips").innerHTML = KINDS.map(([k, l]) => `<button class="chip k-${k} ${on.has(k) ? "on" : ""}" data-k="${k}"><i></i>${l}<small>${n[k] || 0}</small></button>`).join(" ");
@@ -191,7 +203,7 @@ function groupHtml(g, items, rank) {
   const per = {}; items.forEach(i => per[i.step] = (per[i.step] || 0) + 1);
   const dividers = g.order && Object.values(per).some(n => n > 2);
   for (const i of items) {
-    const cap = !dividers && i.step_label ? i.step_label : i.filename;
+    const cap = !dividers && i.step_label ? i.step_label : (i.short || i.filename);
     if (dividers && i.step !== step) {
       step = i.step;
       html += `<div class="step"><b>${esc(i.step_label || i.step || "files")}</b>${i.note ? `<span>${esc(i.note)}</span>` : ""}</div>`;
@@ -202,12 +214,12 @@ function groupHtml(g, items, rank) {
       const v = "/viewer?" + new URLSearchParams({ filename: i.filename, subfolder: i.subfolder, type: "output", m: Math.round(i.mtime) });
       html += `<a class="card k-model" href="${v}" target="_blank" title="${esc(title)} · open in the 3D viewer">
         <div class="thumb">${i.thumb ? `<img loading="lazy" src="${thumbUrl(i.thumb, i)}" alt="">` : `<span class="ph">3D</span>`}</div>
-        <span class="badge">3D</span><div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></a>`;
+        <span class="badge">3D</span>${pillsHtml(i)}<div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></a>`;
     } else {
       const n = list.push(i) - 1;
       html += `<div class="card k-${i.kind}" data-n="${n}" title="${esc(title)}">
         <div class="thumb"><img loading="lazy" src="${thumbUrl(i.filename, i)}" alt=""></div>
-        ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}<div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></div>`;
+        ${i.kind !== "image" ? `<span class="badge">${label}</span>` : ""}${pillsHtml(i)}<div class="cap">${esc(cap)}</div><div class="when">${stamp(i.mtime)}</div></div>`;
     }
   }
   return html + `</div></section>`;
@@ -242,7 +254,7 @@ function rcard(g, i, rank) {
       ${isM ? `<label class="pick" title="Pick 2–4 models to compare side by side"><input type="checkbox" data-pick="${esc(key)}" ${picked.has(key) ? "checked" : ""}>Compare</label>` : ""}</div>
     <div class="rbody"><b>${rank ? `<span class="rank">#${rank}</span> ` : ""}${esc(g.order ? g.title : i.filename)}</b>
       <span class="when">${stamp(i.mtime)}</span>
-      ${g.order ? `<span class="sub" title="${esc(i.filename)}">${esc(i.filename)}</span>` : ""}
+      ${pillsHtml(i)}${g.order ? `<span class="sub" title="${esc(i.filename)}">${esc(i.short || i.filename)}</span>` : ""}
       <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
         ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
       ${isM && g.order ? srcStrip(g) : ""}
@@ -264,7 +276,7 @@ function renderResults() {
   for (const g of groups) {
     if (asset && g.asset !== asset) continue;
     const gText = `${g.title} ${g.order || ""} ${g.asset} ${g.mission || ""} ${g.mission_title || ""}`.toLowerCase();
-    const hs = heroes(g).filter(i => !q || gText.includes(q) || i.filename.toLowerCase().includes(q));
+    const hs = heroes(g).filter(i => !q || gText.includes(q) || `${i.filename} ${pillText(i)}`.toLowerCase().includes(q));
     if (!hs.length) continue;
     shown += hs.length;
     if (g.mission) {
@@ -374,7 +386,7 @@ function render() {
   for (const g of groups) {
     if (asset && g.asset !== asset) continue;
     const gText = `${g.title} ${g.order || ""} ${g.asset} ${g.mission || ""} ${g.mission_title || ""}`.toLowerCase();
-    const items = g.items.filter(i => on.has(i.kind) && (!q || gText.includes(q) || `${i.filename} ${i.step_label || ""} ${i.note || ""}`.toLowerCase().includes(q)));
+    const items = g.items.filter(i => on.has(i.kind) && (!q || gText.includes(q) || `${i.filename} ${i.step_label || ""} ${i.note || ""} ${pillText(i)}`.toLowerCase().includes(q)));
     if (!items.length) continue;
     shown += items.length;
     if (g.mission) {
