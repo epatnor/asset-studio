@@ -349,3 +349,25 @@ Ringen (extra kameror från brus) ökar hoppen, så v2 och v3 körs utan den. Vi
 LoRA-stegen åt, eftersom startbilden bestämmer. Bäst hittills är v3 med 0,85 och run3b 13000 EMA, som också har det
 tydligaste ansiktet. Ytan är fortfarande mjukare än den gamla (skärpa 168 mot 208). Inte inkopplad i figurbeställningen
 än.
+
+## Synkade vyer (2026-11-10)
+
+`UltraTex Sampler (synced views)` i samma nodpaket gör som SyncMVD och MVPaint. Efter varje steg i brusborttagningen
+läggs alla vyers förutsagda rena latenter ut på en gemensam latent-textur i UV. Varje vy vägs med cos^8 mot ytan, och
+texturen renderas sedan tillbaka till alla vyer före nästa steg. Det sker i latentrymden, så ingen rundtur genom
+avkodning och kodning flyttar färgerna. UltraTex:s egen `sample()` används: när noden körs kompileras källkoden med
+Euler-raden utbytt mot en krok. Saknas den raden i en ny version av UltraTex säger noden ifrån. I loggen syns hur
+mycket latenterna flyttades per steg: 13 %, 13 %, 11 % och 8 %.
+
+| Variant | Hopp (medel / värsta) | Förskjutning mot Pixal3D (median / p95 px) | Skärpa |
+|---|---|---|---|
+| Gamla (från brus) | 1,08 / 2,46 | 8,9 / 33,2 | 208 |
+| v5 (Pixal3D-start, ton, flyttning, huvud 0,6) | 0,40 / 1,15 | 0,85 / 6,7 | 170 |
+| v5 med huvud 0,8 | 0,58 / 1,47 | 0,78 / 7,0 | |
+| **v6a: bara synk, från brus** | **0,34 / 1,26** | 8,8 / 28,0 | **198** |
+| **v6b: v5 + synk** | **0,21 / 0,59** | 0,91 / 6,4 | 169 |
+
+Synkningen ensam tar bort två tredjedelar av hoppen och behåller nästan all skärpa. Där vyerna var mycket oense blir
+det spöken, alltså medelvärden av två placeringar: dubbelt hårfäste med ljusa block i pannan och dubbel skäggkant vid
+örat. v6b är renast och har minst hopp. Nästa steg för v6a är en hårdare vikt (`sync_power` 16–32, så att vyn som ser
+rakast vinner) eller att bara synka de tidiga stegen.

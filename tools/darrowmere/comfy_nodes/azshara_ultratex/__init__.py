@@ -189,5 +189,148 @@ class UltraTexMatchViewTone:
         return (out.permute(0, 2, 3, 1).contiguous(),)
 
 
-NODE_CLASS_MAPPINGS = {"UltraTexInitFromMeshColours": UltraTexInitFromMeshColours, "UltraTexMatchViewTone": UltraTexMatchViewTone}
-NODE_DISPLAY_NAME_MAPPINGS = {"UltraTexInitFromMeshColours": "UltraTex Init From Mesh Colours", "UltraTexMatchViewTone": "UltraTex Match View Tone"}
+# --------------------------------------------------------------------------- synced sampling
+# UltraTex paints its 6 views together but bakes them onto the surface only at the end, so the views can place a feature
+# (an eyebrow, a collar) a little differently and the bake jumps between them. Here the views are kept in agreement while
+# they are painted, as SyncMVD/MVPaint do: after every denoising step the predicted clean latents of all views are
+# splatted onto one shared latent texture in UV space (weighted by how head-on each view sees the surface), and rendered
+# back into every view before the next step. This happens in latent space, so no decode/encode round trip shifts colours.
+# UltraTex's own sample() is reused: at run time its source is compiled with the Euler update line replaced by a hook.
+
+_SYNC = {}
+
+
+class _LatentProjector:
+    def __init__(self, prep, size, tex, power):
+        render = _ultratex("render")
+        from scipy.ndimage import distance_transform_edt
+        self.size, self.tex = size, tex
+        r = render.GLRenderer(prep.vertices, prep.normals, prep.faces, prep.uvs)
+        rig = None if np.allclose(prep.rig, np.eye(3)) else prep.rig
+        self.views = []
+        try:
+            for v in range(6):
+                vr = render.rig_for_view(rig, v)
+                _, nrm, dep = r.render_view(v, size, vr)
+                cover = dep[..., 3] > 0
+                mv = render.view_matrix(v, vr)
+                n = nrm[..., :3][cover].astype(np.float64)
+                n = n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-8)
+                cos = np.clip((n @ mv[:3, :3].T)[:, 2], 0, 1)   # camera looks down -z: facing surfaces have +z
+                x = np.clip(dep[..., 1][cover] * tex - 0.5, 0, tex - 1)
+                y = np.clip((1 - dep[..., 2][cover]) * tex - 0.5, 0, tex - 1)
+                tidx = np.rint(y).astype(np.int64) * tex + np.rint(x).astype(np.int64)
+                self.views.append((np.flatnonzero(cover), tidx, cos ** power + 1e-6, x, y))
+        finally:
+            r.release()
+        hit = np.zeros(tex * tex, bool)
+        for _, tidx, _, _, _ in self.views:
+            hit[tidx] = True
+        _, (iy, ix) = distance_transform_edt(~hit.reshape(tex, tex), return_indices=True)
+        self.fill = (iy * tex + ix).ravel()   # every texel -> the nearest texel some view sees
+
+    def __call__(self, tiles):
+        """tiles (6, C, h, w) float -> the same with every covered pixel replaced by the shared texture's value."""
+        c = tiles.shape[1]
+        flat = tiles.reshape(6, c, -1)
+        acc = np.zeros((self.tex * self.tex, c)); wsum = np.zeros(self.tex * self.tex)
+        for v, (pix, tidx, w, _, _) in enumerate(self.views):
+            np.add.at(acc, tidx, flat[v][:, pix].T * w[:, None]); np.add.at(wsum, tidx, w)
+        tex = (acc / np.maximum(wsum, 1e-12)[:, None])[self.fill].reshape(self.tex, self.tex, c)
+        out = flat.copy()
+        for v, (pix, _, _, x, y) in enumerate(self.views):
+            x0, y0 = np.floor(x).astype(int), np.floor(y).astype(int)
+            x1, y1 = np.minimum(x0 + 1, self.tex - 1), np.minimum(y0 + 1, self.tex - 1)
+            fx, fy = (x - x0)[:, None], (y - y0)[:, None]
+            val = tex[y0, x0] * (1 - fx) * (1 - fy) + tex[y0, x1] * fx * (1 - fy) + tex[y1, x0] * (1 - fx) * fy + tex[y1, x1] * fx * fy
+            out[v][:, pix] = val.T
+        return out.reshape(tiles.shape)
+
+
+def _sync_hook(x_fg, pred, t_curr, t_prev, i, start, L):
+    """Replaces UltraTex's Euler step x_fg + (t_prev - t_curr) * pred: x0 is synced across the views, then re-noised."""
+    x0 = x_fg - t_curr * pred           # rectified flow: x_t = (1 - t) x0 + t noise, pred = noise - x0
+    eps = x_fg + (1 - t_curr) * pred
+    s = float(_SYNC.get("last" if t_prev <= 0 else "strength", 1.0))
+    if s > 0:
+        sampling = _ultratex("sampling")
+        bb, th, tw, tgt = L["bb"], L["th"], L["tw"], L["tgt_idx_d"]
+        full = L["bg_tokens"].to(x0.device).float().clone()
+        full[:, tgt] = x0.float()
+        tiles = sampling.grid_to_tiles(bb.unpack(full, th, tw)).cpu().numpy().astype(np.float64)
+        key = (tiles.shape[-1], int(_SYNC["tex_scale"] * tiles.shape[-1]))
+        proj = _SYNC.get("proj", {}).get(key)
+        if proj is None:
+            proj = _LatentProjector(L["prep"], key[0], key[1], float(_SYNC["power"]))
+            _SYNC.setdefault("proj", {})[key] = proj
+        synced = torch.from_numpy(proj(tiles)).float()
+        tok = bb.pack(sampling.tiles_to_grid(synced)).to(x0.device)[:, tgt]
+        moved = float((tok - x0.float()).abs().mean() / max(float(x0.float().abs().mean()), 1e-8))
+        print(f"[azshara] sync step {i}: t {t_curr:.2f} -> {t_prev:.2f}, strength {s}, latents changed {moved:.1%}", flush=True)
+        x0 = x0 + s * (tok.to(x0.dtype) - x0)
+    return (1 - t_prev) * x0 + t_prev * eps
+
+
+def _synced_sample():
+    import inspect
+    sampling = _ultratex("sampling")
+    if getattr(sampling, "_azshara_synced", None) is not None:
+        return sampling._azshara_synced
+    src = inspect.getsource(sampling.sample)
+    line = "            x_new = x_fg + (t_prev - t_curr) * pred\n"
+    if src.count(line) != 1:
+        raise RuntimeError("UltraTex's sample() changed: the Euler update line for the sync hook was not found")
+    src = src.replace(line, "            x_new = _sync_hook(x_fg, pred, t_curr, t_prev, i, start, locals())\n")
+    src = src.replace("def sample(", "def sample_synced(", 1)
+    g = dict(sampling.__dict__); g["_sync_hook"] = _sync_hook
+    exec(compile(src, sampling.__file__ + " (azshara sync)", "exec"), g)
+    sampling._azshara_synced = g["sample_synced"]
+    return sampling._azshara_synced
+
+
+def _ultratex_nodes():
+    for k, m in list(sys.modules.items()):   # strict: torch.ops answers any attribute name
+        f = getattr(m, "__file__", None) or ""
+        if "UltraTex" in f and f.endswith("nodes.py") and isinstance(getattr(m, "__dict__", {}).get("UltraTexSampler"), type):
+            return m
+    raise RuntimeError("ComfyUI-UltraTex is not loaded")
+
+
+class UltraTexSamplerSynced:
+    """UltraTex Sampler with the views synced through the surface after every step (see above)."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        base = _ultratex_nodes().UltraTexSampler.INPUT_TYPES()
+        opt = dict(base.get("optional", {}))
+        opt.update({
+            "sync_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "How far each step's views are pulled to the shared surface (1 = fully)."}),
+            "sync_last": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "The same for the last step (lower lets the last step sharpen freely)."}),
+            "sync_power": ("FLOAT", {"default": 8.0, "min": 0.0, "max": 32.0, "step": 0.5, "tooltip": "View weight cos^power when the views are merged (higher = the most head-on view wins)."}),
+            "sync_tex_scale": ("FLOAT", {"default": 2.0, "min": 1.0, "max": 4.0, "step": 0.25, "tooltip": "Size of the shared latent texture, in times the latent view size."}),
+        })
+        return {"required": base["required"], "optional": opt}
+
+    RETURN_TYPES = ("IMAGE", "MASK", "IMAGE")
+    RETURN_NAMES = ("views", "masks", "atlas")
+    FUNCTION = "sample"
+    CATEGORY = "UltraTex"
+
+    def sample(self, sync_strength=1.0, sync_last=1.0, sync_power=8.0, sync_tex_scale=2.0, **kw):
+        nodes = _ultratex_nodes()
+        sampling = nodes.sampling
+        synced = _synced_sample()
+        _SYNC.clear(); _SYNC.update(strength=sync_strength, last=sync_last, power=sync_power, tex_scale=sync_tex_scale)
+        orig = sampling.sample
+        sampling.sample = synced
+        try:
+            return nodes.UltraTexSampler().sample(**kw)
+        finally:
+            sampling.sample = orig
+            _SYNC.clear()
+
+
+NODE_CLASS_MAPPINGS = {"UltraTexInitFromMeshColours": UltraTexInitFromMeshColours, "UltraTexMatchViewTone": UltraTexMatchViewTone,
+                       "UltraTexSamplerSynced": UltraTexSamplerSynced}
+NODE_DISPLAY_NAME_MAPPINGS = {"UltraTexInitFromMeshColours": "UltraTex Init From Mesh Colours", "UltraTexMatchViewTone": "UltraTex Match View Tone",
+                              "UltraTexSamplerSynced": "UltraTex Sampler (synced views)"}

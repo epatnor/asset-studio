@@ -121,6 +121,8 @@ def pills(name, step_label="", engine=None, asset="", kind="", folder=""):
             add(f"H{m.group(1)}", f"Head and neck kept {int(m.group(1))} % to Pixal3D's own paint", "paint")
         if "_align" in n:
             add("⇄P3D", "Painting moved onto Pixal3D's features (optical flow)", "paint")
+        if "_sync" in n:
+            add("⟳", "Views synced through the surface after every denoising step", "paint")
         if "_tone" in n:
             add("≈P3D", "Tone of every view matched to Pixal3D's colours (detail from UltraTex)", "paint")
     elif kind == "image":
