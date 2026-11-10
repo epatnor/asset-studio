@@ -12,6 +12,7 @@ heads tall and head width / height. Fails when no image reaches min_heads, so th
 from a big-headed reference.
 """
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -36,6 +37,13 @@ def measure(path):
     top, bot = rows[0], rows[-1]
     height = bot - top
     width = np.array([np.ptp(np.where(r)[0]) if r.any() else 0 for r in m[top:bot + 1]])
+    # A few rows can drop out of the silhouette where the colour is close to the background (the bearded man's chest,
+    # 2026-11-10: two rows 17 px wide). Only rows far narrower than the median of their 11 neighbours are filled (with
+    # that median), so the real neck, dozens of rows long, keeps its exact rows.
+    k = 5
+    padded = np.pad(width, k, mode="edge")
+    med = np.median(np.stack([padded[i:i + len(width)] for i in range(2 * k + 1)]), axis=0)
+    width = np.where(width < 0.5 * med, med, width)
     # The neck: the narrowest row between 1/20 and 1/4 of the figure height from the top
     lo, hi = max(2, height // 20), height // 4
     neck = lo + int(np.argmin(width[lo:hi]))
@@ -54,13 +62,14 @@ def main():
     if not ok:
         raise SystemExit("no figure found in any reference image")
     best = min(ok, key=lambda f: abs(f["heads_tall"] - target))
-    summary = ", ".join(f"{f['image']}: {f.get('heads_tall', '?')}" for f in found)
+    short = lambda n: (re.search(r"_(s\d+)_", n) or re.search(r"(.{1,12})\.\w+$", n)).group(1)   # seed tag, e.g. s22
+    summary = ", ".join(f"{short(f['image'])} {f.get('heads_tall', '?')}" for f in found)
     if best["heads_tall"] < min_heads:
         raise SystemExit(f"every reference has a big head (heads tall {summary}; need at least {min_heads})")
     out = Path(r["out_dir"]) / f"{r.get('name') or 'figure'}_front_pick.png"
     shutil.copyfile(next(p for p in r["images"] if Path(p).name == best["image"]), out)
     print(json.dumps({"ok": True, "files": [out.name], "picked": best["image"], "images": found,
-                      "note": f"picked {best['image']} · {best['heads_tall']} heads tall (all: {summary})"}))
+                      "note": f"picked {short(best['image'])} · {best['heads_tall']} heads tall ({summary})"}))
 
 
 if __name__ == "__main__":
