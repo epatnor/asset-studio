@@ -1,14 +1,15 @@
-// Målningen i The Character Creator (docs/asset-studio.md): Patrik målar hudens färg direkt på figuren, på MPFB:s
-// gemensamma UV, oftast från referensbilder. Penseln arbetar i UV-rummet: varje texel räknar ut var den syns i vyn
-// (skärmläget, djupet mot en djupkarta från samma kamera och hur mycket ytan vänder sig mot kameran), och den som ligger
-// under penseln får färg. Källorna är en färg, referensbilden (en bild över vyn som kan flyttas, skalas och vridas, som
-// Blenders stencil), Blur och Erase (tillbaka till grunden). Spegling i x målar båda sidorna (kroppen är symmetrisk).
-// Project the picture lägger hela bilden på det som syns. Save skriver en ny <namn>_paint_v<n>_color.png (aldrig över),
-// med påfyllning runt UV-öarna, och Finished model hittar den som färgkarta. Texten i appen är på engelska.
+// Painting in The Character Creator (docs/asset-studio.md): Patrik paints the skin colour straight onto the figure, on
+// MPFB's shared UV, mostly from reference pictures. The brush works in UV space: every texel works out where it shows in
+// the view (its screen position, its depth against a depth map from the same camera and how much the surface faces the
+// camera), and the ones under the brush get colour. The sources are a colour, the reference picture (laid over the view;
+// it can be moved, scaled and turned, like Blender's stencil), Blur and Erase (back to the base). Mirror in x paints both
+// sides (the body is symmetric). Project the picture lays the whole picture on what is visible. Save writes a new
+// <name>_paint_v<n>_color.png (never overwritten), padded around the UV islands, and Finished model finds it as the colour
+// map. Generate this view asks a picture model for a new reference of the current angle. The app text is English.
 import * as THREE from 'three';
 
-const N = 2048; // texturens sida (MPFB:s UV, som bakningarna)
-// Hex till rått sRGB 0..1 (THREE.Color räknar om till linjärt, men målet håller sRGB-värdena som de är)
+const N = 2048; // the texture's side (MPFB's UV, like the bakes)
+// Hex to raw sRGB 0..1 (THREE.Color converts to linear, but the target keeps the sRGB values as they are)
 const srgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
 
 const VERT_UV = /* glsl */`
@@ -30,7 +31,7 @@ float weight(vec3 q, vec3 n, out vec2 scr) {
   scr = (nd.xy * 0.5 + 0.5) * uRes;
   float vz = -(uV * vec4(q, 1.0)).z;
   float d = texture2D(uDepth, nd.xy * 0.5 + 0.5).r;
-  if (vz > d + 0.006 * (1.0 + vz)) return 0.0;         // skymd
+  if (vz > d + 0.006 * (1.0 + vz)) return 0.0;         // hidden
   float f = dot(normalize(n), normalize(uCam - q));
   float fade = smoothstep(uFace, min(1.0, uFace + 0.25), f);
   float r = uAll ? 0.0 : length(scr - uBrush) / uRadius;
@@ -78,7 +79,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   const undo = [], redo = [], spare = [];
   const white = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1); white.needsUpdate = true;
 
-  // --- Penselns material, kopiering och djupet ---
+  // --- The brush material, copying and the depth ---
   const dabMat = new THREE.ShaderMaterial({
     vertexShader: VERT_UV, fragmentShader: FRAG_DAB, side: THREE.DoubleSide, depthTest: false, depthWrite: false,
     blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
@@ -108,7 +109,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   const uvScene = new THREE.Scene(), depthScene = new THREE.Scene(), flatCam = new THREE.Camera();
   let geo = null, lineGeo = null, pick = null;
 
-  // Visningen: figurens kropp med den målade texturen (rått sRGB i målet, avkodas här)
+  // The display: the figure's body with the painted texture (raw sRGB in the target, decoded here)
   const decode = (sh) => {
     sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#ifdef USE_MAP
       vec4 sampledDiffuseColor = texture2D( map, vMapUv );
@@ -127,7 +128,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     renderer.setRenderTarget(dst); renderer.render(quadScene, flatCam); renderer.setRenderTarget(null);
   }
 
-  // --- Figuren: kroppens hörn i världen (skinnade nät räknas om), UV och normaler, för penseln och djupet ---
+  // --- The figure: the body's vertices in the world (skinned meshes are posed), UVs and normals, for the brush and depth ---
   function buildGeometry(mesh) {
     mesh.updateMatrixWorld(true);
     const g = mesh.geometry, n = g.attributes.position.count, pos = new Float32Array(n * 3), v = new THREE.Vector3();
@@ -138,7 +139,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     if (g.index) out.setIndex(g.index);
     out.computeVertexNormals();
     out.computeBoundingSphere(); out.computeBoundingBox();
-    // Kanterna som linjer: texlarna längs UV-öarnas kanter får färg också (trianglarna täcker dem inte alltid)
+    // The edges as lines: texels along the UV islands' borders get colour too (the triangles do not always cover them)
     const idx = g.index ? g.index.array : Array.from({ length: n }, (_, i) => i), lines = new Uint32Array(idx.length * 2);
     for (let t = 0; t < idx.length; t += 3) lines.set([idx[t], idx[t + 1], idx[t + 1], idx[t + 2], idx[t + 2], idx[t]], t * 2);
     const lg = new THREE.BufferGeometry();
@@ -165,7 +166,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     renderer.setRenderTarget(null); renderer.setClearColor(cc, ca);
   }
 
-  // --- Grunden: en färgkarta (MPFB:s UV) eller en jämn hudfärg ---
+  // --- The base: a colour map (MPFB's UV) or one even skin colour ---
   const texLoader = new THREE.TextureLoader();
   async function setBase(file) {
     P.base = file || null;
@@ -184,7 +185,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     blit(tex, rt);
   }
 
-  // --- Referensbilden över vyn ---
+  // --- The reference picture over the view ---
   const picEl = el('img', 'hu-pic');
   picEl.hidden = true; picEl.draggable = false;
   view.append(picEl);
@@ -206,7 +207,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     pic = { url, tex, aspect: img.naturalWidth / img.naturalHeight, canvas: cv };
     picEl.src = url;
     dabMat.uniforms.uPic.value = tex;
-    // En genererad vy minns kameran och rutan den ritades för: vyn ställs tillbaka och bilden läggs exakt där
+    // A generated view remembers the camera and box it was made for: the view is put back and the picture laid exactly there
     const meta = /\/view_\d+\.png$/.test(url) ? await fetch(url.replace(/\.png$/, '.json')).then((x) => (x.ok ? x.json() : null)).catch(() => null) : null;
     if (meta?.camera && meta?.rect) {
       const cam = getCam();
@@ -217,7 +218,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     } else fitPic();
     renderPicList();
   }
-  // Bilden lika hög som figuren på skärmen, mitt över den
+  // The picture as tall as the figure on screen, centred over it
   function fitPic() {
     if (!pic) return;
     const cam = getCam(), bb = geo.boundingBox, r = view.getBoundingClientRect();
@@ -237,14 +238,14 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     Object.assign(picEl.style, { left: `${pic.cx - w / 2}px`, top: `${pic.cy - h / 2}px`, width: `${w}px`, height: `${h}px`, opacity: P.opacity,
       transform: `rotate(${P.rot}deg)${P.flip ? ' scaleX(-1)' : ''}` });
   }
-  // En bild som lagts på en bestämd ruta i vyn (en genererad vy): rutan sparas i förhållande till vyns höjd
+  // A picture laid on a given box in the view (a generated view): the box is kept relative to the view's height
   function placeAt(rect) {
     const r = view.getBoundingClientRect();
     Object.assign(pic, { cx: r.width / 2 + rect.nx * r.height, cy: r.height / 2 + rect.ny * r.height, h0: rect.nh * r.height });
     P.size = 1; P.rot = 0; P.flip = false;
     placePic(); cardsSync();
   }
-  // Färgen i bilden under en punkt i vyn (CSS-pixlar), eller null utanför
+  // The picture's colour under a point in the view (CSS pixels), or null outside it
   function picColor(x, y) {
     if (!pic) return null;
     const a = -P.rot * Math.PI / 180, dx = x - pic.cx, dy = y - pic.cy;
@@ -256,7 +257,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     return d[3] > 10 ? `#${[d[0], d[1], d[2]].map((c) => c.toString(16).padStart(2, '0')).join('')}` : null;
   }
 
-  // --- Penseln ---
+  // --- The brush ---
   function prepare() {
     const cam = getCam(), r = view.getBoundingClientRect();
     cam.updateMatrixWorld(); cam.updateProjectionMatrix?.();
@@ -273,7 +274,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     u.uRes.value.set(r.width, r.height);
     u.uDepth.value = depthRt.texture;
     u.uMode.value = { color: 0, picture: 1, erase: 2, blur: 3 }[P.tool];
-    u.uColor.value.set(...srgb(P.color)); // rått sRGB, som målet
+    u.uColor.value.set(...srgb(P.color)); // raw sRGB, like the target
     Object.assign(u.uRadius, { value: P.radius }); u.uHard.value = P.hard; u.uFace.value = P.face; u.uMirror.value = P.mirror;
     if (pic) { u.uPicC.value.set(pic.cx, pic.cy); u.uPicS.value.set(pic.w, pic.h); u.uPicR.value = P.rot * Math.PI / 180; u.uPicFlip.value = P.flip; }
     return r;
@@ -305,7 +306,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     dirty = true; updateInfo();
   }
 
-  // --- Pekaren: vänster målar, mitten eller Alt vrider, höger flyttar vyn; Shift flyttar bilden, Ctrl tar en färg ---
+  // --- The pointer: left paints, middle or Alt turns, right pans; Shift moves the picture, Ctrl picks a colour ---
   const dom = renderer.domElement;
   let stroke = null, picDrag = null;
   const local = (e) => { const r = view.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -373,12 +374,12 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     else if (k === ']') { P.radius = Math.min(400, P.radius * 1.2); cardsSync(); }
     else if (k.toLowerCase() === 'h' && pic) { picEl.hidden = !picEl.hidden; }
   });
-  // Bilder som släpps i vyn eller klistras in blir referenser
+  // Pictures dropped on the view or pasted become references
   view.addEventListener('dragover', (e) => { if (active) e.preventDefault(); });
   view.addEventListener('drop', (e) => { if (!active) return; e.preventDefault(); const f = [...e.dataTransfer.files].find((x) => x.type.startsWith('image/')); if (f) addRef(f); });
   addEventListener('paste', (e) => { if (!active) return; const f = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/')); if (f) addRef(f); });
 
-  // --- Kortet ---
+  // --- The card ---
   const card = el('section', 'card glass hu-paint');
   card.style.setProperty('--part', '#d1873a');
   const head = el('header'); head.append(el('h2', null, 'Paint the skin'));
@@ -480,8 +481,8 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   fitBtn.title = 'Scales the picture to the figure\'s height on screen and centres it over it';
   fitBtn.onclick = fitPic;
   const picBtns = el('div', 'hu-btns'); picBtns.append(fitBtn, projBtn);
-  // --- En ny referensbild för vinkeln i vyn (gpt-image-2 via OpenRouter, kostar pengar: priset visas och frågas först) ---
-  const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. Dressed exactly like the person in the reference pictures (for example the same underwear), nothing more. No hair over the face and no jewellery.';
+  // --- A new reference picture for the view's angle (Klein 4B on Darrowmere by default; cloud models cost money and ask with the price first) ---
+  const PROMPT = 'The first image is a plain 3D render of a character from one camera angle. Repaint it as a finished, painted colour reference of the same person shown in the other images: the same skin tone, face, markings and colours, in the same painted style. Keep the render\'s exact pose, silhouette, proportions, camera angle and framing, so the picture lines up with the render pixel for pixel. Plain light grey background, even soft light, no strong shadows. Dressed exactly like the person in the reference pictures: the same underwear, painted on the body like a second skin, nothing more. No hair over the face and no jewellery.';
   // Local Krea-2 does not see the reference pictures: it gets a description instead (from the figure's order when there is one)
   const LOCAL = 'Semi-stylized realistic 3D game character render, natural human anatomy, the same person, the same pose and camera angle as the picture, plain light grey background, soft even light';
   const prompts = { cloud: PROMPT, local: LOCAL };
@@ -494,18 +495,20 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   for (const m of models) modelSel.append(Object.assign(el('option', null, `${m.label} · ${m.price}`), { value: m.id, title: m.help ?? '' }));
   modelRow.title = 'The picture model on OpenRouter (tools/character/human/params.json, paint.models); the price is asked before anything is ordered';
   modelRow.append(el('label', null, 'Model'), modelSel);
-  const isLocal = () => !!models.find((m) => m.id === modelSel.value)?.local;
+  const cur = () => models.find((m) => m.id === modelSel.value) ?? {};
+  const isLocal = () => !!cur().local;
   let promptKind = 'cloud';
-  const denRow = slider('Repaint', 'denoise', 0.15, 0.95, 0.01, 'Local Krea-2: how much of the render is painted over (low keeps the shape and framing, high follows the prompt more)');
+  const denRow = slider('Repaint', 'denoise', 0.15, 1, 0.01, 'How much of the render is painted over: low keeps the shape and framing, high follows the prompt and the references more (Klein 4B 0.75, Krea-2 0.45)');
   P.denoise = 0.55;
   function syncModel() {
     prompts[promptKind] = promptEl.value;
     promptKind = isLocal() ? 'local' : 'cloud';
     promptEl.value = prompts[promptKind];
-    denRow.hidden = !isLocal();
+    denRow.hidden = cur().denoise == null;
+    if (cur().denoise != null) { P.denoise = cur().denoise; cardsSync(); }
   }
   modelSel.onchange = syncModel;
-  // Figurens del av vyn: en ruta runt kroppen (2:3, 1:1 eller 3:2), som bild och som läge i vyn
+  // The figure's part of the view: a box around the body (2:3, 1:1 or 3:2), as a picture and as a place in the view
   function viewShot() {
     const cam = getCam(), r = view.getBoundingClientRect(), p = geo.attributes.position, v = new THREE.Vector3();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -528,7 +531,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     return { aspect, png: out.toDataURL('image/png'), rect: { nx: (cx - r.width / 2) / r.height, ny: (cy - r.height / 2) / r.height, nh: h / r.height }, size: [W, H],
       camera: { position: cam.position.toArray(), target: controls.target.toArray(), fov: cam.fov ?? null } };
   }
-  // Referenserna som följer med: Patriks egna först, sedan genererade vyer, högst fyra
+  // The references sent along: Patrik's own first, then generated views, at most four
   const genRefs = () => [...refs.filter((u) => !/\/view_\d+\.png$/.test(u)), ...refs.filter((u) => /\/view_\d+\.png$/.test(u))].slice(0, 4);
   let genJob = null;
   genBtn.onclick = async () => {
@@ -537,21 +540,22 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     const req = { name, render: shot.png, refs: list, prompt: promptEl.value, aspect: shot.aspect, camera: shot.camera, rect: shot.rect, model: modelSel.value || undefined, denoise: P.denoise };
     const q = await api('/api/human/genview', req);
     if (q.error) { genMsg.textContent = `Not started: ${q.error}`; return; }
-    if (!q.quote.local && !confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.label} (${q.quote.model}) and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
+    if (!q.quote.free && !confirm(`Generate a ${shot.aspect} reference picture of this view with ${q.quote.label} (${q.quote.model}) and ${q.quote.refs} reference picture(s)?\n\nIt costs ${q.quote.price}.`)) { genMsg.textContent = 'Not generated.'; return; }
     const r = await api('/api/human/genview', { ...req, confirm: true });
     if (r.error) { genMsg.textContent = `Not started: ${r.error}`; return; }
     genJob = r.job; genBtn.disabled = true;
+    const where = r.order ? ` on Darrowmere (order ${r.order}, in the gallery)` : '';
     const t0 = Date.now();
     let res;
     for (;;) {
       res = await api(`/api/human/job?id=${r.job}`);
       if (!res.pending) break;
-      genMsg.textContent = `Generating ${r.out.split('/').pop()}… ${Math.round((Date.now() - t0) / 1000)} s`;
+      genMsg.textContent = `Generating ${r.out.split('/').pop()}${where}… ${Math.round((Date.now() - t0) / 1000)} s`;
       await new Promise((ok) => setTimeout(ok, 2000));
     }
     genJob = null; genBtn.disabled = false;
     if (!res.url) { genMsg.textContent = `Not generated: ${res.error ?? 'no picture'}`; return; }
-    genMsg.textContent = `Generated ${res.url.split('/').pop()} in ${Math.round((Date.now() - t0) / 1000)} s${res.cost != null ? `, ${res.cost.toFixed(3)} USD` : ''}; it lies over the view: paint with the Picture brush`;
+    genMsg.textContent = `Generated ${res.url.split('/').pop()} in ${Math.round((Date.now() - t0) / 1000)} s${res.lane ? ` (${res.seconds} s on the ${res.lane.toUpperCase()})` : ''}${res.cost != null ? `, ${res.cost.toFixed(3)} USD` : ''}; it lies over the view: paint with the Picture brush`;
     refs.push(res.url);
     await setPic(res.url);
     P.tool = 'picture'; cardsSync();
@@ -596,7 +600,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
   }
   function applyMat() { if (body) body.material = P.lit ? litMat : flatMat; }
 
-  // --- Spara: pixlarna ur målet, påfyllning runt öarna (texlar utanför fylls från grannarna), PNG till servern ---
+  // --- Save: the target's pixels, padding around the islands (texels outside are filled from their neighbours), PNG to the server ---
   async function pixels() {
     const a = new Uint8Array(N * N * 4), m = new Uint8Array(N * N * 4);
     renderer.readRenderTargetPixels(rt, 0, 0, N, N, a);
@@ -624,7 +628,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     msg.textContent = 'Saving the painting…';
     const a = await pixels();
     const cv = document.createElement('canvas'); cv.width = cv.height = N;
-    cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(a.buffer), N, N), 0, 0); // rad 0 är v = 0, PNG:ns översta rad (glTF)
+    cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(a.buffer), N, N), 0, 0); // row 0 is v = 0, the PNG's top row (glTF)
     const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
     const r = await fetch(`/api/human/paint?name=${encodeURIComponent(name)}&base=${encodeURIComponent(P.base ?? P.skin)}`, { method: 'POST', body: blob }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
     if (r.error) { msg.textContent = `Not saved: ${r.error}`; saveBtn.disabled = false; return; }
@@ -664,7 +668,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
       dirty = false;
       active = true; card.hidden = false;
       side.classList.add('hu-painting'); side.scrollTop = 0;
-      controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE; controls.mouseButtons.MIDDLE = THREE.MOUSE.ROTATE; // vänster fångas av penseln (Alt vrider)
+      controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE; controls.mouseButtons.MIDDLE = THREE.MOUSE.ROTATE; // left is taken by the brush (Alt turns)
       applyMat();
       await setPic(pic && refs.includes(pic.url) ? pic.url : null);
       cardsSync(); updateInfo();
@@ -673,7 +677,7 @@ export function createPainter({ el, api, side, view, renderer, controls, getCam,
     },
     close, get active() { return active; }, get dirty() { return dirty; }, get lastSaved() { return lastSaved; },
     relayout() { if (active && pic) placePic(); },
-    // För prov: penseldrag i vyns CSS-pixlar, en texel ur målet, inställningar, bildens läge
+    // For tests: brush strokes in the view's CSS pixels, a texel from the target, settings, the picture's place
     test: {
       set: (k, v) => { P[k] = v; cardsSync(); },
       stroke: (pts) => { snapshot(); prepare(); for (const [x, y] of pts) dab(x, y); updateInfo(); },

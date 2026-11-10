@@ -65,9 +65,10 @@
     {"key": "fine", "label": "Fine passes", "type": "bool", "default": true, "sub": "two finer steps at the end", "help": "Two finer Gauss-Newton steps after the coarse ones (slower, a closer fit)"}
   ],
   "paint": {
-    "_doc": "Modellerna för Generate this view i målningen (studio/human_paint.js, /api/human/genview), via OpenRouter. price visas i appen innan något beställs. gpt-image-2 och Qwen Image 3 nekade 2026-11-10 en kropp i underkläder (moderation); local/krea-2 körs med tools/texture/krea2.py --base (bild till bild) och kostar inget.",
+    "_doc": "Modellerna för Generate this view i målningen (studio/human_paint.js, /api/human/genview), via OpenRouter. price visas i appen innan något beställs. gpt-image-2 och Qwen Image 3 nekade 2026-11-10 en kropp i underkläder (moderation); local/krea-2 körs med tools/texture/krea2.py --base (bild till bild) och kostar inget; darrowmere/klein-4b (förvald, jämförelsen i docs/asset-studio.md) är en runnerbeställning via tools/character/human/gen_view.py.",
     "models": [
-      {"id": "local/krea-2", "label": "Krea-2 (local, free)", "local": true, "price": "free", "help": "Krea-2 Turbo on ComfyUI (Darrowmere or the laptop) repaints the render picture-to-picture: no filter and the framing stays, but it does not see the reference pictures (the prompt comes from the figure's order)"},
+      {"id": "darrowmere/klein-4b", "label": "Klein 4B (Darrowmere, free)", "runner": true, "denoise": 0.75, "price": "free", "help": "FLUX.2 Klein 4B on Darrowmere as a runner order (in the gallery): the render is image 1 and the start, the reference pictures follow; keeps the outline and follows the references (tools/character/human/gen_view.py). About 4-6 minutes on the M4000"},
+      {"id": "local/krea-2", "label": "Krea-2 (local, free)", "local": true, "denoise": 0.45, "price": "free", "help": "Krea-2 Turbo on ComfyUI (Darrowmere or the laptop) repaints the render picture-to-picture: no filter and the framing stays, but it does not see the reference pictures (the prompt comes from the figure's order)"},
       {"id": "qwen/qwen-image-3", "label": "Qwen Image 3", "price": "about 0.01-0.03 USD", "help": "Strong at editing with several input pictures, keeps the layout"},
       {"id": "krea/k3-edit", "label": "Krea K3 Edit", "price": "about 0.02-0.04 USD", "help": "Krea's edit model (the concepts are Krea-2)"},
       {"id": "black-forest-labs/flux-3-image", "label": "FLUX 3", "price": "about 0.02-0.05 USD", "help": "Black Forest Labs, several reference pictures"},

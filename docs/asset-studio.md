@@ -212,7 +212,13 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   konturen: ren redigering 0,855 i överlapp och 2,6 px i snitt mellan kanterna, hudfärgen 5,2 ΔE från referensen (Krea
   11–20), men underkläderna blev en baddräkt; från renderingen vid 0,75 behöll den referensens bralette och trosor och
   marken (ingen bakgrund strax innanför konturen). Tid på M4000: Krea-2 cirka 550 s per bild, Klein 350 s (redigering)
-  och 250 s (från renderingen). Rekommendationen är Klein 4B från renderingen; den är inte inkopplad i studion än. Det kostar pengar: utan
+  och 250 s (från renderingen). Klein 4B från renderingen är därför förvald.
+
+  **Klein 4B i studion** (`darrowmere/klein-4b`, förvald): en runnerbeställning (`tools/character/human/gen_view.py`,
+  syns i Darrowmeres galleri) med renderingen som bild 1 och start (Repaint 0,75) och referenserna som fler
+  referenslatenter; verktyget väntar på runnern och hämtar bilden från kortet som gjorde den. Gratis, så appen frågar
+  inte om pris. Första körningen genom studion (sysslingen snett bakifrån): 342 s på T1000, 350 s från knapp till bild,
+  och bilden låg på renderingens kontur (inga dubbla kanter vid 50 % genomskinlighet). Det kostar pengar: utan
   `confirm` svarar servern bara med ett prisförslag, och appen frågar med priset innan bilden beställs. Bilden hamnar i
   `build/human/refs/<namn>/view_<n>.png` med en `.json` (kameran, rutan i förhållande till vyns höjd, prompten,
   referenserna, kostnaden), renderingen i `build/human/genview/<namn>/`. Bilden läggs över vyn på rutan den ritades för,

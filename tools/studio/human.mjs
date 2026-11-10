@@ -365,8 +365,9 @@ export function createHumanApi({ ROOT, onHost }) {
       files.push(f);
     }
     if (typeof prompt !== 'string' || prompt.length < 20 || prompt.length > 4000) return { error: 'the prompt must be 20 to 4000 characters' };
-    const d = Math.min(0.95, Math.max(0.15, Number(denoise ?? 0.55)));
-    if (!confirm) return { quote: { model: M.id, label: M.label, local: !!M.local, price: M.local ? 'free (local ComfyUI)' : `${M.price} (OpenRouter)`, refs: M.local ? 0 : files.length } };
+    const d = Math.min(1, Math.max(0.15, Number(denoise ?? M.denoise ?? 0.55)));
+    const free = !!(M.local || M.runner);
+    if (!confirm) return { quote: { model: M.id, label: M.label, local: !!M.local, free, price: M.runner ? 'free (Darrowmere runner order)' : M.local ? 'free (local ComfyUI)' : `${M.price} (OpenRouter)`, refs: M.local ? 0 : files.length } };
     if (generating) return { error: 'a picture is already being generated; wait for it', job: generating };
     const dir = `build/human/genview/${name}`;
     await mkdir(path.join(ROOT, dir), { recursive: true });
@@ -374,20 +375,25 @@ export function createHumanApi({ ROOT, onHost }) {
     let v = 1;
     while (existsSync(path.join(ROOT, REFS, name, `view_${v}.png`)) || existsSync(path.join(ROOT, dir, `render_${v}.png`))) v++; // aldrig över
     const shot = `${dir}/render_${v}.png`, out = `${REFS}/${name}/view_${v}.png`;
+    const stamp = new Date().toISOString().slice(5, 19).replace(/[-:T]/g, '');
+    const order = M.runner ? `genview-${name.replace(/_/g, '-')}-v${v}-${stamp}`.slice(0, 60) : null;
     await writeFile(path.join(ROOT, shot), Buffer.from(m[1], 'base64'));
     const j = job('gen', name, async () => {
       // Local Krea-2 repaints the render picture-to-picture at an exact aspect (multiples of 16), so the framing stays
       const [W, H] = { '2:3': [832, 1248], '1:1': [1024, 1024], '3:2': [1248, 832] }[aspect];
-      const res = M.local
+      // Klein 4B on Darrowmere: a runner order (gen_view.py waits for it and fetches the picture)
+      const res = M.runner
+        ? await run(`${HUMAN}/gen_view.py`, { render: shot, refs: files, prompt, aspect, out, denoise: d, id: order, asset: name })
+        : M.local
         ? await runArgs('tools/texture/krea2.py', [prompt, W, H, path.join(ROOT, out), Math.floor(Math.random() * 2 ** 31), '--base', path.join(ROOT, shot), '--denoise', d]).then((r) => (r.out ? { ...r, out } : r))
         : await run('tools/texture/openrouter_image.py', { prompt, out, model: M.id, aspect, refs: [shot, ...files] });
       generating = null;
       if (!res.out) return { ok: false, error: res.error ?? 'no picture' };
-      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: M.id, denoise: M.local ? d : undefined, seed: res.seed, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
-      return { ok: true, url: `/${out}`, cost: res.cost ?? null, ms: res.ms };
+      await writeFile(path.join(ROOT, out.replace(/\.png$/, '.json')), JSON.stringify({ render: shot, refs: files, prompt, aspect, camera, rect, model: M.id, denoise: free ? d : undefined, seed: res.seed, order: res.order, lane: res.lane, seconds: res.seconds, cost: res.cost ?? null, ms: res.ms, saved: new Date().toISOString() }, null, 1) + '\n');
+      return { ok: true, url: `/${out}`, cost: res.cost ?? null, ms: res.ms, order: res.order, lane: res.lane, seconds: res.seconds };
     });
     generating = j.id;
-    return { job: j.id, out };
+    return { job: j.id, out, order };
   }
 
   // Egna ändringar (EDITS.md): en ny ändringsfil per version, sedan figuren byggd om med receptet plus "edits"
