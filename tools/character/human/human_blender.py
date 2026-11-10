@@ -143,6 +143,22 @@ if arms and angle is not None:
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
         bpy.context.view_layer.update()
+    if r.get("elbow_flex") or r.get("elbow_carry"):   # armbågarna som i inpassningen (fit_blender.py, bend_elbows)
+        W3 = rig_o.matrix_world.to_3x3()
+        for sd in "lr":
+            if f"lowerarm_{sd}" not in names or f"hand_{sd}" not in names:
+                continue
+            up, lo, hd = rig_o.pose.bones[f"upperarm_{sd}"], rig_o.pose.bones[f"lowerarm_{sd}"], rig_o.pose.bones[f"hand_{sd}"]
+            u = (W3 @ (lo.head - up.head)).normalized(); cur = (W3 @ (hd.head - lo.head)).normalized()
+            sx = 1 if (W3 @ lo.head).x > 0 else -1
+            f_ = Vector((0, -1, 0)); f_ = (f_ - u * f_.dot(u)).normalized()
+            o_ = Vector((sx, 0, 0)); o_ = (o_ - u * o_.dot(u) - f_ * o_.dot(f_)).normalized()
+            a2, c2 = radians(float(r.get("elbow_flex", 0))), radians(float(r.get("elbow_carry", 0)))
+            want = (u * (cos(a2) * cos(c2)) + f_ * sin(a2) + o_ * sin(c2)).normalized()
+            Ra = (W3.inverted() @ cur.rotation_difference(want).to_matrix() @ W3).to_4x4()
+            h = lo.head.copy()
+            lo.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ lo.matrix
+            bpy.context.view_layer.update()
     dg = bpy.context.evaluated_depsgraph_get()
     baked = []
     for o in [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.hide_get()]:

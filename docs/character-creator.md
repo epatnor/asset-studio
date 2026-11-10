@@ -186,6 +186,16 @@ annorlunda), och huvud, hals och axlar som fortfarande ser smalare ut än Pixal3
 (`build/characters/syssling/sheet/clay6_front.png`). Filerna `syssling_wrap4*` (med texturer) är från den felaktiga
 wrapen på grundnätet.
 
+**Omgång 9 (2026-11-10, `syssling_wrap9`):** posesökningen ställer också armbågen (`elbow_flex` framåt, `elbow_carry`
+utåt; sysslingen 17° och 5°, som `human_blender.py` använder för `_pose.glb`), brynbågen och öronen följer grannarna (de
+målade brynen och de fransiga öronen i AI-nätet följer inte med) och bysten jämnas ut 70 % mindre. AI-ytan till kroppen:
+4,4 mm i medel, p95 25 mm (omgång 6: 10,7 och 79); höfter 3,8, lår 8,8 mm. Kvar enligt Patrik: skötet ska bulla ut mer med
+ett litet veck vid ljumsken (eget reglage, Pixal3D har trosor där), och små detaljer (navel, nyckelben, revben, vecket i
+sidan, skinkornas spricka) i en gemensam normalkarta på MPFB:s UV, inte i geometrin.
+
+Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
+förhandsbild): `build/characters/syssling/publish_round.py`.
+
 **Texturen på MPFB:s UV (2026-11-10):** UltraTex lägger en egen UV och tappar riggen (och flyttar nätet 0,83 m uppåt).
 `tools/character/human/transfer_texture.py` bakar därför källans färg (selected to active, Cycles på processorn) till
 MPFB-kroppens egen UV i samma pose och lägger bilden på den riggade figuren, med påfyllning runt öarna (16 px).

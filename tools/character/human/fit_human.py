@@ -23,7 +23,7 @@ def main():
     name = r.get("name") or "fit"
     target = Path(r["target"]).expanduser().resolve()
     out = ROOT / "build/human/fit" / name
-    job = {**{k: v for k, v in r.items() if k in ("fit_macros", "skip_sliders", "iterations", "reg", "wrap", "symmetric", "fine", "subdiv")},
+    job = {**{k: v for k, v in r.items() if k in ("fit_macros", "skip_sliders", "iterations", "reg", "wrap", "symmetric", "fine", "subdiv", "elbows")},
            "start": r, "target": str(target), "out": str(out), "catalog": str(HERE / "human_sliders.json")}
     cmd = blender_cmd()
     if cmd[:1] == ["host-spawn"] or cmd[:1] == ["flatpak"]:

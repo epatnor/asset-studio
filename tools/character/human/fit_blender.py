@@ -90,8 +90,32 @@ def set_pose(arm_deg, leg_deg, fwd_deg=None):
         h = pb.head.copy()
         pb.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ pb.matrix
         bpy.context.view_layer.update()
+    bend_elbows(rig, ELBOW_FLEX, ELBOW_CARRY)
 
 ARM_FWD = 0.0
+ELBOW_FLEX, ELBOW_CARRY = 0.0, 0.0
+
+
+def bend_elbows(rig_o, flex, carry):
+    """Underarmen ställs mot överarmen: flex grader framåt (böjd armbåge), carry grader utåt (armbågsvinkeln)."""
+    if not flex and not carry:
+        return
+    W3 = rig_o.matrix_world.to_3x3()
+    for sd in "lr":
+        if f"lowerarm_{sd}" not in rig_o.pose.bones or f"hand_{sd}" not in rig_o.pose.bones:
+            continue
+        up, lo, hd = rig_o.pose.bones[f"upperarm_{sd}"], rig_o.pose.bones[f"lowerarm_{sd}"], rig_o.pose.bones[f"hand_{sd}"]
+        u = (W3 @ (lo.head - up.head)).normalized()
+        cur = (W3 @ (hd.head - lo.head)).normalized()
+        sx = 1 if (W3 @ lo.head).x > 0 else -1
+        f = Vector((0, -1, 0)); f = (f - u * f.dot(u)).normalized()
+        o = Vector((sx, 0, 0)); o = (o - u * o.dot(u) - f * o.dot(f)).normalized()
+        a, c = radians(flex), radians(carry)
+        want = (u * (cos(a) * cos(c)) + f * sin(a) + o * sin(c)).normalized()
+        Ra = (W3.inverted() @ cur.rotation_difference(want).to_matrix() @ W3).to_4x4()
+        h = lo.head.copy()
+        lo.matrix = Matrix.Translation(h) @ Ra @ Matrix.Translation(-h) @ lo.matrix
+        bpy.context.view_layer.update()
 
 
 def rest_angles():
@@ -225,6 +249,17 @@ def pose_search(bvh):
     fwd = min(range(-10, 41, 5), key=err_f); set_pose(arm, 3, fwd)
     arm = min(np.arange(max(10, arm - 6), arm + 6.1, 2), key=lambda a: err(a, 3, REG["arms"]))
     leg = min(np.arange(0, 20.1, 2), key=lambda l: err(arm, l, REG["legs"]))
+    if job.get("elbows", True):   # armbågen: underarmar och händer dit AI-formens är
+        global ELBOW_FLEX, ELBOW_CARRY
+        fore = (region(["lowerarm_l", "lowerarm_r"]) + region(handbones)) > 0.5
+        def err_e(fl, ca):
+            global ELBOW_FLEX, ELBOW_CARRY
+            ELBOW_FLEX, ELBOW_CARRY = fl, ca
+            return err(arm, leg, fore)
+        best = min(((fl, ca) for fl in range(0, 41, 5) for ca in range(-10, 26, 5)), key=lambda fc: err_e(*fc))
+        best = min(((fl, ca) for fl in np.arange(max(0, best[0] - 4), best[0] + 4.1, 2) for ca in np.arange(best[1] - 4, best[1] + 4.1, 2)),
+                   key=lambda fc: err_e(*fc))
+        ELBOW_FLEX, ELBOW_CARRY = float(best[0]), float(best[1])
     set_pose(arm, leg)
     return float(arm), float(leg)
 
@@ -394,6 +429,23 @@ if job.get("wrap", True):
     for c in eyes:
         d = np.linalg.norm(P0 - c, axis=1)
         data_w *= np.clip((d - 0.017) / 0.008, 0, 1)
+    zones = {}
+    lam_mul = np.ones(PN)
+    if len(eyes) == 2:
+        ec = (eyes[0] + eyes[1]) / 2; hw = abs(eyes[0][0] - eyes[1][0]) / 2   # ögonens mitt och halva avståndet mellan dem
+        dx, dy, dz = P0[:, 0] - ec[0], P0[:, 1] - ec[1], P0[:, 2] - ec[2]
+        soft = lambda v, a, b: np.clip((v - a) / max(b - a, 1e-6), 0, 1)
+        # brynbågen (de målade brynen blir bulor i AI-nätet): ovanför ögonen, framtill
+        brow = soft(dz, 0.004, 0.012) * (1 - soft(dz, 0.032, 0.042)) * (1 - soft(np.abs(dx), hw + 0.018, hw + 0.03)) * (1 - soft(dy, 0.0, 0.02))
+        # öronen (tunna och fransiga i AI-nätet): på sidan av huvudet, bakom ögonen, i ögonens höjd
+        ear = soft(np.abs(dx), hw + 0.03, hw + 0.042) * (1 - soft(np.abs(dz + 0.012), 0.035, 0.05)) * soft(dy, 0.03, 0.05) * (1 - soft(dy, 0.12, 0.14))
+        data_w *= (1 - brow) * (1 - ear)
+        # bysten: mjukare utjämning, så att formen blir mer definierad
+        band = (np.abs(dz + 0.30) < 0.06) & (np.abs(P0[:, 0] - ec[0]) < 0.16)
+        ymid = float(np.median(P0[band, 1])) if band.any() else ec[1] + 0.1   # bålens mitt i djupled vid bysten
+        chest = (1 - soft(np.abs(dz + 0.30), 0.06, 0.10)) * (1 - soft(np.abs(P0[:, 0] - ec[0]), 0.14, 0.18)) * (1 - soft(P0[:, 1], ymid - 0.01, ymid + 0.03))
+        lam_mul = 1 - 0.7 * chest
+        zones = {"brow_verts": int((brow > 0.5).sum()), "ear_verts": int((ear > 0.5).sum()), "bust_verts": int((chest > 0.5).sum())}
     # spegelpar
     kd = KDTree(PN)
     for i in range(PN):
@@ -425,7 +477,8 @@ if job.get("wrap", True):
             for _ in range(300):
                 acc = np.zeros_like(X)
                 np.add.at(acc, ev[:, 0], dlt[ev[:, 1]]); np.add.at(acc, ev[:, 1], dlt[ev[:, 0]])
-                dlt = (conf[:, None] * r_ + lam_w * acc) / np.maximum(conf + lam_w * deg, 1e-9)[:, None]
+                lv = lam_w * lam_mul
+                dlt = (conf[:, None] * r_ + lv[:, None] * acc) / np.maximum(conf + lv * deg, 1e-9)[:, None]
             if sym:
                 ok = mirror >= 0
                 dlt[ok] = 0.5 * (dlt[ok] + dlt[mirror[ok]] * np.array([-1.0, 1.0, 1.0]))
@@ -467,7 +520,7 @@ if job.get("wrap", True):
     w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
     sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
     wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,
-            "eyes": len(eyes), "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
+            "eyes": len(eyes), "zones": zones, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
             "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1).mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]
@@ -477,7 +530,8 @@ im.pixels.foreach_set(px.ravel().astype(np.float32))
 im.filepath_raw = os.path.join(out, "overlay.png"); im.file_format = "PNG"; im.save()
 
 # --- receptet ----------------------------------------------------------------------------------------------------------
-recipe = {"sex": macro["gender"], "age": r.get("age", 25), "sliders": {}, "pose": round(arm), "arm_forward": ARM_FWD, "leg_spread": round(leg, 1)}
+recipe = {"sex": macro["gender"], "age": r.get("age", 25), "sliders": {}, "pose": round(arm), "arm_forward": ARM_FWD, "leg_spread": round(leg, 1),
+          "elbow_flex": round(ELBOW_FLEX, 1), "elbow_carry": round(ELBOW_CARRY, 1)}
 for m in cat["macro"]:
     if m["id"] in r and m["id"] not in recipe:
         recipe[m["id"]] = r[m["id"]]
