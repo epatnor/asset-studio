@@ -77,7 +77,7 @@ värt att ta med:
 topologi, UV-karta och skelett. Reglagen är data i `human_sliders.json` (vänliga namn på engelska ovanpå MPFB:s mål):
 
 - **Makro** (0..1): `sex`, `age` (år, minst 18), `muscle`, `weight`, `height`, `proportions`, `bust_size`, `bust_firmness`.
-- **Reglage** (-1..1, negativt drar åt `-decr`, positivt åt `-incr`): axlar, byst, bröstmuskler, midja, mage, höfter,
+- **Reglage** (-1..1, negativt drar åt `-decr`, positivt åt `-incr`): axlar, byst, bystens form (rund till spetsig, `breast/breast-point`), bröstmuskler, midja, mage, höfter,
   stuss, lår, lårmuskler, vader, lårbens- och underbenslängd, överarmar, armmuskler, hals.
 - **Fritt:** `targets` (vilket MakeHuman-mål som helst med vikt) och `macro` (råa MPFB-värden).
 - **Upplösning:** proxyn `female1605` eller `male1591` efter kön, delad en gång (`subdiv: 1`): ca 12 700 trianglar plus

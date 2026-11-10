@@ -13,6 +13,7 @@
   "sliders": [
     {"id": "shoulders", "label": "Shoulder width", "pair": "torso/measure-shoulder-dist", "group": "Torso"},
     {"id": "bust", "label": "Bust circumference", "pair": "torso/measure-bust-circ", "group": "Torso"},
+    {"id": "bust_shape", "label": "Bust shape (round - pointy)", "pair": "breast/breast-point", "group": "Torso"},
     {"id": "pecs", "label": "Chest muscles", "pair": "torso/torso-muscle-pectoral", "group": "Torso"},
     {"id": "waist", "label": "Waist", "pair": "torso/measure-waist-circ", "group": "Torso"},
     {"id": "belly", "label": "Belly", "pair": "stomach/stomach-pregnant", "group": "Torso"},

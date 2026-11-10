@@ -21,6 +21,7 @@
     {"key": "bust_firmness", "label": "Bust firmness", "group": "torso", "min": 0, "max": 1, "step": 0.01, "default": 0.5, "help": "How firm the breasts are"},
     {"key": "shoulders", "label": "Shoulder width", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0},
     {"key": "bust", "label": "Bust circumference", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0},
+    {"key": "bust_shape", "label": "Bust shape", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0, "help": "From round, like a ball (-1), to pointed (+1): MakeHuman's breast-point targets"},
     {"key": "pecs", "label": "Chest muscles", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0},
     {"key": "waist", "label": "Waist", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0},
     {"key": "belly", "label": "Belly", "group": "torso", "in": "sliders", "min": -1, "max": 1, "step": 0.01, "default": 0},
