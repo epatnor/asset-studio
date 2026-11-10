@@ -168,17 +168,23 @@ Pixal3D-versionen i Compare. Därefter Maren (kläder som lager) och en man (kö
 
 ## Wrap: tight mot AI-formen (2026-11-10)
 
-Efter reglagen drar `fit_blender.py` grundnätet tight mot AI-ytan (som body-gens `fit.py`): närmaste punkt med
-normalkontroll, en utjämning mot grannarna som släpps i fem steg (styv till mjuk), händer, fötter och ögonpartiet fasta
-(ögonen hittas med MPFB:s lågpolyögon; låst inom 2,5 cm, mjukt till 4,5 cm, så att fransar inte blir geometri) och
-förflyttningen speglad. Den räknas om till vilopose (per hörn en 3x3-matris ur tre provnycklar) och sparas som
-`build/human/fit/<namn>/wrap.npy`; receptets `wrap` får `human_blender.py` att lägga den som shape key före rigg och
-proxy, så att kantloopar, UV och skelett blir kvar. `{"wrap": false}` hoppar över steget.
+Efter reglagen drar `fit_blender.py` det nät som exporteras tight mot AI-ytan (som body-gens `fit.py`): proxyn
+(female1605/male1591, uppdelad som i `human_blender.py`), inte grundnätet. Första försöket wrappade grundnätet; proxyns
+uppdelning krymper formen 1–2 cm (bröstdjup 0,220 m i passningen mot 0,198 m i exporten), så wrapen försvann och figuren
+såg ut som MPFB-modellen (Patrik: "uppblåsbar docka"). Mät därför alltid åt båda hållen, yta mot yta, och på det
+exporterade nätet; hörn mot yta ensamt såg bra ut fast formen inte täcktes.
 
-Sysslingen (`syssling_wrap4`, mall→AI i medel): bål 5,8 → 0,3 mm, huvud 7,4 → 3,5 mm (ansiktet fast), armar 13,3 → 5,3 mm,
-ben 8,6 → 6,1 mm; kontrollerna (fötter på marken, symmetri, budget, rigg) håller. Kvar: AI-ytans punkter långt från
-mallen (p95 121 mm, troligen händerna, som är fasta och står annorlunda), armar och ben som inte når hela vägen
-(symmetrin tar medel av två olika sidor), och ingen textur än (UltraTex-order `syssling-wrap-1110-1103`).
+Metoden: närmaste punkt med normalkontroll, en utjämning mot grannarna som släpps i fem steg (dragavstånd 10 cm ned till
+8 mm), förflyttningen speglad. Händer, fötter och en tunn ring runt ögonen (1,7–2,5 cm från ögats mitt, så att fransar
+inte blir geometri) har ingen egen dragning utan följer grannarna. Förflyttningen räknas om till vilopose (per hörn en
+3x3-matris ur tre provnycklar) och sparas som `build/human/fit/<namn>/wrap.npz` (offsets, proxy, uppdelning, antal hörn);
+`human_blender.py` delar upp proxyn på samma sätt och bakar in den. `{"wrap": false}` hoppar över steget.
+
+Sysslingen (`syssling_wrap6`, AI-ytan till proxyns yta i medel): 20,1 → 10,7 mm, huvud 0,6, bröst 1,2, smalben 1,3 mm.
+Kvar: höfter 16 och lår 23 mm, där armarna och händerna hänger (händerna följer bara armarna, AI-händerna står
+annorlunda), och huvud, hals och axlar som fortfarande ser smalare ut än Pixal3D:s i lerbilden
+(`build/characters/syssling/sheet/clay6_front.png`). Filerna `syssling_wrap4*` (med texturer) är från den felaktiga
+wrapen på grundnätet.
 
 **Texturen på MPFB:s UV (2026-11-10):** UltraTex lägger en egen UV och tappar riggen (och flyttar nätet 0,83 m uppåt).
 `tools/character/human/transfer_texture.py` bakar därför källans färg (selected to active, Cycles på processorn) till

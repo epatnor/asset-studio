@@ -333,121 +333,140 @@ for it in range(int(job.get("iterations", 5))):
 end = log[-1]
 sheet.append(render_masks([(dense(V), 0), (template_dense(P), 2)], "after"))
 
-# --- wrap: grundnätet tight mot AI-ytan (Patriks "kroppsstrumpa", som body-gens fit.py) ------------------------------------
-# Reglagen ger grovformen; här dras varje kroppshörn mot AI-ytan (närmaste punkt, normalkontroll), med en utjämning mot
-# grannarna som börjar styv och släpps i steg. Händer, fötter och ögonpartiet hålls fast (AI-händerna är klumpar och
-# fransarna blir utstickande geometri), och förflyttningen speglas så att kroppen förblir symmetrisk. Resultatet räknas
-# om till vilopose (per hörn: hur hörnet rör sig i posen när vilopunkten flyttas) och sparas som wrap.npy, som
-# human_blender.py lägger på som shape key före rigg och proxy.
+# --- wrap: det exporterade nätet tight mot AI-ytan (Patriks "kroppsstrumpa", som body-gens fit.py) -----------------------
+# Reglagen ger grovformen. Wrapen görs på proxyn som exporteras (female1605/male1591, uppdelad som i human_blender.py),
+# inte på grundnätet: proxyns uppdelning krymper formen 1–2 cm, så en wrap på grundnätet försvann i exporten (2026-11-10).
+# Varje hörn dras mot AI-ytan (närmaste punkt, normalkontroll) med en utjämning mot grannarna som börjar styv och släpps i
+# steg. Händer, fötter och en tunn ring runt ögonen har ingen egen dragning utan följer grannarna (AI-händerna är klumpar,
+# fransarna blir utstickande geometri), och förflyttningen speglas. Den räknas om till vilopose (per hörn: hur hörnet rör sig
+# i posen när vilopunkten flyttas) och sparas som wrap.npz, som human_blender.py bakar in i proxyn.
 wrap = None
 if job.get("wrap", True):
-    P0 = posed()
-    me = base.data
-    ev = np.empty(len(me.edges) * 2, dtype=np.int64); me.edges.foreach_get("vertices", ev); ev = ev.reshape(-1, 2)
-    ev = ev[USE[ev].all(1)]
-    me.calc_loop_triangles()
-    lt = np.empty(len(me.loop_triangles) * 3, dtype=np.int64); me.loop_triangles.foreach_get("vertices", lt); lt = lt.reshape(-1, 3)
-    lt = lt[USE[lt].all(1)]
-    deg = np.bincount(ev.ravel(), minlength=NV).astype(float)
+    from bl_ext.user_default.mpfb.services.assetservice import AssetService
+    sub_lv = int(job.get("subdiv", 1))
+    pname = job.get("proxy") or ("male1591" if macro.get("gender", 0) >= 0.5 else "female1605")
+    def add_asset(nm, sub, atype, ext, lv):
+        ob = HumanService.add_mhclo_asset(AssetService.find_asset_absolute_path(f"{nm}/{nm}.{ext}", sub), base, asset_type=atype,
+                                          subdiv_levels=lv, material_type="GAMEENGINE")
+        for md in ob.modifiers:
+            if md.type == "SUBSURF":
+                md.levels = md.render_levels
+        return ob
+    proxy = add_asset(pname, "proxymeshes", "Proxymeshes", "proxy", sub_lv)
+    eyes_ob = add_asset("low-poly", "eyes", "Eyes", "mhclo", 0)
+    bpy.context.view_layer.update()
+    for md in list(proxy.modifiers):   # uppdelningen in i nätet, före skelettet, så att hörnen är de som exporteras
+        if md.type == "SUBSURF":
+            with bpy.context.temp_override(object=proxy, active_object=proxy, selected_objects=[proxy]):
+                bpy.ops.object.modifier_move_to_index(modifier=md.name, index=0)
+                bpy.ops.object.modifier_apply(modifier=md.name)
+    bpy.context.view_layer.update()
+    def eval_pts(ob):
+        dg = bpy.context.evaluated_depsgraph_get(); e = ob.evaluated_get(dg).to_mesh()
+        a = np.empty(len(e.vertices) * 3); e.vertices.foreach_get("co", a); ob.evaluated_get(dg).to_mesh_clear()
+        M = np.array(ob.matrix_world); a = a.reshape(-1, 3)
+        return a @ M[:3, :3].T + M[:3, 3]
+    pm = proxy.data; PN = len(pm.vertices)
+    ev = np.empty(len(pm.edges) * 2, dtype=np.int64); pm.edges.foreach_get("vertices", ev); ev = ev.reshape(-1, 2)
+    pm.calc_loop_triangles()
+    lt = np.empty(len(pm.loop_triangles) * 3, dtype=np.int64); pm.loop_triangles.foreach_get("vertices", lt); lt = lt.reshape(-1, 3)
+    deg = np.bincount(ev.ravel(), minlength=PN).astype(float)
+    pgi = {g.name: g.index for g in proxy.vertex_groups}
+    PW_ = {}
+    for v in pm.vertices:
+        for g in v.groups:
+            PW_.setdefault(g.group, np.zeros(PN))[v.index] = g.weight
+    def pregion(names):
+        return sum((PW_.get(pgi[n], np.zeros(PN)) for n in names if n in pgi), np.zeros(PN))
     def vnormals(X):
         fn = np.cross(X[lt[:, 1]] - X[lt[:, 0]], X[lt[:, 2]] - X[lt[:, 0]])
         n = np.zeros_like(X)
         for k in range(3):
             np.add.at(n, lt[:, k], fn)
         return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
-    # fästa områden (1 = låst), med mjuk övergång över grannarna
-    pin = np.zeros(NV)
-    feet = region(["foot_l", "foot_r", "ball_l", "ball_r"])
-    pin = np.maximum(pin, np.clip(region(handbones) * 1.5, 0, 1))
-    pin = np.maximum(pin, np.clip(feet * 1.5, 0, 1))
-    eyes = []
-    try:   # ögonens mitt: MPFB:s lågpolyögon, tillfälligt påsatta (grundnätet har inga ögongrupper kvar)
-        from bl_ext.user_default.mpfb.services.assetservice import AssetService
-        ob = HumanService.add_mhclo_asset(AssetService.find_asset_absolute_path("low-poly/low-poly.mhclo", "eyes"), base,
-                                          asset_type="Eyes", subdiv_levels=0, material_type="GAMEENGINE")
-        bpy.context.view_layer.update()
-        dg = bpy.context.evaluated_depsgraph_get(); e = ob.evaluated_get(dg).to_mesh()
-        E = np.array([tuple(ob.matrix_world @ v.co) for v in e.vertices]); ob.evaluated_get(dg).to_mesh_clear()
-        for sgn in (1, -1):
-            side = E[np.sign(E[:, 0]) == sgn]
-            if len(side):
-                eyes.append(side.mean(0))
-        bpy.data.objects.remove(ob)
-    except Exception as ex:
-        print("WRAP_EYES_FAILED", ex)
-    for c in eyes:   # ögonpartiet: låst inom 2,5 cm, mjukt ut till 4,5 cm
+    P0 = eval_pts(proxy)
+    E = eval_pts(eyes_ob)
+    eyes = [E[np.sign(E[:, 0]) == sg].mean(0) for sg in (1, -1) if (np.sign(E[:, 0]) == sg).any()]
+    # dragning per hörn: 0 för händer och fötter (de följer armar och ben) och en tunn ring runt ögonen (lock och fransar)
+    data_w = np.ones(PN)
+    data_w *= 1 - np.clip(pregion(handbones) * 2, 0, 1)
+    data_w *= 1 - np.clip(pregion(["foot_l", "foot_r", "ball_l", "ball_r"]) * 2, 0, 1)
+    for c in eyes:
         d = np.linalg.norm(P0 - c, axis=1)
-        pin = np.maximum(pin, np.clip((0.045 - d) / 0.02, 0, 1))
-    pin[~USE] = 1.0
-    for _ in range(3):   # jämna ut gränsen
-        acc = np.zeros(NV); np.add.at(acc, ev[:, 0], pin[ev[:, 1]]); np.add.at(acc, ev[:, 1], pin[ev[:, 0]])
-        pin = np.maximum(pin, 0.5 * pin + 0.5 * acc / np.maximum(deg, 1))
-    pin[~USE] = 1.0
-    # spegelpar (posen är symmetrisk): närmaste hörn till den speglade punkten
-    kd = KDTree(len(idx))
-    for j, i in enumerate(idx):
-        kd.insert(P0[i], j)
+        data_w *= np.clip((d - 0.017) / 0.008, 0, 1)
+    # spegelpar
+    kd = KDTree(PN)
+    for i in range(PN):
+        kd.insert(P0[i], i)
     kd.balance()
-    mirror = np.full(NV, -1)
-    for i in idx:
+    mirror = np.full(PN, -1)
+    for i in range(PN):
         co, j, dist = kd.find(Vector((-P0[i, 0], P0[i, 1], P0[i, 2])))
-        if dist < 0.003:
-            mirror[i] = idx[j]
+        if dist < 0.004:
+            mirror[i] = j
     sym = bool(job.get("symmetric", True))
     X = P0.copy()
-    stages = [(10.0, 0.06), (3.0, 0.04), (1.0, 0.025), (0.3, 0.015), (0.1, 0.01)]
+    stages = [(10.0, 0.10), (3.0, 0.06), (1.0, 0.03), (0.3, 0.015), (0.1, 0.008)]
     wlog = []
     for lam_w, cap in stages:
         for _ in range(2):
             Nx = vnormals(X)
-            r_ = np.zeros_like(X); conf = np.zeros(NV)
-            for i in idx:
-                if pin[i] >= 1:
+            r_ = np.zeros_like(X); conf = np.zeros(PN)
+            for i in range(PN):
+                if data_w[i] <= 0:
                     continue
                 loc, nrm, fi, dist = bvh.find_nearest(Vector(X[i]))
-                if loc is None or dist > cap:
+                if loc is None or dist > cap or float(np.dot(np.array(nrm), Nx[i])) < 0.3:
                     continue
-                d = np.array(loc) - X[i]
-                # samma sida av ytan: normalerna åt samma håll (inte en arm som fastnar på bålen)
-                if float(np.dot(np.array(nrm), Nx[i])) < 0.3:
-                    continue
-                r_[i] = d; conf[i] = 1.0 - pin[i]
+                r_[i] = np.array(loc) - X[i]; conf[i] = data_w[i]
             dlt = np.zeros_like(X)
-            for _ in range(250):   # Jacobi: (conf r + lam sum grannar) / (conf + lam grad)
+            for _ in range(300):
                 acc = np.zeros_like(X)
                 np.add.at(acc, ev[:, 0], dlt[ev[:, 1]]); np.add.at(acc, ev[:, 1], dlt[ev[:, 0]])
                 dlt = (conf[:, None] * r_ + lam_w * acc) / np.maximum(conf + lam_w * deg, 1e-9)[:, None]
-                dlt *= (1.0 - pin)[:, None]
             if sym:
                 ok = mirror >= 0
-                mdl = dlt[mirror[ok]] * np.array([-1.0, 1.0, 1.0])
-                dlt[ok] = 0.5 * (dlt[ok] + mdl)
+                dlt[ok] = 0.5 * (dlt[ok] + dlt[mirror[ok]] * np.array([-1.0, 1.0, 1.0]))
             X = X + dlt
-        wlog.append({"lam": lam_w, "moved_mm": round(1000 * float(np.linalg.norm(X - P0, axis=1)[idx].mean()), 2)})
+        wlog.append({"lam": lam_w, "cap_mm": int(cap * 1000), "moved_mm": round(1000 * float(np.linalg.norm(X - P0, axis=1).mean()), 2),
+                     "data_share": round(float((conf > 0).mean()), 3)})
     D = X - P0
-    # posens förflyttning -> vilopose: per hörn den 3x3-matris som en förflyttning i vila ger i posen (en shape key per axel)
-    KBs = base.data.shape_keys.key_blocks
-    probe = base.shape_key_add(name="wrap_probe", from_mix=False)
-    basis = np.empty(NV * 3); KBs[0].data.foreach_get("co", basis); basis = basis.reshape(-1, 3)
-    h = 0.01
-    Mv = np.zeros((NV, 3, 3))
+    # posens förflyttning -> vilopose, med provnycklar på proxyn
+    if not pm.shape_keys:
+        proxy.shape_key_add(name="Basis", from_mix=False)
+    probe = proxy.shape_key_add(name="wrap_probe", from_mix=False)
+    basis = np.empty(PN * 3); pm.shape_keys.key_blocks[0].data.foreach_get("co", basis); basis = basis.reshape(-1, 3)
+    h = 0.01; Mv = np.zeros((PN, 3, 3))
     for ax in range(3):
         co = basis.copy(); co[:, ax] += h
         probe.data.foreach_set("co", co.ravel()); probe.value = 1.0; bpy.context.view_layer.update()
-        Mv[:, :, ax] = (posed() - P0) / h
+        Mv[:, :, ax] = (eval_pts(proxy) - P0) / h
     good = np.abs(np.linalg.det(Mv)) > 1e-12
-    rest = np.zeros((NV, 3))
-    rest[good] = np.linalg.solve(Mv[good], D[good][:, :, None])[:, :, 0]
-    rest[~USE] = 0.0
+    rest = np.zeros((PN, 3)); rest[good] = np.linalg.solve(Mv[good], D[good][:, :, None])[:, :, 0]
     probe.data.foreach_set("co", (basis + rest).ravel()); probe.value = 1.0; bpy.context.view_layer.update()
-    PW = posed()
-    wrap_end = measure(PW, bvh, S)
-    probe.value = 0.0; bpy.context.view_layer.update()
-    np.save(os.path.join(out, "wrap.npy"), rest.astype(np.float32))
-    sheet.append(render_masks([(dense(V), 0), (template_dense(PW), 2)], "wrapped"))
-    wrap = {"file": os.path.join(out, "wrap.npy"), "end": wrap_end, "stages": wlog, "pinned_eyes": len(eyes),
-            "eye_centres": [np.round(c, 3).tolist() for c in eyes], "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()), "body_verts": int(len(idx)),
-            "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1)[idx].mean()), 3)}
+    PW = eval_pts(proxy)
+    # mått åt båda hållen, yta mot yta: proxyns hörn till AI-ytan, och AI-ytans punkter till proxyns yta
+    pb = BVHTree.FromPolygons([tuple(q) for q in PW], [tuple(t) for t in lt], all_triangles=True)
+    pb0 = BVHTree.FromPolygons([tuple(q) for q in P0], [tuple(t) for t in lt], all_triangles=True)
+    to_ai = np.array([bvh.find_nearest(Vector(q))[3] for q in PW])
+    from_ai = np.array([pb.find_nearest(Vector(q))[3] for q in S])
+    from_ai0 = np.array([pb0.find_nearest(Vector(q))[3] for q in S])
+    wrap_end = {"to_ai_mean_mm": round(1000 * float(to_ai.mean()), 1), "from_ai_mean_mm": round(1000 * float(from_ai.mean()), 1),
+                "from_ai_p95_mm": round(1000 * float(np.percentile(from_ai, 95)), 1), "from_ai_over_3cm": round(float((from_ai > 0.03).mean()), 3),
+                "before_from_ai_mean_mm": round(1000 * float(from_ai0.mean()), 1), "before_from_ai_p95_mm": round(1000 * float(np.percentile(from_ai0, 95)), 1)}
+    zr = (S[:, 2] - S[:, 2].min()) / np.ptp(S[:, 2])
+    for nm_, a_, b_ in (("head", .87, 1.01), ("chest", .68, .87), ("hips", .50, .68), ("thighs", .28, .50), ("shins", .06, .28)):
+        sel = (zr >= a_) & (zr < b_)
+        wrap_end[f"from_ai_{nm_}_mm"] = round(1000 * float(from_ai[sel].mean()), 1)
+    np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN)
+    np.savez_compressed(os.path.join(out, "wrap_debug.npz"), ai=V.astype(np.float32), ai_faces=TF.astype(np.int32), tpl0=P0.astype(np.float32),
+                        tpl=PW.astype(np.float32), use=np.ones(PN, bool), lab=np.zeros(PN, int), pin=(1 - data_w).astype(np.float32),
+                        tpl_faces=lt.astype(np.int32), regions=np.array(["all"]))
+    w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
+    sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
+    wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,
+            "eyes": len(eyes), "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
+            "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1).mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]
 im = bpy.data.images.new("overlay", Wd, H, alpha=False)

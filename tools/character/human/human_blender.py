@@ -56,16 +56,6 @@ for s in cat["sliders"]:
     applied[s["id"]] = round(v, 3)
 for path, w in (r.get("targets") or {}).items():   # vilket mål som helst ur biblioteket: {"torso/measure-waist-circ-decr": 0.5}
     load(path, w, path.split("/")[-1])
-if r.get("wrap"):   # inpassningens wrap (fit_blender.py): grundnätet tight mot AI-formen, som shape key före rigg och proxy
-    import numpy as np
-    offs = np.load(r["wrap"])
-    if len(offs) == len(base.data.vertices):
-        if not base.data.shape_keys:
-            base.shape_key_add(name="Basis", from_mix=False)
-        kb = base.shape_key_add(name="wrap", from_mix=False)
-        co = np.empty(len(base.data.vertices) * 3); base.data.shape_keys.key_blocks[0].data.foreach_get("co", co)
-        kb.data.foreach_set("co", (co.reshape(-1, 3) + offs).ravel()); kb.value = 1.0
-        applied["wrap"] = True
 bpy.context.view_layer.update()
 rig = HumanService.add_builtin_rig(base, r.get("rig", "game_engine"), import_weights=True) if r.get("rig", "game_engine") else None
 sex = macro.get("gender", 0)
@@ -83,6 +73,22 @@ for kind, sub, atype, ext, nm in (("proxy", "proxymeshes", "Proxymeshes", "proxy
         if md.type == "SUBSURF":
             md.levels = md.render_levels
 bpy.context.view_layer.update()
+if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py): proxyn tight mot AI-formen, inbakad i nätet
+    import numpy as np
+    wz = np.load(r["wrap"])
+    px_ = bpy.data.objects[parts["proxy"]]
+    for md in list(px_.modifiers):   # samma uppdelning som i inpassningen, före skelettet
+        if md.type == "SUBSURF":
+            with bpy.context.temp_override(object=px_, active_object=px_, selected_objects=[px_]):
+                bpy.ops.object.modifier_move_to_index(modifier=md.name, index=0)
+                bpy.ops.object.modifier_apply(modifier=md.name)
+    if len(px_.data.vertices) == int(wz["nverts"]) and str(wz["proxy"]) == proxy:
+        co = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", co)
+        px_.data.vertices.foreach_set("co", (co.reshape(-1, 3) + wz["offsets"]).ravel()); px_.data.update()
+        applied["wrap"] = True
+    else:
+        applied["wrap"] = f"skipped: {len(px_.data.vertices)} verts, wrap has {int(wz['nverts'])}"
+    bpy.context.view_layer.update()
 if parts.get("proxy"):
     base.hide_set(True); base.hide_render = True
 # MPFB:s feet_on_ground flyttar nätet men inte skelettet (armarna roterade då kring bäckenets höjd): ställ i stället
