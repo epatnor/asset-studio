@@ -246,7 +246,7 @@ function rcard(g, i, rank) {
       <div class="rtags">${g.score != null ? `<span class="tag score ${esc(g.verdict)}" title="AI review">${g.score}/10</span>` : ""}
         ${g.asset ? `<span class="tag">${esc(g.asset)}</span>` : ""}${cloud.map(c => `<span class="tag cloud">☁ ${esc(c)}</span>`).join("")}</div>
       ${isM && g.order ? srcStrip(g) : ""}
-      <div class="racts">${g.order ? `<button data-files="${esc(g.order)}" title="Every file this order made, step by step">Files ${g.items.length}</button>` : ""}
+      <div class="racts">${g.order && heroes(g).length < g.items.length ? `<button data-files="${esc(g.order)}" title="Every file this order made, step by step">Files ${g.items.length}</button>` : ""}
 </div>
     </div></div>`;
 }
@@ -301,7 +301,12 @@ function renderResults() {
   $("main").innerHTML = html || `<div id="msg">${groups.length ? "No results match. Try All files." : "Darrowmere has not made anything yet."}</div>`;
   $("main").querySelectorAll(".thumb[data-view]").forEach(t => t.onclick = e => { if (!e.target.closest(".pick")) window.open(t.dataset.view, "_blank"); });
   $("main").querySelectorAll(".thumb[data-n], .srcs img[data-n]").forEach(t => t.onclick = () => show(+t.dataset.n));
-  $("main").querySelectorAll("button[data-files]").forEach(b => b.onclick = () => { $("q").value = b.dataset.files; setView("files"); window.scrollTo(0, 0); });
+  // Files: every kind this order made is switched on, so the view is never empty because a chip is off
+  $("main").querySelectorAll("button[data-files]").forEach(b => b.onclick = () => {
+    const g = groups.find(x => x.order === b.dataset.files);
+    if (g) { g.items.forEach(i => on.add(i.kind)); store.set("kinds", [...on]); chips(); }
+    $("q").value = b.dataset.files; setView("files"); window.scrollTo(0, 0);
+  });
   $("main").querySelectorAll("input[data-pick]").forEach(c => c.onchange = () => pick(c.dataset.pick, c.checked, c));
   $("main").querySelectorAll("details.mission").forEach(d => d.ontoggle = () => {
     const s = new Set(store.get("openMissions", []));
