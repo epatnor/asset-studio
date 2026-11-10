@@ -143,18 +143,23 @@ new GLTFLoader().load(url, gltf => {
 });
 
 const toggle = (id, fn) => { const b = document.getElementById(id); b.onclick = () => { b.classList.toggle("on"); fn(b.classList.contains("on")); redraw(); }; };
-toggle("tex", on => originals.forEach((m, o) => o.material = on ? m : clay));
-// Trådmodellen: genomskinlig (bara trådarna, även de på baksidan) eller på en hel yta med bara de synliga kanterna ovanpå
+let texOn = true;
+toggle("tex", on => { texOn = on; applyWire(); });
+// Trådmodellen: genomskinlig (bara trådarna, även de på baksidan) eller på en mörk hel yta med bara de synliga kanterna
+// ovanpå i vitt, så att rutnätet syns tydligt
 let wireOn = false, seeThrough = true;
 const overlays = new Map();
 const wireMat = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.35, depthWrite: false });
+const darkClay = new THREE.MeshStandardMaterial({ color: 0x24272d, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
 function applyWire() {
   const solid = wireOn && !seeThrough;
-  wireMat.color.set(darkBg ? 0xe6e6e6 : 0x1a1a1a);
+  wireMat.color.set(solid ? 0xffffff : (darkBg ? 0xe6e6e6 : 0x1a1a1a));
+  wireMat.opacity = solid ? 0.8 : 0.35;
   originals.forEach((m, o) => {
+    o.material = solid ? darkClay : (texOn ? m : clay);
     for (const x of [m].flat().concat([clay])) {
       x.wireframe = wireOn && seeThrough;
-      x.polygonOffset = solid; x.polygonOffsetFactor = 1; x.polygonOffsetUnits = 1; x.needsUpdate = true;
+      x.needsUpdate = true;
     }
     let w = overlays.get(o);
     if (solid && !w) { w = o.clone(false); w.material = wireMat; o.parent.add(w); overlays.set(o, w); }
