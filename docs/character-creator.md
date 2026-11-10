@@ -208,6 +208,14 @@ oförändrat. Kvar: lodräta ränder på låren, som är veck i Pixal3D-nätet. 
 mitt (exporten och passningens proxy är samma, 0,01 mm); närmaste punkt mellan två glesa punktmängder konvergerade fel.
 Inpassningen ställer också posen på nytt med receptets exakta vinklar innan wrapen.
 
+**Omgång 12 (armar och händer):** armbågen och handleden (hittade i nätet där vikterna går över mellan benen) behåller
+MPFB:s form, underarmen jämnas ut fyra gånger hårdare, och händerna flyttas stelt med handleden. Händerna delas inte upp
+(`tools/character/human/proxy_ops.py`, ett fast topologisteg som inpassningen och bygget gör lika, så alla kroppar får
+samma nät): sysslingen 10 554 trianglar i stället för 12 672, händerna 2 586 i stället för 4 648, inga nya öppna kanter
+(proxyn har 84 från början). Knycken vid handleden försvann; armbågen är fortfarande mjuk (MPFB:s egen), Pixal3D:s
+armbågsbula kommer med normalkartan. Tätheten per område styrs på riktigt bara med en egen proxy (mhclo), som MPFB
+passar in på varje kropp.
+
 Omgångarna syns i Darrowmere-galleriet som beställningen `syssling-mpfb` (ett steg per omgång, lerjämförelsen som
 förhandsbild): `build/characters/syssling/publish_round.py`.
 

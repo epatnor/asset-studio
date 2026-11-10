@@ -396,11 +396,11 @@ if job.get("wrap", True):
     proxy = add_asset(pname, "proxymeshes", "Proxymeshes", "proxy", sub_lv)
     eyes_ob = add_asset("low-poly", "eyes", "Eyes", "mhclo", 0)
     bpy.context.view_layer.update()
-    for md in list(proxy.modifiers):   # uppdelningen in i nätet, före skelettet, så att hörnen är de som exporteras
-        if md.type == "SUBSURF":
-            with bpy.context.temp_override(object=proxy, active_object=proxy, selected_objects=[proxy]):
-                bpy.ops.object.modifier_move_to_index(modifier=md.name, index=0)
-                bpy.ops.object.modifier_apply(modifier=md.name)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import proxy_ops
+    proxy_ops.apply_subdiv(proxy)   # uppdelningen in i nätet, före skelettet, så att hörnen är de som exporteras
+    hands_low = bool(job.get("hands_low", True))
+    hand_info = proxy_ops.reduce_hands(proxy) if hands_low else None
     bpy.context.view_layer.update()
     def eval_pts(ob):
         dg = bpy.context.evaluated_depsgraph_get(); e = ob.evaluated_get(dg).to_mesh()
@@ -451,6 +451,30 @@ if job.get("wrap", True):
         ymid = float(np.median(P0[band, 1])) if band.any() else ec[1] + 0.1   # bålens mitt i djupled vid bysten
         chest = (1 - soft(np.abs(dz + 0.30), 0.06, 0.10)) * (1 - soft(np.abs(P0[:, 0] - ec[0]), 0.14, 0.18)) * (1 - soft(P0[:, 1], ymid - 0.01, ymid + 0.03))
         lam_mul = 1 - 0.7 * chest
+    # armbågar och handleder: MPFB:s form (ingen egen dragning), underarmen styvare; händerna flyttas stelt med handleden
+    # lederna ur nätet: där vikterna går över från ett ben till nästa (skelettets lägen stämde inte i det här rummet)
+    joints = {}
+    handw = pregion(handbones)
+    for sd in "lr":
+        lw, uw = pregion([f"lowerarm_{sd}"]), pregion([f"upperarm_{sd}"])
+        er = (lw > 0.3) & (uw > 0.3)
+        wr = (handw > 0.2) & (handw < 0.6) & (lw > 0.2)
+        if er.any() and wr.any():
+            joints[sd] = (P0[er].mean(0), P0[wr].mean(0))
+    for sd, (elb, wri) in joints.items():
+        for c in (elb, wri):
+            d = np.linalg.norm(P0 - c, axis=1)
+            data_w *= np.clip((d - 0.03) / 0.02, 0, 1)
+    lam_mul = lam_mul * (1 + 3 * np.clip(pregion(["lowerarm_l", "lowerarm_r"]), 0, 1))
+    rigid, rigid_dbg = {}, {}
+    for sd, (elb, wri) in joints.items():
+        side = np.sign(P0[:, 0]) == np.sign(wri[0])
+        hm = (handw > 0.5) & side
+        ring = (~hm) & side & (np.linalg.norm(P0 - wri, axis=1) < 0.035)
+        if hm.any() and ring.any():
+            rigid[sd] = (hm, ring)
+        rigid_dbg[sd] = {"hand": int(hm.sum()), "ring": int(ring.sum()), "wrist_to_nearest_mm": round(1000 * float(np.linalg.norm(P0 - wri, axis=1).min()), 1),
+                         "max_hand_w": round(float(handw[side].max()), 2)}
         zones = {"brow_verts": int((brow > 0.5).sum()), "ear_verts": int((ear > 0.5).sum()), "bust_verts": int((chest > 0.5).sum())}
     # spegelpar
     kd = KDTree(PN)
@@ -485,6 +509,8 @@ if job.get("wrap", True):
                 np.add.at(acc, ev[:, 0], dlt[ev[:, 1]]); np.add.at(acc, ev[:, 1], dlt[ev[:, 0]])
                 lv = lam_w * lam_mul
                 dlt = (conf[:, None] * r_ + lv[:, None] * acc) / np.maximum(conf + lv * deg, 1e-9)[:, None]
+            for hm, ring in rigid.values():
+                dlt[hm] = dlt[ring].mean(0)
             if sym:
                 ok = mirror >= 0
                 dlt[ok] = 0.5 * (dlt[ok] + dlt[mirror[ok]] * np.array([-1.0, 1.0, 1.0]))
@@ -519,14 +545,14 @@ if job.get("wrap", True):
     for nm_, a_, b_ in (("head", .87, 1.01), ("chest", .68, .87), ("hips", .50, .68), ("thighs", .28, .50), ("shins", .06, .28)):
         sel = (zr >= a_) & (zr < b_)
         wrap_end[f"from_ai_{nm_}_mm"] = round(1000 * float(from_ai[sel].mean()), 1)
-    np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN)
+    np.savez_compressed(os.path.join(out, "wrap.npz"), offsets=rest.astype(np.float32), proxy=pname, subdiv=sub_lv, nverts=PN, hands_low=hands_low)
     np.savez_compressed(os.path.join(out, "wrap_debug.npz"), ai=V.astype(np.float32), ai_faces=TF.astype(np.int32), tpl0=P0.astype(np.float32),
                         tpl=PW.astype(np.float32), use=np.ones(PN, bool), lab=np.zeros(PN, int), pin=(1 - data_w).astype(np.float32),
                         tpl_faces=lt.astype(np.int32), regions=np.array(["all"]))
     w_ = rng.random((len(lt), 3)); w_ /= w_.sum(1, keepdims=True)
     sheet.append(render_masks([(dense(V), 0), ((PW[lt] * w_[:, :, None]).sum(1), 2)], "wrapped"))
     wrap = {"file": os.path.join(out, "wrap.npz"), "proxy": pname, "subdiv": sub_lv, "verts": PN, "end": wrap_end, "stages": wlog,
-            "eyes": len(eyes), "zones": zones, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
+            "eyes": len(eyes), "zones": zones, "hands_low": hand_info, "rigid_hands": len(rigid), "rigid_dbg": rigid_dbg, "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()),
             "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1).mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]

@@ -77,11 +77,11 @@ if r.get("wrap") and parts.get("proxy"):   # inpassningens wrap (fit_blender.py)
     import numpy as np
     wz = np.load(r["wrap"])
     px_ = bpy.data.objects[parts["proxy"]]
-    for md in list(px_.modifiers):   # samma uppdelning som i inpassningen, före skelettet
-        if md.type == "SUBSURF":
-            with bpy.context.temp_override(object=px_, active_object=px_, selected_objects=[px_]):
-                bpy.ops.object.modifier_move_to_index(modifier=md.name, index=0)
-                bpy.ops.object.modifier_apply(modifier=md.name)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import proxy_ops
+    proxy_ops.apply_subdiv(px_)   # samma topologisteg som i inpassningen
+    if "hands_low" in wz.files and bool(wz["hands_low"]):
+        applied["hands_low"] = proxy_ops.reduce_hands(px_)
     if len(px_.data.vertices) == int(wz["nverts"]) and str(wz["proxy"]) == proxy:
         co = np.empty(len(px_.data.vertices) * 3); px_.data.vertices.foreach_get("co", co)
         px_.data.vertices.foreach_set("co", (co.reshape(-1, 3) + wz["offsets"]).ravel()); px_.data.update()
