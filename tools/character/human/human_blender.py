@@ -56,6 +56,16 @@ for s in cat["sliders"]:
     applied[s["id"]] = round(v, 3)
 for path, w in (r.get("targets") or {}).items():   # vilket mål som helst ur biblioteket: {"torso/measure-waist-circ-decr": 0.5}
     load(path, w, path.split("/")[-1])
+if r.get("wrap"):   # inpassningens wrap (fit_blender.py): grundnätet tight mot AI-formen, som shape key före rigg och proxy
+    import numpy as np
+    offs = np.load(r["wrap"])
+    if len(offs) == len(base.data.vertices):
+        if not base.data.shape_keys:
+            base.shape_key_add(name="Basis", from_mix=False)
+        kb = base.shape_key_add(name="wrap", from_mix=False)
+        co = np.empty(len(base.data.vertices) * 3); base.data.shape_keys.key_blocks[0].data.foreach_get("co", co)
+        kb.data.foreach_set("co", (co.reshape(-1, 3) + offs).ravel()); kb.value = 1.0
+        applied["wrap"] = True
 bpy.context.view_layer.update()
 rig = HumanService.add_builtin_rig(base, r.get("rig", "game_engine"), import_weights=True) if r.get("rig", "game_engine") else None
 sex = macro.get("gender", 0)

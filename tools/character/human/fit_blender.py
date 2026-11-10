@@ -332,6 +332,122 @@ for it in range(int(job.get("iterations", 5))):
     log.append({"it": it, **measure(P, bvh, S)})
 end = log[-1]
 sheet.append(render_masks([(dense(V), 0), (template_dense(P), 2)], "after"))
+
+# --- wrap: grundnätet tight mot AI-ytan (Patriks "kroppsstrumpa", som body-gens fit.py) ------------------------------------
+# Reglagen ger grovformen; här dras varje kroppshörn mot AI-ytan (närmaste punkt, normalkontroll), med en utjämning mot
+# grannarna som börjar styv och släpps i steg. Händer, fötter och ögonpartiet hålls fast (AI-händerna är klumpar och
+# fransarna blir utstickande geometri), och förflyttningen speglas så att kroppen förblir symmetrisk. Resultatet räknas
+# om till vilopose (per hörn: hur hörnet rör sig i posen när vilopunkten flyttas) och sparas som wrap.npy, som
+# human_blender.py lägger på som shape key före rigg och proxy.
+wrap = None
+if job.get("wrap", True):
+    P0 = posed()
+    me = base.data
+    ev = np.empty(len(me.edges) * 2, dtype=np.int64); me.edges.foreach_get("vertices", ev); ev = ev.reshape(-1, 2)
+    ev = ev[USE[ev].all(1)]
+    me.calc_loop_triangles()
+    lt = np.empty(len(me.loop_triangles) * 3, dtype=np.int64); me.loop_triangles.foreach_get("vertices", lt); lt = lt.reshape(-1, 3)
+    lt = lt[USE[lt].all(1)]
+    deg = np.bincount(ev.ravel(), minlength=NV).astype(float)
+    def vnormals(X):
+        fn = np.cross(X[lt[:, 1]] - X[lt[:, 0]], X[lt[:, 2]] - X[lt[:, 0]])
+        n = np.zeros_like(X)
+        for k in range(3):
+            np.add.at(n, lt[:, k], fn)
+        return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    # fästa områden (1 = låst), med mjuk övergång över grannarna
+    pin = np.zeros(NV)
+    feet = region(["foot_l", "foot_r", "ball_l", "ball_r"])
+    pin = np.maximum(pin, np.clip(region(handbones) * 1.5, 0, 1))
+    pin = np.maximum(pin, np.clip(feet * 1.5, 0, 1))
+    eyes = []
+    try:   # ögonens mitt: MPFB:s lågpolyögon, tillfälligt påsatta (grundnätet har inga ögongrupper kvar)
+        from bl_ext.user_default.mpfb.services.assetservice import AssetService
+        ob = HumanService.add_mhclo_asset(AssetService.find_asset_absolute_path("low-poly/low-poly.mhclo", "eyes"), base,
+                                          asset_type="Eyes", subdiv_levels=0, material_type="GAMEENGINE")
+        bpy.context.view_layer.update()
+        dg = bpy.context.evaluated_depsgraph_get(); e = ob.evaluated_get(dg).to_mesh()
+        E = np.array([tuple(ob.matrix_world @ v.co) for v in e.vertices]); ob.evaluated_get(dg).to_mesh_clear()
+        for sgn in (1, -1):
+            side = E[np.sign(E[:, 0]) == sgn]
+            if len(side):
+                eyes.append(side.mean(0))
+        bpy.data.objects.remove(ob)
+    except Exception as ex:
+        print("WRAP_EYES_FAILED", ex)
+    for c in eyes:   # ögonpartiet: låst inom 2,5 cm, mjukt ut till 4,5 cm
+        d = np.linalg.norm(P0 - c, axis=1)
+        pin = np.maximum(pin, np.clip((0.045 - d) / 0.02, 0, 1))
+    pin[~USE] = 1.0
+    for _ in range(3):   # jämna ut gränsen
+        acc = np.zeros(NV); np.add.at(acc, ev[:, 0], pin[ev[:, 1]]); np.add.at(acc, ev[:, 1], pin[ev[:, 0]])
+        pin = np.maximum(pin, 0.5 * pin + 0.5 * acc / np.maximum(deg, 1))
+    pin[~USE] = 1.0
+    # spegelpar (posen är symmetrisk): närmaste hörn till den speglade punkten
+    kd = KDTree(len(idx))
+    for j, i in enumerate(idx):
+        kd.insert(P0[i], j)
+    kd.balance()
+    mirror = np.full(NV, -1)
+    for i in idx:
+        co, j, dist = kd.find(Vector((-P0[i, 0], P0[i, 1], P0[i, 2])))
+        if dist < 0.003:
+            mirror[i] = idx[j]
+    sym = bool(job.get("symmetric", True))
+    X = P0.copy()
+    stages = [(10.0, 0.06), (3.0, 0.04), (1.0, 0.025), (0.3, 0.015), (0.1, 0.01)]
+    wlog = []
+    for lam_w, cap in stages:
+        for _ in range(2):
+            Nx = vnormals(X)
+            r_ = np.zeros_like(X); conf = np.zeros(NV)
+            for i in idx:
+                if pin[i] >= 1:
+                    continue
+                loc, nrm, fi, dist = bvh.find_nearest(Vector(X[i]))
+                if loc is None or dist > cap:
+                    continue
+                d = np.array(loc) - X[i]
+                # samma sida av ytan: normalerna åt samma håll (inte en arm som fastnar på bålen)
+                if float(np.dot(np.array(nrm), Nx[i])) < 0.3:
+                    continue
+                r_[i] = d; conf[i] = 1.0 - pin[i]
+            dlt = np.zeros_like(X)
+            for _ in range(250):   # Jacobi: (conf r + lam sum grannar) / (conf + lam grad)
+                acc = np.zeros_like(X)
+                np.add.at(acc, ev[:, 0], dlt[ev[:, 1]]); np.add.at(acc, ev[:, 1], dlt[ev[:, 0]])
+                dlt = (conf[:, None] * r_ + lam_w * acc) / np.maximum(conf + lam_w * deg, 1e-9)[:, None]
+                dlt *= (1.0 - pin)[:, None]
+            if sym:
+                ok = mirror >= 0
+                mdl = dlt[mirror[ok]] * np.array([-1.0, 1.0, 1.0])
+                dlt[ok] = 0.5 * (dlt[ok] + mdl)
+            X = X + dlt
+        wlog.append({"lam": lam_w, "moved_mm": round(1000 * float(np.linalg.norm(X - P0, axis=1)[idx].mean()), 2)})
+    D = X - P0
+    # posens förflyttning -> vilopose: per hörn den 3x3-matris som en förflyttning i vila ger i posen (en shape key per axel)
+    KBs = base.data.shape_keys.key_blocks
+    probe = base.shape_key_add(name="wrap_probe", from_mix=False)
+    basis = np.empty(NV * 3); KBs[0].data.foreach_get("co", basis); basis = basis.reshape(-1, 3)
+    h = 0.01
+    Mv = np.zeros((NV, 3, 3))
+    for ax in range(3):
+        co = basis.copy(); co[:, ax] += h
+        probe.data.foreach_set("co", co.ravel()); probe.value = 1.0; bpy.context.view_layer.update()
+        Mv[:, :, ax] = (posed() - P0) / h
+    good = np.abs(np.linalg.det(Mv)) > 1e-12
+    rest = np.zeros((NV, 3))
+    rest[good] = np.linalg.solve(Mv[good], D[good][:, :, None])[:, :, 0]
+    rest[~USE] = 0.0
+    probe.data.foreach_set("co", (basis + rest).ravel()); probe.value = 1.0; bpy.context.view_layer.update()
+    PW = posed()
+    wrap_end = measure(PW, bvh, S)
+    probe.value = 0.0; bpy.context.view_layer.update()
+    np.save(os.path.join(out, "wrap.npy"), rest.astype(np.float32))
+    sheet.append(render_masks([(dense(V), 0), (template_dense(PW), 2)], "wrapped"))
+    wrap = {"file": os.path.join(out, "wrap.npy"), "end": wrap_end, "stages": wlog, "pinned_eyes": len(eyes),
+            "eye_centres": [np.round(c, 3).tolist() for c in eyes], "symmetric": sym, "mirror_pairs": int((mirror >= 0).sum()), "body_verts": int(len(idx)),
+            "reproduce_mm": round(1000 * float(np.linalg.norm(PW - X, axis=1)[idx].mean()), 3)}
 img = np.concatenate(sheet, 1)
 H, Wd = img.shape[:2]
 im = bpy.data.images.new("overlay", Wd, H, alpha=False)
@@ -351,6 +467,8 @@ for c in cols:
         sgn = 1 if c["end"] == "-incr" else -1
         recipe["sliders"][c["id"]] = round(recipe["sliders"].get(c["id"], 0) + sgn * c["x"], 3)
 recipe["sliders"] = {k: v for k, v in recipe["sliders"].items() if abs(v) >= 0.02}
+if wrap:
+    recipe["wrap"] = wrap["file"]
 json.dump(recipe, open(os.path.join(out, "recipe.json"), "w"), indent=1)
-print("FIT_RESULT " + json.dumps({"recipe": recipe, "ai_transform": {"scale": round(XF["s"], 4), "move_mm": (XF["t"] * 1000).round(1).tolist(), "lean_deg": round(float(np.degrees(XF["rx"])), 2)}, "start": start, "end": end, "log": log, "facing_flipped": bool(yaw),
+print("FIT_RESULT " + json.dumps({"recipe": recipe, "ai_transform": {"scale": round(XF["s"], 4), "move_mm": (XF["t"] * 1000).round(1).tolist(), "lean_deg": round(float(np.degrees(XF["rx"])), 2)}, "start": start, "end": end, "log": log, "facing_flipped": bool(yaw), "wrap": wrap,
                                   "overlay": os.path.join(out, "overlay.png")}))

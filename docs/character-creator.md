@@ -165,3 +165,17 @@ Pixal3D-versionen i Compare. Därefter Maren (kläder som lager) och en man (kö
 - **Per figur sedan:** några minuter för inpassning och bakning. Pixal3D och UltraTex blir hjälpmedel och inte slutprodukt.
 
 **Body-gen inflyttad (2026-11-10):** mallpassningen med fast topologi finns nu i `tools/character/body/` ([body-generator.md](body-generator.md)). Den sitter tight (sysslingen 0,13 mm mot Pixal3D) där reglagen inte räcker (3–8 cm); nästa steg är samma passning på MPFB-nätet, sparad som shape key ovanpå reglagen.
+
+## Wrap: tight mot AI-formen (2026-11-10)
+
+Efter reglagen drar `fit_blender.py` grundnätet tight mot AI-ytan (som body-gens `fit.py`): närmaste punkt med
+normalkontroll, en utjämning mot grannarna som släpps i fem steg (styv till mjuk), händer, fötter och ögonpartiet fasta
+(ögonen hittas med MPFB:s lågpolyögon; låst inom 2,5 cm, mjukt till 4,5 cm, så att fransar inte blir geometri) och
+förflyttningen speglad. Den räknas om till vilopose (per hörn en 3x3-matris ur tre provnycklar) och sparas som
+`build/human/fit/<namn>/wrap.npy`; receptets `wrap` får `human_blender.py` att lägga den som shape key före rigg och
+proxy, så att kantloopar, UV och skelett blir kvar. `{"wrap": false}` hoppar över steget.
+
+Sysslingen (`syssling_wrap4`, mall→AI i medel): bål 5,8 → 0,3 mm, huvud 7,4 → 3,5 mm (ansiktet fast), armar 13,3 → 5,3 mm,
+ben 8,6 → 6,1 mm; kontrollerna (fötter på marken, symmetri, budget, rigg) håller. Kvar: AI-ytans punkter långt från
+mallen (p95 121 mm, troligen händerna, som är fasta och står annorlunda), armar och ben som inte når hela vägen
+(symmetrin tar medel av två olika sidor), och ingen textur än (UltraTex-order `syssling-wrap-1110-1103`).
