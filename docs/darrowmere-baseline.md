@@ -8,7 +8,8 @@ Samma mätningar görs igen efter bytet. Mätskriptet är `tools/darrowmere/benc
 EDAC ser alla sex (49 152 MB, kärnan 47 GiB). Processorn är fortfarande i7-920. bench.py 16:52 (last 0,4) ger samma värden
 som före, som väntat, eftersom mängden minne inte ändrar bandbredden: Python 1,82 s, sha256 230/814 MB/s, AES 192 MB/s,
 minneskopiering 1,69 GB/s, NVMe 1 500 MB/s, nedladdning 91 Mbit/s. Båda korten och båda ComfyUI-tjänsterna (8188 T1000,
-8189 M4000) kom upp. Minnesskyddet (taken 14G/10G och earlyoom) sitter kvar tills vidare.
+8189 M4000) kom upp. Minnesskyddet (taken 14G/10G och earlyoom) togs bort 16:54 med `install_memory_guard.sh remove`;
+båda ComfyUI-tjänsterna ser nu hela minnet (47 GiB). Skriptet finns kvar om det behövs igen.
 
 ## Hårdvara
 
@@ -107,4 +108,4 @@ Maskinen låg under minnestryck i en halvtimme och dog. Inget skyddade resten av
   runnern och panelen behåller sitt minne.
 - **earlyoom** (`-m 4 -s 10`, föredrar python och blender, undviker sshd och systemd): avslutar ComfyUI hellre än att
   maskinen fryser.
-- Tas bort med `sudo bash ~/install_memory_guard.sh remove` när 48 GB sitter i.
+- Borttaget 2026-11-10 när 48 GB satt i (`sudo bash ~/install_memory_guard.sh remove`).
