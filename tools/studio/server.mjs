@@ -22,6 +22,7 @@
 // POST /api/texture/save            { recipe, name, profile, tags, size, maps, pack, webp, overwrite } -> assets/textures
 //                                   + texturkatalogen
 // GET  /api/texture/recipe?name=    receptet för en textur som gjorts i verkstaden
+// /api/human/...                    The Character Creator (figurerna): se tools/studio/human.mjs
 
 import http from 'node:http';
 import { spawn } from 'node:child_process';
@@ -30,6 +31,7 @@ import { readFile, writeFile, readdir, rm, mkdir, stat } from 'node:fs/promises'
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHumanApi } from './human.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PORT = Number(process.argv[2] ?? 8770);
@@ -770,7 +772,10 @@ async function gpuLaunch({ id, path: page, test = false, headless = false }) {
   return { ok: true, gpu: gpu.name, url, headless: test && headless };
 }
 
+let humanApi = null; // The Character Creator (tools/studio/human.mjs)
 async function api(req, res, url) {
+  humanApi ??= createHumanApi({ ROOT, onHost });
+  if (await humanApi(req, res, url, { json, body })) return;
   if (url.pathname === '/api/gpus' && req.method === 'GET') return json(res, 200, await gpuList());
   if (url.pathname === '/api/gpu/launch' && req.method === 'POST') return json(res, 200, await gpuLaunch(await body(req)));
   if (url.pathname === '/api/gpu/close-test' && req.method === 'POST') {

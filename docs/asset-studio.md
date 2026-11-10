@@ -129,6 +129,42 @@ Lärt på den här datorn: webbläsarpanelen i Claude-appen ritar på det inbygg
 
 **Genvägen i appmenyn** (Asset Studio, med bonsaiikonen): `tools/studio/launch.sh` körs på värden, startar studioservern som systemd-enheten `asset-studio-server` i containern claude-desktop om den inte svarar, och ber den öppna studion på det snabba kortet (`/api/gpu/launch` med `id: "discrete"`); går det inte öppnas studion i standardwebbläsaren. Fönstret får klassen `asset-studio` (`--class`), som posten anger i `StartupWMClass`, så att aktivitetsfältet visar appens ikon. Finns ett Asset Studio-fönster redan lyfter genvägen fram det (`wmctrl -x -a asset-studio`) i stället för att öppna ett till (alla fönster på ett kort delar en Chrome-profil, så varje ny start blev annars ett fönster till ovanpå). Posten och ikonerna (ikontemat hicolor, 32–512 px) installeras med `sh tools/studio/install_launcher.sh` på värden; kör den igen om mappen flyttas.
 
+## The Character Creator (byggd 2026-11-10)
+
+En egen avdelning för figurer (`studio/human.js`, servern `tools/studio/human.mjs`, accent rosa, kortbild
+`studio/img/creator.webp`, länk `…/studio/#figurer`): character creatorns verktyg ([character-creator.md](character-creator.md))
+i studions vanliga mönster. Formen först; texturen är inte i fokus här.
+
+- **Lådan till vänster:** mallarna (Woman, Man, Sturdy woman, Slender woman, Strong man, Elder) som startrecept, och de
+  sparade figurerna i `assets/characters/` (egna och inpassningar) med miniatyr. En inpassning utan miniatyr får en av
+  vyn första gången den öppnas (`/api/human/thumb`). Ikonerna är arket `creator` i `tools/icons/icons.json`
+  (`assets/icons/human/<id>.png`; `fit` och `custom` för sparade figurer utan mall).
+- **Korten till höger:** reglagen i grupper (Body, Torso, Hips, Legs, Arms, Head) och Pose and mesh (armvinkel, armarna
+  framåt, benen utåt, spelnätets upplösning, och för en inpassning *Keep the fit's wrap*). Spakarna är data i
+  `tools/character/human/params.json`: makrona överst i receptet, reglagen med `"in": "sliders"` under `sliders`; ett
+  reglage som finns i `human_sliders.json` men saknas i `params.json` läggs till av servern med sin etikett (`added`).
+  Varje reglage bygger om figuren när man släpper det (make_human.py, ca 4 s; ändringar under bygget tas efteråt).
+- **View:** lera (ett neutralt material), trådnät, viloposen (den riggade figuren i stället för poskopian) och AI-formen
+  bredvid eller som ett rött spöke över figuren, skalad till figurens längd (bara för ögat; mätningen gör fit_human.py).
+- **Fit an AI shape:** en Pixal3D-GLB ur projektet (namn med pixal3d under `build/darrowmere/pixal3d`, `build/characters`,
+  `build/maren/pixal3d`, eller uppladdad med *Add a GLB…* till `build/human/targets/`), ett namn och fit_human.py:s val
+  (wrap, symmetri, fina steg). Kön och åldern tas från Body-kortet. Jobbet tar några minuter och visar en klocka; sedan
+  laddas receptet och wrapen in i reglagen, figuren visas och overlay-bilden öppnas (*Show the overlay*). Siffrorna:
+  reglagens medelavstånd före och efter, och wrapens avstånd från AI-ytan.
+- **More tools:** *Open the Body Editor* (servern kör `tools/character/body/editor/launch.sh` på värden: editorns server
+  och ett eget fönster på RTX-kortet) och länken till beställningssidan på Darrowmere (`http://192.168.0.17:8790/character`)
+  för nya referenser och modeller.
+- **Save:** figuren byggs under sitt namn i `assets/characters/<namn>/` (riggad `.glb`, `_pose.glb`, `recipe.json` med
+  `from`, miniatyr). Ett namn som redan finns nekas: GLB-filer skrivs aldrig över.
+- **Footern:** figurens längd, bredd och djup i meter, trianglar, kontrollerna (fötterna på marken, symmetri, budget,
+  rigg, vuxen) och byggtiden.
+- **Prov:** `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar
+  bort `assets/characters/ui_test_creator` efteråt) och `creator_fit.json` (en riktig inpassning av sysslingens Pixal3D-form,
+  några minuter). Båda mot `studio-test` (port 8771).
+
+Kvar: ansiktet och hår och kläder (flikarna är markerade som kommande), figurerna i The Vault, och Pixal3D-beställning
+direkt från avdelningen (i dag via Darrowmeres sida).
+
 ## Idé: Darrowmere i en liten ruta (2026-11-09)
 
 Patrik gillade RunPods kompakta poddlista som förebild för en widget i Asset Studio, så att man kan följa Darrowmere
@@ -154,6 +190,7 @@ Den byggs när GUI:t i Godot får dockbara paneler.
 | A1–A3. Avdelningarna | Smedjan, Väderkvarnen, Ateljén, Häxkitteln och Skattkammaren med färg, landningssida och lådor; se [avdelningar.md](avdelningar.md) | Studion är fyra verkstäder och ett bibliotek | Planerad 2026-10-26 |
 | E1–E5. Effektlabben | flikarna Vind, Vatten och Väder med grundscener och recept, och effekterna som gemensamma TSL-moduler; se [effektlabb.md](effektlabb.md) | Effekterna provas i studion och delas av alla klienter | Planerad 2026-10-26 |
 | T1–T7. Terrängen (Kartrummet) | terrängkärna i studion (`shared/terrain/`, Tinkertown som förlaga), rätt mark vid vattnet, avdelningen Kartrummet (The Map Room) med fliken Landscape, markmaterial, former (åar, vägar, sjöar) och penslar; se [terrain.md](terrain.md) | Marken hänger ihop, utan hack, och blir grunden för det nya Tinkertown | Påbörjad 2026-10-28 |
+| C1. The Character Creator | avdelningen för figurer: mallar, reglage, inpassning av AI-former med wrap, Body Editor och Darrowmere | En figur byggs ur reglagen eller passas in mot en AI-form i studion | Byggd 2026-11-10 |
 | GUI | professionellt utseende med designtokens, ljust och mörkt tema, väljare i headern | Studion ser ut som ett verktyg | Byggd 2026-10-26 |
 
 Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärmdumpar till miniatyrer och mätvärdena i `checks`. Det nya är servern, `params.json` och panelen.

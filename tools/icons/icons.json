@@ -768,6 +768,48 @@
         null,
         null
       ]
+    },
+    "creator": {
+      "cols": 3,
+      "rows": 3,
+      "aspect": "1:1",
+      "tint": "dusky rose",
+      "page": "dark grey",
+      "items": [
+        {
+          "id": "human/woman",
+          "prompt": "a woman: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, with a slim waist and soft feminine curves"
+        },
+        {
+          "id": "human/man",
+          "prompt": "a man: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, with broad shoulders and narrow hips"
+        },
+        {
+          "id": "human/sturdy",
+          "prompt": "a sturdy woman: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, heavier and stronger, with wide hips, thick arms and thighs"
+        },
+        {
+          "id": "human/slender",
+          "prompt": "a slender woman: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, slim and lightly built with long thin limbs"
+        },
+        {
+          "id": "human/strong_man",
+          "prompt": "a strong man: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, very broad muscular shoulders and big arms, a heroic build"
+        },
+        {
+          "id": "human/elder",
+          "prompt": "an old man: a smooth featureless clay mannequin figure, standing straight, seen from the front, bald round head, no face details, no hair, no clothes and no anatomical details, a little shorter, slightly stooped, with a round soft belly"
+        },
+        {
+          "id": "human/fit",
+          "prompt": "fitting a body: a clay mannequin figure with a glowing translucent red outline of a second figure tightly around it"
+        },
+        {
+          "id": "human/custom",
+          "prompt": "a custom body: a clay mannequin figure next to three short vertical slider bars with round knobs at different heights"
+        },
+        null
+      ]
     }
   }
 }

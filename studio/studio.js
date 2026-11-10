@@ -19,6 +19,7 @@ import { createCauldron } from './cauldron.js';
 import { createWeather } from './weather.js';
 import { createWaterTab } from './water.js';
 import { createTerrainTab } from './terrain.js';
+import { createHuman } from './human.js';
 import { createGpuMenu, gpuPreference, frameGate } from './gpu.js';
 
 const $ = (id) => document.getElementById(id);
@@ -611,7 +612,7 @@ function refreshUi() {
     const show = (!p.kinds || p.kinds.includes(kind.id)) && (!p.when || holds(p.when));
     row.style.display = show ? '' : 'none';
   }
-  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : terrainMode ? b.dataset.step === terrainStep : fxMode ? b.dataset.fx === fxKind : b.dataset.kind === kind.id);
+  for (const b of $('kinds').children) b.classList.toggle('on', textureMode ? b === texBtn : libraryMode ? b === libBtn : windMode ? b === windBtn : weatherMode ? b === weatherBtn : waterMode ? b === waterBtn : terrainMode ? b.dataset.step === terrainStep : fxMode ? b.dataset.fx === fxKind : humanMode ? b === bodyBtn : b.dataset.kind === kind.id);
   drawer?.setKind(kind);
   applyDept();
 }
@@ -731,7 +732,50 @@ for (const [id, label, tip] of FX_TABS) {
   b.onclick = () => openCauldron(id);
   $('kinds').append(b);
 }
+// The Character Creator (studio/human.js, docs/asset-studio.md): människor på MPFB:s grundnät ur reglage, och
+// inpassning av AI-former. Body är byggd; ansiktet och håret och kläderna kommer (docs/character-creator.md)
+const bodyBtn = el('button', null, 'Body');
+bodyBtn.dataset.dept = 'creator';
+bodyBtn.title = 'The Character Creator: a human on the shared base mesh from sliders, or fitted to an AI shape';
+bodyBtn.onclick = () => openHuman();
+$('kinds').append(bodyBtn);
+for (const [label, tip] of [['Face', 'the face from a reference (MediaPipe)'], ['Hair & clothes', 'hair and clothes as layers on the body']]) {
+  const b = el('button', null, label);
+  b.dataset.dept = 'creator';
+  b.disabled = true;
+  b.title = `The Character Creator: ${tip} (coming; see docs/character-creator.md)`;
+  b.append(el('span', 'soon', 'soon'));
+  $('kinds').append(b);
+}
+async function openHuman() {
+  leaveHome();
+  leaveLibraryMode();
+  leaveTextureMode();
+  leaveWindMode();
+  leaveFxMode();
+  leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
+  humanMode = true;
+  document.body.classList.add('human-mode');
+  paused = true; // figuren har sin egen renderare
+  refreshUi();
+  try {
+    human ??= await createHuman({ api, el, view: $('huview'), side: $('huside'), drawer: $('hudrawer'), footer: $('hufoot') });
+  } catch (e) {
+    $('hufoot').replaceChildren(el('div', 'msg', `The Character Creator could not start: ${e.message ?? e}`));
+    console.error(e);
+    return;
+  }
+  if (humanMode) human.show();
+}
+function leaveHumanMode() {
+  if (!humanMode) return;
+  humanMode = false;
+  document.body.classList.remove('human-mode');
+  human?.hide();
+  paused = false;
+}
 let workshop = null, textureMode = false, library = null, libraryMode = false, homeMode = false, windmill = null, windMode = false;
+let human = null, humanMode = false; // The Character Creator (studio/human.js)
 let cauldron = null, fxMode = false, fxKind = 'glow', weather = null, weatherMode = false, waterTab = null, waterMode = false, terrainTab = null, terrainMode = false;
 // Miniatyrerna (The Vault och lådan) får samma material som studion, utan vind
 const thumbWind = { uTime: { value: 0 }, uWind: { value: 0 } };
@@ -758,9 +802,10 @@ function openDept(id) {
   else if (id === 'windmill') windBtn.onclick();
   else if (id === 'cauldron') openCauldron(fxKind);
   else if (id === 'maproom') openTerrain(terrainStep); // steget man var i
+  else if (id === 'creator') openHuman();
   else selectKind(kind);
 }
-const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode || waterMode ? 'windmill' : terrainMode ? 'maproom' : fxMode ? 'cauldron' : 'forge');
+const currentDept = () => (homeMode ? null : textureMode ? 'atelier' : libraryMode ? 'vault' : windMode || weatherMode || waterMode ? 'windmill' : terrainMode ? 'maproom' : fxMode ? 'cauldron' : humanMode ? 'creator' : 'forge');
 function applyDept() {
   const d = currentDept();
   if (d) document.documentElement.dataset.dept = d; else delete document.documentElement.dataset.dept;
@@ -802,6 +847,7 @@ async function openInAtelier(name) {
 }
 libBtn.onclick = async () => {
   leaveHome();
+  leaveHumanMode();
   leaveTextureMode();
   leaveWindMode();
   leaveFxMode();
@@ -847,6 +893,7 @@ async function openInStudio(item) {
 }
 texBtn.onclick = async () => {
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveWindMode();
   leaveFxMode();
@@ -860,6 +907,7 @@ texBtn.onclick = async () => {
 };
 windBtn.onclick = async () => {
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveTextureMode();
   leaveFxMode();
@@ -886,6 +934,7 @@ function leaveWindMode() {
 }
 async function openCauldron(id) {
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
@@ -906,6 +955,7 @@ async function openCauldron(id) {
 }
 weatherBtn.onclick = async () => {
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
@@ -926,6 +976,7 @@ weatherBtn.onclick = async () => {
 };
 waterBtn.onclick = async () => {
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
@@ -955,6 +1006,7 @@ biomeBtn.onclick = () => openTerrain('biomes');
 async function openTerrain(stepId) {
   terrainStep = stepId;
   leaveHome();
+  leaveHumanMode();
   leaveLibraryMode();
   leaveTextureMode();
   leaveWindMode();
@@ -1013,7 +1065,7 @@ function leaveTextureMode() {
   paused = false;
 }
 async function selectKind(k) {
-  if (homeMode || textureMode || libraryMode || windMode || fxMode || weatherMode || waterMode || terrainMode) { leaveHome(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode(); if (k.id === kind.id) return refreshUi(); }
+  if (homeMode || textureMode || libraryMode || windMode || fxMode || weatherMode || waterMode || terrainMode || humanMode) { leaveHome(); leaveHumanMode(); leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode(); if (k.id === kind.id) return refreshUi(); }
   if (k.id === kind.id) return;
   kind = k;
   await startKind(k);
@@ -1086,6 +1138,7 @@ window.__studio = {
   get terrain() { return terrainTab; }, // Kartrummets Landscape (vals, apply, regenerate, stats), när den har öppnats
   get water() { return waterTab; }, // Vattenfliken (vals, apply, showScene, active, stats), när den har öppnats
   get cauldron() { return cauldron; }, // Häxkitteln (fx, select, stats), när den har öppnats
+  get human() { return human; }, // The Character Creator (vals, recipe, rebuild, stats, lastBuild, lastFit), när den har öppnats
   prepareThumb, // för att rendera om miniatyrer: renderThumb(url, __studio.prepareThumb) i library.js
   shot: async (name) => {
     controls.update();
@@ -1105,6 +1158,7 @@ regenerate();
 const home = createHome({ el, api, root: $('home'), open: openDept });
 createGpuMenu({ el, api, button: $('gpu'), root: document.body });
 function goHome() {
+  leaveHumanMode();
   leaveTextureMode(); leaveLibraryMode(); leaveWindMode(); leaveFxMode(); leaveWeatherMode(); leaveWaterMode(); leaveTerrainMode();
   homeMode = true;
   paused = true; // 3D-vyn behövs inte under landningssidan
@@ -1118,7 +1172,7 @@ function leaveHome() {
   paused = false;
 }
 document.querySelector('header#top h1').onclick = goHome;
-// En länk till …/studio/#texturer, #bibliotek, #vind, #vader, #vatten, #kartrummet(-regions, -biomes, -sculpt, -paint, -populate), #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
+// En länk till …/studio/#texturer, #figurer, #bibliotek, #vind, #vader, #vatten, #kartrummet(-regions, -biomes, -sculpt, -paint, -populate), #kitteln eller #smedjan öppnar en avdelning direkt; annars landningssidan
 if (location.hash === '#texturer') texBtn.onclick();
 else if (location.hash === '#bibliotek') libBtn.onclick();
 else if (location.hash === '#vind') windBtn.onclick();
@@ -1130,5 +1184,6 @@ else if (location.hash === '#kartrummet-regions') regionBtn.onclick();
 else if (location.hash === '#kartrummet-sculpt') sculptBtn.onclick();
 else if (location.hash === '#kartrummet-paint') paintBtn.onclick();
 else if (location.hash === '#kartrummet-populate') popBtn.onclick();
+else if (location.hash === '#figurer') openHuman();
 else if (location.hash.startsWith('#kitteln')) openCauldron(location.hash.split('-')[1] ?? 'glow');
 else if (location.hash !== '#smedjan') goHome();

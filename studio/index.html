@@ -35,6 +35,7 @@
   :root[data-dept=atelier] { --acc-l: #b88a12; --acc-d: #e2b53c; --acc-ink-l: #1f1603; --acc-ink-d: #1f1603; }
   :root[data-dept=cauldron] { --acc-l: #7646d6; --acc-d: #a07ef6; --acc-ink-l: #ffffff; --acc-ink-d: #150b2c; }
   :root[data-dept=maproom] { --acc-l: #b0562a; --acc-d: #e3895a; --acc-ink-l: #ffffff; --acc-ink-d: #2a1206; }
+  :root[data-dept=creator] { --acc-l: #b0466b; --acc-d: #e3809f; --acc-ink-l: #ffffff; --acc-ink-d: #2a0a16; }
   :root[data-dept=vault] { --acc-l: #5c636d; --acc-d: #a8aeb7; --acc-ink-l: #ffffff; --acc-ink-d: #15171a; }
   :root { --accent-hover: color-mix(in srgb, var(--accent), #000 12%); --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
           --focus: color-mix(in srgb, var(--accent) 45%, transparent); }
@@ -126,12 +127,12 @@
   @media (max-width: 900px) { #unpin, #redo, header#top h1 span { display: none; } }
 
   /* Paneler till höger (tillgångarnas kort, verkstadens kort): en dockad panel med kort som sektioner */
-  #side, #wside, #wmside, #cvside, #wxside, #waside, #tside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
+  #side, #wside, #wmside, #cvside, #wxside, #waside, #tside, #huside { position: fixed; top: calc(var(--head) + var(--gap)); right: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: min(350px, calc(100vw - 24px));
                   overflow-y: auto; flex-direction: column; gap: 0; background: var(--surface); backdrop-filter: blur(14px) saturate(1.2);
                   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); box-sizing: border-box; }
   #side { display: flex; }
   #side:empty { display: none; }
-  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass, #waside > .glass, #tside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
+  #side > .glass, #wside > .glass, #wmside > .glass, #cvside > .glass, #wxside > .glass, #waside > .glass, #tside > .glass, #huside > .glass { background: transparent; backdrop-filter: none; border: 0; box-shadow: none; border-radius: 0; }
   .card { flex: none; border-bottom: 1px solid var(--line); }
   .card > header { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; position: sticky; top: 0; z-index: 1; background: var(--surface-solid); }
   .card > header::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--part, var(--accent)); flex: none; }
@@ -197,10 +198,10 @@
   .tex .grid figcaption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Footer: siffror i block med små rubriker */
-  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot, #wafoot, #tfoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
+  footer#bottom, #wfoot, #wmfoot, #cvfoot, #wxfoot, #wafoot, #tfoot, #hufoot { position: fixed; left: 0; right: 0; bottom: 0; height: var(--foot); gap: 28px; align-items: center; padding: 0 16px; z-index: 2; font-size: 12px;
                           background: var(--surface-solid); border-top: 1px solid var(--line); box-sizing: border-box; }
   footer#bottom { display: flex; }
-  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass, #wafoot.glass, #tfoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
+  footer#bottom.glass, #wfoot.glass, #wmfoot.glass, #cvfoot.glass, #wxfoot.glass, #wafoot.glass, #tfoot.glass, #hufoot.glass { backdrop-filter: none; box-shadow: none; border: 0; border-top: 1px solid var(--line); }
   footer .block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   footer .block > b { font-size: 10px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
   footer .vals { display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
@@ -270,12 +271,12 @@
   .wnote { position: fixed; left: 24px; top: calc(var(--head) + 70px); color: var(--muted); }
 
   /* Verkstadens bibliotek till vänster: flikar, sök och tumnaglar */
-  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer, #wadrawer, #tdrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
+  #wlib, #fdrawer, #wmdrawer, #cvdrawer, #wxdrawer, #wadrawer, #tdrawer, #hudrawer { display: none; position: fixed; top: calc(var(--head) + var(--gap)); left: var(--gap); bottom: calc(var(--foot) + var(--gap)); width: 288px;
           border-radius: var(--radius); flex-direction: column; overflow: hidden; z-index: 1; }
   body.texture-mode #wlib { display: flex; }
   /* Lådan (studio/drawer.js och verkstadens bibliotek): till vänster i varje avdelning, Ctrl+Mellanslag fäller ihop den */
-  body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode):not(.weather-mode) #fdrawer { display: flex; }
-  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed #wadrawer, body.drawer-closed #tdrawer, body.drawer-closed .lside { display: none !important; }
+  body:not(.texture-mode):not(.library-mode):not(.home-mode):not(.wind-mode):not(.fx-mode):not(.weather-mode):not(.human-mode) #fdrawer { display: flex; }
+  body.drawer-closed #fdrawer, body.drawer-closed #wlib, body.drawer-closed #wmdrawer, body.drawer-closed #cvdrawer, body.drawer-closed #wxdrawer, body.drawer-closed #wadrawer, body.drawer-closed #tdrawer, body.drawer-closed #hudrawer, body.drawer-closed .lside { display: none !important; }
   #drawerbtn { align-self: center; margin-right: 4px; }
   #drawerbtn.on { color: var(--accent); }
   body.home-mode #drawerbtn { display: none; }
@@ -439,6 +440,28 @@
   .fxrow .chip img { width: 20px; height: 20px; border-radius: 6px; }
   .fxrow .chip.on { background: var(--accent-soft); border-color: var(--accent); }
   /* Häxkitteln (studio/cauldron.js): samma upplägg som Väderkvarnen, med arenan i stället för gläntan */
+  /* The Character Creator (studio/human.js): figuren i en egen vy, reglagen till höger, mallarna i lådan */
+  #huview, #huside, #hufoot { display: none; }
+  body.human-mode #app, body.human-mode #side, body.human-mode #bottom, body.human-mode .asset-tool { display: none; }
+  body.human-mode #huview { display: block; position: fixed; inset: 0; background: var(--viewport); }
+  body.human-mode #huview canvas { display: block; }
+  body.human-mode #huside, body.human-mode #hudrawer, body.human-mode #hufoot { display: flex; }
+  #hufoot .msg { margin-left: auto; color: var(--muted); text-align: right; display: flex; align-items: center; }
+  #huside .row[hidden] { display: none; }
+  #huside .rows > button { justify-content: center; }
+  #huside .row input[type=text] { min-width: 0; font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--field); color: var(--ink); }
+  #huside .card > header { cursor: pointer; }
+  #huside .card > header h2::after { content: ' ›'; color: var(--muted); display: inline-block; margin-left: 4px; transform: rotate(90deg); transition: transform 0.15s; }
+  #huside .card.closed > header h2::after { transform: none; }
+  #huside .card.closed > .rows { display: none; }
+  .hu-btns { display: flex; gap: 6px; } .hu-btns button { flex: 1; justify-content: center; }
+  .hu-link { color: var(--accent); font-weight: 600; text-decoration: none; font-size: 12.5px; padding: 2px 0; } .hu-link:hover { text-decoration: underline; }
+  .hu-overlay { position: fixed; z-index: 2; left: calc(288px + var(--gap) * 2); right: calc(350px + var(--gap) * 2); top: calc(var(--head) + var(--gap)); bottom: calc(var(--foot) + var(--gap));
+                display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .hu-overlay[hidden] { display: none; }
+  .hu-overlay img { max-width: calc(100% - 24px); max-height: calc(100% - 24px); object-fit: contain; border-radius: 6px; background: #fff; }
+  .hu-overlay button { position: absolute; top: 8px; right: 8px; }
+  body.drawer-closed .hu-overlay { left: var(--gap); }
   #cvview, #cvside, #cvfoot { display: none; }
   body.fx-mode #app, body.fx-mode #side, body.fx-mode #bottom, body.fx-mode .asset-tool { display: none; }
   body.fx-mode #cvview { display: block; position: fixed; inset: 0; background: var(--viewport); }
@@ -644,6 +667,10 @@
 <div id="tside"></div>
 <div id="tdrawer" class="glass"></div>
 <footer id="tfoot" class="glass"></footer>
+<div id="huview"></div>
+<div id="huside"></div>
+<div id="hudrawer" class="glass"></div>
+<footer id="hufoot" class="glass"></footer>
 <div id="cvview"></div>
 <div id="cvside"></div>
 <div id="cvdrawer" class="glass"></div>
