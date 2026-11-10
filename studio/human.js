@@ -11,6 +11,7 @@ import { gpuPreference, frameGate } from './gpu.js';
 import { createCards, withIcon } from './cards.js';
 import { createPointEditor } from './human_edit.js';
 import { createPainter } from './human_paint.js';
+import { createViewModes } from './viewmodes.js';
 
 export async function createHuman({ api, el, view, side, drawer, footer }) {
   const info = await api('/api/human');
@@ -25,7 +26,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   let selGen = 0, showToken = 0;            // det senast valda vinner, även när ett äldre bygge blir klart efteråt
   const META = ['name', 'from', 'saved', 'checks', 'tris', 'height_m', 'target', 'overlay', 'fit', 'wrap', 'sliders', 'out_dir', 'label', 'help', 'ai_transform', 'ignore_hair', 'note', 'from_fit'];
   let fitXf = null;                         // inpassningens skala för AI-formen ({ target, k }): vyn Over följer den exakt
-  const view3 = { clay: true, wire: false, rest: false, ai: 'off' };
+  const view3 = { rest: false, ai: 'off' }; // how the figure is drawn is the view-mode bar's (studio/viewmodes.js)
 
   // --- Renderaren: WebGL räcker för en figur ---
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: gpuPreference() === 'low-power' ? 'low-power' : 'high-performance', preserveDrawingBuffer: true });
@@ -76,18 +77,20 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   const clay = new THREE.MeshStandardMaterial({ color: '#c9a58e', roughness: 0.62, metalness: 0, side: THREE.DoubleSide });
   const ghost = new THREE.MeshStandardMaterial({ color: '#d94b4b', roughness: 0.7, transparent: true, opacity: 0.38, depthWrite: false });
   let figure = null, figureUrl = null, figureStats = null, aiShape = null, aiPath = null;
-  const dispose = (o) => o?.traverse((m) => { if (m.isMesh) { m.geometry.dispose(); for (const x of [m.material].flat()) if (x !== clay && x !== ghost) x.dispose?.(); } });
+  // The eyes (MPFB's low-poly, material Human.low-poly) keep their own texture in Clay and Matcap
+  const isEye = (o) => /eye|low-poly/i.test(`${o.name} ${o.userData.own?.name ?? o.material?.name ?? ''}`);
+  // The view-mode bar on the view: wireframe, clay, matcap, normals, UV checker, albedo, material (Z for the pie)
+  const modes = createViewModes({ el, view, clay, keep: isEye, storageKey: 'creator-viewmode', active: () => running,
+    roots: () => [figure, view3.ai !== 'overlay' ? aiShape?.children[0] : null] });
+  const dispose = (o) => { modes.release(o); o?.traverse((m) => { if (m.isMesh) { m.geometry.dispose(); for (const x of [m.material].flat()) if (x !== ghost && !modes.owns(x)) x.dispose?.(); } }); };
   function styleFigure() {
     figure?.traverse((o) => {
-      if (!o.isMesh) return;
+      if (!o.isMesh || o.userData.vmOverlay) return;
       o.userData.own ??= o.material;
-      // Ögonen (MPFB:s low-poly, materialet Human.low-poly) behåller sin egen textur, ogenomskinlig
-      const eye = /eye|low-poly/i.test(`${o.name} ${o.userData.own?.name ?? ''}`);
-      if (eye && o.userData.own) Object.assign(o.userData.own, { transparent: false, depthWrite: true });
-      o.material = view3.clay && !eye ? clay : o.userData.own;
-      for (const m of [o.material].flat()) m.wireframe = view3.wire;
-      o.castShadow = true; o.receiveShadow = true;
+      if (isEye(o) && o.userData.own) Object.assign(o.userData.own, { transparent: false, depthWrite: true });
+      o.receiveShadow = true;
     });
+    modes.apply(figure);
   }
   async function showFigure(res) {
     const url = view3.rest ? res.rigged ?? res.url : res.url ?? res.rigged;
@@ -141,7 +144,8 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     const mf = figure ? lowMedian(figure) : new THREE.Vector3(), ma = lowMedian(aiShape);
     aiShape.position.set(mf.x - ma.x, 0, mf.z - ma.z);
     if (view3.ai === 'beside') aiShape.position.x += Math.max(0.75, (figureStats?.width ?? 0.5) * 0.5 + s.x * k * 0.5 + 0.15);
-    inner.traverse((o) => { if (o.isMesh) { o.material = view3.ai === 'overlay' ? ghost : view3.clay ? clay : o.userData.own; o.renderOrder = view3.ai === 'overlay' ? 2 : 0; } });
+    if (view3.ai === 'overlay') { modes.release(inner); inner.traverse((o) => { if (o.isMesh) { o.material = ghost; o.renderOrder = 2; } }); }
+    else { inner.traverse((o) => { if (o.isMesh) o.renderOrder = 0; }); modes.apply(inner); }
   }
 
   // Medianen (x, z) av hörnen i nedre 75 % av höjden, i världen; högst ca 30 000 hörn räknas
@@ -234,11 +238,9 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     }
   }
   const keepCard = (b) => b.parentElement.classList.add('hu-keep');
-  const viewBody = cards.card('View', '#7a8a9a', { help: 'How the figure is shown here; nothing of this is saved' });
+  const viewBody = cards.card('View', '#7a8a9a', { help: 'What is shown here; nothing of this is saved. How the figure is drawn (clay, wireframe, matcap …) is the bar on the view, or Z' });
   const vget = (k) => view3[k], vset = (k, v) => { view3[k] = v; };
   viewBody.append(
-    cards.toggleRow({ key: 'clay', label: 'Clay', sub: 'one neutral material, the shape only' }, vget, vset, () => { styleFigure(); placeAi(); }),
-    cards.toggleRow({ key: 'wire', label: 'Wireframe', sub: 'the game mesh\'s edges' }, vget, vset, styleFigure),
     cards.toggleRow({ key: 'rest', label: 'Rest pose', sub: 'the rigged figure instead of the posed copy' }, vget, vset, () => { if (figureUrl) showFigure(figureUrl); }),
     cards.choiceRow({ key: 'ai', label: 'AI shape', help: 'The AI shape picked in the Fit card, scaled to the figure\'s height: beside it, or as a red ghost over it', options: [{ id: 'off', label: 'Off' }, { id: 'beside', label: 'Beside' }, { id: 'overlay', label: 'Over' }] },
       vget, vset, async () => { if (view3.ai !== 'off') await loadAi(targetSel.value); placeAi(); }),
@@ -402,11 +404,11 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     if (!openSaved || !figure) return;
     if (editor?.active) { if (editor.dirty && !confirm('Close the editor and drop the unsaved edits?')) return; editor.close(); }
     painter ??= createPainter({ el, api, side, view, renderer, controls, getCam: () => cam, getFigure: () => figure, draw: () => renderer.render(scene, cam), models: info.paint?.models ?? [], say: (t) => lamp('ok', t) });
-    view3.clay = false; cards.sync();
+    modes.suspend(true);
     if (view3.ai !== 'off') { view3.ai = 'off'; cards.sync(); placeAi(); }
     await painter.start(openSaved, {
       onSaved: async () => { await refreshSaved(); editState(); },
-      onClose: () => { styleFigure(); },
+      onClose: () => { modes.suspend(false); styleFigure(); },
     });
   };
   texBody.append(bakeBtn, bakeMsg, bakedList, paintBtn, colorNote);
@@ -417,8 +419,8 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     if (!baking) bakeMsg.textContent = !s ? 'Open a saved, fitted figure to bake its textures.' : !s.recipe?.wrap ? `${s.name} has no fit to bake the details from.` : bakeNote[s.name] ?? '';
     bakedList.replaceChildren(...(s?.baked ?? []).filter((b) => b.kind !== 'final').map((b) => {
       const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show');
-      btn.title = `Show ${b.file} with its own materials (Clay off)`;
-      btn.onclick = async () => { view3.clay = false; cards.sync(); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
+      btn.title = `Show ${b.file} with its own materials (the Material view)`;
+      btn.onclick = async () => { modes.set('material'); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
       row.append(el('span', `hu-kind ${b.kind}`, b.kind === 'detail' ? 'detail' : b.kind === 'color' ? 'colour' : 'model'), el('span', null, b.file.split('/').pop()), btn);
       return row;
     }));
@@ -480,8 +482,8 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       const row = el('div', 'hu-bakedrow'), btn = el('button', 'mini', 'Show'), a = Object.assign(el('a', 'hu-link', '⤓'), { href: b.file, download: b.file.split('/').pop(), title: 'Download the GLB' });
       const i = b.info;
       row.title = i ? `${i.tris} triangles, ${i.bones} bones, ${i.mb} MB; normal map: ${i.normal ?? 'none'}; colour: ${i.color ?? i.skin}; checks ${i.ok ? 'ok' : 'failed: ' + Object.entries(i.checks).filter(([, v]) => !v).map(([k]) => k).join(', ')}` : b.file;
-      btn.title = `Show ${b.file} with its own materials (Clay off)`;
-      btn.onclick = async () => { view3.clay = false; cards.sync(); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
+      btn.title = `Show ${b.file} with its own materials (the Material view)`;
+      btn.onclick = async () => { modes.set('material'); await showFigure({ url: b.file, rigged: b.file }); lamp('ok', `Showing ${b.file.split('/').pop()}`); };
       row.append(el('span', `hu-kind final${i && !i.ok ? ' bad' : ''}`, i ? (i.ok ? 'ok' : 'check') : 'final'), el('span', null, b.file.split('/').pop()), el('span', 'hu-btns', ''));
       row.lastChild.append(a, btn);
       return row;
@@ -500,7 +502,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     await refreshSaved();
     openSaved = info.saved.find((x) => x.name === s.name) ?? openSaved;
     editState();
-    if (res.url) { view3.clay = false; cards.sync(); await showFigure({ url: res.url, rigged: res.url }); }
+    if (res.url) { modes.set('material'); await showFigure({ url: res.url, rigged: res.url }); }
     lamp(res.ok ? 'ok' : 'bad', finNote[s.name]);
   };
 
@@ -697,7 +699,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
     get steps() { return stepList().map(([id, label, state]) => ({ id, label, state })); },
-    get editor() { return editor; }, get painter() { return painter; }, get openSaved() { return openSaved; },
+    get editor() { return editor; }, modes, get painter() { return painter; }, get openSaved() { return openSaved; },
     get building() { return building || again; }, get locked() { return locked; }, aiOffset, get fitXf() { return fitXf; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);

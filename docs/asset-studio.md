@@ -144,8 +144,18 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   `tools/character/human/params.json`: makrona överst i receptet, reglagen med `"in": "sliders"` under `sliders`; ett
   reglage som finns i `human_sliders.json` men saknas i `params.json` läggs till av servern med sin etikett (`added`).
   Varje reglage bygger om figuren när man släpper det (make_human.py, ca 4 s; ändringar under bygget tas efteråt).
-- **View:** lera (ett neutralt, dubbelsidigt material: munnen är en springa i nätet; ögonen behåller sin textur), trådnät,
-  viloposen (den riggade figuren i stället för poskopian) och AI-formen bredvid eller som ett rött spöke över figuren.
+- **Vylägena (2026-11-10):** en egen list på vyn, uppe till höger och fri från korten (`studio/viewmodes.js`), som
+  Blenders shading-knappar: *Wireframe* (bara kanterna, utan skugga), *Clay* (ett neutralt, dubbelsidigt material: munnen
+  är en springa i nätet; ögonen behåller sin textur), *Matcap* (en lerfärgad studiosfär som visar formen och
+  normalkartan oavsett ljuset), *Normals* (ytans riktning som färg, med normalkartan), *UV checker* (rutor med
+  koordinater på MPFB:s UV: töjning och sömmar syns), *Albedo* (färgkartan som den är, utan ljus) och *Material* (figurens
+  egna material). Två lager kan läggas ovanpå: *Edges* (nätets kanter över ytan, följer skelett och shape keys) och
+  *X-ray* (genomskinlig). **Z** öppnar en cirkelmeny vid pekaren (håll och släpp över ett läge, eller tryck och klicka,
+  eller 1–7), **Shift+Z** slår av och på kanterna och **Alt+Z** X-ray. Valet minns per webbläsare. Målningen döljer
+  listen och visar figurens egna material medan den pågår; Show-knapparna i Textures och Finished model byter till
+  Material. Modulen är generell (rötter, vilka nät som behåller sitt material) och kan sättas på studions andra vyer.
+- **View:** viloposen (den riggade figuren i stället för poskopian) och AI-formen bredvid eller som ett rött spöke över
+  figuren; AI-formen bredvid ritas i samma vyläge som figuren.
   AI-formen får inpassningens egen skala (`ai_transform`: `base_scale × scale`, sparad i figurens `recipe.json`), annars
   figurens längd, och centreras som i inpassningen: medianen av kroppen under axlarna, i sidled och djupled.
 - **Fit an AI shape:** en Pixal3D-GLB ur projektet (namn med pixal3d under `build/darrowmere/pixal3d`, `build/characters`,
