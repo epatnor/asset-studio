@@ -165,6 +165,6 @@ referensbilden).
 - **Efterbehandlingen körs nu på Darrowmere** som runner-steget `finish_character.py` (gradering, lösa bitar,
   ansiktsspegling, spelmodell med Blender), i stället för run_after.sh på laptopen. Ett steg per bakning; i galleriet
   ligger `<namn>_high.glb` och `<namn>_low_<k>k.glb` under `orders/<id>/finish_*`. Ansiktsspeglingen behöver paketet
-  `rtree` i Darrowmeres venv och hoppas över (med en notering) tills det finns.
+  `rtree` i Darrowmeres venv (installerat 2026-11-10, 1.4.1 med `--no-deps`; utan det hoppas steget över med en notering).
 - Runnern fick för detta: `$path:<steg>/<mönster>` (sökvägen till en fil som noden läser själv, t.ex. UltraTexLoadMesh),
   `*` i filmönster och `"cloud": {"provider": "meshy"}` för texturen per beställning.
