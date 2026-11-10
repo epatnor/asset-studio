@@ -11,6 +11,23 @@ minneskopiering 1,69 GB/s, NVMe 1 500 MB/s, nedladdning 91 Mbit/s. Båda korten 
 8189 M4000) kom upp. Minnesskyddet (taken 14G/10G och earlyoom) togs bort 16:54 med `install_memory_guard.sh remove`;
 båda ComfyUI-tjänsterna ser nu hela minnet (47 GiB). Skriptet finns kvar om det behövs igen.
 
+**Två Krea-2-jobb samtidigt, 2026-11-10 16:58–17:17** (beställningarna `winter-a-1110` och `winter-b-1110`, uppdraget
+`simultaneous-krea2`, 1024 × 1024, 8 steg; `serial_lanes` av, runnern valde första lediga kort):
+
+| | T1000 | M4000 |
+|---|---|---|
+| Första bilden (modellen laddas) | 293 s | 557 s |
+| Andra bilden | 277 s | 545 s |
+| T1000 ensam tidigare (61 Krea-2-jobb, median) | 292 s (oftast 270–281 s) | – |
+
+- T1000 blir inte långsammare av att M4000 kör samtidigt; M4000 tar 1,9–2,0 gånger så lång tid (Maxwell, int8 räknas om).
+- Minnet: högst 43,5 GB använt och 3,5 GB swap. T1000:s ComfyUI tog 21 GB och M4000:s 23 GB, eftersom varje process
+  har en egen kopia av Krea-2 (modellen och textkodaren ryms inte i 8 GB VRAM). Inget minnestryck att tala om, och
+  SSH, runnern och panelen svarade hela tiden.
+- De gamla T1000-tiderna kring 600 s var omladdningar när 18 GB inte räckte; med 48 GB ligger modellerna kvar.
+- Fyra bilder tog 18,5 minuter, mot cirka 19 med T1000 ensam: eftersom kortet väljs per beställning fick M4000 hälften.
+  Väljs kortet per steg skulle T1000 ta tre och M4000 en, och samma fyra bilder bli klara på ungefär 14 minuter.
+
 ## Hårdvara
 
 | Del | Före (2026-11-07) | Efter |
