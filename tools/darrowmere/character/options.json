@@ -1,5 +1,15 @@
 {
  "about": "Beställningssidan för figurer (/character i Darrowmere-panelen). Fälten är data: id är en punktad väg in i receptet, show_if döljer fält som inte gäller, adv lägger dem under Advanced. character_order.py läser samma fil för standardvärdena.",
+ "presets": {
+  "style": {
+   "semi": "semi-stylized realistic 3D game character render, natural human anatomy, not cartoon, not Pixar or Disney style, soft even lighting",
+   "stylized": "stylized 3D game character render, hand-painted stylized PBR textures, soft even lighting"
+  },
+  "outfit": {
+   "underwear": "skin-tight seamless matte grey underwear that follows the body like a second skin",
+   "swimsuit": "a high-cut matte one-piece bathing suit"
+  }
+ },
  "groups": [
   {"id": "order", "label": "Order", "fields": [
    {"id": "name", "type": "text", "default": "", "label": "Name", "help": "Short id for the files (letters, digits, dashes), e.g. nora. Empty: taken from the subject."},
@@ -11,14 +21,19 @@
    {"id": "source.refs", "type": "refs", "label": "Reference images", "show_if": {"source.mode": "upload"}, "help": "One or more images. Give each a view: the front image drives Pixal3D and the texture; Tripo and Meshy also use back and side views. Pixal3D gets a copy scaled to 1024 px (larger input gave loose strands)."},
    {"id": "prompt.subject", "type": "text", "default": "young woman", "label": "Subject", "show_if": {"source.mode": "prompt"}, "help": "Who, short. It goes first in the prompt: Krea-2 follows the first words best (that is how bald finally worked)."},
    {"id": "prompt.bald", "type": "bool", "default": true, "label": "Bald (hair is a separate layer)", "show_if": {"source.mode": "prompt"}, "help": "Puts bald first in the subject and bans the word hair in prompt rewrites. Krea has no negative prompt: 'no hair' draws hair."},
+   {"id": "prompt.no_brows", "type": "bool", "default": true, "label": "No eyebrows or eyelashes", "show_if": {"source.mode": "prompt"}, "help": "The 3D models build lots of geometry for brows and lashes; they go on later as texture. Adds a hard review rule and bans the words in rewrites."},
+   {"id": "prompt.normal_head", "type": "bool", "default": true, "label": "Normal head and eyes", "show_if": {"source.mode": "prompt"}, "help": "Adult proportions, head about 1/7 of the height. Also a review criterion. Krea drew the cousin's head 20 % too wide."},
+   {"id": "prompt.margin", "type": "bool", "default": true, "label": "Space around the figure", "show_if": {"source.mode": "prompt"}, "help": "Asks for empty space around head, hands and feet. The cousin filled 98 % of the height and Pixal3D stretched the parts at the edges."},
    {"id": "prompt.body", "type": "text", "default": "", "label": "Body", "show_if": {"source.mode": "prompt"}, "help": "Optional, e.g. slender legs, narrow hips, fairly full bust."},
-   {"id": "prompt.outfit", "type": "text", "default": "a high-cut one-piece bathing suit", "label": "Wearing", "show_if": {"source.mode": "prompt"}, "help": "Tight clothes give clean surfaces for the texture. Matte fabric: highlights get painted into the texture."},
+   {"id": "prompt.outfit_preset", "type": "choice", "default": "underwear", "label": "Wearing", "show_if": {"source.mode": "prompt"}, "choices": [["underwear", "Skin-tight underwear (base body)"], ["swimsuit", "One-piece bathing suit"], ["custom", "Custom"]], "help": "Tight matte clothes give clean surfaces and show the body shape; highlights get painted into the texture."},
+   {"id": "prompt.outfit", "type": "text", "default": "", "label": "Custom outfit", "show_if": {"source.mode": "prompt", "prompt.outfit_preset": "custom"}, "help": "Tight clothes give clean surfaces for the texture. Matte fabric: highlights get painted into the texture."},
    {"id": "prompt.pose", "type": "choice", "default": "t", "label": "Pose", "show_if": {"source.mode": "prompt"}, "choices": [["t", "T-pose (square frame)"], ["a", "A-pose"], ["free", "As written"]], "help": "Symmetric poses make rigging and the face mirror work. T-pose needs a square frame or the hands get cut off."},
    {"id": "prompt.front", "type": "bool", "default": true, "label": "Straight-on front view", "show_if": {"source.mode": "prompt"}, "help": "Body and face square to the camera. Without it Krea often turns the figure a little."},
-   {"id": "prompt.style", "type": "text", "default": "stylized 3D game character render, hand-painted stylized PBR textures, whole figure visible from head to toe, soft even lighting", "label": "Style", "show_if": {"source.mode": "prompt"}},
+   {"id": "prompt.style_preset", "type": "choice", "default": "semi", "label": "Style", "show_if": {"source.mode": "prompt"}, "choices": [["semi", "Semi-realistic (not Pixar or Disney)"], ["stylized", "Stylized, hand-painted"], ["custom", "Custom"]]},
+   {"id": "prompt.style", "type": "text", "default": "", "label": "Custom style", "show_if": {"source.mode": "prompt", "prompt.style_preset": "custom"}},
    {"id": "prompt.final", "type": "textarea", "default": "", "label": "Final prompt (override)", "show_if": {"source.mode": "prompt"}, "adv": true, "help": "Empty: built from the fields above (shown in the plan). Anything here is sent to Krea-2 as is."},
    {"id": "prompt.count", "type": "number", "default": 2, "min": 1, "max": 6, "step": 1, "label": "Images", "show_if": {"source.mode": "prompt"}, "help": "The first one is reviewed and goes on to the model; the rest are alternatives in the gallery."},
-   {"id": "prompt.size", "type": "choice", "default": "1024x1024", "label": "Image size", "show_if": {"source.mode": "prompt"}, "choices": [["1024x1024", "1024 × 1024 (square)"], ["832x1216", "832 × 1216 (portrait, A-pose)"], ["1440x1440", "1440 × 1440 (sharper texture reference)"]], "help": "Pixal3D always gets 1024 px; larger images only help the texture."},
+   {"id": "prompt.size", "type": "choice", "default": "auto", "label": "Image size", "show_if": {"source.mode": "prompt"}, "choices": [["auto", "By pose (T square, A portrait)"], ["1024x1024", "1024 × 1024 (square)"], ["832x1216", "832 × 1216 (portrait, A-pose)"], ["1440x1440", "1440 × 1440 (sharper texture reference)"]], "help": "Pixal3D always gets 1024 px; larger images only help the texture."},
    {"id": "prompt.seed", "type": "number", "default": 11, "min": 0, "max": 999999, "step": 1, "label": "First seed", "show_if": {"source.mode": "prompt"}, "adv": true},
    {"id": "stop_after_images", "type": "bool", "default": false, "label": "Stop after the images", "show_if": {"source.mode": "prompt"}, "help": "Only draw and review. Pick a favourite in the gallery and order the model from it with My own reference images."}
   ]},

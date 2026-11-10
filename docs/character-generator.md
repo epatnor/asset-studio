@@ -174,3 +174,10 @@ referensbilden).
   `rtree` i Darrowmeres venv (installerat 2026-11-10, 1.4.1 med `--no-deps`; utan det hoppas steget över med en notering).
 - Runnern fick för detta: `$path:<steg>/<mönster>` (sökvägen till en fil som noden läser själv, t.ex. UltraTexLoadMesh),
   `*` i filmönster och `"cloud": {"provider": "meshy"}` för texturen per beställning.
+- **Grundkroppar (sysslingen, 2026-11-10):** sidan har förval för stil (`semi`: semi-realistisk, inte Pixar/Disney;
+  `stylized`; egen text) och kläder (`underwear`: tätt sittande underkläder för grundkroppen; baddräkt; egen text), med
+  texterna under `presets` i `options.json`. Nya val: *No eyebrows or eyelashes* (positivt formulerat i prompten, hårt krav
+  i granskningen, förbjudna ord i omskrivningen), *Normal head and eyes* (prompt + mjukt krav: huvudet ungefär 1/7 av
+  längden), *Space around the figure* (luft runt huvud, händer och fötter för alla poser) och bildformatet `auto`
+  (kvadrat för T-pose, 832×1216 annars). Efterbehandlingen kan göra spelmodellen som QuadriFlow-quads (*Quad mesh*,
+  spegelsymmetriskt, ungefär hälften så många quads som trianglar, quads även som .blend).

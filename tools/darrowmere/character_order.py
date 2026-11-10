@@ -60,6 +60,9 @@ def merged(recipe):
             v = get(recipe, f["id"])
             if v is not None:
                 put(r, f["id"], v)
+    for kind in ("style", "outfit"):   # äldre recept: egen text utan förval
+        if (get(recipe, f"prompt.{kind}") or "").strip() and get(recipe, f"prompt.{kind}_preset") is None:
+            r["prompt"][f"{kind}_preset"] = "custom"
     return r
 
 
@@ -77,8 +80,9 @@ def compose_prompt(p):
     parts = [subject]
     if p.get("front"):
         parts.append("straight-on front view, body and face square to the camera, perfectly symmetrical")
-    if (p.get("outfit") or "").strip():
-        parts.append("wearing " + p["outfit"].strip())
+    outfit = preset("outfit", p)
+    if outfit:
+        parts.append("wearing " + outfit)
     pose = {"t": "standing in a strict T-pose with both arms straight out horizontally, feet shoulder-width apart",
             "a": "standing in a symmetrical A-pose, arms angled down away from the body, feet shoulder-width apart"}.get(p.get("pose"))
     if pose:
@@ -87,11 +91,32 @@ def compose_prompt(p):
     text = ", ".join(parts)
     if (p.get("body") or "").strip():
         text += ", " + p["body"].strip()
-    if p.get("pose") == "t":
-        text += ", the whole figure small enough that both hands, fingertips and feet are fully inside the frame with a little empty space around"
-    if (p.get("style") or "").strip():
-        text += ", " + p["style"].strip()
+    if p.get("normal_head"):
+        text += ", realistic adult proportions with a normal-sized head and normal-sized eyes"
+    if p.get("no_brows"):    # positivt formulerat: Krea saknar negativ prompt
+        text += ", smooth hairless brow ridges and bare eyelids"
+    if p.get("margin") or p.get("pose") == "t":
+        text += ", the whole figure small enough that the head, both hands, fingertips and feet are fully inside the frame with clear empty space around it"
+    style = preset("style", p)
+    if style:
+        text += ", " + style
     return text
+
+
+def preset(kind, p):
+    """Förval ur options.json (presets) eller egen text när förvalet är custom; äldre recept utan förval behåller sin text."""
+    key = p.get(f"{kind}_preset")
+    if key and key != "custom":
+        return OPTIONS["presets"][kind][key]
+    return (p.get(kind) or "").strip()
+
+
+def image_size(p):
+    """auto: kvadrat för T-pose (armspannet), stående format annars."""
+    s = p.get("size") or "auto"
+    if s == "auto":
+        s = "1024x1024" if p.get("pose") == "t" else "832x1216"
+    return tuple(map(int, s.split("x")))
 
 
 def views(t):
@@ -134,14 +159,14 @@ def check(r, refs):
                 errs.append("Give at least one best-view mix.")
         if r["prompt"].get("pose") == "free" and mode == "prompt" and r["finish"]["mirror_face"]:
             warns.append("Mirroring the face works best in a symmetric pose.")
-    if mode == "prompt" and r["prompt"]["pose"] == "t" and r["prompt"]["size"] == "832x1216":
+    if mode == "prompt" and r["prompt"]["pose"] == "t" and image_size(r["prompt"]) == (832, 1216):
         warns.append("A T-pose in portrait format cut off the hands before; use a square image.")
     return errs, warns
 
 
 def krea_steps(r, asset, prompt):
     p = r["prompt"]
-    w, h = map(int, p["size"].split("x"))
+    w, h = image_size(p)
     out = []
     for i in range(int(p["count"])):
         g = graph("krea_t2i")
@@ -157,7 +182,9 @@ def review_step(r):
     v, p = r["review"], r["prompt"]
     hard = []
     if p.get("bald"):
-        hard.append("Completely bald: a smooth bald scalp with no hair at all on the head (eyebrows are fine), no cap, no headwear.")
+        hard.append("Completely bald: a smooth bald scalp with no hair at all on the head" + ("" if p.get("no_brows") else " (eyebrows are fine)") + ", no cap, no headwear.")
+    if p.get("no_brows"):
+        hard.append("No eyebrows and no eyelashes: smooth bare brow ridges and bare eyelids.")
     if v.get("hard_face"):
         hard.append("Nothing on the face: no jewellery, face paint or markings; round human ears, not pointed elf ears.")
     if p.get("pose") == "t":
@@ -169,10 +196,15 @@ def review_step(r):
     avoid = [w.strip() for w in (v.get("avoid") or "").split(",") if w.strip()]
     if p.get("bald"):
         avoid += [w for w in ("hair", "hairstyle", "haircut") if w not in avoid]
+    if p.get("no_brows"):
+        avoid += [w for w in ("eyebrows", "eyelashes", "lashes", "brows") if w not in avoid]
+    criteria = [c for c in v["criteria"] if c.strip()]
+    if p.get("normal_head"):
+        criteria.append("Head and eyes of normal adult size: the head about one seventh of the body height, not big-headed, chibi or cartoon-like.")
     s = {"key": "rev_1", "label": "Review: reference image", "kind": "review", "images": ["$step:img_1"],
-         "criteria": [c for c in v["criteria"] if c.strip()], "hard": hard, "min_score": int(v["min_score"]),
+         "criteria": criteria, "hard": hard, "min_score": int(v["min_score"]),
          "retry": {"step": "img_1", "max": int(v["max"]), "rewrite": bool(v["rewrite"])}}
-    if p.get("bald") or v.get("hard_face"):
+    if p.get("bald") or p.get("no_brows") or v.get("hard_face"):
         s["crops"] = [{"name": "head", "box": [0.3, 0.0, 0.7, 0.18]}]
     if avoid and v["rewrite"]:
         s["rewrite_avoid"] = avoid
@@ -270,7 +302,7 @@ def build(recipe, refs=None, now=None):
             rv = review_step(r)
             add(rv, "Claude Haiku", MINUTES["review"])
             plan[-1]["note"] = f"up to {rv['retry']['max']} redraws"
-        front_ref, front_px = "$step:img_1", 1024 / max(map(int, r["prompt"]["size"].split("x")))
+        front_ref, front_px = "$step:img_1", 1024 / max(image_size(r["prompt"]))
         views_in = {"front": "$step:img_1"}
     else:
         front_ref, front_px = "$in:front.png", 1.0
