@@ -179,8 +179,9 @@ referensbilden).
   texterna under `presets` i `options.json`. Nya val: *No eyebrows or eyelashes* (positivt formulerat i prompten, hårt krav
   i granskningen, förbjudna ord i omskrivningen), *Normal head and eyes* (prompt + mjukt krav: huvudet ungefär 1/7 av
   längden), *Space around the figure* (luft runt huvud, händer och fötter för alla poser) och bildformatet `auto`
-  (kvadrat för T-pose, 832×1216 annars). Efterbehandlingen kan göra spelmodellen som QuadriFlow-quads (*Quad mesh*,
-  spegelsymmetriskt, ungefär hälften så många quads som trianglar, quads även som .blend).
+  (kvadrat för T-pose, 832×1216 annars). Efterbehandlingen kan försöka göra spelmodellen som QuadriFlow-quads (*Quad mesh (experimental)*). QuadriFlow
+  vägrade sysslingens voxelnät ("needs to be manifold", med och utan symmetri, som frostsysterns 2026-11-09); då blir det
+  trianglar och steget säger det. Rena quads med kantloopar kommer från MPFB eller body-gens mall (docs/body-generator.md).
 - **Sektioner och nivåer:** sidan är uppdelad i *1. Image reference* (med granskningen), *2. 3D model* (med spelmodellen)
   och *3. Texture* (med gradering och ansiktsspegling); finliret ligger under Advanced. Överst väljs nivån *Quick* (~30 min:
   en bild, inga extra vyringar, en bakning), *Standard* (~40 min: två bilder, 45°-ringen) eller *Best* (~55 min: tre bilder,

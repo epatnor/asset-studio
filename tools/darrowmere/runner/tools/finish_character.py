@@ -62,10 +62,18 @@ def main():
         res = tool([HERE / "mesh/make_low.py", json.dumps({"high": str(high), "out": str(low), "tris": int(a.get("tris", 12000)),
                                                            "tex": int(a.get("tex", 2048)), "voxel": float(a.get("voxel", 0.0035)),
                                                            "quad": quad, "symmetry": quad})], "game model")
+        if quad and not res.get("quads"):
+            # QuadriFlow vägrade (vill ha ett "manifold" nät, och AI-nätens voxelversion godtas sällan): trianglar i stället,
+            # och filen får det namnet, så att ingen tror att det är fyrhörningar
+            plain = out / low.name.replace("_quad_", "_low_")
+            for f in out.glob(f"{low.stem}*"):
+                f.rename(out / f.name.replace(low.stem, plain.stem))
+            low = plain
+            done.append("quad remesh refused by QuadriFlow, triangles instead")
         files.append(low.name)
         if quad and (out / f"{low.stem}_quads.blend").exists():
             files.append(f"{low.stem}_quads.blend")
-        done.append(f"game model {res.get('tris', a.get('tris'))} tris" + (f", {res.get('quads')} quads" if quad else ""))
+        done.append(f"game model {res.get('tris', a.get('tris'))} tris" + (f", {res.get('quads')} quads" if res.get("quads") else ""))
     print(json.dumps({"ok": True, "files": files, "done": done}))
 
 
