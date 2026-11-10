@@ -108,6 +108,10 @@ class UltraTexMatchViewTone:
             "cover": ("MASK", {"tooltip": "cover of UltraTex Init From Mesh Colours."}),
             "sigma": ("FLOAT", {"default": 24.0, "min": 2.0, "max": 128.0, "step": 1.0, "tooltip": "Blur of the tone in px at 1024 (larger = only broad tone)."}),
             "strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "1 = the reference's tone, 0 = unchanged."}),
+        }, "optional": {
+            "align": ("BOOLEAN", {"default": False, "tooltip": "Also move each view's painting onto the reference's features (optical flow), so that eyebrows, eyes and the collar sit where the mesh's own colours have them."}),
+            "max_shift": ("FLOAT", {"default": 24.0, "min": 1.0, "max": 96.0, "step": 1.0, "tooltip": "Largest move in px at 1024."}),
+            "flow_smooth": ("FLOAT", {"default": 6.0, "min": 0.0, "max": 32.0, "step": 0.5, "tooltip": "Blur of the flow in px at 1024: moves features without bending fine detail."}),
         }}
 
     RETURN_TYPES = ("IMAGE",)
@@ -115,7 +119,35 @@ class UltraTexMatchViewTone:
     FUNCTION = "match"
     CATEGORY = "UltraTex"
 
-    def match(self, views, reference, cover, sigma, strength):
+    @staticmethod
+    def _align(out, ref, mask, max_shift, smooth):
+        """Warps each view so its painting lands on the reference's features: DIS optical flow from the reference to the
+        (tone-matched) view on grey levels, limited to max_shift px, blurred, and only inside the figure."""
+        import cv2
+        res, moved = [], []
+        for i in range(out.shape[0]):
+            o = (out[i].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+            rr = (ref[i].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+            mk = mask[i, 0].cpu().numpy() > 0.5
+            go, gr = cv2.cvtColor(o, cv2.COLOR_RGB2GRAY), cv2.cvtColor(rr, cv2.COLOR_RGB2GRAY)
+            go[~mk] = gr[~mk] = 255
+            dis = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
+            f = dis.calc(gr, go, None)   # for each reference pixel: where the same feature is in the view
+            if smooth > 0:
+                f = cv2.GaussianBlur(f, (0, 0), smooth)
+            mag = np.linalg.norm(f, axis=2)
+            f *= np.minimum(1.0, max_shift / np.maximum(mag, 1e-6))[..., None]
+            f[~mk] = 0
+            h, w = gr.shape
+            gx, gy = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+            warped = cv2.remap(o, gx + f[..., 0], gy + f[..., 1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            warped[~mk] = o[~mk]
+            res.append(torch.from_numpy(warped.astype(np.float32) / 255.0).permute(2, 0, 1))
+            mm = np.linalg.norm(f, axis=2)[mk]
+            moved.append((round(float(np.median(mm)), 1), round(float(np.percentile(mm, 95)), 1)))
+        return torch.stack(res).to(out.device), moved
+
+    def match(self, views, reference, cover, sigma, strength, align=False, max_shift=24.0, flow_smooth=6.0):
         import torch.nn.functional as F
         v = views.float().permute(0, 3, 1, 2)[:, :3]
         r = F.interpolate(reference.float().permute(0, 3, 1, 2)[:, :3], size=v.shape[-2:], mode="bilinear", align_corners=False)
@@ -132,6 +164,9 @@ class UltraTexMatchViewTone:
         low_v, low_r = blur(v * m) / wm, blur(r * m) / wm
         gain = ((low_r + 0.02) / (low_v + 0.02)).clamp(0.5, 2.0) ** float(strength)
         out = torch.where(m > 0.5, (v * gain).clamp(0, 1), v)
+        if align:
+            out, moved = self._align(out, r, m, float(max_shift) * v.shape[-1] / 1024.0, float(flow_smooth) * v.shape[-1] / 1024.0)
+            print(f"[azshara] align: median / p95 move per view (px) {moved}", flush=True)
         before = [round(float((v[i] * m[i]).sum() / m[i].sum() / 3 * 255), 1) for i in range(len(v))]
         after = [round(float((out[i] * m[i]).sum() / m[i].sum() / 3 * 255), 1) for i in range(len(v))]
         print(f"[azshara] tone match: view brightness {before} -> {after}", flush=True)

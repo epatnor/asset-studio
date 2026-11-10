@@ -337,6 +337,13 @@ ansiktsbilderna.
 | v3 + tonmatchning, 0,75, run1 8000 | 0,47 | 1,38 | 169 | 63,8 |
 | v3, 0,75, run3b 13000 EMA | 0,37 | 1,14 | 168 | |
 | **v3, 0,85, run3b 13000 EMA** | **0,21** | **0,66** | 168 | |
+| **v4 = v3 0,85 + flyttning mot Pixal3D (`align`)** | **0,10** | **0,58** | 168 | |
+
+Förskjutning mot Pixal3D (optiskt flöde mellan renderingarna i ansiktsvinklarna, median / 95:e percentilen i px vid
+320): v2 2,0 / 13,7, v3 0,75 4,4 / 21,6, v3 0,85 6,8 / 29,1, gamla 8,9 / 33,2, v4 4,4 / 26,3. Ju mer UltraTex målar,
+desto mer flyttar dragen mot Krea-referensens placering. `align` i Match View Tone (DIS-flöde, högst 24 px, suddat 6 px)
+tar tillbaka medianen men inte de stora felen. Patrik 2026-11-10 om v3 0,85: kroppen jämn och fin i ton, men ansiktet
+har förskjuten målning (bryn utanför brynbågen, hudfläckar i skägget under läppen) och kragen har ett hudband.
 
 Ringen (extra kameror från brus) ökar hoppen, så v2 och v3 körs utan den. Vid `denoise` 0,6 går det inte att skilja
 LoRA-stegen åt, eftersom startbilden bestämmer. Bäst hittills är v3 med 0,85 och run3b 13000 EMA, som också har det
