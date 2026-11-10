@@ -189,3 +189,17 @@ referensbilden).
 - **Ögonbryn och fransar:** Krea ritade dem på sysslingen trots prompten, och Pixal3D gjorde utstående fransgeometri.
   Kravet i granskningen är därför mjukt; nästa steg är att ta bort dem ur referensen med Krea-2 General Edit V2
   (`krea2_general_edit_v2.safetensors`, finns på Darrowmere) före Pixal3D.
+
+### Huvudstorleken och korten per steg (2026-11-10)
+
+Cassandra (`cassandra-1110-1727`) fick ett brett, för stort huvud: Krea-2 ritade bild 1 med 6,96 huvudlängder (en
+vuxen är cirka 7,5), och beställningen byggde alltid modellen av bild 1. Pixal3D gjorde sedan huvudet ytterligare
+cirka 7 % bredare. Bild 3 hade 7,43.
+
+- Med två eller fler bilder görs nu alla först, och steget `pick` (`runner/tools/pick_reference.py`) mäter
+  huvudlängderna (figurens höjd / huvudets höjd, från toppen till halsens smalaste rad) på varje bilds siluett.
+  Bilden närmast 7,6 granskas och går vidare till modellen. Når ingen bild `min_heads` (7,3) stannar beställningen före
+  3D-modellen. En underkänd granskning ritar om alla bilder med nya frön (`retry.also`) och väljer igen. Spakarna är
+  Pick by head size och Smallest heads tall under Advanced i avsnitt 1.
+- Ett steg kan kräva ett kort (`"gpu"` på steget). Det köas då i det kortets ComfyUI medan resten av beställningen
+  stannar på sitt spår. Pixal3D körs alltid på T1000, eftersom de två försöken på M4000 (7 november) misslyckades.

@@ -300,15 +300,29 @@ def build(recipe, refs=None, now=None):
 
     lane = "FIRST FREE GPU" if r["gpu"] == "auto" else r["gpu"].upper()
     by_role = {x["role"]: x for x in refs}
+    picked = False
     if mode == "prompt":
         imgs = krea_steps(r, asset, prompt)
-        add(imgs[0], lane, MINUTES["krea"])
+        # Several images: all of them first, then the one with the most natural head size goes on (pick_reference.py),
+        # so a big-headed image 1 no longer becomes the model (Cassandra 2026-11-10)
+        picked = len(imgs) > 1 and bool(r["prompt"].get("pick_head", True))
+        for s in (imgs if picked else imgs[:1]):
+            add(s, lane, MINUTES["krea"])
+        front = "$step:img_1"
+        if picked:
+            add({"key": "pick", "label": "Pick the reference with a natural head size", "kind": "script", "script": "pick_reference.py",
+                 "args": {"images": [f"$step:{s['key']}" for s in imgs], "name": asset, "min_heads": float(r["prompt"].get("min_heads", 7.3))}},
+                "Darrowmere CPU", 1)
+            front = "$step:pick"
         if r["review"]["enabled"]:
             rv = review_step(r)
+            if picked:   # judge the picked image; a redraw makes every image again with new seeds and picks again
+                rv["images"] = [front]
+                rv["retry"]["also"] = [s["key"] for s in imgs[1:]] + ["pick"]
             add(rv, "Claude Haiku", MINUTES["review"])
             plan[-1]["note"] = f"up to {rv['retry']['max']} redraws"
-        front_ref, front_px = "$step:img_1", 1024 / max(image_size(r["prompt"]))
-        views_in = {"front": "$step:img_1"}
+        front_ref, front_px = front, 1024 / max(image_size(r["prompt"]))
+        views_in = {"front": front}
     else:
         front_ref, front_px = "$in:front.png", 1.0
         views_in = {role: f"$in:{role}.png" for role in by_role if role in ("front", "back", "left", "right")}
@@ -320,7 +334,9 @@ def build(recipe, refs=None, now=None):
         if eng == "pixal3d":
             src = front_ref if mode == "prompt" else "$in:front_1024.png"
             st, mesh_glob = pixal_step(r, asset, src, front_px)
-            add(st, lane, MINUTES["pixal3d"])
+            if r["gpu"] in ("auto", "m4000"):   # Pixal3D runs on the T1000 (it failed on the M4000)
+                st["gpu"] = "t1000"
+            add(st, "T1000", MINUTES["pixal3d"])
         elif eng.startswith("tripo"):
             tex_own = r["texture"]["engine"] == "model"
             cost = (100 if eng == "tripo-p2" else (50 if tex_own else 40)) + (10 if tex_own else 0)
@@ -364,7 +380,7 @@ def build(recipe, refs=None, now=None):
                     x for x, on in (("colour", textured and abs(float(f["gamma"]) - 1) > 1e-3), ("loose bits", f["clean"]),
                                     ("face mirror", textured and f["mirror_face"]), (f"game model {int(f['tris']) // 1000}k" + (" quads" if f.get("quad") else ""), f["game"])) if on),
                      "kind": "script", "script": "finish_character.py", "args": finish_args(r, glb, name, textured)}, "Darrowmere CPU", MINUTES["finish"])
-    for s in imgs[1:]:
+    for s in ([] if picked else imgs[1:]):
         add(s, lane, MINUTES["krea"])
     inputs = {}
     if mode == "upload":

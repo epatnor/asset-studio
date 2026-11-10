@@ -202,6 +202,17 @@ def free_other_lanes():
 
 
 def comfy_step(o, s):
+    # A step may need a given card ("gpu" on the step, e.g. Pixal3D on the T1000: it failed on the M4000). It then queues
+    # in that card's ComfyUI while the rest of the order stays on its own lane.
+    need = s.get("gpu")
+    if need in LANES and LANES[need] != comfy_url():
+        own = comfy_url()
+        _lane.url = LANES[need]
+        o.set(s["key"], note=f"on the {need.upper()} (this step needs it)")
+        try:
+            return comfy_step(o, {k: v for k, v in s.items() if k != "gpu"})
+        finally:
+            _lane.url = own
     if not SERIAL:
         return _comfy_step(o, s)
     noted = False
@@ -839,7 +850,7 @@ def render_previews(o, s, files):
     return files + [{"filename": n, "subfolder": glb["subfolder"], "type": "output"} for n in names]
 
 
-SCRIPTS = {"split_sheet.py", "project_views.py", "import_model.py", "finish_character.py"}  # verktyg som får köras som steg, ur /data/runner/tools
+SCRIPTS = {"split_sheet.py", "project_views.py", "import_model.py", "finish_character.py", "pick_reference.py"}  # verktyg som får köras som steg, ur /data/runner/tools
 
 
 def path_for(o, ref):
@@ -910,7 +921,7 @@ def script_step(o, s):
         note = f"projected {len(res.get('views', []))} views · {round(res.get('seen', 0) * 100, 1)} % seen · {round(time.time() - t0)} s"
     else:
         names = res.get("files", [])
-        note = f"{len(names)} files · {round(time.time() - t0)} s"
+        note = (res["note"][:220] + " · " if res.get("note") else f"{len(names)} files · ") + f"{round(time.time() - t0)} s"
     files = [{"filename": n, "subfolder": sub_dir, "type": "output"} for n in names]
     files = render_previews(o, s, files)
     o.set(s["key"], status="done", end=time.time(), outputs=files, files=files, note=note)
@@ -1042,6 +1053,17 @@ def review_step(o, s):
         o.st(target)["attempt"] += 1
         if retry.get("rewrite"):
             rewrite_prompt(o, s, target, v)
+        # "also": steps redone with the target (the other reference images and the head pick), new seeds and the new prompt
+        tt = o.st(target)
+        for k in retry.get("also") or []:
+            ks = next((x for x in o.order["steps"] if x["key"] == k), None)
+            if not ks:
+                continue
+            if ks.get("kind") == "comfy":
+                o.st(k)["attempt"] = o.st(k).get("attempt", 0) + 1
+                if tt.get("prompt") and tt.get("prompt_original"):
+                    o.set(k, prompt=tt["prompt"], prompt_original=tt["prompt_original"])
+            o.set(k, status="planned", job=None)
         o.set(s["key"], status="planned", end=time.time(), note="retrying · " + note, verdict=v, attempt=t["attempt"] + 1)
         o.set(target, status="planned", job=None)
         return target  # kör om från målsteget
