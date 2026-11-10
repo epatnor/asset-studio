@@ -61,6 +61,7 @@
   "fit": [
     {"key": "wrap", "label": "Wrap to the shape", "type": "bool", "default": true, "sub": "pull the game mesh tight to the AI surface", "help": "After the sliders, the exported game mesh is pulled tight against the AI surface (hands, feet and eyes stay); off gives sliders only"},
     {"key": "symmetric", "label": "Symmetric", "type": "bool", "default": true, "sub": "mirror the fit left and right", "help": "Bodies are symmetric: the sliders and the wrap are mirrored"},
+    {"key": "ignore_hair", "label": "Ignore hair", "type": "bool", "default": false, "sub": "the AI shape has hair: scale from the neck", "help": "For an AI shape with hair: the scale comes from the neck instead of the full height, the surface above the brows is not measured, the scalp keeps MPFB's shape and the neck and back are pulled only within 2 cm"},
     {"key": "fine", "label": "Fine passes", "type": "bool", "default": true, "sub": "two finer steps at the end", "help": "Two finer Gauss-Newton steps after the coarse ones (slower, a closer fit)"}
   ],
   "links": {

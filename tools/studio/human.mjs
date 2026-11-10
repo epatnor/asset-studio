@@ -6,7 +6,7 @@
 //                               inpassningar, AI-former att passa in, länkar och en pågående inpassning
 // POST /api/human/build         { recipe } -> { job }: förhandsfigur i build/studio/human/ (ca 4 s)
 // POST /api/human/save          { name, recipe, thumbnail, from } -> { job }: assets/characters/<name>/ + recipe.json
-// POST /api/human/fit           { name, target, sex, age, subdiv, wrap, symmetric, fine } -> { job }: fit_human.py
+// POST /api/human/fit           { name, target, sex, age, subdiv, wrap, symmetric, fine, ignore_hair } -> { job }: fit_human.py
 //                               (minuter); figuren i assets/characters/<name>/, beviset build/human/fit/<name>/overlay.png
 // POST /api/human/upload?name=  GLB i kroppen -> build/human/targets/<name>.glb (en AI-form att passa in)
 // POST /api/human/thumb         { name, thumbnail } -> <name>_thumb.jpg för en sparad figur som saknar miniatyr
@@ -22,7 +22,7 @@ const HUMAN = 'tools/character/human';
 const PREV = 'build/studio/human', KEEP = 24;
 const CHARS = 'assets/characters', FITS = 'build/human/fit', TARGETS = 'build/human/targets';
 // Där AI-formerna (Pixal3D-GLB) brukar hamna: Darrowmeres nedladdningar och figurernas arbetsmappar
-const TARGET_DIRS = [TARGETS, 'build/darrowmere/pixal3d', 'build/characters', 'build/maren/pixal3d'];
+const TARGET_DIRS = [TARGETS, 'build/darrowmere/pixal3d', 'build/characters', 'build/maren/pixal3d', 'build/body/build/pixal3d'];
 const NAME = /^[a-z0-9][a-z0-9_]{0,47}$/;
 const MACROS = ['sex', 'age', 'muscle', 'weight', 'height', 'proportions', 'bust_size', 'bust_firmness', 'mons']; // mons: human_blender.py, 0..1
 
@@ -125,19 +125,19 @@ export function createHumanApi({ ROOT, onHost }) {
     }).id };
   }
 
-  async function fit({ name, target, sex = 0, age = 25, subdiv = 1, wrap = true, symmetric = true, fine = true }) {
+  async function fit({ name, target, sex = 0, age = 25, subdiv = 1, wrap = true, symmetric = true, fine = true, ignore_hair = false }) {
     name = String(name ?? '').trim().toLowerCase();
     if (!NAME.test(name)) return { error: 'the name may only have a–z, 0–9 and _ (at most 48 characters)' };
     if (taken(name)) return { error: `${name} already exists; models are never overwritten, pick a new name`, exists: true };
     const t = typeof target === 'string' && inside(target);
     if (!t || !/\.glb$/i.test(t) || !existsSync(t)) return { error: 'pick an AI shape (a GLB in the project) to fit' };
     if (fitting) return { error: 'a fit is already running; wait for it to finish', job: fitting };
-    const r = { name, target: rel(t), sex: Math.min(1, Math.max(0, Number(sex) || 0)), age: Math.max(18, Number(age) || 25), subdiv: Number(subdiv) ? 1 : 0, wrap: !!wrap, symmetric: !!symmetric, fine: !!fine };
+    const r = { name, target: rel(t), sex: Math.min(1, Math.max(0, Number(sex) || 0)), age: Math.max(18, Number(age) || 25), subdiv: Number(subdiv) ? 1 : 0, wrap: !!wrap, symmetric: !!symmetric, fine: !!fine, ignore_hair: !!ignore_hair };
     const j = job('fit', name, async () => {
       const res = await run(`${HUMAN}/fit_human.py`, r);
       if (res.glb) {
         const { wrap: w, ...rest } = res.recipe ?? {};
-        await writeFile(path.join(ROOT, CHARS, name, 'recipe.json'), JSON.stringify({ ...rest, wrap: w ? rel(w) : undefined, name, from: 'fit', target: r.target, overlay: res.overlay, saved: new Date().toISOString(), fit: { start: res.start, end: res.end, wrap: res.wrap } }, null, 1) + '\n').catch(() => {});
+        await writeFile(path.join(ROOT, CHARS, name, 'recipe.json'), JSON.stringify({ ...rest, wrap: w ? rel(w) : undefined, name, from: 'fit', target: r.target, overlay: res.overlay, ai_transform: res.ai_transform, ignore_hair: r.ignore_hair, saved: new Date().toISOString(), fit: { start: res.start, end: res.end, wrap: res.wrap?.end } }, null, 1) + '\n').catch(() => {});
       }
       return withUrls({ ...res, overlay: res.overlay ? `/${res.overlay}` : null, target: r.target });
     });
@@ -169,7 +169,7 @@ export function createHumanApi({ ROOT, onHost }) {
       for (const e of await readdir(abs, { withFileTypes: true })) {
         const p = `${d}/${e.name}`;
         if (e.isDirectory() && depth > 0) await walk(p, depth - 1);
-        else if (e.isFile() && /\.glb$/i.test(e.name) && (d === TARGETS || /pixal/i.test(e.name))) {
+        else if (e.isFile() && /\.glb$/i.test(e.name) && (d === TARGETS || /pixal/i.test(p))) {
           const st = await stat(path.join(ROOT, p));
           found.push({ path: p, name: e.name.replace(/\.glb$/i, ''), size: st.size, t: st.mtimeMs });
         }

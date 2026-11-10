@@ -21,7 +21,8 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   let extra = {};                           // receptets nycklar utan spak här (elbow_flex …): följer med vid ombygget
   let locked = null;                        // en sparad figur utan recept: visas som den byggdes, reglagen är låsta
   let selGen = 0, showToken = 0;            // det senast valda vinner, även när ett äldre bygge blir klart efteråt
-  const META = ['name', 'from', 'saved', 'checks', 'tris', 'height_m', 'target', 'overlay', 'fit', 'wrap', 'sliders', 'out_dir', 'label', 'help'];
+  const META = ['name', 'from', 'saved', 'checks', 'tris', 'height_m', 'target', 'overlay', 'fit', 'wrap', 'sliders', 'out_dir', 'label', 'help', 'ai_transform', 'ignore_hair', 'note', 'from_fit'];
+  let fitXf = null;                         // inpassningens skala för AI-formen ({ target, k }): vyn Over följer den exakt
   const view3 = { clay: true, wire: false, rest: false, ai: 'off' };
 
   // --- Renderaren: WebGL räcker för en figur ---
@@ -45,6 +46,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -2, right: 2, top: 2.4, bottom: -0.2, near: 0.5, far: 12 });
   key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.012; // dubbelsidig lera kastar skugga med båda sidorna: utan den blir det strimmor (acne)
   scene.add(key);
   const rim = new THREE.DirectionalLight('#cfe0ff', 0.9);
   rim.position.set(-3, 2.5, -3);
@@ -66,7 +68,9 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // --- Figuren och AI-formen ---
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
-  const clay = new THREE.MeshStandardMaterial({ color: '#c9a58e', roughness: 0.62, metalness: 0 });
+  // Leran är dubbelsidig som kroppens eget material: munnen är en springa i nätet, och med bara framsidan syntes
+  // bakgrunden genom den och ljuset läckte genom den i skuggkartan (ljusa strimmor på hakan och halsen)
+  const clay = new THREE.MeshStandardMaterial({ color: '#c9a58e', roughness: 0.62, metalness: 0, side: THREE.DoubleSide });
   const ghost = new THREE.MeshStandardMaterial({ color: '#d94b4b', roughness: 0.7, transparent: true, opacity: 0.38, depthWrite: false });
   let figure = null, figureUrl = null, figureStats = null, aiShape = null, aiPath = null;
   const dispose = (o) => o?.traverse((m) => { if (m.isMesh) { m.geometry.dispose(); for (const x of [m.material].flat()) if (x !== clay && x !== ghost) x.dispose?.(); } });
@@ -74,7 +78,10 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     figure?.traverse((o) => {
       if (!o.isMesh) return;
       o.userData.own ??= o.material;
-      o.material = view3.clay && !/eye/i.test(o.name + (o.userData.own?.name ?? '')) ? clay : o.userData.own;
+      // Ögonen (MPFB:s low-poly, materialet Human.low-poly) behåller sin egen textur, ogenomskinlig
+      const eye = /eye|low-poly/i.test(`${o.name} ${o.userData.own?.name ?? ''}`);
+      if (eye && o.userData.own) Object.assign(o.userData.own, { transparent: false, depthWrite: true });
+      o.material = view3.clay && !eye ? clay : o.userData.own;
       for (const m of [o.material].flat()) m.wireframe = view3.wire;
       o.castShadow = true; o.receiveShadow = true;
     });
@@ -120,7 +127,9 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     inner.position.set(0, 0, 0); inner.scale.setScalar(1); aiShape.position.set(0, 0, 0); aiShape.scale.setScalar(1);
     aiShape.updateMatrixWorld(true);
     const b = new THREE.Box3().setFromObject(inner), s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-    const k = (figureStats?.height ?? 1.7) / Math.max(0.01, s.y);
+    // Inpassningens egen skala (ai_transform: base_scale × scale, efter halsen med ignore_hair) när den finns för den här
+    // AI-formen; annars hela höjden, som inpassningen utan ignore_hair
+    const k = fitXf && fitXf.target === aiPath ? fitXf.k : (figureStats?.height ?? 1.7) / Math.max(0.01, s.y);
     inner.position.set(-c.x, -b.min.y, -c.z);
     aiShape.scale.setScalar(k);
     // Som inpassningen (fit_blender.py, place_target): kroppen under axlarna (nedre 75 %) centreras på figurens, i sidled
@@ -146,6 +155,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     const low = pts.filter((q) => q[1] < cut), med = (a) => { a.sort((x, y) => x - y); return a[a.length >> 1]; };
     return new THREE.Vector3(med(low.map((q) => q[0])), 0, med(low.map((q) => q[2])));
   }
+  const xfOf = (target, t) => (target && t?.scale ? { target, k: (t.base_scale ?? 1) * t.scale, from: t.scale_from ?? 'height' } : null);
   const aiOffset = () => (figure && aiShape ? (() => { const a = lowMedian(figure), b = lowMedian(aiShape); return { dx_mm: Math.round(1000 * (b.x - a.x)), dz_mm: Math.round(1000 * (b.z - a.z)) }; })() : null);
 
   // --- Receptet: makrona överst, reglagen under sliders, posen och nätet ---
@@ -299,6 +309,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     fitJob = null;
     if (!res.glb) { lamp('bad', 'The fit failed'); fitMsg.textContent = `The fit failed: ${res.error ?? 'no model'}`; return; }
     lastFit = res;
+    fitXf = xfOf(res.target, res.ai_transform);
     overlayUrl = res.overlay;
     overlayBtn.disabled = !overlayUrl;
     load(res.recipe ?? {}, { wrap: res.recipe?.wrap ?? null });
@@ -373,7 +384,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     sec('Ready-made', info.templates.map((t) => {
       const f = tile(t.id, t.label, t.help, t.id);
       f.title = t.help;
-      f.onclick = () => { load(t.recipe); from = t.id; mark(t.id); rebuild(); };
+      f.onclick = () => { load(t.recipe); fitXf = null; from = t.id; mark(t.id); rebuild(); };
       return f;
     }));
     sec('Saved', info.saved.map((s) => {
@@ -386,6 +397,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
         mark(from);
         overlayUrl = s.overlay;
         overlayBtn.disabled = !overlayUrl;
+        fitXf = xfOf(s.recipe?.target, s.recipe?.ai_transform);
         if (s.recipe?.target) { if (![...targetSel.options].some((o) => o.value === s.recipe.target)) { info.targets.unshift({ path: s.recipe.target, name: s.recipe.target.split('/').pop().replace(/\.glb$/i, ''), size: 0 }); fillTargets(); } targetSel.value = s.recipe.target; suggest(); }
         lastBuild = null;
         await showFigure(s);
@@ -490,7 +502,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
-    get building() { return building || again; }, get locked() { return locked; }, aiOffset, get aiShape() { return aiShape; }, get from() { return from; }, info,
+    get building() { return building || again; }, get locked() { return locked; }, aiOffset, get fitXf() { return fitXf; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));

@@ -144,11 +144,13 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   `tools/character/human/params.json`: makrona överst i receptet, reglagen med `"in": "sliders"` under `sliders`; ett
   reglage som finns i `human_sliders.json` men saknas i `params.json` läggs till av servern med sin etikett (`added`).
   Varje reglage bygger om figuren när man släpper det (make_human.py, ca 4 s; ändringar under bygget tas efteråt).
-- **View:** lera (ett neutralt material), trådnät, viloposen (den riggade figuren i stället för poskopian) och AI-formen
-  bredvid eller som ett rött spöke över figuren, skalad till figurens längd (bara för ögat; mätningen gör fit_human.py).
+- **View:** lera (ett neutralt, dubbelsidigt material: munnen är en springa i nätet; ögonen behåller sin textur), trådnät,
+  viloposen (den riggade figuren i stället för poskopian) och AI-formen bredvid eller som ett rött spöke över figuren.
+  AI-formen får inpassningens egen skala (`ai_transform`: `base_scale × scale`, sparad i figurens `recipe.json`), annars
+  figurens längd, och centreras som i inpassningen: medianen av kroppen under axlarna, i sidled och djupled.
 - **Fit an AI shape:** en Pixal3D-GLB ur projektet (namn med pixal3d under `build/darrowmere/pixal3d`, `build/characters`,
-  `build/maren/pixal3d`, eller uppladdad med *Add a GLB…* till `build/human/targets/`), ett namn och fit_human.py:s val
-  (wrap, symmetri, fina steg). Kön och åldern tas från Body-kortet. Jobbet tar några minuter och visar en klocka; sedan
+  `build/maren/pixal3d`, `build/body/build/pixal3d`, eller uppladdad med *Add a GLB…* till `build/human/targets/`), ett namn och
+  fit_human.py:s val (wrap, symmetri, fina steg, *Ignore hair* för en AI-form med hår: skalan efter halsen, hjässan följer MPFB). Kön och åldern tas från Body-kortet. Jobbet tar några minuter och visar en klocka; sedan
   laddas receptet och wrapen in i reglagen, figuren visas och overlay-bilden öppnas (*Show the overlay*). Siffrorna:
   reglagens medelavstånd före och efter, och wrapens avstånd från AI-ytan.
 - **More tools:** *Open the Body Editor* (servern kör `tools/character/body/editor/launch.sh` på värden: editorns server
@@ -164,7 +166,7 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   figur valts visas inte.
 - **Footern:** figurens längd, bredd och djup i meter, trianglar, kontrollerna (fötterna på marken, symmetri, budget,
   rigg, vuxen) och byggtiden.
-- **Prov:** `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar
+- **Prov:** `creator_hair.json` (Ignore hair på body-gens kvinna med hästsvans: skalan efter halsen, vyn följer inpassningens skala), `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar
   bort `assets/characters/ui_test_creator` efteråt) och `creator_fit.json` (en riktig inpassning av sysslingens Pixal3D-form,
   några minuter). Båda mot `studio-test` (port 8771).
 

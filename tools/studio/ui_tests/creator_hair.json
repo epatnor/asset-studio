@@ -1,0 +1,23 @@
+{
+  "_doc": "UI-test av Ignore hair i The Character Creator (tools/studio/ui_test.py): body-gens bikinikvinna med uppstående hästsvans passas in med switchen Ignore hair (skalan efter halsen), och vyn Over visar AI-formen med inpassningens egen skala (base_scale × scale). Några minuter. Skriver assets/characters/ui_test_hair/ och build/human/fit/ui_test_hair/; ta bort dem efteråt. Kör mot studio-test: url med port 8771.",
+  "name": "creator_hair",
+  "url": "http://localhost:8771/studio/#figurer",
+  "size": [1600, 1000],
+  "steps": [
+    {"until": "window.__studio?.human?.lastBuild && !__studio.human.building", "timeout": 90000},
+    {"expect": "[...document.querySelectorAll('#huside select option')].some((o) => o.value === 'build/body/build/pixal3d/body_female_swim.glb')", "label": "body-gen's Pixal3D shapes are in the AI shape list"},
+    {"eval": "(() => { const s = document.querySelector('#huside select'); s.value = 'build/body/build/pixal3d/body_female_swim.glb'; s.dispatchEvent(new Event('change')); document.querySelector('#huside input[type=text]').value = 'ui_test_hair'; const row = [...document.querySelectorAll('#huside .row')].find((r) => r.textContent.includes('Ignore hair')); const box = row.querySelector('input[type=checkbox]'); box.checked = true; box.dispatchEvent(new Event('change')); return box.checked; })()"},
+    {"click": "Run the fit", "in": "#huside button"},
+    {"until": "/Fitting ui_test_hair/.test(document.querySelector('#huside').textContent)", "timeout": 20000},
+    {"until": "!!__studio.human.lastFit || /The fit failed|Not started/.test(document.querySelector('#huside').textContent)", "timeout": 2400000},
+    {"eval": "({ ai: __studio.human.lastFit?.ai_transform, start: __studio.human.lastFit?.start?.mean_mm, end: __studio.human.lastFit?.end?.mean_mm, wrap: __studio.human.lastFit?.wrap?.end?.from_ai_mean_mm, ms: __studio.human.lastFit?.ms, msg: [...document.querySelectorAll('#huside .note')].map((n) => n.textContent).filter(Boolean) })"},
+    {"expect": "__studio.human.lastFit?.ai_transform?.scale_from === 'neck'", "label": "Ignore hair reaches the fit: the scale comes from the neck"},
+    {"key": "Escape"},
+    {"eval": "__ui.click('Over', '#huside .seg button')"},
+    {"until": "__studio.human.aiShape?.visible === true", "timeout": 90000},
+    {"wait": 1500},
+    {"eval": "({ view: __studio.human.aiShape.scale.x, fit: __studio.human.fitXf, offset: __studio.human.aiOffset() })"},
+    {"expect": "Math.abs(__studio.human.aiShape.scale.x - __studio.human.fitXf.k) < 1e-6 && __studio.human.fitXf.from === 'neck'", "label": "Over uses the fit's own scale (base_scale × scale)"},
+    {"shot": "1_hair_over", "minLight": 30}
+  ]
+}
