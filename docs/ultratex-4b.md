@@ -308,3 +308,37 @@ som andra körning på samma data.
 Den betalda träningen ska synas i Darrowmere-panelen som en beställning med uppdraget `ultratex-4b`. Steget startar maskinen,
 läser loggen, hämtar checkpoints och stänger av maskinen när den är klar eller om den står still. Första gången kan det göras
 med `tools/pipeline.py` som pipeline-kort, innan runnern får ett eget steg för molnträning.
+
+## Pixal3D som start och ton (2026-11-10, mannen)
+
+Problemet var att UltraTex ritar varje vy från brus, så vyerna placerar detaljer olika: ögonbrynet hoppar när man vrider
+modellen, och ryggen blev en ton ljusare än axlarna. Lösningen är två egna noder i
+`tools/darrowmere/comfy_nodes/azshara_ultratex/`, utlagda i `/data/ComfyUI/custom_nodes/` på Darrowmere:
+
+- **UltraTex Init From Mesh Colours:** renderar Pixal3D:s egen färgade modell från UltraTex:s sex kameror som
+  `init_views`. UV-öarnas kanter fylls med närmaste färg (vitt där gav ljusa streck längs sömmarna). Färgerna lyfts med
+  exponenten 1,7 före kodningen, eftersom UltraTex mörkar startbilden (63,7 blev 29,7 utan lyft; hela sRGB-kurvan gav
+  74,2).
+- **UltraTex Match View Tone:** varje målad vy får sin grova ton (suddad 24 px vid 1024) från Pixal3D-renderingen från
+  samma kamera och behåller sina detaljer.
+
+Mätning: huvudet varvet runt i 36 bilder. Flödet mellan bilderna tas från Pixal3D-renderingen, och det som rör sig
+utöver Pixal3D är målning som hoppar mellan vyerna ("överskott", gråskalesteg). Skärpan är Laplace-variansen på
+ansiktsbilderna.
+
+| Variant | Överskott (medel) | Värsta | Skärpa | Albedo (medel) |
+|---|---|---|---|---|
+| Pixal3D:s egen målning | 0 | 0 | 174 | 63,7 |
+| Gamla (UltraTex från brus, ring) | 1,08 | 2,46 | 208 | 52,8 |
+| v1 Pixal3D-start 0,6, ring | 1,84 | 2,36 | – | mörk, röd, vita sömmar |
+| v1 Pixal3D-start 0,6, utan ring | 0,95 | 1,53 | – | 29,7 |
+| v2 sömmar och färg rättade, 0,6, run1 8000 | 0,43 | 1,16 | 152 | 74,2 (blek) |
+| v2, run3b 13000 / 13000 EMA | 0,43 / 0,39 | 1,17 / 1,11 | 151 / 152 | |
+| v3 + tonmatchning, 0,75, run1 8000 | 0,47 | 1,38 | 169 | 63,8 |
+| v3, 0,75, run3b 13000 EMA | 0,37 | 1,14 | 168 | |
+| **v3, 0,85, run3b 13000 EMA** | **0,21** | **0,66** | 168 | |
+
+Ringen (extra kameror från brus) ökar hoppen, så v2 och v3 körs utan den. Vid `denoise` 0,6 går det inte att skilja
+LoRA-stegen åt, eftersom startbilden bestämmer. Bäst hittills är v3 med 0,85 och run3b 13000 EMA, som också har det
+tydligaste ansiktet. Ytan är fortfarande mjukare än den gamla (skärpa 168 mot 208). Inte inkopplad i figurbeställningen
+än.
