@@ -123,9 +123,30 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     const k = (figureStats?.height ?? 1.7) / Math.max(0.01, s.y);
     inner.position.set(-c.x, -b.min.y, -c.z);
     aiShape.scale.setScalar(k);
-    aiShape.position.x = view3.ai === 'beside' ? Math.max(0.75, (figureStats?.width ?? 0.5) * 0.5 + s.x * k * 0.5 + 0.15) : 0;
+    // Som inpassningen (fit_blender.py, place_target): kroppen under axlarna (nedre 75 %) centreras på figurens, i sidled
+    // och djupled, så att hår, knut och armar inte flyttar formen
+    aiShape.updateMatrixWorld(true);
+    const mf = figure ? lowMedian(figure) : new THREE.Vector3(), ma = lowMedian(aiShape);
+    aiShape.position.set(mf.x - ma.x, 0, mf.z - ma.z);
+    if (view3.ai === 'beside') aiShape.position.x += Math.max(0.75, (figureStats?.width ?? 0.5) * 0.5 + s.x * k * 0.5 + 0.15);
     inner.traverse((o) => { if (o.isMesh) { o.material = view3.ai === 'overlay' ? ghost : view3.clay ? clay : o.userData.own; o.renderOrder = view3.ai === 'overlay' ? 2 : 0; } });
   }
+
+  // Medianen (x, z) av hörnen i nedre 75 % av höjden, i världen; högst ca 30 000 hörn räknas
+  function lowMedian(root) {
+    const pts = [], v = new THREE.Vector3();
+    root.updateMatrixWorld(true);
+    root.traverse((o) => {
+      if (!o.isMesh || !o.visible) return;
+      const p = o.geometry.attributes.position, step = Math.max(1, Math.floor(p.count / 30000));
+      for (let i = 0; i < p.count; i += step) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).toArray());
+    });
+    if (!pts.length) return new THREE.Vector3();
+    const ys = pts.map((q) => q[1]), lo = Math.min(...ys), cut = lo + 0.75 * (Math.max(...ys) - lo);
+    const low = pts.filter((q) => q[1] < cut), med = (a) => { a.sort((x, y) => x - y); return a[a.length >> 1]; };
+    return new THREE.Vector3(med(low.map((q) => q[0])), 0, med(low.map((q) => q[2])));
+  }
+  const aiOffset = () => (figure && aiShape ? (() => { const a = lowMedian(figure), b = lowMedian(aiShape); return { dx_mm: Math.round(1000 * (b.x - a.x)), dz_mm: Math.round(1000 * (b.z - a.z)) }; })() : null);
 
   // --- Receptet: makrona överst, reglagen under sliders, posen och nätet ---
   function recipe() {
@@ -469,7 +490,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
-    get building() { return building || again; }, get locked() { return locked; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
+    get building() { return building || again; }, get locked() { return locked; }, aiOffset, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));

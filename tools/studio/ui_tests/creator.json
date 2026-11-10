@@ -132,8 +132,15 @@
       "wait": 1500
     },
     {
-      "expect": "__studio.human.aiShape.visible && __studio.human.aiShape.position.x === 0",
+      "expect": "__studio.human.aiShape.visible === true",
       "label": "the AI shape loads over the figure"
+    },
+    {
+      "eval": "__studio.human.aiOffset()"
+    },
+    {
+      "expect": "(() => { const o = __studio.human.aiOffset(); return Math.abs(o.dx_mm) <= 15 && Math.abs(o.dz_mm) <= 15; })()",
+      "label": "Over puts the AI shape's body on the figure's, sideways and in depth (within 15 mm)"
     },
     {
       "shot": "2_fit_overlay",
