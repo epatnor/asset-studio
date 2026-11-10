@@ -1,9 +1,9 @@
 """Väljer vilken ComfyUI verktygen skickar jobb till.
 
-Målen står i tools/comfy.json. Utan inställning provas de i ordning ("order") och det första som svarar
-används: Darrowmere som standard, annars laptopens egen ComfyUI. Asset Studios jobbknapp sparar ett val i
-build/studio/jobs.json ({"target": "local"}), som då provas först (så att RTX 4070 kan arbeta samtidigt som
-Darrowmere). COMFY_TARGET=darrowmere (eller local) väljer bara det målet, COMFY_URL=http://... en exakt adress.
+Målen står i tools/comfy.json. Valet görs per jobb (varje verktygskörning), när jobbet startar: alla mål som svarar
+tillfrågas om sin kö (/queue, körs + väntar), och det med minst att göra tar jobbet; vid lika vinner ordningen i "order"
+(Darrowmere först). Så arbetar laptopens RTX 4070 och Darrowmeres T1000 samtidigt när det finns flera jobb.
+COMFY_TARGET=darrowmere (eller local) väljer bara det målet, COMFY_URL=http://... en exakt adress.
 
 Verktygen körs med python3 -I, så de lägger själva till tools/ i sys.path innan de importerar modulen.
 """
@@ -13,7 +13,6 @@ import urllib.request
 from pathlib import Path
 
 CONF = Path(__file__).with_name("comfy.json")
-CHOICE = Path(__file__).resolve().parents[1] / "build/studio/jobs.json"   # studions val, per dator
 _cache: dict[str, str | None] = {}
 
 
@@ -33,20 +32,25 @@ def targets() -> list[tuple[str, str]]:
     conf = json.loads(CONF.read_text())
     want = os.environ.get("COMFY_TARGET")
     names = [want] if want else list(conf["order"])
-    if not want:
-        try:
-            first = json.loads(CHOICE.read_text()).get("target")
-        except Exception:
-            first = None
-        if first in conf["targets"]:
-            names = [first] + [n for n in names if n != first]
     return [(n, conf["targets"][n].rstrip("/")) for n in names if n in conf["targets"]]
 
 
+def queue_length(url: str) -> int | None:
+    """Jobb som körs eller väntar i en ComfyUI, eller None om den inte svarar."""
+    timeout = 1 if "127.0.0.1" in url or "localhost" in url else 3
+    try:
+        q = json.loads(urllib.request.urlopen(f"{url}/queue", timeout=timeout).read())
+        return len(q.get("queue_running", [])) + len(q.get("queue_pending", []))
+    except Exception:
+        return None
+
+
 def comfy_url() -> str | None:
-    """Adressen till den första ComfyUI som svarar, eller None om ingen gör det."""
+    """Den ComfyUI som har minst att göra just nu (vid lika: ordningen i comfy.json), eller None om ingen svarar.
+    Väljs en gång per jobb (process)."""
     if "url" not in _cache:
-        _cache["url"] = next((url for _, url in targets() if _up(url)), None)
+        free = [(n, i, url) for i, (_, url) in enumerate(targets()) if (n := queue_length(url)) is not None]
+        _cache["url"] = min(free)[2] if free else None
     return _cache["url"]
 
 

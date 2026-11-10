@@ -168,9 +168,9 @@ Det mesta i fas 1 finns redan: generatorerna, visningens ljus och shader, skärm
 
 ## Var jobben körs (2026-11-10)
 
-Studions ComfyUI-jobb (texturverkstaden, Krea-material, byggnadernas texturer) körs som standard på Darrowmere. Knappen
-till vänster om grafikkortet i headern växlar till **This PC**, laptopens egen ComfyUI (RTX 4070), så att den kan arbeta
-samtidigt som Darrowmeres T1000. Valet sparas per dator i `build/studio/jobs.json` (servern: `/api/jobs`) och läses av
-`tools/comfy_target.py`, som provar det valda målet först och faller tillbaka på nästa som svarar. Svarar inte det valda
-målet stryks namnet över i knappen. Laptopens ComfyUI är ingen tjänst; den startas för hand (distrobox `comfyui`).
-Figurbeställningarna går alltid genom runnern på Darrowmere.
+Studions ComfyUI-jobb (texturverkstaden, Krea-material, byggnadernas texturer) fördelas per jobb: när ett verktyg startar
+frågar `tools/comfy_target.py` alla ComfyUI i `tools/comfy.json` om deras kö och skickar jobbet till den som har minst
+att göra; vid lika går det till Darrowmere. Är laptopens ComfyUI igång arbetar RTX 4070 och Darrowmeres T1000 alltså
+samtidigt när flera jobb startas. Ingen knapp och inget sparat val (en första version med en knapp för hela studion
+togs bort samma dag: valet ska vara per jobb). `COMFY_TARGET` styr ett enskilt jobb. Figurbeställningarna går alltid
+genom runnern på Darrowmere.

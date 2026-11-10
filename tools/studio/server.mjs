@@ -724,26 +724,6 @@ async function gpuTool_() {
 // Stänger provfönstrens Chrome (profilen för prov): först snällt, och lever det kvar efter två sekunder med SIGKILL
 // (Chrome bryr sig ibland inte om SIGTERM strax efter start med en ny profil). Mönstret med [a] matchar inte sig självt.
 const closeTest = () => capture(['sh', '-c', 'pkill -f "[a]sset-studio-test"; sleep 2; pkill -9 -f "[a]sset-studio-test"; true']);
-// Var ComfyUI-jobben körs (tools/comfy.json, tools/comfy_target.py): Darrowmere som standard, eller den här datorn så att
-// RTX 4070 kan arbeta samtidigt som Darrowmeres T1000. Valet sparas per dator i build/studio/jobs.json.
-const JOBS_FILE = path.join(ROOT, 'build/studio/jobs.json');
-async function jobsInfo() {
-  const conf = JSON.parse(await readFile(path.join(ROOT, 'tools/comfy.json'), 'utf8'));
-  let target = conf.order[0];
-  try { const t = JSON.parse(await readFile(JOBS_FILE, 'utf8')).target; if (conf.targets[t]) target = t; } catch {}
-  const up = async (url) => {
-    try { return (await fetch(`${url}/system_stats`, { signal: AbortSignal.timeout(url.includes('127.0.0.1') ? 1000 : 3000) })).ok; } catch { return false; }
-  };
-  const targets = await Promise.all(Object.entries(conf.targets).map(async ([name, url]) => ({ name, url, up: await up(url) })));
-  return { target, default: conf.order[0], targets };
-}
-async function jobsSet(b) {
-  const conf = JSON.parse(await readFile(path.join(ROOT, 'tools/comfy.json'), 'utf8'));
-  if (!conf.targets[b?.target]) return { ok: false, error: 'unknown target' };
-  await mkdir(path.dirname(JOBS_FILE), { recursive: true });
-  await writeFile(JOBS_FILE, JSON.stringify({ target: b.target }) + '\n');
-  return { ok: true, ...(await jobsInfo()) };
-}
 async function gpuList() {
   const tool = await gpuTool_();
   const out = tool ? await capture([tool, 'list']) : null;
@@ -792,8 +772,6 @@ async function gpuLaunch({ id, path: page, test = false, headless = false }) {
 
 async function api(req, res, url) {
   if (url.pathname === '/api/gpus' && req.method === 'GET') return json(res, 200, await gpuList());
-  if (url.pathname === '/api/jobs' && req.method === 'GET') return json(res, 200, await jobsInfo());
-  if (url.pathname === '/api/jobs' && req.method === 'POST') return json(res, 200, await jobsSet(await body(req)));
   if (url.pathname === '/api/gpu/launch' && req.method === 'POST') return json(res, 200, await gpuLaunch(await body(req)));
   if (url.pathname === '/api/gpu/close-test' && req.method === 'POST') {
     // Stänger provfönstrens Chrome (profilen asset-studio-test); mönstret med [a] matchar inte kommandot självt

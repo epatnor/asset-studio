@@ -407,6 +407,8 @@ if job.get("wrap", True):
     sym = bool(job.get("symmetric", True))
     X = P0.copy()
     stages = [(10.0, 0.10), (3.0, 0.06), (1.0, 0.03), (0.3, 0.015), (0.1, 0.008)]
+    if job.get("fine", True):   # finare steg för detaljer (nyckelben, axlar, ansiktets drag), mjukare utjämning
+        stages += [(0.03, 0.005), (0.01, 0.003)]
     wlog = []
     for lam_w, cap in stages:
         for _ in range(2):
