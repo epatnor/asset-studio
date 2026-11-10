@@ -1,0 +1,140 @@
+{
+ "_doc": "Provar quad-verktygen på yvonne_v8: färger och antal, markera, Tris to quads, Split n-gons, spegling och Undo. Sparar inget.",
+ "name": "body_editor_quads",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1000
+ ],
+ "steps": [
+  {
+   "until": "window.editorState && document.getElementById('versions')?.options.length > 0",
+   "timeout": 30000
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "(() => { const select = document.getElementById('versions'); select.value = 'yvonne_v8'; select.dispatchEvent(new Event('change')); document.getElementById('versionLoad').click(); window.st = () => ({status: document.getElementById('status').textContent, kinds: window.editorState.kinds, closed: window.editorState.closed(), noTwin: window.editorState.facesWithoutTwin, points: window.editorState.pointsUsed}); return true; })()"
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "(window.k0 = window.editorState.kinds, window.twin0 = window.editorState.facesWithoutTwin, window.st())"
+  },
+  {
+   "expect": "window.k0.tris > 300 && !window.editorState.topologyShown.tris",
+   "label": "v8 is loaded, colors are off"
+  },
+  {
+   "eval": "(document.getElementById('topology').click(), window.editorState.topologyShown)"
+  },
+  {
+   "expect": "window.editorState.topologyShown.tris && window.editorState.topologyShown.ngons",
+   "label": "Tris and n-gons shows both colors"
+  },
+  {
+   "expect": "/quads/.test(document.getElementById('topologyCounts').textContent)",
+   "label": "the counts are in Show"
+  },
+  {
+   "shot": "1_colors",
+   "minLight": 25
+  },
+  {
+   "click": "Faces",
+   "in": "#tools button"
+  },
+  {
+   "click": "Select tris",
+   "in": "#facePanel button"
+  },
+  {
+   "expect": "window.editorState.selected === window.k0.tris",
+   "label": "Select tris takes them all"
+  },
+  {
+   "click": "Select n-gons",
+   "in": "#facePanel button"
+  },
+  {
+   "expect": "window.editorState.selected === window.k0.ngons",
+   "label": "Select n-gons takes them all"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "click": "Tris to quads",
+   "in": "#facePanel button"
+  },
+  {
+   "wait": 200
+  },
+  {
+   "eval": "window.st()"
+  },
+  {
+   "expect": "window.editorState.kinds.tris < window.k0.tris && window.editorState.kinds.quads > window.k0.quads && window.editorState.closed()",
+   "label": "Tris to quads makes quads and stays closed"
+  },
+  {
+   "expect": "window.editorState.facesWithoutTwin <= window.twin0",
+   "label": "symmetry is not worse"
+  },
+  {
+   "click": "Split n-gons",
+   "in": "#facePanel button"
+  },
+  {
+   "wait": 200
+  },
+  {
+   "eval": "window.st()"
+  },
+  {
+   "expect": "window.editorState.kinds.ngons === 0 && window.editorState.closed()",
+   "label": "Split n-gons leaves none and stays closed"
+  },
+  {
+   "shot": "2_after",
+   "minLight": 25
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 100
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 200
+  },
+  {
+   "expect": "window.editorState.kinds.tris === window.k0.tris && window.editorState.kinds.ngons === window.k0.ngons",
+   "label": "Undo brings it all back"
+  },
+  {
+   "eval": "(document.getElementById('quadBend').value = 90, document.getElementById('quadBend').oninput(), true)"
+  },
+  {
+   "click": "Tris to quads",
+   "in": "#facePanel button"
+  },
+  {
+   "wait": 200
+  },
+  {
+   "eval": "window.st()"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "a wide bend limit stays closed"
+  }
+ ]
+}

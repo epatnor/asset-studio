@@ -1,0 +1,140 @@
+{
+ "_doc": "Provar symmetri på huvudet, på grundnätet och på sparad v4 (se ui_test.json). Sparar inget.",
+ "name": "body_editor_symmetry",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1100
+ ],
+ "steps": [
+  {
+   "until": "window.editorState && document.getElementById('versions')?.options.length > 0",
+   "timeout": 30000
+  },
+  {
+   "wait": 1200
+  },
+  {
+   "eval": "(() => { const select = document.getElementById('versions'); select.value = '__base'; select.dispatchEvent(new Event('change')); return true; })()"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": "Faces",
+   "in": "#tools button"
+  },
+  {
+   "click": "Head",
+   "in": "#facePanel button"
+  },
+  {
+   "click": "Rebuild the other",
+   "in": "label"
+  },
+  {
+   "eval": "({selected: window.editorState.selected, before: window.editorState.headSymmetry(), faces: window.editorState.faces})"
+  },
+  {
+   "expect": "window.editorState.selected > 500",
+   "label": "Head selects the head"
+  },
+  {
+   "click": "From left",
+   "in": "#facePanel button"
+  },
+  {
+   "wait": 300
+  },
+  {
+   "eval": "({status: document.getElementById('status').textContent, faces: window.editorState.faces, after: window.editorState.headSymmetry()})"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh is closed after symmetry"
+  },
+  {
+   "expect": "window.editorState.headSymmetry().share > 0.97",
+   "label": "the head has mirrored points"
+  },
+  {
+   "expect": "window.editorState.operations.includes('symmetry')",
+   "label": "symmetry ran"
+  },
+  {
+   "click": "Front",
+   "in": "#views button"
+  },
+  {
+   "wait": 300
+  },
+  {
+   "shot": "1_head_front",
+   "minLight": 25
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "expect": "window.editorState.closed() && !window.editorState.operations.includes('symmetry')",
+   "label": "undo restores the mesh"
+  },
+  {
+   "eval": "(() => { const select = document.getElementById('versions'); select.value = 'yvonne_robot_v4'; select.dispatchEvent(new Event('change')); return true; })()"
+  },
+  {
+   "wait": 700
+  },
+  {
+   "click": "Head",
+   "in": "#facePanel button"
+  },
+  {
+   "eval": "({selected: window.editorState.selected, faces: window.editorState.faces})"
+  },
+  {
+   "click": "Use this side",
+   "in": "#facePanel button"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.04, 1.52, 0.09); return [[x, y], [x, y]]; })()"
+  },
+  {
+   "wait": 300
+  },
+  {
+   "eval": "({status: document.getElementById('status').textContent, faces: window.editorState.faces, after: window.editorState.headSymmetry()})"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "v4 is closed after symmetry"
+  },
+  {
+   "expect": "window.editorState.headSymmetry().share > 0.9",
+   "label": "v4 has a mirrored head"
+  },
+  {
+   "shot": "2_v4_front",
+   "minLight": 25
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "click": "None",
+   "in": "#facePanel button"
+  },
+  {
+   "drag": "(() => { const a = window.editorState.screenOfBody(0.03, 1.12, 0.13); const b = window.editorState.screenOfBody(0.07, 1.12, 0.11); return [a, b]; })()"
+  },
+  {
+   "eval": "window.editorState.selected"
+  },
+  {
+   "expect": "window.editorState.selected >= 2",
+   "label": "dragging selects several faces"
+  }
+ ]
+}

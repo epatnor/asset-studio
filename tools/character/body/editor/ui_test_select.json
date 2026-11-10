@@ -1,0 +1,238 @@
+{
+ "_doc": "Provar urvalen och penseln i editorn, utan att spara (se ui_test.json).",
+ "name": "body_editor_select",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1000
+ ],
+ "steps": [
+  {
+   "until": "window.editorState && document.getElementById('versions')?.options.length > 0",
+   "timeout": 30000
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "(() => { const select = document.getElementById('versions'); select.value = '__base'; select.dispatchEvent(new Event('change')); return true; })()"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "click": "Point",
+   "in": "#tools button"
+  },
+  {
+   "eval": "(() => { window.p1 = window.editorState.pickPoint(0.10, 0.65, 0.09); window.p2 = window.editorState.pickPoint(0.10, 0.55, 0.05); window.p3 = window.editorState.pickPoint(0.13, 0.30, 0.03); return [window.p1, window.p2, window.p3]; })()"
+  },
+  {
+   "drag": "(() => [[window.p1.x, window.p1.y], [window.p1.x, window.p1.y]])()"
+  },
+  {
+   "expect": "window.editorState.selectedPoints === 1",
+   "label": "a click selects one point"
+  },
+  {
+   "drag": "(() => [[window.p2.x, window.p2.y], [window.p2.x, window.p2.y]])()",
+   "modifiers": [
+    "shift"
+   ]
+  },
+  {
+   "expect": "window.editorState.selectedPoints === 2",
+   "label": "shift-click adds a point"
+  },
+  {
+   "drag": "(() => [[window.p3.x, window.p3.y], [window.p3.x, window.p3.y]])()",
+   "modifiers": [
+    "shift"
+   ]
+  },
+  {
+   "expect": "window.editorState.selectedPoints === 3",
+   "label": "shift-click adds a third point"
+  },
+  {
+   "drag": "(() => [[window.p3.x, window.p3.y], [window.p3.x, window.p3.y]])()",
+   "modifiers": [
+    "ctrl"
+   ]
+  },
+  {
+   "expect": "window.editorState.selectedPoints === 2",
+   "label": "ctrl-click removes a point"
+  },
+  {
+   "drag": "(() => [[window.p1.x, window.p1.y], [window.p1.x + 10, window.p1.y], [window.p1.x + 20, window.p1.y]])()"
+  },
+  {
+   "eval": "({p1: window.editorState.pointAfter(window.p1.v), p2: window.editorState.pointAfter(window.p2.v)})"
+  },
+  {
+   "expect": "window.editorState.pointAfter(window.p1.v).moved > 0.01 && Math.abs(window.editorState.pointAfter(window.p1.v).moved - window.editorState.pointAfter(window.p2.v).moved) < 0.001",
+   "label": "dragging moves all selected points equally"
+  },
+  {
+   "expect": "Math.abs(window.editorState.pointAfter(window.p1.v).moved - window.editorState.pointAfter(window.p1.v).twin_moved) < 0.001",
+   "label": "the twins follow"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "expect": "window.editorState.selectedPoints === 0",
+   "label": "Esc clears the points"
+  },
+  {
+   "eval": "window.editorState.screenOfBody(0.3, 0.7, 0.1)"
+  },
+  {
+   "drag": "(() => { const a = window.editorState.screenOfBody(-0.05, 0.95, 0.1); const b = window.editorState.screenOfBody(0.25, 0.45, 0.1); return [a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], b]; })()",
+   "modifiers": [
+    "shift"
+   ]
+  },
+  {
+   "eval": "window.editorState.selectedPoints"
+  },
+  {
+   "expect": "window.editorState.selectedPoints >= 10",
+   "label": "shift-drag selects points in a box"
+  },
+  {
+   "shot": "1_box",
+   "minLight": 25
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "click": "Brush",
+   "in": "#tools button"
+  },
+  {
+   "eval": "(() => { window.c = window.editorState.pickPoint(0.0, 1.05, 0.13); window.n = window.editorState.pickPoint(0.06, 1.05, 0.12); return [window.c, window.n]; })()"
+  },
+  {
+   "drag": "(() => [[window.c.x, window.c.y], [window.c.x, window.c.y - 8], [window.c.x, window.c.y - 16]])()"
+  },
+  {
+   "eval": "({center: window.editorState.pointAfter(window.c.v), near: window.editorState.pointAfter(window.n.v)})"
+  },
+  {
+   "expect": "window.editorState.pointAfter(window.c.v).moved > 0.01",
+   "label": "the brush moves the point under it"
+  },
+  {
+   "expect": "window.editorState.pointAfter(window.n.v).moved > 0 && window.editorState.pointAfter(window.n.v).moved < window.editorState.pointAfter(window.c.v).moved",
+   "label": "falloff: a point further away moves less"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the brush keeps the mesh closed"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "click": "Faces",
+   "in": "#tools button"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x, y]]; })()",
+   "modifiers": [
+    "shift"
+   ]
+  },
+  {
+   "eval": "window.editorState.selected"
+  },
+  {
+   "expect": "window.editorState.selected >= 8",
+   "label": "shift-click selects the ring"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x, y]]; })()",
+   "modifiers": [
+    "ctrl"
+   ]
+  },
+  {
+   "eval": "window.editorState.selected"
+  },
+  {
+   "expect": "window.editorState.selected >= 4",
+   "label": "ctrl-click selects the column"
+  },
+  {
+   "shot": "2_column",
+   "minLight": 25
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "click": "Edges",
+   "in": "#tools button"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x, y]]; })()"
+  },
+  {
+   "expect": "window.editorState.selectedEdges >= 1",
+   "label": "a click selects an edge"
+  },
+  {
+   "key": "Escape"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x, y]]; })()",
+   "modifiers": [
+    "shift"
+   ]
+  },
+  {
+   "eval": "window.editorState.selectedEdges"
+  },
+  {
+   "expect": "window.editorState.selectedEdges >= 8",
+   "label": "shift-click selects the edge loop"
+  },
+  {
+   "shot": "3_loop",
+   "minLight": 25
+  },
+  {
+   "eval": "(() => { window.before = window.editorState.faces; return window.before; })()"
+  },
+  {
+   "click": "Remove edges",
+   "in": "#edgePanel button"
+  },
+  {
+   "eval": "({before: window.before, after: window.editorState.faces, status: document.getElementById('status').textContent})"
+  },
+  {
+   "expect": "window.editorState.faces < window.before",
+   "label": "removing a loop joins the faces"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh stays closed"
+  },
+  {
+   "shot": "4_removed",
+   "minLight": 25
+  }
+ ]
+}

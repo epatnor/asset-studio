@@ -1,0 +1,68 @@
+{
+ "_doc": "Provar att In / Out utgår från grannarna, också på en intryckt punkt (se ui_test.json). Sparar inget.",
+ "name": "body_editor_outward",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1000
+ ],
+ "steps": [
+  {
+   "until": "window.editorState && document.getElementById('versions')?.options.length > 0",
+   "timeout": 30000
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "window.editorState.normalDisagreements()"
+  },
+  {
+   "eval": "(() => { const select = document.getElementById('versions'); select.value = '__base'; select.dispatchEvent(new Event('change')); return true; })()"
+  },
+  {
+   "wait": 500
+  },
+  {
+   "eval": "window.editorState.normalDisagreements()"
+  },
+  {
+   "click": "Point",
+   "in": "#tools button"
+  },
+  {
+   "click": "In / Out",
+   "in": "#moveModes button"
+  },
+  {
+   "eval": "(() => { window.p = window.editorState.pickPoint(0.08, 0.65, 0.09); window.editorState.remember(window.p.v); return window.p; })()"
+  },
+  {
+   "drag": "(() => [[window.p.x, window.p.y], [window.p.x, window.p.y + 15], [window.p.x, window.p.y + 30], [window.p.x, window.p.y + 45]])()"
+  },
+  {
+   "eval": "(() => { window.dent = window.editorState.distanceFromRemembered(window.p.v); return window.dent; })()"
+  },
+  {
+   "click": "See through",
+   "in": "label"
+  },
+  {
+   "eval": "(() => { window.s = window.editorState.screenOfPoint(window.p.v); return window.s; })()"
+  },
+  {
+   "drag": "(() => [[window.s[0], window.s[1]], [window.s[0], window.s[1] - 15], [window.s[0], window.s[1] - 30], [window.s[0], window.s[1] - 45]])()"
+  },
+  {
+   "eval": "({back: window.editorState.distanceFromRemembered(window.p.v), dent: window.dent})"
+  },
+  {
+   "expect": "window.editorState.distanceFromRemembered(window.p.v) < window.dent * 0.25",
+   "label": "dragging up moves a pressed-in point back out toward the surface"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh stays closed"
+  }
+ ]
+}

@@ -1,0 +1,181 @@
+{
+ "_doc": "Provar editorn i Chrome på RTX-kortet (../azshara-studio/asset-studio/tools/studio/ui_test.py). Editorn måste vara igång på port 8772. Sparningen bygger en ny robot och skriver build/fit/yvonne_edits.json och yvonne_mesh.json.",
+ "name": "body_editor",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1000
+ ],
+ "steps": [
+  {
+   "until": "document.getElementById('status')?.textContent.includes('faces')",
+   "timeout": 30000
+  },
+  {
+   "wait": 800
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh starts closed"
+  },
+  {
+   "eval": "({faces: window.editorState.faces, triangles: window.editorState.triangles, status: document.getElementById('status').textContent})"
+  },
+  {
+   "shot": "1_start",
+   "minLight": 25
+  },
+  {
+   "click": "Faces",
+   "in": "#tools button"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x + 1, y]]; })()"
+  },
+  {
+   "expect": "window.editorState.selected >= 1",
+   "label": "a click selects a face"
+  },
+  {
+   "click": "Ring",
+   "in": "#facePanel button"
+  },
+  {
+   "eval": "({selected: window.editorState.selected})"
+  },
+  {
+   "expect": "window.editorState.selected >= 8",
+   "label": "Ring selects a whole band"
+  },
+  {
+   "shot": "2_ring",
+   "minLight": 25
+  },
+  {
+   "click": "None",
+   "in": "#facePanel button"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.03, 1.12, 0.13); return [[x, y], [x + 1, y]]; })()"
+  },
+  {
+   "click": "Ring",
+   "in": "#facePanel button"
+  },
+  {
+   "click": "Grow row",
+   "in": "#facePanel button"
+  },
+  {
+   "eval": "(() => { window.before = window.editorState.faces; return {selected: window.editorState.selected, faces: window.before}; })()"
+  },
+  {
+   "click": "Halve rows",
+   "in": "#facePanel button"
+  },
+  {
+   "eval": "({before: window.before, after: window.editorState.faces, status: document.getElementById('status').textContent})"
+  },
+  {
+   "expect": "window.editorState.faces < window.before",
+   "label": "Merge rows removes faces"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh is closed after merging"
+  },
+  {
+   "shot": "3_merged",
+   "minLight": 25
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.08, 0.65, 0.08); return [[x, y], [x + 1, y]]; })()"
+  },
+  {
+   "eval": "(() => { window.before = window.editorState.faces; return {selected: window.editorState.selected}; })()"
+  },
+  {
+   "click": "Add row",
+   "in": "#facePanel button"
+  },
+  {
+   "eval": "({before: window.before, after: window.editorState.faces, status: document.getElementById('status').textContent})"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh is closed after a split"
+  },
+  {
+   "click": "Loop cut",
+   "in": "#tools button"
+  },
+  {
+   "eval": "(() => { window.before = window.editorState.faces; return window.before; })()"
+  },
+  {
+   "drag": "(() => { const [x, y] = window.editorState.screenOfBody(0.12, 0.28, 0.0); return [[x, y], [x, y + 1]]; })()"
+  },
+  {
+   "eval": "({before: window.before, after: window.editorState.faces, status: document.getElementById('status').textContent})"
+  },
+  {
+   "expect": "window.editorState.faces > window.before",
+   "label": "A loop cut adds faces"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh is closed after a loop cut"
+  },
+  {
+   "shot": "4_loop",
+   "minLight": 25
+  },
+  {
+   "click": "Draw cut",
+   "in": "#tools button"
+  },
+  {
+   "eval": "(() => { window.before = window.editorState.faces; return window.before; })()"
+  },
+  {
+   "drag": "(() => { const a = window.editorState.screenOfBody(0.04, 1.22, 0.14); const b = window.editorState.screenOfBody(0.10, 1.32, 0.09); const pts = []; for (let i = 0; i <= 20; i++) pts.push([a[0] + (b[0] - a[0]) * i / 20, a[1] + (b[1] - a[1]) * i / 20]); return pts; })()"
+  },
+  {
+   "eval": "({before: window.before, after: window.editorState.faces, status: document.getElementById('status').textContent})"
+  },
+  {
+   "expect": "window.editorState.closed()",
+   "label": "the mesh is closed after a drawn cut"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "eval": "({after_undo: window.editorState.faces})"
+  },
+  {
+   "click": "Save and build",
+   "in": "button"
+  },
+  {
+   "until": "document.getElementById('status').textContent.startsWith('Saved') || document.getElementById('status').textContent.startsWith('Save failed')",
+   "timeout": 60000
+  },
+  {
+   "eval": "document.getElementById('status').textContent"
+  },
+  {
+   "expect": "document.getElementById('status').textContent.startsWith('Saved')",
+   "label": "saved and built"
+  },
+  {
+   "expect": "document.getElementById('status').textContent.includes('closed') && !document.getElementById('status').textContent.includes('NOT closed')",
+   "label": "the built model is closed"
+  },
+  {
+   "shot": "5_saved",
+   "minLight": 25
+  }
+ ]
+}

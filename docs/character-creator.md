@@ -163,3 +163,5 @@ Pixal3D-versionen i Compare. Därefter Maren (kläder som lager) och en man (kö
 
 - **Bygga en gång:** inpassningen och spelupplösningen tar några dagar, lagren är ett eget spår.
 - **Per figur sedan:** några minuter för inpassning och bakning. Pixal3D och UltraTex blir hjälpmedel och inte slutprodukt.
+
+**Body-gen inflyttad (2026-11-10):** mallpassningen med fast topologi finns nu i `tools/character/body/` ([body-generator.md](body-generator.md)). Den sitter tight (sysslingen 0,13 mm mot Pixal3D) där reglagen inte räcker (3–8 cm); nästa steg är samma passning på MPFB-nätet, sparad som shape key ovanpå reglagen.

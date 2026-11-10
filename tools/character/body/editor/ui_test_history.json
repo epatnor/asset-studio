@@ -1,0 +1,243 @@
+{
+ "_doc": "Provar Redo och Undo på referenserna, också blandat med ändringar i nätet. Sparar ingen modell, men skriver referensinställningarna: kör med en kopia av build/editor/refs/yvonne.json och lägg tillbaka den efteråt.",
+ "name": "body_editor_history",
+ "url": "http://127.0.0.1:8772/",
+ "size": [
+  1600,
+  1000
+ ],
+ "steps": [
+  {
+   "until": "window.editorState && document.getElementById('versions')?.options.length > 0 && window.editorState.referenceSettings.front",
+   "timeout": 30000
+  },
+  {
+   "wait": 800
+  },
+  {
+   "eval": "(window.s0 = window.editorState.referenceSettings.front.size, window.o0 = window.editorState.referenceSettings.front.opacity, window.u0 = window.editorState.history.undo, {size: window.s0, opacity: window.o0, history: window.editorState.history})"
+  },
+  {
+   "click": "Front",
+   "in": "#slots button"
+  },
+  {
+   "eval": "(() => { const e = document.getElementById('refSize'); for (const v of [1.1, 1.2, 1.3]) { e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); } e.dispatchEvent(new Event('change', {bubbles: true})); return true; })()"
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6 && window.editorState.history.undo === window.u0 + 1",
+   "label": "a whole slider drag is one change"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - window.s0) < 1e-9 && Math.abs(Number(document.getElementById('refSize').value) - window.s0) < 0.02",
+   "label": "Undo restores the reference size and its slider"
+  },
+  {
+   "click": "Redo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6",
+   "label": "Redo brings it back"
+  },
+  {
+   "eval": "(window.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true, shiftKey: false})), true)"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - window.s0) < 1e-9",
+   "label": "Ctrl+Z undoes it"
+  },
+  {
+   "eval": "(window.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true, shiftKey: true})), true)"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6",
+   "label": "Ctrl+Shift+Z redoes it"
+  },
+  {
+   "eval": "(window.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true, shiftKey: false})), true)"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "eval": "(window.dispatchEvent(new KeyboardEvent('keydown', {key: 'y', ctrlKey: true, shiftKey: false})), true)"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6",
+   "label": "Ctrl+Y redoes it"
+  },
+  {
+   "eval": "(() => { const e = document.getElementById('refOpacity'); for (const v of [35]) { e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); } e.dispatchEvent(new Event('change', {bubbles: true})); return true; })()"
+  },
+  {
+   "expect": "window.editorState.referenceSettings.front.opacity === 35 && window.editorState.referenceSettings.back.opacity === 35",
+   "label": "opacity changes all images"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "window.editorState.referenceSettings.front.opacity === window.o0",
+   "label": "Undo restores opacity"
+  },
+  {
+   "click": "Fit to body",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "eval": "(window.fitted = window.editorState.referenceSettings.front.size, window.fitted)"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6",
+   "label": "Undo restores a Fit to body"
+  },
+  {
+   "click": "Redo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "click": "Point",
+   "in": "#tools button"
+  },
+  {
+   "eval": "(window.p = window.editorState.pickPoint(0.08, 0.65, 0.09), window.t0 = window.editorState.triangles, true)"
+  },
+  {
+   "drag": "(() => [[window.p.x, window.p.y], [window.p.x, window.p.y]])()",
+   "button": "right"
+  },
+  {
+   "wait": 100
+  },
+  {
+   "click": "Select row",
+   "in": "#menu button"
+  },
+  {
+   "wait": 100
+  },
+  {
+   "click": "Merge",
+   "in": "#pointPanel button"
+  },
+  {
+   "wait": 150
+  },
+  {
+   "eval": "(window.t1 = window.editorState.triangles, [window.t0, window.t1])"
+  },
+  {
+   "expect": "window.t1 < window.t0",
+   "label": "a model change"
+  },
+  {
+   "eval": "(() => { const e = document.getElementById('refSize'); for (const v of [1.5]) { e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); } e.dispatchEvent(new Event('change', {bubbles: true})); return true; })()"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 100
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.3) < 1e-6 && window.editorState.triangles === window.t1",
+   "label": "Undo takes the last change, here the reference"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 150
+  },
+  {
+   "expect": "window.editorState.triangles === window.t0",
+   "label": "the next Undo takes the model"
+  },
+  {
+   "click": "Redo",
+   "in": "button"
+  },
+  {
+   "wait": 150
+  },
+  {
+   "expect": "window.editorState.triangles === window.t1",
+   "label": "Redo brings the model back"
+  },
+  {
+   "click": "Redo",
+   "in": "button"
+  },
+  {
+   "wait": 100
+  },
+  {
+   "expect": "Math.abs(window.editorState.referenceSettings.front.size - 1.5) < 1e-6 && window.editorState.history.redo === 0",
+   "label": "Redo goes on to the reference"
+  },
+  {
+   "click": "Undo",
+   "in": "button"
+  },
+  {
+   "wait": 50
+  },
+  {
+   "eval": "(() => { const e = document.getElementById('refSize'); for (const v of [1.7]) { e.value = v; e.dispatchEvent(new Event('input', {bubbles: true})); } e.dispatchEvent(new Event('change', {bubbles: true})); return true; })()"
+  },
+  {
+   "expect": "window.editorState.history.redo === 0",
+   "label": "a new change clears Redo"
+  },
+  {
+   "expect": "document.getElementById('redo').disabled",
+   "label": "the Redo button is off"
+  }
+ ]
+}
