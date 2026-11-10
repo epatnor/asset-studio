@@ -6,6 +6,7 @@
    "stylized": "stylized 3D game character render, hand-painted stylized PBR textures, soft even lighting"
   },
   "outfit": {
+   "bodystocking": "a seamless skin-tight matte grey full-body stocking from the neck down over arms, legs and feet, ending at the wrists, with no seams, edges or straps, like a second skin",
    "underwear": "skin-tight seamless matte grey underwear that follows the body like a second skin",
    "swimsuit": "a high-cut matte one-piece bathing suit"
   }
@@ -29,7 +30,7 @@
    {"id": "prompt.bald", "type": "bool", "default": true, "label": "Bald (hair is a separate layer)", "show_if": {"source.mode": "prompt"}, "help": "Puts bald first in the subject and bans the word hair in prompt rewrites. Krea has no negative prompt: 'no hair' draws hair."},
    {"id": "prompt.no_brows", "type": "bool", "default": true, "label": "No eyebrows or eyelashes", "show_if": {"source.mode": "prompt"}, "help": "The 3D models build lots of geometry for brows and lashes; they go on later as texture. Adds a review criterion and bans the words in rewrites. Krea still tends to draw them."},
    {"id": "prompt.body", "type": "text", "default": "", "label": "Body", "show_if": {"source.mode": "prompt"}, "help": "Optional, e.g. slender legs, narrow hips, fairly full bust."},
-   {"id": "prompt.outfit_preset", "type": "choice", "default": "underwear", "label": "Wearing", "show_if": {"source.mode": "prompt"}, "choices": [["underwear", "Skin-tight underwear (base body)"], ["swimsuit", "One-piece bathing suit"], ["custom", "Custom"]], "help": "Tight matte clothes give clean surfaces and show the body shape; highlights get painted into the texture."},
+   {"id": "prompt.outfit_preset", "type": "choice", "default": "bodystocking", "label": "Wearing", "show_if": {"source.mode": "prompt"}, "choices": [["bodystocking", "Body stocking (base body)"], ["underwear", "Skin-tight underwear"], ["swimsuit", "One-piece bathing suit"], ["custom", "Custom"]], "help": "Tight matte clothes give clean surfaces and show the body shape. Pixal3D builds every edge it sees (sysslingen's underwear became ridges), so base bodies wear a seamless body stocking; underwear goes on later as texture."},
    {"id": "prompt.outfit", "type": "text", "default": "", "label": "Custom outfit", "show_if": {"source.mode": "prompt", "prompt.outfit_preset": "custom"}, "help": "Tight clothes give clean surfaces for the texture. Matte fabric: highlights get painted into the texture."},
    {"id": "prompt.pose", "type": "choice", "default": "t", "label": "Pose", "show_if": {"source.mode": "prompt"}, "choices": [["t", "T-pose (square frame)"], ["a", "A-pose"], ["free", "As written"]], "help": "Symmetric poses make rigging and the face mirror work. T-pose needs a square frame or the hands get cut off."},
    {"id": "prompt.style_preset", "type": "choice", "default": "semi", "label": "Style", "show_if": {"source.mode": "prompt"}, "choices": [["semi", "Semi-realistic (not Pixar or Disney)"], ["stylized", "Stylized, hand-painted"], ["custom", "Custom"]]},
