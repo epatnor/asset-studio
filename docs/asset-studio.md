@@ -156,6 +156,12 @@ i studions vanliga mönster. Formen först; texturen är inte i fokus här.
   för nya referenser och modeller.
 - **Save:** figuren byggs under sitt namn i `assets/characters/<namn>/` (riggad `.glb`, `_pose.glb`, `recipe.json` med
   `from`, miniatyr). Ett namn som redan finns nekas: GLB-filer skrivs aldrig över.
+- **Varje figur är en egen enhet (rättat 2026-11-10):** `make_human.py` skriver `recipe.json` bredvid figuren, och
+  studion bygger om en öppnad figur ur just det receptet: wrapen, posen och nycklar som saknar spak här (`elbow_flex`,
+  `elbow_carry` …) följer med. Felet var att figurer byggda utanför studion saknade recept: de visades som de var, men
+  nästa reglage byggde en vanlig MPFB-figur ur mallens värden, så figuren växlade mellan den wrappade och originalet.
+  En sådan figur öppnas nu låst (reglagen gråa, en rad förklarar), och ett bygge som blir klart efter att en annan
+  figur valts visas inte.
 - **Footern:** figurens längd, bredd och djup i meter, trianglar, kontrollerna (fötterna på marken, symmetri, budget,
   rigg, vuxen) och byggtiden.
 - **Prov:** `tools/studio/ui_tests/creator.json` (mallarna, reglagen, en sparad inpassning, AI-formen, overlay, Save; tar

@@ -74,6 +74,15 @@ export function createHumanApi({ ROOT, onHost }) {
     if (r.arm_forward != null) out.arm_forward = num(r.arm_forward, 0, 45);
     if (r.leg_spread != null) out.leg_spread = num(r.leg_spread, 0, 30);
     if (r.subdiv != null) out.subdiv = Number(r.subdiv) ? 1 : 0;
+    // Nycklar som studion inte har spakar för (t.ex. elbow_flex, elbow_carry ur inpassningen) följer med, så att en
+    // figur byggs om som den var: tal och sant/falskt, råa makron och mål med vikter, och namnen på nät och rigg
+    for (const [k, v] of Object.entries(r)) {
+      if (k in out || ['name', 'out_dir', 'catalog', 'wrap'].includes(k) || !/^[a-z][a-z0-9_]{0,31}$/.test(k)) continue;
+      if ((typeof v === 'number' && Number.isFinite(v)) || typeof v === 'boolean') out[k] = v;
+      else if (['proxy', 'eyes', 'hair', 'rig'].includes(k) && typeof v === 'string' && /^[\w-]{1,48}$/.test(v)) out[k] = v;
+      else if (['macro', 'targets'].includes(k) && v && typeof v === 'object')
+        out[k] = Object.fromEntries(Object.entries(v).filter(([t, x]) => /^[\w/.-]{1,96}$/.test(t) && !t.includes('..') && Number.isFinite(Number(x))).map(([t, x]) => [t, Number(x)]));
+    }
     // Inpassningens wrap (fit_blender.py): bara en wrap.npz under build/human/fit/
     const w = typeof r.wrap === 'string' && inside(r.wrap);
     if (w && rel(w).startsWith(`${FITS}/`) && w.endsWith('/wrap.npz') && existsSync(w)) out.wrap = w;

@@ -9,7 +9,7 @@ Recept: name, makroreglagen (sex, age i år, minst 18, muscle, weight, height, p
 sliders (-1..1, se human_sliders.json), targets (vilket MakeHuman-mål som helst med vikt), macro (råa MPFB-värden),
 proxy (standard female1605 eller male1591 efter sex), subdiv (1: proxyn delas en gång, ca 12 700 trianglar; 0: ca 3 200),
 eyes ("low-poly"), hair (standard inget: håret blir ett eget lager), rig ("game_engine"), pose ("T", "A" eller vinkel).
-Skriver assets/characters/<name>/<name>.glb (riggad) och <name>_pose.glb (bakad pose). Svarar med en rad JSON med checks.
+Skriver assets/characters/<name>/<name>.glb (riggad), <name>_pose.glb (bakad pose) och recipe.json (receptet). Svarar med en rad JSON med checks.
 """
 import json, os, shutil, subprocess, sys
 from pathlib import Path
@@ -43,6 +43,8 @@ def main():
     budget = int(r.get("budget", 14000))
     checks = {"feet_on_ground": abs(res["feet_z"]) < 0.01, "symmetric": res["asym_m"] < 0.002 or bool(r.get("asymmetric")),
               "within_budget": res["tris"] <= budget, "rigged": res["bones"] > 0, "adult": float(r.get("age", 25)) >= 18}
+    # Receptet bredvid figuren: varje figur är en egen enhet som kan byggas om (studions The Character Creator läser det)
+    (out / "recipe.json").write_text(json.dumps({k: v for k, v in r.items() if k != "out_dir"}, indent=1) + "\n")
     print(json.dumps({"ok": all(checks.values()), "checks": checks, **res,
                       "glb": str((out / f"{name}.glb").relative_to(ROOT)), "pose_glb": str((out / f"{name}_pose.glb").relative_to(ROOT))}))
 

@@ -18,6 +18,10 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   const sliderKeys = new Set(params.filter((q) => q.in === 'sliders').map((q) => q.key));
   let from = info.templates[0]?.id ?? null; // mallen eller den sparade figuren man utgår från
   let wrapPath = null, keepWrap = true;     // inpassningens wrap (build/human/fit/<namn>/wrap.npz)
+  let extra = {};                           // receptets nycklar utan spak här (elbow_flex …): följer med vid ombygget
+  let locked = null;                        // en sparad figur utan recept: visas som den byggdes, reglagen är låsta
+  let selGen = 0, showToken = 0;            // det senast valda vinner, även när ett äldre bygge blir klart efteråt
+  const META = ['name', 'from', 'saved', 'checks', 'tris', 'height_m', 'target', 'overlay', 'fit', 'wrap', 'sliders', 'out_dir', 'label', 'help'];
   const view3 = { clay: true, wire: false, rest: false, ai: 'off' };
 
   // --- Renderaren: WebGL räcker för en figur ---
@@ -77,7 +81,9 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   }
   async function showFigure(res) {
     const url = view3.rest ? res.rigged ?? res.url : res.url ?? res.rigged;
+    const token = ++showToken;
     const gltf = await loader.loadAsync(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`);
+    if (token !== showToken) { dispose(gltf.scene); return; } // en nyare figur har valts under laddningen
     if (figure) { scene.remove(figure); dispose(figure); }
     figure = gltf.scene;
     figureUrl = res;
@@ -123,15 +129,19 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // --- Receptet: makrona överst, reglagen under sliders, posen och nätet ---
   function recipe() {
-    const r = { sliders: {} };
+    const r = { ...extra, sliders: {} };
     for (const q of params) {
       if (sliderKeys.has(q.key)) { if (vals[q.key]) r.sliders[q.key] = vals[q.key]; } else r[q.key] = vals[q.key];
     }
     if (wrapPath && keepWrap) r.wrap = wrapPath;
     return r;
   }
-  function load(rec = {}, { wrap = null } = {}) {
+  function load(rec = {}, { wrap = null, lock = null } = {}) {
+    selGen++;
     Object.assign(vals, defaults);
+    const keys = new Set(params.map((q) => q.key));
+    extra = Object.fromEntries(Object.entries(rec ?? {}).filter(([k]) => !keys.has(k) && !META.includes(k)));
+    setLock(lock);
     for (const q of params) {
       const v = sliderKeys.has(q.key) ? rec.sliders?.[q.key] : rec[q.key];
       if (v == null) continue;
@@ -154,14 +164,17 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     }
   }
   async function rebuild() {
+    if (locked) { lamp('bad', `${locked} has no recipe: the sliders are locked`); return; }
     if (building) { again = true; return; }
+    const gen = selGen;
     building = true;
     lamp('busy', 'Building…');
     const t0 = performance.now();
     try {
       const { job, error } = await api('/api/human/build', { recipe: recipe() });
       const res = error ? { error } : await poll(job);
-      if (res.glb) { lastBuild = res; await showFigure(res); lamp(res.ok ? 'ok' : 'bad', res.ok ? `Built in ${((performance.now() - t0) / 1000).toFixed(1)} s` : 'Built, but a check failed'); checksOf(res); }
+      if (gen !== selGen) { /* en annan figur valdes medan bygget pågick: det gamla visas inte (ett nytt bygge följer vid behov) */ }
+      else if (res.glb) { lastBuild = res; await showFigure(res); lamp(res.ok ? 'ok' : 'bad', res.ok ? `Built in ${((performance.now() - t0) / 1000).toFixed(1)} s` : 'Built, but a check failed'); checksOf(res); }
       else { lamp('bad', 'Not built'); note.textContent = res.error ?? 'The build failed'; }
     } finally {
       building = false;
@@ -185,6 +198,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       body.append(wrapRow);
     }
   }
+  const keepCard = (b) => b.parentElement.classList.add('hu-keep');
   const viewBody = cards.card('View', '#7a8a9a', { help: 'How the figure is shown here; nothing of this is saved' });
   const vget = (k) => view3[k], vset = (k, v) => { view3[k] = v; };
   viewBody.append(
@@ -197,6 +211,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // Inpassningen: en AI-form (Pixal3D-GLB) blir reglage och sedan en wrap (fit_human.py)
   const fitBody = cards.card('Fit an AI shape', '#d94b4b', { help: 'Find the sliders that make the base mesh look like an AI shape, then wrap the game mesh tight to it (tools/character/human/fit_human.py). Takes a few minutes' });
+  keepCard(viewBody); keepCard(fitBody);
   const targetSel = el('select');
   const fillTargets = (sel) => {
     targetSel.replaceChildren(...info.targets.map((t) => Object.assign(el('option', null, `${t.name} · ${(t.size / 1e6).toFixed(0)} MB`), { value: t.path, title: t.path })));
@@ -281,6 +296,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
 
   // Verktyg utanför studion: Body Editor och beställningssidan på Darrowmere
   const toolBody = cards.card('More tools', '#5c636d', { help: 'Where the shapes come from and where they are fine-tuned by hand' });
+  keepCard(toolBody);
   const edBtn = el('button', null, info.links.editor.label);
   edBtn.title = `${info.links.editor.help} (${info.links.editor.url})`;
   const toolMsg = el('div', 'note');
@@ -344,7 +360,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
       const f = tile(`saved:${s.name}`, s.name, meta(s.recipe), tpl, s.thumbnail);
       f.title = `${s.rigged}${s.overlay ? ' · has a fit overlay' : ''}`;
       f.onclick = async () => {
-        load(s.recipe ?? {});
+        load(s.recipe ?? {}, { lock: s.recipe ? null : s.name });
         from = `saved:${s.name}`;
         mark(from);
         overlayUrl = s.overlay;
@@ -383,6 +399,17 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
   view.append(ov);
   function showOverlay(url) { if (!url) return; ovImg.src = `${url}?v=${Date.now()}`; ov.hidden = false; }
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && running) ov.hidden = true; });
+
+  // Låset: en figur utan recept.json (byggd utanför studion) kan inte byggas om ur reglagen; den visas som den är
+  const lockMsg = el('div', 'hu-lockmsg');
+  lockMsg.hidden = true;
+  side.prepend(lockMsg);
+  function setLock(name) {
+    locked = name;
+    side.classList.toggle('hu-locked', !!name);
+    lockMsg.hidden = !name;
+    lockMsg.textContent = name ? `${name} has no recipe, so it is shown as it was built and the sliders are locked. Start from a template, or open a figure that has a recipe.` : '';
+  }
 
   // --- Footern ---
   const fFig = el('div', 'block'), fChecks = el('div', 'block'), note = el('div', 'msg');
@@ -442,7 +469,7 @@ export async function createHuman({ api, el, view, side, drawer, footer }) {
     hide() { running = false; renderer.setAnimationLoop(null); },
     scene, camera, controls, renderer, vals, recipe, rebuild, load,
     get figure() { return figure; }, get stats() { return figureStats; }, get lastBuild() { return lastBuild; }, get lastFit() { return lastFit; },
-    get building() { return building || again; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
+    get building() { return building || again; }, get locked() { return locked; }, get aiShape() { return aiShape; }, get from() { return from; }, info,
     async shot(name) {
       renderer.render(scene, camera);
       const blob = await new Promise((r) => renderer.domElement.toBlob(r, 'image/png'));
