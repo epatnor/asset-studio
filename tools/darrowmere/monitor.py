@@ -50,10 +50,17 @@ def brand(data, ctype):
             if f == "wordmark":
                 w, h = _png_size(own)
                 t = t.replace("aspect-ratio: 605 / 120", f"aspect-ratio: {w} / {h}")
-                # A taller picture (a tower above the letters) gets a taller box so the letters stay as large
+                # A taller picture (a tower above the letters): the box keeps Darrowmere's height so the header lays out
+                # the same, and the picture is drawn k times taller from the box's bottom, rising above it
                 k = float(os.environ.get("MONITOR_WORDMARK_SCALE", 1))
                 if k != 1:
-                    t = re.sub(r"((?:\.wordmark|h1) \{[^}]*?height: )(\d+)px",   # h1: the login page's wordmark
+                    t = t.replace(f"aspect-ratio: {w} / {h}", f"aspect-ratio: {round(w * k)} / {h}")
+                    css = (f".wordmark {{ position: relative; background: none !important; -webkit-mask: none !important; mask: none !important; }}\n"
+                           f".wordmark::before {{ content: \"\"; position: absolute; left: 0; right: 0; bottom: 0; height: {k * 100:.0f}%;"
+                           f" background: var(--text); -webkit-mask: url(/static/{f}-{SLUG}.png) left bottom / contain no-repeat;"
+                           f" mask: url(/static/{f}-{SLUG}.png) left bottom / contain no-repeat; }}\n")
+                    t = t.replace("</style>", css + "</style>", 1) if ".wordmark" in t else t
+                    t = re.sub(r"(h1 \{[^}]*?height: )(\d+)px",   # the login page's wordmark has room to grow
                                lambda m: f"{m.group(1)}{round(int(m.group(2)) * k)}px", t)
     t = t.replace("/static/manifest.webmanifest", f"/static/manifest.webmanifest?{SLUG}")
     return t.replace("Darrowmere", NAME).replace("DARROWMERE", NAME.upper()).encode()
