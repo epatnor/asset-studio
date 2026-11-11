@@ -7,8 +7,12 @@ the same prompt and seeds (seed + run, so ComfyUI's cache never skips work). Run
 the page cache into RAM and VRAM); the rest are warm. Meanwhile each machine's RAM, swap and swap traffic are sampled
 over ssh every 2 s. Writes build/bench/comfy_<time>.json and answers with one line of JSON.
 
-Recipe: machines, models ("krea": Krea-2 Turbo 8 steps, "klein": FLUX.2 Klein 4B 4 steps), runs (3), size (1024),
-seed (11), lane (T1000), prompt.
+Recipe: machines, models ("krea": Krea-2 Turbo 8 steps, "klein": FLUX.2 Klein 4B 4 steps, "pixal3d": the character
+order's Pixal3D graph on `image`), runs (3), size (1024), seed (11), lane (T1000), prompt, image (a local reference
+picture, uploaded to every machine).
+Every run also records the time per node (ComfyUI's websocket "executing" events), summed per kind: load (model
+loaders), gpu (samplers, encoders, decoders, the Trellis stages) and cpu (mesh, UV, bake and file nodes), and the T1000's
+mean SM clock while busy, so a GPU-bound part can be compared at the same clock.
 """
 import copy
 import json
@@ -16,6 +20,7 @@ import sys
 import threading
 import time
 import urllib.request
+import urllib.parse
 import uuid
 from pathlib import Path
 
@@ -57,7 +62,85 @@ def klein(prompt, seed, size, prefix):
     }
 
 
-GRAPHS = {"krea": krea, "klein": klein}
+def pixal3d(prompt, seed, size, prefix):
+    g = json.loads((HERE / "character" / "graphs" / "pixal3d.json").read_text())
+    for n in g.values():
+        for k, v in n["inputs"].items():
+            if isinstance(v, str) and v.startswith("$in:"):
+                n["inputs"][k] = UPLOADED["name"]
+            if n["class_type"] == "SaveGLB" and k == "filename_prefix":
+                n["inputs"][k] = f"bench/{prefix}"
+    return g
+
+
+GRAPHS = {"krea": krea, "klein": klein, "pixal3d": pixal3d}
+UPLOADED = {"name": None}
+LOAD = ("Loader", "LoadMoGeModel", "LoadBackgroundRemovalModel")
+CPU = ("Mesh", "Decimate", "Remesh", "Unwrap", "Bake", "RenderUVAtlas", "PaintMesh", "VoxelToMesh", "SaveGLB", "File3D",
+       "GetMeshInfo", "SaveImage", "ApplyTexture")
+
+
+def kind(cls):
+    if any(x in cls for x in LOAD):
+        return "load"
+    if any(x in cls for x in CPU):
+        return "cpu"
+    return "gpu"
+
+
+def upload(url, path):
+    """POST /upload/image (multipart) and return the name ComfyUI stored it under."""
+    data = Path(path).read_bytes()
+    b = uuid.uuid4().hex
+    body = (f"--{b}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"{Path(path).name}\"\r\n"
+            f"Content-Type: image/png\r\n\r\n").encode() + data + f"\r\n--{b}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--{b}--\r\n".encode()
+    req = urllib.request.Request(f"{url}/upload/image", data=body, headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read())["name"]
+
+
+class Events(threading.Thread):
+    """ComfyUI's websocket for one client id: the time each node starts ("executing" events)."""
+    def __init__(self, url, cid):
+        super().__init__(daemon=True)
+        import base64, os, socket
+        u = urllib.parse.urlparse(url)
+        self.s = socket.create_connection((u.hostname, u.port or 80), timeout=30)
+        key = base64.b64encode(os.urandom(16)).decode()
+        self.s.sendall((f"GET /ws?clientId={cid} HTTP/1.1\r\nHost: {u.hostname}:{u.port}\r\nUpgrade: websocket\r\n"
+                        f"Connection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+        buf = b""
+        while b"\r\n\r\n" not in buf:
+            buf += self.s.recv(4096)
+        self.buf = buf.split(b"\r\n\r\n", 1)[1]
+        self.s.settimeout(None)
+        self.events = []
+
+    def read(self, n):
+        while len(self.buf) < n:
+            c = self.s.recv(65536)
+            if not c:
+                raise ConnectionError
+            self.buf += c
+        out, self.buf = self.buf[:n], self.buf[n:]
+        return out
+
+    def run(self):
+        try:
+            while True:
+                h = self.read(2)
+                op, ln = h[0] & 15, h[1] & 127
+                if ln == 126:
+                    ln = int.from_bytes(self.read(2), "big")
+                elif ln == 127:
+                    ln = int.from_bytes(self.read(8), "big")
+                payload = self.read(ln)
+                if op == 1:
+                    m = json.loads(payload)
+                    if m.get("type") == "executing":
+                        self.events.append((time.time(), m["data"].get("node"), m["data"].get("prompt_id")))
+        except Exception:
+            pass
 
 
 def http(url, body=None, timeout=30):
@@ -69,13 +152,24 @@ def http(url, body=None, timeout=30):
 
 
 SAMPLE = r'''
-import time
+import subprocess, time
+def clock():
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=name,clocks.sm,utilization.gpu", "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=5).stdout
+        for l in out.splitlines():
+            n, c, u = [x.strip() for x in l.split(",")]
+            if "T1000" in n:
+                return int(c), int(u)
+    except Exception:
+        pass
+    return 0, 0
 def mem():
     m = {l.split(":")[0]: int(l.split()[1]) for l in open("/proc/meminfo")}
     v = {l.split()[0]: int(l.split()[1]) for l in open("/proc/vmstat")}
     return (m["MemTotal"] - m["MemAvailable"]) / 1048576, (m["SwapTotal"] - m["SwapFree"]) / 1048576, v["pswpin"], v["pswpout"]
 while True:
-    print("%.2f %.2f %d %d" % mem(), flush=True)
+    print("%.2f %.2f %d %d %d %d" % (mem() + clock()), flush=True)
     time.sleep(2)
 '''
 
@@ -93,14 +187,16 @@ class Sampler(threading.Thread):
 
     def run(self):
         for line in self.p.stdout:
-            ram, swap, si, so = line.split()
-            self.rows.append((time.time(), float(ram), float(swap), int(si), int(so)))
+            ram, swap, si, so, clk, util = line.split()
+            self.rows.append((time.time(), float(ram), float(swap), int(si), int(so), int(clk), int(util)))
 
     def window(self, t0, t1):
         rows = [r for r in self.rows if t0 - 2 <= r[0] <= t1 + 2]
         if not rows:
             return {}
-        return {"ram_peak_gb": round(max(r[1] for r in rows), 1), "swap_peak_gb": round(max(r[2] for r in rows), 1),
+        busy = [r[5] for r in rows if r[6] > 50]
+        return {"gpu_mhz_busy": round(sum(busy) / len(busy)) if busy else None,
+                "ram_peak_gb": round(max(r[1] for r in rows), 1), "swap_peak_gb": round(max(r[2] for r in rows), 1),
                 "swap_in_mb": round((rows[-1][3] - rows[0][3]) * 4 / 1024), "swap_out_mb": round((rows[-1][4] - rows[0][4]) * 4 / 1024)}
 
     def stop(self):
@@ -115,8 +211,12 @@ def run_machine(m, model, out, start):
     except Exception:
         pass
     time.sleep(3)
+    if model == "pixal3d":
+        UPLOADED["name"] = upload(url, R["image"])
     start.wait()
     cid = str(uuid.uuid4())
+    ev = Events(url, cid)
+    ev.start()
     for i in range(R["runs"]):
         g = GRAPHS[model](R["prompt"], R["seed"] + i, R["size"], f"bench_{model}_{m['name']}_{i}")
         t0 = time.time()
@@ -130,12 +230,22 @@ def run_machine(m, model, out, start):
                 h = {"status": {"status_str": "timeout"}}
                 break
         st = h.get("status", {})
+        # Time per node: from its "executing" event to the next one (None marks the end of the prompt)
+        es = [e for e in ev.events if e[2] == pid]
+        kinds, nodes = {"load": 0.0, "gpu": 0.0, "cpu": 0.0}, {}
+        for (t, node, _), nxt in zip(es, es[1:] + [(time.time(), None, pid)]):
+            if node is None:
+                continue
+            cls = g.get(str(node), {}).get("class_type", "?")
+            kinds[kind(cls)] += nxt[0] - t
+            nodes[cls] = round(nodes.get(cls, 0) + nxt[0] - t, 1)
         msgs = {k: v for k, v in st.get("messages", [])}
         ex = None
         if "execution_start" in msgs and "execution_success" in msgs:
             ex = round((msgs["execution_success"]["timestamp"] - msgs["execution_start"]["timestamp"]) / 1000, 1)
         res["runs"].append({"run": i + 1, "wall_s": round(time.time() - t0, 1), "exec_s": ex, "status": st.get("status_str"),
-                            "t0": t0, "t1": time.time()})
+                            "kinds": {k: round(v, 1) for k, v in kinds.items()},
+                            "nodes": dict(sorted(nodes.items(), key=lambda x: -x[1])[:12]), "t0": t0, "t1": time.time()})
 
 
 def main():
@@ -165,7 +275,8 @@ def main():
     d.mkdir(parents=True, exist_ok=True)
     f = d / f"comfy_{time.strftime('%Y%m%d_%H%M')}.json"
     f.write_text(json.dumps({"recipe": R, "results": out}, indent=1))
-    summary = {m: {k: {x: v[x] for x in ("cold_s", "warm_s", "ram_peak_gb", "swap_peak_gb", "swap_in_mb", "swap_out_mb") if x in v}
+    summary = {m: {k: {**{x: v[x] for x in ("cold_s", "warm_s", "gpu_mhz_busy", "ram_peak_gb", "swap_peak_gb", "swap_in_mb", "swap_out_mb") if x in v},
+                       "kinds": [r["kinds"] for r in v["runs"]]}
                    for k, v in r.items()} for m, r in out.items()}
     ok = all(run["status"] == "success" for r in out.values() for v in r.values() for run in v["runs"])
     print(json.dumps({"ok": ok, "file": str(f.relative_to(ROOT)), "results": summary}))

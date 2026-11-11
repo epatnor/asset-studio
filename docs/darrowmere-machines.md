@@ -121,3 +121,22 @@ Den andra ComfyUI-instansen startas i dag av `comfy_m4000.sh` med venv-m4000. Me
    - uppdatera `tools/comfy.json`.
 
 Om T5810 ska ersätta Darrowmere eller bli en andra arbetsmaskin är inte bestämt. En andra maskin skulle behöva ett eget grafikkort, och dessutom en kö som fördelar beställningar mellan maskinerna, vilket inte är byggt.
+
+## Mätningar: Darrowmere mot Ravenholdt (2026-11-11/12)
+
+Samma jobb kördes samtidigt på båda maskinernas T1000, med samma ComfyUI-commit, samma paketversioner och samma modellfiler. Verktyget är `tools/darrowmere/bench_comfy.py` och resultaten ligger i `build/bench/`. Ravenholdt hade 16 GB RAM och 18 GB swap. Darrowmere hade 48 GB.
+
+| Jobb | Darrowmere (i7-920, DDR3, PCIe 2) | Ravenholdt (E5-1680 v3, DDR4, PCIe 3) |
+|---|---|---|
+| Krea-2, 1024², 8 steg: kall / varm | 272 / 262 s | 307 / 282 s (swap 4 GB ut) |
+| Klein 4B, 1024², 4 steg: kall / varm | 122 / 108 s | 134 / 113 s |
+| Pixal3D: totalt | 902 s | **805 s** |
+| Pixal3D: grafikkortsdelen | 674 s vid 1416 MHz | 654 s vid 1503 MHz |
+| Pixal3D: processordelen (bakning, remesh, UV) | 226 s | **148 s** |
+| Pixal3D: RAM högst | 19,7 GB | 13,5 GB, 2,9 GB swap ut |
+
+Tolkning:
+- **T1000-korten** är identiska (samma VBIOS). Bildmodellernas steg begränsas av kortet, och där spelar resten av datorn knappt någon roll.
+- **Ravenholdt var 5–8 % långsammare med Krea-2 och Klein.** Kortet arbetade då på lägre klocka utan att slå i effekttaket. Troligen väntade det på överföringar, eftersom ComfyUI bara kan låsa 11,8 GB RAM för överföringar mot 43 GB på Darrowmere.
+- **I Pixal3D vinner Ravenholdt med 11 %.** Det är processorstegen som är 35 % snabbare. 16 GB räckte för ett flöde i taget, med lite swap.
+- **En hel figurbeställning**, `squiggly-quad-1112-0028`, startade 2026-11-12 00:28 på båda maskinerna. Tiderna per steg finns i `/data/utdata/pipelines/<id>.json` på respektive maskin.
