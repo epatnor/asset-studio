@@ -34,6 +34,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 CONF = json.loads((HERE / "runner.json").read_text())
+# runner.local.json (never deployed) holds what differs per machine, e.g. another set of lanes on the T5810 or "power"
+if (HERE / "runner.local.json").exists():
+    CONF.update(json.loads((HERE / "runner.local.json").read_text()))
 COMFY = CONF.get("comfy", "http://127.0.0.1:8188")
 # Ett körspår per grafikkort: varje spår har sin ComfyUI och kör en beställning i taget, spåren går samtidigt.
 # An order picks its lane with "gpu" (e.g. "m4000"). Without "gpu", or with "auto", it goes to the first free card
@@ -1458,6 +1461,66 @@ def free_idle_lanes():
         log(lane, f"idle for {round((now - since) / 60)} min: models freed")
 
 
+# Auto-suspend (runner.json "power"): when nothing has run for idle_min minutes the machine goes to sleep (S3, a few
+# watts instead of ~135 W) and wakes on a Wake-on-LAN packet from order.py, character_order.py or the panel.
+# Idle means: no order queued or running, every ComfyUI queue empty, all GPUs under max_gpu_util %, the 5-minute load
+# under max_load (a training run started by hand keeps it awake) and no file /data/runner/stay_awake.
+POWER = {"auto_suspend": False, "idle_min": 30, "max_gpu_util": 10, "max_load": 1.5, **(CONF.get("power") or {})}
+POWER_IDLE = {"since": None, "last_tick": time.time()}
+STAY_AWAKE = HERE / "stay_awake"
+
+
+def busy_reason():
+    """Why the machine must stay awake, or None when it is idle."""
+    if STAY_AWAKE.exists():
+        return "stay_awake file"
+    if active() or any(th.is_alive() for th in LANE_THREADS.values()):
+        return "orders"
+    for lane in LANES:
+        if not lane_free(lane):
+            return f"{lane} busy"
+    try:
+        load5 = os.getloadavg()[1]
+    except OSError:
+        load5 = 0
+    if load5 > POWER["max_load"]:
+        return f"load {load5:.1f}"
+    try:
+        import subprocess
+        out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=20).stdout
+        util = max([int(x) for x in out.split() if x.strip().isdigit()] or [0])
+    except Exception:
+        util = 0
+    if util > POWER["max_gpu_util"]:
+        return f"GPU {util}%"
+    return None
+
+
+def maybe_suspend():
+    now = time.time()
+    # A long gap between ticks means the machine slept (or the clock jumped): start the idle count over
+    if now - POWER_IDLE["last_tick"] > 120:
+        log("power: back from sleep")
+        POWER_IDLE["since"] = None
+    POWER_IDLE["last_tick"] = now
+    why = busy_reason()
+    if why:
+        POWER_IDLE["since"] = None
+        return
+    since = POWER_IDLE["since"] = POWER_IDLE["since"] or now
+    if now - since < POWER["idle_min"] * 60:
+        return
+    import subprocess
+    log(f"power: idle for {round((now - since) / 60)} min, suspending")
+    (OUTPUT / "power.json").write_text(json.dumps({"suspended_at": now, "idle_min": POWER["idle_min"]}))
+    r = subprocess.run(["sudo", "-n", "/usr/bin/systemctl", "suspend"], capture_output=True, text=True, timeout=60)
+    if r.returncode:
+        log("power: suspend failed:", (r.stderr or r.stdout).strip()[-200:])
+    POWER_IDLE["since"] = None   # count again from zero after waking (or after a failed try)
+    POWER_IDLE["last_tick"] = time.time()
+
+
 def tick():
     take_inbox()
     by_lane, auto = {}, []
@@ -1478,6 +1541,8 @@ def tick():
         th.start()
     if IDLE_FREE > 0:
         free_idle_lanes()
+    if POWER["auto_suspend"]:
+        maybe_suspend()
 
 
 def rereview(oid, key):
@@ -1503,7 +1568,10 @@ if __name__ == "__main__":
         i = sys.argv.index("--rereview")
         rereview(sys.argv[i + 1], sys.argv[i + 2])
         sys.exit(0)
-    log("runner up", LANES, ORDERS, CONF["model"])
+    log("runner up", LANES, ORDERS, CONF["model"], "auto-suspend:", f"{POWER['idle_min']} min" if POWER["auto_suspend"] else "off")
+    if "--idle" in sys.argv:   # python runner.py --idle: why the machine would stay awake now (None = it would sleep)
+        print(json.dumps({"busy": busy_reason(), "power": POWER}))
+        sys.exit(0)
     if "--once" in sys.argv:
         tick()
         for th in LANE_THREADS.values():

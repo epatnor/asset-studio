@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installerar kontrollpanelen som tjänst på Darrowmere. Körs på Darrowmere med sudo, en gång:
-#   ssh -t epatnor@192.168.0.33 'sudo bash /data/monitor/install_on_darrowmere.sh'
+#   ssh -t $(python3 -I tools/darrowmere/machine.py ssh) 'sudo bash /data/monitor/install_on_darrowmere.sh'
 # Filerna kopieras först till /data/monitor (se tools/darrowmere/deploy.sh). Därefter räcker deploy.sh för uppdateringar.
 set -euo pipefail
 DIR=/data/monitor

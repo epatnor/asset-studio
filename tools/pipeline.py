@@ -19,7 +19,13 @@ import subprocess
 import sys
 import time
 
-HOST = os.environ.get("PIPELINE_HOST", "epatnor@192.168.0.33")
+def _worker():
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "darrowmere"))
+    import machine
+    return machine.ssh_target()
+
+
+HOST = os.environ.get("PIPELINE_HOST") or _worker()
 DIR = "/data/utdata/pipelines"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6"]
 

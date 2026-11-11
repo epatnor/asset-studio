@@ -1,0 +1,24 @@
+{
+ "worker": "darrowmere",
+ "machines": {
+  "darrowmere": {
+   "label": "Darrowmere (i7-920, X58, Quadro M4000 + T1000)",
+   "host": "192.168.0.33",
+   "user": "epatnor",
+   "mac": "00:24:1d:ce:b6:34",
+   "comfy": "http://192.168.0.33:8188",
+   "lanes": {"T1000": "http://192.168.0.33:8188", "M4000": "http://192.168.0.33:8189"},
+   "note": "host is the USB WiFi address; mac is the wired port enp9s0 (Wake-on-LAN). Change host when the cable is in."
+  },
+  "t5810": {
+   "label": "Dell Precision T5810 (Xeon E5 v3/v4, AVX2)",
+   "host": null,
+   "user": "epatnor",
+   "mac": null,
+   "comfy": null,
+   "lanes": {},
+   "note": "Arrived 2026-11-11. Fill in host and mac once it is installed (docs/darrowmere-machines.md)."
+  }
+ },
+ "broadcast": ["255.255.255.255", "192.168.0.255"]
+}

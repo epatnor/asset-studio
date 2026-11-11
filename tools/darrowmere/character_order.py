@@ -17,6 +17,9 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import machine  # noqa: E402
+
 OPTIONS = json.loads((HERE / "character" / "options.json").read_text())
 GRAPHS = HERE / "character" / "graphs"
 ROLES = ("front", "back", "left", "right", "detail")
@@ -406,6 +409,9 @@ def plan(recipe, refs=None):
 def submit(recipe, files, ssh_run, now=None):
     """files: {"front": bytes, ...} (PNG). ssh_run(cmd_list, stdin_bytes) kör på Darrowmere. Lägger indata och beställningen i inkorgen."""
     import base64
+    w = machine.wake()   # the worker may be asleep (runner auto-suspend): Wake-on-LAN first
+    if not w["awake"]:
+        return {"ok": False, "error": w.get("error") or "the worker is asleep and did not wake"}
     refs = [{"name": f"{role}.png", "role": role} for role in files if role != "front_1024"]
     order, pl = build(recipe, refs, now)
     if pl["errors"]:
@@ -425,7 +431,7 @@ def submit(recipe, files, ssh_run, now=None):
 
 def _cli_ssh(cmd, data):
     import shlex, subprocess
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "epatnor@192.168.0.33", shlex.join(cmd)],
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", machine.ssh_target(), shlex.join(cmd)],
                        input=data, capture_output=True, timeout=180)
     return (r.stdout + r.stderr).decode(errors="replace")
 

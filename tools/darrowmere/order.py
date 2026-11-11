@@ -22,7 +22,10 @@ import sys
 import time
 from pathlib import Path
 
-HOST = "epatnor@192.168.0.33"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import machine  # noqa: E402
+
+HOST = machine.ssh_target()
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8"]
 
 
@@ -33,8 +36,17 @@ def ssh(cmd, data=None):
     return r.stdout
 
 
+def awake():
+    """Wakes the worker (Wake-on-LAN) when it has gone to sleep; orders, approvals and cancels need it awake."""
+    w = machine.wake()
+    if not w["awake"]:
+        raise RuntimeError(w.get("error") or "the worker is asleep and did not wake")
+    return w
+
+
 def submit(path):
     path = Path(path).resolve()
+    woke = awake()
     o = json.loads(path.read_text())
     oid = o.get("id") or re.sub(r"[^a-z0-9-]+", "-", o.get("title", "order").lower()).strip("-")[:40]
     oid = f"{oid}-{time.strftime('%m%d-%H%M')}" if not o.get("id") else oid
@@ -53,10 +65,12 @@ def submit(path):
     o["submitted"] = {"t": time.time(), "from": subprocess.run(["hostname"], capture_output=True, text=True).stdout.strip()}
     ssh(f"cat > /data/orders/inbox/.{oid}.tmp && mv /data/orders/inbox/.{oid}.tmp /data/orders/inbox/{oid}.json", json.dumps(o))
     return {"ok": True, "id": oid, "steps": len(o["steps"]), "inputs": len(o.get("inputs") or {}),
-            "panel": "http://192.168.0.17:8790"}
+            "panel": "http://192.168.0.17:8790", **({"woke_in_s": woke["seconds"]} if woke["woke"] else {})}
 
 
 def status(oid=None):
+    if not machine.answers(machine.worker()["host"]):
+        return {"ok": True, "asleep": True, "orders": []}   # asleep or off: nothing runs, and status does not wake it
     pat = f"/data/utdata/pipelines/{oid}.json" if oid else "/data/utdata/pipelines/*.json"
     out = ssh(f"for f in {pat}; do cat \"$f\"; echo; done 2>/dev/null")
     res = []
@@ -74,11 +88,13 @@ def approve(oid, step, credits):
     code = ("import json,os,sys; p='/data/orders/'+sys.argv[1]+'/approved.json'; d=json.load(open(p)) if os.path.exists(p) else {}; "
             "d.setdefault('steps',{})[sys.argv[2]]=int(sys.argv[3]); json.dump(d,open(p,'w'))")
     import shlex
+    awake()
     ssh(shlex.join(["python3", "-c", code, oid, step, str(int(credits))]))
     return {"ok": True, "id": oid, "step": step, "approved_credits": int(credits)}
 
 
 def cancel(oid):
+    awake()
     ssh(f"touch /data/orders/{oid}/cancel")
     return {"ok": True, "id": oid, "cancel": "requested"}
 

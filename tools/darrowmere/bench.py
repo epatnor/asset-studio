@@ -67,7 +67,9 @@ def net_down(url="https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/r
 def main():
     if "--remote" in sys.argv:
         src = open(__file__).read()
-        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "epatnor@192.168.0.33", "python3 -"], input=src, capture_output=True, text=True, timeout=900)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import machine   # only on the laptop: the script itself runs on the worker
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", machine.ssh_target(), "python3 -"], input=src, capture_output=True, text=True, timeout=900)
         print(r.stdout.strip() or json.dumps({"ok": False, "error": r.stderr.strip()[-300:]}))
         return
     cpu = re.search(r"model name\s*:\s*(.+)", open("/proc/cpuinfo").read()).group(1).strip()

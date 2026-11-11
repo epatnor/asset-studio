@@ -18,8 +18,10 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / "tools/darrowmere"))
 import order as darrowmere  # noqa: E402
 
-HOST = "192.168.0.33"
-LANES = {"t1000": 8188, "m4000": 8189}  # the runner's lanes (runner.json on Darrowmere)
+import machine  # noqa: E402
+
+HOST = machine.worker()["host"]
+LANES = {"t1000": 8188, "m4000": 8189}  # the runner's lanes (runner.json on the worker)
 SIZES = {"2:3": (832, 1248), "1:1": (1024, 1024), "3:2": (1248, 832)}
 
 
@@ -68,7 +70,7 @@ def graph(n_refs, w, h, prompt, denoise, seed):
 
 
 def remote_json(path):
-    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", f"epatnor@{HOST}", f"cat {path}"], capture_output=True, text=True, timeout=60)
+    r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", machine.ssh_target(), f"cat {path}"], capture_output=True, text=True, timeout=60)
     return json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
 
 

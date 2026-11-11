@@ -9,7 +9,10 @@
  "output": "/data/utdata",
  "blender": "/data/blender/current/blender",
  "serial_lanes": false,
- "auto_lanes": ["t1000", "m4000"],
+ "auto_lanes": [
+  "t1000",
+  "m4000"
+ ],
  "idle_free_s": 600,
  "defaults": {
   "routes": {
@@ -37,5 +40,11 @@
    "meshy_credits_per_order": 60,
    "ask_before_cloud": true
   }
+ },
+ "power": {
+  "auto_suspend": false,
+  "idle_min": 30,
+  "max_gpu_util": 10,
+  "max_load": 1.5
  }
 }

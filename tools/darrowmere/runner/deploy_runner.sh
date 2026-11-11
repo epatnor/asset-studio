@@ -1,13 +1,15 @@
 #!/bin/bash
 # Kopierar beställningsrunnern till Darrowmere (/data/runner) och startar om tjänsten om den finns.
 # OpenRouter-nyckeln kopieras första gången från apparition-moodboard/.env, utan att skrivas ut. Körs på Andorhal:
-#   bash tools/darrowmere/runner/deploy_runner.sh
+#   bash tools/darrowmere/runner/deploy_runner.sh [maskin]      (maskinerna i tools/darrowmere/machines.json)
+# runner.local.json på maskinen (egna körspår, "power") skrivs aldrig över.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-DM=epatnor@192.168.0.33
+DM=$(python3 -I "$HERE/../machine.py" ssh ${1:-})
+python3 -I "$HERE/../machine.py" wake ${1:-} >/dev/null || { echo "$DM is asleep and did not wake"; exit 1; }
 ENV=$HOME/Spelutveckling/apparition-moodboard/.env
 ssh -o BatchMode=yes $DM 'mkdir -p /data/runner /data/orders/inbox'
-rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/install_runner.sh" "$HERE/install_comfy_m4000.sh" "$HERE/comfy_m4000.sh" $DM:/data/runner/
+rsync -a "$HERE/runner.py" "$HERE/runner.json" "$HERE/render_views.py" "$HERE/install_runner.sh" "$HERE/install_power.sh" "$HERE/install_comfy_m4000.sh" "$HERE/comfy_m4000.sh" $DM:/data/runner/
 rsync -a "$HERE/tools/" $DM:/data/runner/tools/
 rsync -a "$HERE/playbooks/" $DM:/data/runner/playbooks/
 rsync -a "$HERE/../../texture/project_views.py" $DM:/data/runner/tools/project_views.py

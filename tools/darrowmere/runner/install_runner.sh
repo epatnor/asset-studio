@@ -1,7 +1,7 @@
 #!/bin/bash
 # Installerar beställningsrunnern som systemtjänst på Darrowmere (startar vid uppstart, efter ComfyUI).
 # Körs på Darrowmere med sudo, efter deploy_runner.sh:
-#   ssh -t epatnor@192.168.0.33 'sudo bash /data/runner/install_runner.sh'
+#   ssh -t $(python3 -I tools/darrowmere/machine.py ssh) 'sudo bash /data/runner/install_runner.sh'
 set -euo pipefail
 cat > /etc/systemd/system/darrowmere-runner.service <<'E'
 [Unit]

@@ -294,6 +294,7 @@
   .sub { color: var(--muted); font-weight: 400; }
   .dlv { display: inline-block; width: 14px; color: var(--dim); font-weight: 700; }
   .dlv.ok { color: var(--green); }
+  .pill button.wake { margin-left: 8px; font: inherit; font-size: 12px; padding: 1px 10px; border-radius: 999px; cursor: pointer; }
   body.offline main { opacity: .45; filter: grayscale(1); pointer-events: none; transition: opacity .4s; }
   body.offline .steps i.now, body.offline .spin, body.offline .snake b { animation: none; }
   .jobcell { cursor: pointer; }
@@ -803,7 +804,7 @@ document.addEventListener("click", e => {
 });
 function render(s) {
   const p = s.probe, c = s.comfy, age = s.now - s.updated, online = s.online && age < 45;
-  pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Darrowmere offline"}</b>`);
+  pill("netPill", online ? "ok" : "bad", `<span class="dot"></span><b>${online ? "Online" : "Darrowmere offline"}</b>${online ? "" : WAKE_BTN}`);
   $("age").textContent = s.slow ? "Darrowmere is busy · waiting for an answer" : s.updated ? `updated ${Math.max(0, age).toFixed(0)} s ago` : "";
   // Panelen svarar men Darrowmere gör det inte: tona ned, visa sedan när, töm rattarna och låt diagrammet flatlina
   document.body.classList.toggle("offline", !online);
@@ -1031,6 +1032,15 @@ document.querySelectorAll("button[data-action]").forEach(b => b.addEventListener
   catch (e) { showMsg("Failed: " + e); }
   setTimeout(() => showMsg(""), 6000);
 }));
+// Darrowmere asleep (runner auto-suspend): one click sends Wake-on-LAN from Winterspring
+const WAKE_BTN = ` <button class="wake" data-wake title="Send Wake-on-LAN">Wake</button>`;
+document.addEventListener("click", async e => {
+  if (!e.target.closest("[data-wake]")) return;
+  showMsg("Waking…");
+  try { showMsg((await (await fetch("/api/action/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json()).message); }
+  catch (err) { showMsg("Failed: " + err); }
+  setTimeout(() => showMsg(""), 8000);
+});
 function showMsg(t) { const el = $("msg"); el.textContent = t; el.classList.toggle("show", !!t); }
 
 // Approve: en dialog med tjänst, steg och kostnad; först "Approve and run" skriver godkännandet
@@ -1270,7 +1280,7 @@ async function tick() {
     if (failCount < 3) { $("age").textContent = "waiting for the panel …"; return; }
     document.body.classList.add("offline");
     const since = lastOk ? new Date(lastOk).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
-    pill("netPill", "bad", `<span class="dot"></span><b>Darrowmere offline</b>`);
+    pill("netPill", "bad", `<span class="dot"></span><b>Darrowmere offline</b>`);   // the panel itself is not answering: no wake button
     pill("comfyPill", "bad", `<span class="dot"></span><span class="ell" style="max-width:260px">last seen ${since} · retrying</span>`);
     $("age").textContent = lastOk ? `no answer for ${fmtDur((Date.now() - lastOk) / 1000)}` : "";
   } finally { ticking = false; }

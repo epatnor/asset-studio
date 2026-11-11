@@ -900,6 +900,11 @@ def action(name):
         urllib.request.urlopen(urllib.request.Request(f"{COMFY}/queue", data=json.dumps({"clear": True}).encode(),
                                                       headers={"Content-Type": "application/json"}), timeout=5)
         return "Pending queue cleared"
+    if name == "wake":   # Wake-on-LAN from Winterspring (machines.json: the worker's MAC); the panel sees it in about a minute
+        w = machine.wake(wait=False)
+        if w.get("error"):
+            raise RuntimeError(w["error"])
+        return "Darrowmere is awake" if w["awake"] else "Wake-on-LAN sent: Darrowmere starts in about a minute"
     if name == "restart":
         r = subprocess.run(SSH + ["sudo", "-n", "/usr/bin/systemctl", "restart", "comfyui.service"], capture_output=True, text=True, timeout=60)
         if r.returncode:
@@ -915,6 +920,7 @@ AUTH = Auth(STORE.parent)
 from gallery import Gallery  # noqa: E402
 GALLERY = Gallery(SSH, COMFY, STORE.parent / "thumbs")
 import character_order  # noqa: E402
+import machine  # noqa: E402
 
 # Valen som hämtas från Darrowmere till beställningssidan (UltraTex-checkpoints och dekodrar), sparade en stund
 CHAR_CHOICES = {"t": 0, "v": {}}
@@ -1282,6 +1288,8 @@ class Handler(BaseHTTPRequestHandler):
                 return bad(400, "bad approval")
             code = ("import json,os,sys; p='/data/orders/'+sys.argv[1]+'/approved.json'; d=json.load(open(p)) if os.path.exists(p) else {}; "
                     "d.setdefault('steps',{})[sys.argv[2]]=int(sys.argv[3]); json.dump(d,open(p,'w'))")
+            if not LOCAL and not machine.wake().get("awake"):
+                return bad(502, "Darrowmere is asleep and did not wake")
             r = subprocess.run(rcmd(["python3", "-c", code, ap.group(1), step, str(credits)]), capture_output=True, text=True, timeout=20)
             if r.returncode:
                 return bad(502, (r.stderr or "failed").strip()[-200:])

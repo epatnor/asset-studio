@@ -18,7 +18,10 @@ import time
 from pathlib import Path
 
 WS = os.environ.get("DELIVERY_PANEL_HOST", "epatnor@192.168.0.17")
-DM = os.environ.get("DELIVERY_DARROWMERE", "epatnor@192.168.0.33")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import machine  # noqa: E402
+
+DM = os.environ.get("DELIVERY_DARROWMERE") or machine.ssh_target()
 DEST = Path(os.environ.get("DELIVERY_DIR", Path.home() / "Darrowmere-leveranser"))
 STATE = "~/.local/state/darrowmere-monitor"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8"]
