@@ -24,6 +24,39 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# One panel per worker machine (machines.json): MONITOR_NAME brands the pages (name, wordmark, app icons) and the login
+# cookie, so the Darrowmere and Ravenholdt panels can run side by side on Winterspring on different ports.
+NAME = os.environ.get("MONITOR_NAME", "Darrowmere")
+SLUG = re.sub(r"[^a-z0-9]+", "-", NAME.lower())
+
+
+def _png_size(f):
+    import struct
+    with open(f, "rb") as fh:
+        head = fh.read(24)
+    return struct.unpack(">II", head[16:24])
+
+
+def brand(data, ctype):
+    """The pages say Darrowmere; another machine's panel swaps in its own name and, when they exist, its own
+    static/wordmark-<slug>.png and app-icon-<size>-<slug>.png."""
+    if NAME == "Darrowmere" or ctype.split(";")[0] not in ("text/html", "application/manifest+json"):
+        return data
+    t = data.decode()
+    for f in ("wordmark", "app-icon-180", "app-icon-192", "app-icon-512"):
+        own = HERE / "static" / f"{f}-{SLUG}.png"
+        if own.exists():
+            t = t.replace(f"/static/{f}.png", f"/static/{f}-{SLUG}.png")
+            if f == "wordmark":
+                w, h = _png_size(own)
+                t = t.replace("aspect-ratio: 605 / 120", f"aspect-ratio: {w} / {h}")
+                # A taller picture (a tower above the letters) gets a taller box so the letters stay as large
+                k = float(os.environ.get("MONITOR_WORDMARK_SCALE", 1))
+                if k != 1:
+                    t = re.sub(r"((?:\.wordmark|h1) \{[^}]*?height: )(\d+)px",   # h1: the login page's wordmark
+                               lambda m: f"{m.group(1)}{round(int(m.group(2)) * k)}px", t)
+    t = t.replace("/static/manifest.webmanifest", f"/static/manifest.webmanifest?{SLUG}")
+    return t.replace("Darrowmere", NAME).replace("DARROWMERE", NAME.upper()).encode()
 try:
     _default = json.loads((HERE.parent / "comfy.json").read_text())["targets"]["darrowmere"]
 except (OSError, ValueError, KeyError):
@@ -915,6 +948,7 @@ def action(name):
 
 sys.path.insert(0, str(HERE))
 from auth import COOKIE, Auth, is_private  # noqa: E402
+COOKIE = os.environ.get("MONITOR_COOKIE") or (COOKIE if NAME == "Darrowmere" else f"{SLUG}_session")
 
 AUTH = Auth(STORE.parent)
 from gallery import Gallery  # noqa: E402
@@ -982,7 +1016,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def send(self, code, body, ctype, headers=None):
-        data = body if isinstance(body, bytes) else body.encode()
+        data = brand(body if isinstance(body, bytes) else body.encode(), ctype)
         # Text packas med gzip när webbläsaren klarar det: statusen är ~200 kB var tredje sekund, packad ~10 %
         gz = len(data) > 2048 and ctype.split(";")[0] in ("application/json", "text/html", "text/plain") \
             and "gzip" in (self.headers.get("Accept-Encoding") or "")

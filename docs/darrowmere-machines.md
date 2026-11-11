@@ -7,7 +7,7 @@ Darrowmere (i7-920, Gigabyte X58, 48 GB, Quadro M4000 + T1000, Linux Mint 22.3) 
 Alla verktyg som pratar med arbetsmaskinen läser adressen ur `tools/darrowmere/machines.json` via `tools/darrowmere/machine.py`. Det gäller order.py, character_order.py, pipeline.py, gen_view.py, deliver.py, bench.py, deploy_runner.sh och panelens installation på Winterspring.
 
 - `worker` anger vilken maskin som används som standard.
-- Miljövariabeln `DARROWMERE_WORKER=t5810` väljer en annan maskin för ett enstaka anrop.
+- Miljövariabeln `DARROWMERE_WORKER=ravenholdt` väljer en annan maskin för ett enstaka anrop.
 - `DARROWMERE_HOST` byter bara adressen.
 
 ```
@@ -116,7 +116,7 @@ Den andra ComfyUI-instansen startas i dag av `comfy_m4000.sh` med venv-m4000. Me
 4. Fyll i maskinens rad i `machines.json` (host, mac, comfy, lanes) och kör `deploy_runner.sh <maskin>`. Kör sedan med sudo `install_runner.sh`, `install_comfy_m4000.sh` (om M4000 är med) och `install_power.sh`.
 5. Lägg körspåren i `/data/runner/runner.local.json` om korten skiljer sig, till exempel `{"lanes": {"t1000": "http://127.0.0.1:8188"}, "auto_lanes": ["t1000"]}`. Den filen skrivs aldrig över av deploy.
 6. När maskinen ska bli den nya standardmaskinen:
-   - sätt `"worker": "t5810"`,
+   - sätt `"worker": "ravenholdt"`,
    - kör `deploy.sh` (panelen) och `install_on_winterspring.sh` på Winterspring, så att panelen pekar dit,
    - uppdatera `tools/comfy.json`.
 
