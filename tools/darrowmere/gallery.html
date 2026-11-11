@@ -39,7 +39,7 @@
   .pill.low { --p: var(--green); } .pill.var { --p: var(--muted); font-weight: 500; }
   .rbody .pills { padding: 2px 0 0; }
   #legend { display: inline-flex; gap: 3px; align-items: center; color: var(--muted); font-size: 11px; }
-  /* Uppdrag: flera beställningar med ett syfte, sorterade efter granskningens betyg */
+  /* Missions: several orders with one purpose, newest first (the #rank badge is the AI review's ranking) */
   details.mission { background: color-mix(in srgb, var(--blue) 5%, var(--bg)); border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
                     border-radius: 12px; padding: 8px 10px 10px; }
   details.mission > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 2px 2px 8px; list-style: none; }
@@ -225,19 +225,26 @@ function groupHtml(g, items, rank) {
   return html + `</div></section>`;
 }
 // ---- Results: en ruta per beställning med det färdiga (sista modellsteget, annars den senaste bilden) ----
+// Newest order first in every mission; the #rank badge still shows the AI review's ranking
+function newestFirst(entries) {
+  const byScore = entries.filter(([g]) => g.score != null).sort(([a], [c]) => c.score - a.score || c.time - a.time);
+  const rank = new Map(byScore.map(([g], k) => [g, k + 1]));
+  entries.sort(([a], [c]) => !!c.order - !!a.order || c.time - a.time);   // loose files ("More files in ...") last
+  return rank;
+}
 function heroes(g) {
   const models = g.items.filter(i => i.kind === "model");
   if (models.length) {
     const last = Math.max(...models.map(i => i.mtime));
-    if (!g.order) return models;
+    if (!g.order) return models.sort((a, b) => b.mtime - a.mtime);
     // Samma steg kan ge flera varianter (olika namn); av samma namn med löpnummer (Pixal3D: form, uppskalad, texturerad) bara den sista
     const byStem = {};
     models.filter(i => i.mtime >= last - 300).forEach(i => { const k = i.filename.replace(/_?\d{5}_?\.(glb|gltf)$/i, ""); if (!byStem[k] || i.filename > byStem[k].filename) byStem[k] = i; });
-    return Object.values(byStem);
+    return Object.values(byStem).sort((a, b) => b.mtime - a.mtime);
   }
   if (!g.order) return [];
-  // An image order (no model): every image as its own card, in the order they were made, not hidden under Files
-  const imgs = g.items.filter(i => i.kind === "image").sort((a, b) => a.mtime - b.mtime);
+  // An image order (no model): every image as its own card, newest first, not hidden under Files
+  const imgs = g.items.filter(i => i.kind === "image").sort((a, b) => b.mtime - a.mtime);
   if (imgs.length) return imgs;
   const pics = g.items.filter(i => i.kind === "render");
   return pics.length ? [pics.reduce((a, b) => b.mtime > a.mtime ? b : a)] : [];
@@ -298,15 +305,15 @@ function renderResults() {
       continue;
     }
     flush();
-    b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
+    const rank = newestFirst(b.entries);
     // Utfällt: det senaste uppdraget och allt som ändrats det senaste dygnet, om det inte fällts ihop för hand
     const fresh = (first || Date.now() / 1000 - b.time < 86400) && !store.get("closed." + b.mission, false);
     const open = openSet.has(b.mission) || fresh || q;
     first = false;
-    const n = b.entries.reduce((s, [, hs]) => s + hs.length, 0), scored = b.entries.some(([g]) => g.score != null);
+    const n = b.entries.reduce((s, [, hs]) => s + hs.length, 0);
     html += `<details class="mission" data-m="${esc(b.mission)}" ${open ? "open" : ""}><summary><h2>${esc(b.title || b.mission)}</h2>
       <span class="tag">${b.entries.length} order${b.entries.length > 1 ? "s" : ""} · ${n} result${n > 1 ? "s" : ""}</span><span class="meta">${when(b.time)}</span></summary><div class="rgrid">`;
-    b.entries.forEach(([g, hs], k) => hs.forEach(i => html += rcard(g, i, scored && g.score != null ? k + 1 : 0)));
+    b.entries.forEach(([g, hs]) => hs.forEach(i => html += rcard(g, i, rank.get(g) || 0)));
     html += `</div></details>`;
   }
   flush();
@@ -400,8 +407,8 @@ function render() {
   let html = "", first = true;
   for (const b of blocks) {
     if (!b.mission) { html += groupHtml(...b.entries[0]); continue; }
-    b.entries.sort(([a], [c]) => (c.score ?? -1) - (a.score ?? -1) || c.time - a.time);
-    const best = b.entries[0][0], running = b.entries.some(([g]) => ["running", "approval", "queued", "planned"].includes(g.status));
+    const rank = newestFirst(b.entries);
+    const best = [...rank.keys()][0] || b.entries[0][0], running = b.entries.some(([g]) => ["running", "approval", "queued", "planned"].includes(g.status));
     const open = openSet.has(b.mission) || (first && !store.get("closed." + b.mission, false));
     first = false;
     html += `<details class="mission" data-m="${esc(b.mission)}" ${open ? "open" : ""}><summary><h2>${esc(b.title || b.mission)}</h2>
@@ -409,7 +416,7 @@ function render() {
       ${best.score != null ? `<span class="tag score ${esc(best.verdict)}">best ${best.score}/10 · ${esc(best.title)}</span>` : ""}
       ${running ? `<span class="tag">running</span>` : ""}<span class="meta">${when(b.time)}</span>
       ${b.note ? `<div class="why" style="flex-basis:100%;margin:0">Operator (${esc(b.note.playbook)}): ${esc(b.note.status)} · ${b.note.rounds}/${b.note.max_rounds} rounds · ${esc(b.note.message || "")}</div>` : ""}</summary><div class="mgroups">`;
-    b.entries.forEach(([g, items], k) => html += groupHtml(g, items, k + 1));
+    b.entries.forEach(([g, items]) => html += groupHtml(g, items, rank.get(g) || 0));
     html += `</div></details>`;
   }
   $("main").innerHTML = html || `<div id="msg">${groups.length ? "Nothing matches the filters." : "Darrowmere has not made anything yet."}</div>`;
