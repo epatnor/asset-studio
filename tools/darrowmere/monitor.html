@@ -16,13 +16,13 @@
   :root {
     --bg: #0f1215; --panel: #161a1f; --panel2: #1b2027; --line: #262c34; --text: #d7dce2; --muted: #7d8794; --dim: #4b5563;
     --green: #2bd46b; --teal: #1fb5b0; --blue: #4f8dff; --amber: #f2a93b; --red: #ef4f5f; --violet: #a77bff; --track: #232a32; --cloud: #7cc7ff; --cpu: #f472b6; --lime: #a3e635;
-    --c-cpu: #a77bff; --c-ram: #d2bcff; --c-swap: #ebe0ff; --c-sys: #4f8dff; --c-data: #a3c3ff;
+    --c-cpu: #a77bff; --c-ram: #d2bcff; --c-swap: #ebe0ff; --c-sys: #4f8dff; --c-data: #a3c3ff; --c-net: #2dd4bf; --c-netup: #99f6e4;
     --c-gpu1: #2bd46b; --c-vram1: #98ecb8; --c-gpu2: #f59e0b; --c-vram2: #fcd38a; --c-gpu3: #1fb5b0; --c-vram3: #8ee0dc;
   }
   :root[data-theme="light"] {
       --bg: #eef0f3; --panel: #ffffff; --panel2: #f6f7f9; --line: #dde1e6; --text: #1d2228; --muted: #687280; --dim: #a3abb5;
       --green: #16a34a; --teal: #0d9488; --blue: #2563eb; --amber: #d97706; --red: #dc2626; --violet: #7c3aed; --track: #e6e9ed; --cloud: #0284c7; --cpu: #db2777; --lime: #65a30d;
-      --c-cpu: #7c3aed; --c-ram: #a78bfa; --c-swap: #ddd6fe; --c-sys: #2563eb; --c-data: #60a5fa;
+      --c-cpu: #7c3aed; --c-ram: #a78bfa; --c-swap: #ddd6fe; --c-sys: #2563eb; --c-data: #60a5fa; --c-net: #0d9488; --c-netup: #5eead4;
       --c-gpu1: #16a34a; --c-vram1: #4ade80; --c-gpu2: #d97706; --c-vram2: #fbbf24; --c-gpu3: #0d9488; --c-vram3: #2dd4bf;
     }
   * { box-sizing: border-box; }
@@ -552,6 +552,7 @@ function buildGauges(names, nCores = 0) {
     // En ratt per del; inre ringar: swap, datadisken, grafikminnet, och processorns trådar som ringbitar
     const dials = [["cpu", "CPU", "--c-cpu", { cores: nCores }], ["ram", "RAM", "--c-ram", { k: "swap", col: "--c-swap", label: "swap" }],
       ["root", "Disks", "--c-sys", { k: "disk", col: "--c-data", label: "data" }],
+      ["net", "Network", "--c-net", { k: "netup", col: "--c-netup", label: "up" }],
       ...Array.from({ length: n }, (_, i) => [gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0],
         { k: gk("vram", i), col: GPU_COLORS[i % 4][1], label: "VRAM" }])];
     dials.forEach(([k, , , inner]) => { if (inner.k) INNER[inner.k] = { outer: k, label: inner.label }; });
@@ -565,7 +566,9 @@ function buildGauges(names, nCores = 0) {
   }
   $("gauges").classList.remove("rings");
   const cpu = ["Processor and memory", [["cpu", "CPU", "--c-cpu"], ["ram", "RAM", "--c-ram", { k: "swap", col: "--c-swap", label: "swap" }]]];
-  const disks = ["Disks", [["root", "System", "--c-sys"], ["disk", "Data", "--c-data"]]];
+  const disks = ["Disks and network", [["root", "System", "--c-sys"], ["disk", "Data", "--c-data"],
+                                         ["net", "Network", "--c-net", { k: "netup", col: "--c-netup", label: "up" }]]];
+  INNER.netup = { outer: "net", label: "up" };
   const gpuGroups = Array.from({ length: n }, (_, i) => [`Graphics${names[i] ? " · " + names[i].replace("NVIDIA ", "") : ""}`,
       [[gk("gpu", i), multi ? `GPU ${i + 1}` : "GPU", GPU_COLORS[i % 4][0]], [gk("vram", i), multi ? `VRAM ${i + 1}` : "VRAM", GPU_COLORS[i % 4][1]]]]);
   // Flera kort ligger sist och intill varandra: på en rad i två kolumner, under varandra i en kolumn
@@ -686,6 +689,13 @@ function detailHtml(k, s) {
     ${row("ComfyUI", cuse)}`;
   if (gm?.[1] === "vram") return `<b>VRAM · ${esc((g.name || "").replace("NVIDIA ", ""))}</b>${row("Used", `${(g.mem_used / 1024).toFixed(2)} GB`)}${row("Free", `${((g.mem_total - g.mem_used) / 1024).toFixed(2)} GB`)}
     ${row("Total", `${(g.mem_total / 1024).toFixed(1)} GB`)}${cdev ? row("ComfyUI sees", `${gb(cdev.vram_free)} free`) : ""}`;
+  if (k === "net") {
+    const rows = Object.entries(p.net || {}).filter(([, v]) => v.up).map(([n, v]) => {
+      const rt = (s.rates || {})[n] || { rx: 0, tx: 0 };
+      return row(`${esc(n)}${v.wifi ? " (WiFi)" : ""}`, `↓ ${fmtRate(rt.rx)} · ↑ ${fmtRate(rt.tx)}${v.speed ? " · " + Math.round(v.speed) + " Mbit/s" : ""}`);
+    }).join("");
+    return `<b>Network</b>${rows || "no link up"}<div class="dsub">Outer ring: download · inner ring: upload, as a share of the fastest link</div>`;
+  }
   const d = p.disks.find(x => x.mount === (k === "root" ? "/" : "/data"));
   if (!d) return "<b>Disk</b>no data";
   const temp = k === "disk" ? p.temps.filter(t => t.chip === "nvme").map(t => row("Temperature " + esc(t.label), t.c.toFixed(0) + " °C")).join("") : "";
@@ -856,6 +866,14 @@ function render(s) {
   }
   const r = Object.entries(s.rates || {}).reduce((a, [, v]) => ({ rx: a.rx + v.rx, tx: a.tx + v.tx }), { rx: 0, tx: 0 });
   $("netRate").textContent = `↓ ${fmtRate(r.rx)}  ↑ ${fmtRate(r.tx)}`;
+  // Network dial: download (outer ring) and upload (inner ring) as a share of the fastest link that is up
+  const links = Object.entries(p.net || {}).filter(([, v]) => v.up && v.speed);
+  const fast = links.sort((a, b) => b[1].speed - a[1].speed)[0];
+  const capB = (fast ? fast[1].speed : 100) * 125000;
+  setGauge("net", 100 * r.rx / capB, fast ? `${fast[0]} · ${Math.round(fast[1].speed)} Mbit/s` : "link speed unknown",
+           `↓ ${fmtRate(r.rx)}`, `↑ ${fmtRate(r.tx)}`, "--c-net");
+  setGauge("netup", 100 * r.tx / capB, "", fmtRate(r.tx), "", "--c-netup");
+  if ($("gm1_net")) { $("gm1_net").textContent = `↓ ${fmtRate(r.rx)}`; $("gm2_net").textContent = `↑ ${fmtRate(r.tx)}`; }
   if (openDial) showDetail(openDial, s);
 
   if (c) {

@@ -131,6 +131,18 @@ for l in open("/proc/net/dev").readlines()[2:]:
     n = n.strip()
     if n != "lo":
         f = rest.split(); net[n] = {"rx": int(f[0]), "tx": int(f[8])}
+        # Link speed for the network dial: wired ports report it in sysfs, WiFi through iw (tx bitrate)
+        try:
+            net[n]["up"] = open(f"/sys/class/net/{n}/operstate").read().strip() == "up"
+            sp = int(open(f"/sys/class/net/{n}/speed").read())
+            net[n]["speed"] = sp if sp > 0 else None
+        except (OSError, ValueError):
+            net[n]["speed"] = None
+        if net[n].get("up") and not net[n]["speed"] and os.path.isdir(f"/sys/class/net/{n}/wireless"):
+            m = (re.search(r"tx bitrate:\s*([\d.]+)\s*MBit", run(["iw", "dev", n, "link"]))
+                 or re.search(r"Bit Rate[=:]\s*([\d.]+)\s*Mb/s", run(["/usr/sbin/iwconfig", n])))
+            net[n]["speed"] = float(m.group(1)) if m else None
+            net[n]["wifi"] = True
 log = run(["journalctl", "-u", "comfyui", "-n", "60", "--no-pager", "-o", "cat"])
 log = re.sub(r"\x1b\[[0-9;]*m", "", log).splitlines()
 procs = []

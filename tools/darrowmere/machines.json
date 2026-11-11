@@ -15,14 +15,14 @@
   },
   "ravenholdt": {
    "label": "Ravenholdt: Dell Precision T5810 (service tag 8CYXTB2, Xeon E5-1680 v3 8c/16t AVX2, 16 GB DDR4 ECC RDIMM, T1000; second T1000 from Darrowmere planned)",
-   "host": "192.168.0.109",
+   "host": "192.168.0.35",
    "user": "epatnor",
    "mac": "64:00:6a:79:23:1e",
-   "comfy": "http://192.168.0.109:8188",
+   "comfy": "http://192.168.0.35:8188",
    "lanes": {
-    "T1000": "http://192.168.0.109:8188"
+    "T1000": "http://192.168.0.35:8188"
    },
-   "note": "Named Ravenholdt (hostname ravenholdt). Mint 22.3 installed 2026-11-11 (UEFI, kernel 7.0.0-42, NVIDIA 580.178.04, install_power.sh run). host is the temporary USB WiFi stick (DHCP); mac is the onboard Intel I217-LM (enp0s25, WoL g) for when the cable is in. GTX 980 removed.",
+   "note": "Named Ravenholdt (hostname ravenholdt). Mint 22.3 installed 2026-11-11 (UEFI, kernel 7.0.0-42, NVIDIA 580.178.04, install_power.sh run). host is the wired port enp0s25 (Intel I217-LM, gigabit, WoL g, mac below) since 2026-11-11; the USB WiFi stick (192.168.0.109) is a spare. GTX 980 removed.",
    "wordmark_scale": 1.3
   }
  },
