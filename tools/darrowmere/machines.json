@@ -7,18 +7,24 @@
    "user": "epatnor",
    "mac": "00:24:1d:ce:b6:34",
    "comfy": "http://192.168.0.33:8188",
-   "lanes": {"T1000": "http://192.168.0.33:8188", "M4000": "http://192.168.0.33:8189"},
+   "lanes": {
+    "T1000": "http://192.168.0.33:8188",
+    "M4000": "http://192.168.0.33:8189"
+   },
    "note": "host is the USB WiFi address; mac is the wired port enp9s0 (Wake-on-LAN). Change host when the cable is in."
   },
   "t5810": {
-   "label": "Dell Precision T5810 (service tag 8CYXTB2, Xeon E5-1680 v3 8c/16t AVX2, 16 GB DDR4 ECC, T1000 + GTX 980; two T1000 planned)",
-   "host": null,
+   "label": "Dell Precision T5810 (service tag 8CYXTB2, Xeon E5-1680 v3 8c/16t AVX2, 16 GB DDR4 ECC RDIMM, T1000; second T1000 from Darrowmere planned)",
+   "host": "192.168.0.109",
    "user": "epatnor",
    "mac": "64:00:6a:79:23:1e",
    "comfy": null,
    "lanes": {},
-   "note": "Arrived 2026-11-11, read from a Mint live USB (192.168.0.109 over a USB WiFi stick, user mint). mac is the onboard Intel I217-LM (enp0s25, WoL g). Fill in host once Mint is installed."
+   "note": "Mint 22.3 installed 2026-11-11 (UEFI, kernel 7.0.0-42, NVIDIA 580.178.04, install_power.sh run). host is the temporary USB WiFi stick (DHCP); mac is the onboard Intel I217-LM (enp0s25, WoL g) for when the cable is in. GTX 980 removed."
   }
  },
- "broadcast": ["255.255.255.255", "192.168.0.255"]
+ "broadcast": [
+  "255.255.255.255",
+  "192.168.0.255"
+ ]
 }
