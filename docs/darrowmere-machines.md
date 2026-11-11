@@ -59,25 +59,38 @@ Med `runner.py --idle` ser man varför maskinen håller sig vaken just nu. Innan
 
 ## Dell Precision T5810
 
-**Vårt exemplar:**
+**Vårt exemplar** (avläst 2026-11-11 från ett Mint-USB-minne):
 
-- Service tag 8CYXTB2.
-- Nätaggregat på 685 W.
-- Ett PNY GTX 980 (Maxwell, 4 GB, 6+8-pin) sitter i nu.
-- Planen är två Quadro T1000 i stället för GTX 980.
-- Processor, minne och disk syns först vid uppstart. Dells supportsida visar fabrikskonfigurationen via service-taggen, men minnet kan ha bytts sedan dess.
-- Om maskinen ska ersätta Darrowmere avgörs efter start och test.
+| | |
+|---|---|
+| Service tag | 8CYXTB2 |
+| Processor | Xeon E5-1680 v3: 8 kärnor och 16 trådar, 3,2–3,8 GHz, AVX2 och FMA |
+| Minne | 16 GB: 4 × 4 GB DDR4-2133 ECC RDIMM (SK hynix HMA451R7MFR8N-TF), 4 platser lediga |
+| Disk | Samsung SM871, 256 GB SATA-SSD |
+| Grafikkort | **Quadro T1000 8 GB** och GTX 980; planen är två T1000 |
+| Nätverk | Intel I217-LM (enp0s25, MAC 64:00:6a:79:23:1e): Wake-on-LAN klarar `g` och är redan påslaget. Wifi-stickan är tillfällig. |
+| Viloläge | `deep` (S3) stöds |
+| BIOS | A02 från 2014, mycket gammal |
+| SATA | står i RAID-läge |
+| Nätaggregat | 685 W |
+
+**Det här bör göras före installationen:**
+
+- **Uppdatera BIOS** till Dells senaste version för T5810, via service-taggen på Dells supportsida.
+- **Ställ SATA på AHCI** i BIOS. Linux vill ha AHCI, och RAID-läget behövs inte för en enda disk.
+- **Mer minne.** 16 GB räcker inte, eftersom varje ComfyUI håller sin egen kopia av modellen och Krea-2 tar ungefär 21 GB per kort. Darrowmere har 48 GB. Fyra platser är lediga, och begagnade DDR4 ECC RDIMM är billiga. Darrowmeres DDR3 passar inte. Samma typ, till exempel 4 × 16 GB RDIMM 2133 eller snabbare, ger 80 GB.
+- **Disken.** 256 GB räcker för systemet men inte för `/data`: på Darrowmere används 169 GB, varav 85 GB modeller. NVMe-disken som `/data` ligger på i Darrowmere kan flyttas över via ett PCIe-kort. Den används bara för data, så BIOS behöver inte kunna starta från NVMe.
 
 Resten av uppgifterna gäller alla T5810, enligt Dell.
 
 | | Darrowmere (X58) | T5810 |
 |---|---|---|
-| Processor | i7-920, ingen AVX | Xeon E5-16xx/26xx v3/v4, AVX2 |
-| Minne | 48 GB DDR3 | DDR4 (ECC RDIMM), 8 platser |
+| Processor | i7-920 (4 kärnor och 8 trådar), ingen AVX | E5-1680 v3 (8 kärnor och 16 trådar), AVX2 |
+| Minne | 48 GB DDR3 | 16 GB DDR4 ECC, 8 platser, 4 lediga |
 | PCIe | 2.0 (kontrollerat: gen 2 ×16 för båda korten) | 3.0, två ×16-platser |
 | Nätverk | Realtek RTL8111 ×2, WoL | Intel I217, WoL |
 | Nätaggregat | | 685 W (vårt exemplar) |
-| Grafikkort | M4000 (8 GB, Maxwell) + T1000 (8 GB) | GTX 980 (4 GB) nu, planerat 2 × T1000 |
+| Grafikkort | M4000 (8 GB, Maxwell) + T1000 (8 GB) | T1000 (8 GB) + GTX 980 (4 GB) nu, planerat 2 × T1000 |
 
 AVX2 löser Darrowmeres största risk (ingen AVX, se [darrowmere-baseline.md](darrowmere-baseline.md)). PCIe 3.0 ger dubbel bandbredd när modeller flyttas till korten.
 
