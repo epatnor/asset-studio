@@ -371,3 +371,20 @@ Synkningen ensam tar bort två tredjedelar av hoppen och behåller nästan all s
 det spöken, alltså medelvärden av två placeringar: dubbelt hårfäste med ljusa block i pannan och dubbel skäggkant vid
 örat. v6b är renast och har minst hopp. Nästa steg för v6a är en hårdare vikt (`sync_power` 16–32, så att vyn som ser
 rakast vinner) eller att bara synka de tidiga stegen.
+
+**Hårdare synk (2026-11-11).** v7a har `sync_power` 32. v7b har dessutom `sync_last` 0, så det sista steget målar fritt.
+Skärpan här är Laplace-varians över figuren vid ansiktsvinklarna (`sharp_metric`, en annan skala än tabellen ovan). Där
+mäts Pixal3D till 40, den gamla till 52, v5 till 22, v6a till 26 och v6b till 20.
+
+| Variant | Hopp (medel / värsta) | Förskjutning (median / p95 px) | Skärpa (ny skala) |
+|---|---|---|---|
+| v7a: synk med vikt 32 | 0,36 / 1,28 | 9,4 / 29,9 | 26 |
+| v7b: vikt 32, sista steget fritt | 0,21 / 1,16 | 7,9 / 25,1 | 29 |
+
+En hårdare vikt ändrar nästan ingenting, och spökena står kvar: det trappstegsformade hårfästet och de ljusa blocken vid
+tinningen. De uppstår alltså inte i latentsynken. Synken sker i latentens upplösning (1/8 av bilden), och vyerna
+avkodas sedan var för sig. Bakningen (`best_view_mix` 0,7) väljer sedan bästa vy per texel och gör blockkanter där vyerna
+fortfarande är oense i fin detalj. v7b har lika små medelhopp som v6b och är skarpast av synkvarianterna, men har
+samma spöken. **v6b är fortfarande bästa standardvalet.** Kvar att prova: synk i pixelrymden efter avkodningen (vyerna
+bakas ihop och renderas tillbaka före den slutliga bakningen), eller en mjukare bakning (`best_view_mix` lägre) för
+v6a/v7b.
