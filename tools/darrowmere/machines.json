@@ -23,7 +23,7 @@
     "T1000": "http://192.168.0.109:8188"
    },
    "note": "Named Ravenholdt (hostname ravenholdt). Mint 22.3 installed 2026-11-11 (UEFI, kernel 7.0.0-42, NVIDIA 580.178.04, install_power.sh run). host is the temporary USB WiFi stick (DHCP); mac is the onboard Intel I217-LM (enp0s25, WoL g) for when the cable is in. GTX 980 removed.",
-   "wordmark_scale": 1.4
+   "wordmark_scale": 1.6
   }
  },
  "broadcast": [
