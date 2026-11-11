@@ -68,6 +68,20 @@ def merged(recipe):
     if get(recipe, "finish.mirror_face") is None and r["source"]["mode"] == "prompt":
         # spegling som standard för grundkroppar; kläder och utrustning får vara osymmetriska (Patrik 2026-11-10)
         r["finish"]["mirror_face"] = r["prompt"].get("outfit_preset") != "custom"
+    if r["prompt"].get("creature", "humanoid") != "humanoid" and r["source"]["mode"] == "prompt":
+        # Animals and other creatures: no bald / brow / head-size / T-pose rules, no head pick, no face mirror
+        # (a fantasy creature ordered 2026-11-11 came out as a humanoid because of them)
+        for k, v in (("bald", False), ("no_brows", False), ("normal_head", False), ("pick_head", False), ("front", False)):
+            if get(recipe, f"prompt.{k}") is None:
+                r["prompt"][k] = v
+        if get(recipe, "prompt.pose") is None:
+            r["prompt"]["pose"] = "free"
+        if get(recipe, "prompt.outfit_preset") is None:
+            r["prompt"]["outfit_preset"], r["prompt"]["outfit"] = "custom", ""
+        if get(recipe, "review.hard_face") is None:
+            r["review"]["hard_face"] = False
+        if get(recipe, "finish.mirror_face") is None:
+            r["finish"]["mirror_face"] = False
     for kind in ("style", "outfit"):   # äldre recept: egen text utan förval
         if (get(recipe, f"prompt.{kind}") or "").strip() and get(recipe, f"prompt.{kind}_preset") is None:
             r["prompt"][f"{kind}_preset"] = "custom"
@@ -86,9 +100,14 @@ def compose_prompt(p):
     if p.get("bald") and "bald" not in subject.lower():
         subject = "bald " + subject
     parts = [subject]
+    creature = CREATURES.get(p.get("creature") or "humanoid")
+    if creature:
+        parts.append(creature["view"])
     if p.get("front"):
         parts.append("straight-on front view, body and face square to the camera, perfectly symmetrical")
     outfit = preset("outfit", p)
+    if outfit and creature and re.fullmatch(r"\s*no\s+outfit\s*", outfit, re.I):
+        outfit = ""
     if outfit:
         parts.append("wearing " + outfit)
     pose = {"t": "standing in a strict T-pose with both arms straight out horizontally, feet shoulder-width apart",
@@ -103,12 +122,27 @@ def compose_prompt(p):
         text += ", realistic adult proportions with a normal-sized head and normal-sized eyes"
     if p.get("no_brows"):    # positivt formulerat: Krea saknar negativ prompt
         text += ", smooth hairless brow ridges and bare eyelids"
-    if p.get("margin") or p.get("pose") == "t":
+    if creature and p.get("margin"):
+        text += ", " + creature["margin"]
+    elif p.get("margin") or p.get("pose") == "t":
         text += ", the whole figure small enough that the head, both hands, fingertips and feet are fully inside the frame with clear empty space around it"
     style = preset("style", p)
     if style:
         text += ", " + style
     return text
+
+
+# Creature types other than humanoid: the view and framing Krea-2 is asked for, and what the review checks
+CREATURES = {
+    "quadruped": {"view": "a four-legged animal standing naturally on all four legs, seen in a three-quarter side view so all "
+                          "four legs, the head and the tail are clearly visible",
+                  "margin": "the whole animal small enough that its head, all four feet and the tail are fully inside the frame "
+                            "with clear empty space around it",
+                  "criterion": "One four-legged animal standing on all four legs, all four legs visible; not a humanoid, not standing upright on two legs."},
+    "other": {"view": "a non-human creature shown full body in a neutral standing pose",
+              "margin": "the whole creature small enough that it is fully inside the frame with clear empty space around it",
+              "criterion": "One non-human creature shown full body; not a humanoid with human arms, hands and an upright human body."},
+}
 
 
 def preset(kind, p):
@@ -207,6 +241,8 @@ def review_step(r):
     criteria = [c for c in v["criteria"] if c.strip()]
     if p.get("no_brows"):    # mjukt: Krea ritar ögonbryn ändå (sysslingen), ett hårt krav ger bara omritningar
         criteria.append("No eyebrows and no eyelashes: smooth bare brow ridges and bare eyelids.")
+    if CREATURES.get(p.get("creature") or "humanoid"):
+        hard.append(CREATURES[p["creature"]]["criterion"])
     if p.get("normal_head"):
         criteria.append("Head and eyes of normal adult size: the head about one seventh of the body height, not big-headed, chibi or cartoon-like.")
     s = {"key": "rev_1", "label": "Review: reference image", "kind": "review", "images": ["$step:img_1"],
