@@ -11,7 +11,7 @@
    "note": "host is the USB WiFi address; mac is the wired port enp9s0 (Wake-on-LAN). Change host when the cable is in."
   },
   "t5810": {
-   "label": "Dell Precision T5810 (Xeon E5 v3/v4, AVX2)",
+   "label": "Dell Precision T5810 (service tag 8CYXTB2, Xeon E5 v3/v4, AVX2, 685 W; GTX 980 now, two T1000 planned)",
    "host": null,
    "user": "epatnor",
    "mac": null,

@@ -59,7 +59,16 @@ Med `runner.py --idle` ser man varför maskinen håller sig vaken just nu. Innan
 
 ## Dell Precision T5810
 
-Det här är maskinen från tillverkarens uppgifter. Det mesta är inte kontrollerat på just vårt exemplar.
+**Vårt exemplar:**
+
+- Service tag 8CYXTB2.
+- Nätaggregat på 685 W.
+- Ett PNY GTX 980 (Maxwell, 4 GB, 6+8-pin) sitter i nu.
+- Planen är två Quadro T1000 i stället för GTX 980.
+- Processor, minne och disk syns först vid uppstart. Dells supportsida visar fabrikskonfigurationen via service-taggen, men minnet kan ha bytts sedan dess.
+- Om maskinen ska ersätta Darrowmere avgörs efter start och test.
+
+Resten av uppgifterna gäller alla T5810, enligt Dell.
 
 | | Darrowmere (X58) | T5810 |
 |---|---|---|
@@ -67,20 +76,23 @@ Det här är maskinen från tillverkarens uppgifter. Det mesta är inte kontroll
 | Minne | 48 GB DDR3 | DDR4 (ECC RDIMM), 8 platser |
 | PCIe | 2.0 (kontrollerat: gen 2 ×16 för båda korten) | 3.0, två ×16-platser |
 | Nätverk | Realtek RTL8111 ×2, WoL | Intel I217, WoL |
-| Nätaggregat | | 685 W (vissa 825 W) |
+| Nätaggregat | | 685 W (vårt exemplar) |
+| Grafikkort | M4000 (8 GB, Maxwell) + T1000 (8 GB) | GTX 980 (4 GB) nu, planerat 2 × T1000 |
 
 AVX2 löser Darrowmeres största risk (ingen AVX, se [darrowmere-baseline.md](darrowmere-baseline.md)). PCIe 3.0 ger dubbel bandbredd när modeller flyttas till korten.
 
-M4000 kräver en 6-poligs PCIe-kontakt och T1000 tar strömmen från platsen. Båda bör därför få plats i T5810, men kontakterna och det fysiska utrymmet måste kontrolleras.
+**Två T1000:** varje kort drar 50 W och får strömmen från PCIe-platsen. Det behövs alltså inga extra kontakter, och 685 W räcker med god marginal. Båda korten är Turing (sm_75) och kan köra samma venv och samma flöden. Det försvinner då ett problem som finns i Darrowmere i dag: M4000 (Maxwell, sm_52) klarar inte alla flöden och behöver en egen venv.
 
-**Drivrutinen:** NVIDIA 580 är den sista grenen som stöder Maxwell (M4000). Darrowmere kör 580.178.04, och en ny maskin med M4000 måste stanna på 580. Med bara T1000 eller nyare kort går det att uppgradera.
+Den andra ComfyUI-instansen startas i dag av `comfy_m4000.sh` med venv-m4000. Med två T1000 behövs en variant som startar den med huvudvenv:en, ett annat kort och port 8189. Körspåren blir till exempel `{"lanes": {"t1000a": "http://127.0.0.1:8188", "t1000b": "http://127.0.0.1:8189"}}` i runner.local.json. Panelen visar i dag korten som T1000 och M4000; namnen kommer från `DARROWMERE_COMFY_LANES` på Winterspring.
+
+**Drivrutinen:** NVIDIA 580 är den sista grenen som stöder Maxwell. Det gäller M4000 och GTX 980. Darrowmere kör 580.178.04. Med bara T1000 i maskinen går det att uppgradera förbi 580. GTX 980 duger för ett första test (4 GB räcker inte för Krea-2 eller Pixal3D).
 
 **Att kontrollera på maskinen:**
 
 - processor och minne,
 - BIOS-version,
 - om BIOS startar från NVMe (Darrowmeres `/data` ligger på en 469 GB NVMe, varav 169 GB används och modellerna tar 85 GB),
-- 6-poliga kontakter,
+- att två kort med enkel bredd får plats med luft emellan,
 - *Wake on LAN/WLAN: LAN Only* och *Deep Sleep Control: Disabled* under Power Management.
 
 ### Sätta upp en ny arbetsmaskin
