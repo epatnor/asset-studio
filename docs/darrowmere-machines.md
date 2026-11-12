@@ -165,3 +165,26 @@ Tolkning:
 - **16 GB RAM kostade knappt 2 minuter** i avkodningen av formen. Ravenholdt swappade ungefär 5 GB under natten. Hela modellsteget blev 1 850 s.
 - **Grafikminnet i T1000 är den verkliga gränsen** för den här figuren, inte resten av datorn. På Darrowmere har M4000-instansen av ComfyUI en GL-kontext på T1000 (cirka 360 MB, eftersom EGL väljer enhet 0). Huvudinstansen har cirka 540 MB när den står stilla, mot cirka 200 MB på Ravenholdt.
 - **En hårig figur är dyrare än en slät.** `squiggly-1111-0937` tog 892 s i Pixal3D, den här figuren ungefär dubbelt så lång tid.
+
+### Omkörning med samma bild, 2026-11-12 07:18
+
+Beställningen `squiggly-same-1112-0718` fick Ravenholdts referensbild från natten på båda maskinerna (uppladdningsläge, ingen Krea). Darrowmere fick slut på grafikminne på samma ställe igen, i `VaeDecodeTextureTrellis`: den begärde 1,73 GB och 30 MB var lediga. Ravenholdt gick hela vägen och tog totalt 63 minuter.
+
+| Fas | Darrowmere | Ravenholdt |
+|---|---|---|
+| Pixal3D: förbehandling | 28 s | 26 s |
+| Pixal3D: gles struktur och nästa steg | 289 s | 276 s |
+| Pixal3D: formen (Trellis2) | 894 s | 842 s |
+| Pixal3D: avkodning av formen (`ShapeVae`, RAM-tung) | **37 s** | **152 s** |
+| Pixal3D: texturen (Trellis2) | 467 s | 443 s |
+| Pixal3D: avkodning av texturen och export | slut på grafikminne | 92 s |
+| UltraTex 4B (Klein, 6 + 4 vyer, två omgångar à cirka 14 min) | – | 1 904 s |
+| Efterbehandling (färg, lösa bitar, spelmodell 12k) | – | 34 s |
+
+Slutsatser:
+- **Felet på Darrowmere beror på maskinen, inte på bilden.** Den saknar minst 1,7 GB grafikminne i sista avkodningen, som Ravenholdt hade. Med samma ComfyUI, samma flaggor (`--reserve-vram 2`) och samma cacheläge förklarar M4000-instansens GL-kontext på T1000 (cirka 360 MB) bara en del av det. Resten tar `nvidia-smi` inte upp. Den kan ligga i hur dynamic VRAM håller vikterna när det finns mycket RAM att låsa (43 GB mot 11,8 GB).
+- **16 GB RAM kostar cirka 2 minuter** av en timme, i `ShapeVae`. Grafikkortsfaserna var 3–6 % snabbare på Ravenholdt den här gången. Darrowmeres T1000 slår i effekttaket vid 84–87 °C.
+- **Att prova på Darrowmere:**
+  - Höj `--reserve-vram` till 3.
+  - Låt M4000-instansens EGL välja sitt eget kort, så att dess GL-kontext inte hamnar på T1000.
+  - Kör sedan bara modellsteget med samma bild igen.
