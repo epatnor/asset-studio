@@ -2,16 +2,14 @@
  "model": "deepseek/deepseek-v4.1-flash-1017",
  "comfy": "http://127.0.0.1:8188",
  "lanes": {
-  "t1000": "http://127.0.0.1:8188",
-  "m4000": "http://127.0.0.1:8189"
+  "t1000": "http://127.0.0.1:8188"
  },
  "orders": "/data/orders",
  "output": "/data/utdata",
  "blender": "/data/blender/current/blender",
  "serial_lanes": false,
  "auto_lanes": [
-  "t1000",
-  "m4000"
+  "t1000"
  ],
  "idle_free_s": 600,
  "defaults": {

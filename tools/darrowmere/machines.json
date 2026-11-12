@@ -2,14 +2,13 @@
  "worker": "darrowmere",
  "machines": {
   "darrowmere": {
-   "label": "Darrowmere (i7-920, X58, Quadro M4000 + T1000)",
+   "label": "Darrowmere (i7-920, X58, T1000)",
    "host": "192.168.0.33",
    "user": "epatnor",
    "mac": "00:24:1d:ce:b6:34",
    "comfy": "http://192.168.0.33:8188",
    "lanes": {
-    "T1000": "http://192.168.0.33:8188",
-    "M4000": "http://192.168.0.33:8189"
+    "T1000": "http://192.168.0.33:8188"
    },
    "note": "host is the USB WiFi address; mac is the wired port enp9s0 (Wake-on-LAN). Change host when the cable is in."
   },
