@@ -215,3 +215,18 @@ Jag gjorde två ändringar och körde sedan samma bild igen (`squiggly-rv3-1112-
 **Resultatet blev samma fel på samma ställe, med samma siffror:** 4,33 GB allokerat, 1,73 GB begärt, 30 MB ledigt. torch 2.11.0+cu128, triton 3.6.0 och ComfyUI b1a247c är identiska på båda maskinerna, och grafikminnet är lika fullt när de står stilla (cirka 600 MB). Varför Ravenholdt klarar avkodningen och inte Darrowmere är fortfarande oförklarat. Kvar att prova är att flytta Darrowmeres T1000 till en annan maskin, eller det omvända, så att det framgår om det är kortet eller datorn.
 
 **Slutsats för valet:** felet är ett gränsfall och inget generellt problem. Darrowmere har kört Pixal3D klart 26 gånger och bara fått slut på grafikminne fyra gånger: kistan 8 november och det här djuret tre gånger. Pälsen ger ett nät med 3,6 miljoner hörn, och då behöver avkodningen av texturen nästan 6 GB. Ravenholdt har lite mer marginal i just det steget. Tunga figurer kan köras om med lägre upplösning i Pixal3D.
+
+### Orsaken: nodpaketet ComfyUI-GGUF (2026-11-12 kväll)
+
+Jag halverade med samma bild och bara modellsteget. Grafikminnet loggades varje sekund (`/data/utdata/vram_*.csv`).
+
+| Tilläggsnoder påslagna | Resultat |
+|---|---|
+| inga av de fem | klarar sig, toppen 6,4 GB; hela beställningen tog 69 min |
+| ComfyUI-GGUF-Loader | klarar sig |
+| GGUF-Loader, KJNodes och ComfyUI-GGUF | slut på grafikminne |
+| GGUF-Loader och ComfyUI-GGUF | slut på grafikminne |
+
+**ComfyUI-GGUF (city96) är orsaken.** Med det paketet laddat går avkodningen av formen fortare (37 s mot 230 s), men så mycket ligger kvar i grafikminnet att avkodningen av texturen inte får plats. Exakt vad paketet ändrar har jag inte letat upp.
+
+Paketet ligger nu i `/data/ComfyUI/custom_nodes_off/`. ComfyUI-GGUF-Loader har en egen `UnetLoaderGGUF` med samma namn, så GGUF-modeller laddas fortfarande. De andra fyra paketen är påslagna igen. Ravenholdt hade aldrig paketet, och därför klarade den sig.
