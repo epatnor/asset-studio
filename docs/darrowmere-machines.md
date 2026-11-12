@@ -1,6 +1,21 @@
 # Arbetsmaskinerna: Darrowmere och Dell T5810
 
-Darrowmere (i7-920, Gigabyte X58, 48 GB, Quadro M4000 + T1000, Linux Mint 22.3) kör beställningarna. En Dell Precision T5810 kom hem 2026-11-11. Den här sidan beskriver hur verktygen hittar arbetsmaskinen, hur den sover när den inte används och hur en ny maskin sätts upp.
+Darrowmere (i7-920, Gigabyte X58, 48 GB, T1000, Linux Mint 22.3) kör beställningarna. En Dell Precision T5810 (Ravenholdt) kom hem 2026-11-11 och en HP Z4 G4 2026-11-12. Den här sidan beskriver hur verktygen hittar arbetsmaskinen, hur den sover när den inte används och hur en ny maskin sätts upp.
+
+## Maskinerna (2026-11-12)
+
+| | Darrowmere | Ravenholdt | HP Z4 G4 | Sonens speldator |
+|---|---|---|---|---|
+| Roll | arbetsmaskin i dag | provad, Linux Mint 22.3 | kom hem 2026-11-12, skulle skrotas på jobbet | Windows 10, används av sonen |
+| Processor | i7-920, 4 kärnor och 8 trådar, ingen AVX | Xeon E5-1680 v3, 8 kärnor och 16 trådar, AVX2 | okänd: Xeon W eller Core X (grundmodell 1JP11AV) | i5-9600K, 6 kärnor och 6 trådar, AVX2 |
+| Moderkort | Gigabyte X58 | Dell T5810 | HP Z4 G4 | Gigabyte Z390 Gaming X-CF, BIOS F9 (2019) |
+| Minne | 48 GB DDR3 | 16 GB DDR4 ECC RDIMM, 8 platser | kom utan minne; nu 2 × 8 GB Corsair Vengeance (UDIMM) i plats 1 och 3 | 16 GB: 2 × 8 GB Corsair Vengeance RGB Pro DDR4-3000 (CMW16GX4M2C3000C15), kör i 2133 (XMP av), 4 platser |
+| Minne som passar | DDR3 | DDR4 ECC RDIMM | Xeon W: ECC RDIMM. Core X: vanlig UDIMM | vanlig DDR4 UDIMM, upp till 64 GB |
+| Grafikkort | T1000 (M4000 avstängd 2026-11-12, ska ur) | T1000 | provar med eget kort | GTX 1060 6 GB (Pascal) |
+| PCIe | 2.0 | 3.0, två ×16 | 3.0 | 3.0, en ×16 från processorn (andra långa platsen är ×4 via chipset) |
+| Adress | 192.168.0.33 (wifi), panel :8790 | 192.168.0.35 (kabel), panel :8791 | – | – |
+
+**Z4 G4, läget:** med minnena i de vita platserna gav den felkoden 3 röda och 2 vita (minne). I de blå platserna (1 och 3) piper den inte, men gav ännu ingen bild, så grafikkortet byts. När den startar visar BIOS (F10) processorn: Core X betyder att Vengeance-minnet fungerar, Xeon W att den behöver ECC RDIMM som Ravenholdt.
 
 ## En maskin, en rad i `machines.json`
 
