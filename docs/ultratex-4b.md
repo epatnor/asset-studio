@@ -398,3 +398,19 @@ Det här gäller dessutom:
 - **Under Avancerat:** *Repaint strength* (`denoise` 0,85), *Keep the head's paint* (`head_keep` 0,6) och *Sync view weight* (`sync_power` 8).
 - **Djur och andra varelser:** de får `head_keep` 0, eftersom huvudbandet (översta 20 % av höjden) bara stämmer för människor.
 - **Tripo och Meshy:** deras modeller saknar Pixal3D:s egna färger och använder alltid den klassiska metoden. Planen varnar för det.
+
+## Mot det perfekta resultatet (2026-11-12)
+
+**Mjukare bakning gav nästan ingenting.** Jag bakade v6b:s sex färdiga vyer om på Ravenholdt (`tools/texture/ultratex_metrics/`, samma huvudsnurra som ovan). Ytterligare en sak syntes: v6b har bara halva skärpan mot Pixal3D:s egen målning, 19,5 mot 40,3.
+
+| Bakning | Hopp (medel / värsta) | Förskjutning (median / p95 px) | Skärpa |
+|---|---|---|---|
+| Pixal3D:s egen målning | 0 / 0 | – | 40,3 |
+| v6b som den är (`best_view_mix` 0,7, `detail_sharpness` 32) | 0,21 / 0,59 | 0,91 / 6,39 | 19,5 |
+| `detail_sharpness` 8 | **0,20 / 0,58** | **0,90 / 6,17** | 19,4 |
+| `detail_sharpness` 2 | 0,26 / 0,70 | 0,99 / 6,56 | 19,4 |
+| `best_view_mix` 0,3 | 0,21 / 0,59 | 0,91 / 6,39 | 19,5 |
+
+- `best_view_mix` påverkar inte bakningsläget `two_band` alls.
+- `detail_sharpness` 8 är en aning bättre än 32.
+- Spökena och mjukheten sitter alltså i själva vyerna, inte i bakningen. Nästa försök är en andra omgång i pixelrymden: rendera den bakade texturen tillbaka till vyerna, låt UltraTex måla en gång till med låg styrka och synk, och baka igen.
