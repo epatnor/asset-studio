@@ -359,14 +359,22 @@ def ultratex_synced_step(r, asset, ref, mesh_glob):
     g["7"]["inputs"]["lora_name"] = t["lora"]
     g["8"]["inputs"]["decoder_name"] = t["decoder"]
     g["26"]["inputs"]["filename_prefix"] = f"characters/{asset}/{asset}_ut4b_views"
+    if float(t.get("mesh_detail", 1.0)) <= 0 and float(t.get("mesh_detail_head", 1.0)) <= 0:
+        g.pop("320")   # no detail from the mesh: the views go straight from the tone match to the bake
+        g["26"]["inputs"]["images"] = ["310", 0]
+        g["501"]["inputs"]["albedo_views"] = ["310", 0]
+    else:
+        g["320"]["inputs"].update(sigma=float(t.get("mesh_detail_sigma", 8.0)), detail=float(t.get("mesh_detail", 1.0)),
+                                  head_detail=float(t.get("mesh_detail_head", 1.0)))
     bake = g.pop("501")
     for i, mix in enumerate(t["mixes"]):
         b = copy.deepcopy(bake)
         b["inputs"].update(texture_size=int(t["texture_size"]), view_weight_power=float(t["view_weight_power"]), best_view_mix=float(mix),
-                           edge_feather_px=float(t["edge_feather_px"]), filename_prefix=f"characters/{asset}/{asset}_ut4b_mix{round(float(mix) * 100)}")
+                           edge_feather_px=float(t["edge_feather_px"]), detail_sharpness=float(t.get("detail_sharpness", 8)),
+                           filename_prefix=f"characters/{asset}/{asset}_ut4b_mix{round(float(mix) * 100)}")
         g[str(500 + i)] = b
     label = (f"Texture (UltraTex 4B {lora_label(t['lora'])}, "
-             f"synced views from the model's colours, {len(t['mixes'])} bake{'s' if len(t['mixes']) > 1 else ''})")
+             f"synced views from the model's colours{', its fine detail' if '320' in g else ''}, {len(t['mixes'])} bake{'s' if len(t['mixes']) > 1 else ''})")
     return {"key": "texture", "label": label, "kind": "comfy", "graph": g}
 
 

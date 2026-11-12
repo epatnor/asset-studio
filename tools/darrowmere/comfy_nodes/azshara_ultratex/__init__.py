@@ -189,6 +189,58 @@ class UltraTexMatchViewTone:
         return (out.permute(0, 2, 3, 1).contiguous(),)
 
 
+class UltraTexDetailFromMesh:
+    """Colour from UltraTex, fine detail from the mesh's own paint: each view keeps its low frequencies (UltraTex's colour
+    regions, closer to the reference image) and takes its high frequencies from the same view of the mesh's own colours
+    (Pixal3D's texture). That detail comes from one texture, so it agrees between views: no ghosts, and Pixal3D's paint is
+    about twice as sharp as UltraTex's (2026-11-12). The head can keep UltraTex's own detail, since Pixal3D sometimes
+    spoils faces."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {
+            "views": ("IMAGE", {"tooltip": "The painted views (after UltraTex Match View Tone)."}),
+            "reference": ("IMAGE", {"tooltip": "colour_views of UltraTex Init From Mesh Colours (same cameras)."}),
+            "cover": ("MASK", {"tooltip": "cover of UltraTex Init From Mesh Colours."}),
+            "sigma": ("FLOAT", {"default": 4.0, "min": 0.5, "max": 64.0, "step": 0.5, "tooltip": "Split between colour and detail, as a blur in px at 1024: detail finer than this comes from the mesh."}),
+            "detail": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "Share of the fine detail taken from the mesh on the body (1 = all of it, 0 = UltraTex's own)."}),
+            "head_detail": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05, "tooltip": "The same on the head (0 = keep UltraTex's face detail)."}),
+        }, "optional": {
+            "head": ("MASK", {"tooltip": "head_keep of UltraTex Init From Mesh Colours; without it the whole figure counts as body."}),
+        }}
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("views",)
+    FUNCTION = "mix"
+    CATEGORY = "UltraTex"
+
+    def mix(self, views, reference, cover, sigma, detail, head_detail, head=None):
+        import torch.nn.functional as F
+        v = views.float().permute(0, 3, 1, 2)[:, :3]
+        r = F.interpolate(reference.float().permute(0, 3, 1, 2)[:, :3], size=v.shape[-2:], mode="bilinear", align_corners=False)
+        m = F.interpolate(cover.float()[:, None], size=v.shape[-2:], mode="nearest")
+        s = float(sigma) * v.shape[-1] / 1024.0
+        k = int(s * 3) | 1
+        x = torch.arange(k, dtype=torch.float32) - k // 2
+        g = torch.exp(-0.5 * (x / s) ** 2); g = g / g.sum()
+        def blur(t):
+            c = t.shape[1]
+            t = F.conv2d(F.pad(t, (k // 2, k // 2, 0, 0), mode="replicate"), g.view(1, 1, 1, k).repeat(c, 1, 1, 1), groups=c)
+            return F.conv2d(F.pad(t, (0, 0, k // 2, k // 2), mode="replicate"), g.view(1, 1, k, 1).repeat(c, 1, 1, 1), groups=c)
+        wm = blur(m).clamp_min(1e-4)
+        low_v, low_r = blur(v * m) / wm, blur(r * m) / wm   # masked blur: the background does not bleed into the edge
+        w = torch.full_like(m, float(detail))
+        if head is not None:
+            h = F.interpolate(head.float()[:, None], size=v.shape[-2:], mode="bilinear", align_corners=False)
+            h = h / h.max().clamp_min(1e-6)
+            w = w * (1 - h) + float(head_detail) * h
+        out = low_v + w * (r - low_r) + (1 - w) * (v - low_v)
+        out = torch.where(m > 0.5, out.clamp(0, 1), v)
+        print(f"[azshara] detail from mesh: sigma {float(sigma)}, body {float(detail)}, head {float(head_detail)}"
+              f"{'' if head is not None else ' (no head mask)'}", flush=True)
+        return (out.permute(0, 2, 3, 1).contiguous(),)
+
+
 # --------------------------------------------------------------------------- synced sampling
 # UltraTex paints its 6 views together but bakes them onto the surface only at the end, so the views can place a feature
 # (an eyebrow, a collar) a little differently and the bake jumps between them. Here the views are kept in agreement while
@@ -331,6 +383,6 @@ class UltraTexSamplerSynced:
 
 
 NODE_CLASS_MAPPINGS = {"UltraTexInitFromMeshColours": UltraTexInitFromMeshColours, "UltraTexMatchViewTone": UltraTexMatchViewTone,
-                       "UltraTexSamplerSynced": UltraTexSamplerSynced}
+                       "UltraTexSamplerSynced": UltraTexSamplerSynced, "UltraTexDetailFromMesh": UltraTexDetailFromMesh}
 NODE_DISPLAY_NAME_MAPPINGS = {"UltraTexInitFromMeshColours": "UltraTex Init From Mesh Colours", "UltraTexMatchViewTone": "UltraTex Match View Tone",
-                              "UltraTexSamplerSynced": "UltraTex Sampler (synced views)"}
+                              "UltraTexSamplerSynced": "UltraTex Sampler (synced views)", "UltraTexDetailFromMesh": "UltraTex Detail From Mesh"}

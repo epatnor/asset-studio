@@ -429,3 +429,21 @@ Förskjutningen fördubblas oavsett styrka, alltså även när nästan inget må
 **Sidofynd:** UltraTex glesa attention går inte på T1000. Kerneln vill ha 96 KB delat minne, kortet har 64 KB, och ComfyUI:s vanliga attention används i stället.
 
 **Nästa spår mot skärpa:** v6b har halva skärpan mot Pixal3D:s egen målning. Huvudet är litet i varje helfigursvy på 1024 px. Extra kameror nära huvudet, som bakas in med högre vikt, kan ge ansiktet mer upplösning.
+
+**Fina detaljer från modellen (2026-11-12): `UltraTex Detail From Mesh`.** Noden sitter mellan tonmatchningen och bakningen. Varje vy behåller UltraTex grova färger, under `sigma` px vid 1024, och får de fina detaljerna från samma vy av Pixal3D:s egen målning. De detaljerna kommer från en och samma textur och är därför samstämmiga mellan vyerna. Huvudet kan få en egen andel (`head_detail`), eftersom Pixal3D ibland förstör ansikten. Provet gjordes på v6b:s färdiga vyer med huvudsnurran.
+
+| Variant | Hopp (medel / värsta) | Förskjutning (median / p95 px) | Skärpa |
+|---|---|---|---|
+| v6b, `detail_sharpness` 8 | 0,20 / 0,58 | 0,90 / 6,17 | 19,4 |
+| Bakning i 4096 i stället för 2048 | 0,22 / 0,60 | 0,87 / 5,93 | 19,9 |
+| Detalj från modellen, huvud 0,5, `sigma` 4 | 0,20 / 0,55 | 0,59 / 5,54 | 21,1 |
+| **Huvud 1, `sigma` 8** | 0,23 / **0,49** | **0,43 / 4,17** | 24,7 |
+| Huvud 1, `sigma` 4, bakning i 4096 | 0,27 / 0,63 | 0,48 / 4,88 | **26,3** |
+| Pixal3D:s egen målning | 0 / 0 | – | 40,3 |
+
+Slutsatser:
+- **Upplösningen förklarar inte skärpeglappet.** Bakning i 4096 hjälper knappt.
+- **Fina detaljer från modellen på huvudet** ger 27 % mer skärpa och en tredjedel mindre förskjutning, och de värsta hoppen minskar. Huvudsnurran mäter bara huvudet, så kroppen är inte mätt.
+- **På kontaktarket** är hårfäste och skägg skarpare och ögonbrynen har kvar sin form. Inget i ansiktet förstördes.
+- **Inkopplat i figurbeställningen** med `sigma` 8 och kropp och huvud 1. Spakarna ligger under Avancerat (*Fine detail from the model*), och 0 på båda ger v6b.
+- **Det som saknas är ett mått på likhet med referensbilden.** Mer från Pixal3D ger alltid bättre skarvar och skärpa, eftersom Pixal3D:s egen målning har 0 hopp och skärpan 40. Det som UltraTex tillför, likheten med referensen, mäts inte än. Det måttet behövs innan `sigma` höjs mer.

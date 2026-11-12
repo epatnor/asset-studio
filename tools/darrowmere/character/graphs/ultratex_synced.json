@@ -178,7 +178,7 @@
   "inputs": {
    "filename_prefix": "",
    "images": [
-    "310",
+    "320",
     0
    ]
   },
@@ -231,7 +231,7 @@
    "best_view_mix": 0.7,
    "edge_feather_px": 16.0,
    "fusion": "two_band",
-   "detail_sharpness": 32,
+   "detail_sharpness": 8,
    "exposure_match": true,
    "hole_fill": "mesh",
    "prep": [
@@ -239,7 +239,7 @@
     0
    ],
    "albedo_views": [
-    "310",
+    "320",
     0
    ]
   },
@@ -268,6 +268,30 @@
    "align": true,
    "max_shift": 24.0,
    "flow_smooth": 6.0
+  }
+ },
+ "320": {
+  "class_type": "UltraTexDetailFromMesh",
+  "inputs": {
+   "views": [
+    "310",
+    0
+   ],
+   "reference": [
+    "300",
+    1
+   ],
+   "cover": [
+    "300",
+    2
+   ],
+   "head": [
+    "300",
+    3
+   ],
+   "sigma": 8.0,
+   "detail": 1.0,
+   "head_detail": 1.0
   }
  }
 }
