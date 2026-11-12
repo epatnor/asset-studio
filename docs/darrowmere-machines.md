@@ -214,4 +214,4 @@ Jag gjorde två ändringar och körde sedan samma bild igen (`squiggly-rv3-1112-
 
 **Resultatet blev samma fel på samma ställe, med samma siffror:** 4,33 GB allokerat, 1,73 GB begärt, 30 MB ledigt. torch 2.11.0+cu128, triton 3.6.0 och ComfyUI b1a247c är identiska på båda maskinerna, och grafikminnet är lika fullt när de står stilla (cirka 600 MB). Varför Ravenholdt klarar avkodningen och inte Darrowmere är fortfarande oförklarat. Kvar att prova är att flytta Darrowmeres T1000 till en annan maskin, eller det omvända, så att det framgår om det är kortet eller datorn.
 
-**Slutsats för valet:** Darrowmere klarar inte hela flödet för en lurvig figur. Ravenholdt och moderna maskiner gör det.
+**Slutsats för valet:** felet är ett gränsfall och inget generellt problem. Darrowmere har kört Pixal3D klart 26 gånger och bara fått slut på grafikminne fyra gånger: kistan 8 november och det här djuret tre gånger. Pälsen ger ett nät med 3,6 miljoner hörn, och då behöver avkodningen av texturen nästan 6 GB. Ravenholdt har lite mer marginal i just det steget. Tunga figurer kan köras om med lägre upplösning i Pixal3D.
