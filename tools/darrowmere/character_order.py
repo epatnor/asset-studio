@@ -265,7 +265,8 @@ def review_step(r):
         if p.get("view") == "front":   # from the front the hind legs hide behind the front legs
             crit = crit.replace("all four legs visible", "front legs visible, hind legs may be hidden behind them")
             crit += " The camera looks straight at the front of the animal."
-        elif p.get("view") == "side":
+        elif p.get("view") == "side":   # in profile the far legs hide behind the near ones
+            crit = crit.replace("all four legs visible", "near-side legs visible, far-side legs may be hidden behind them")
             crit += " The camera looks exactly at the side of the animal, in profile."
         hard.append(crit)
     if p.get("normal_head"):
