@@ -105,7 +105,7 @@ def compose_prompt(p):
     parts = [subject]
     creature = CREATURES.get(p.get("creature") or "humanoid")
     if creature:
-        parts.append(creature["view"])
+        parts.append(creature["view"] + ", " + creature["cameras"].get(p.get("view") or "three_quarter", creature["cameras"]["three_quarter"]))
     if p.get("front"):
         parts.append("straight-on front view, body and face square to the camera, perfectly symmetrical")
     outfit = preset("outfit", p)
@@ -140,8 +140,10 @@ CREATURES = {
     # Rest pose for rigging and mirroring: head in line with the spine (Squiggly 2026-11-12 tilted its head to one side).
     # Positive wording only in the prompt (Krea has no negative prompt); the "not turned" rule lives in the review criterion.
     "quadruped": {"view": "a four-legged animal standing in a neutral symmetrical rest pose on all four legs, legs straight under the "
-                          "body, head held straight and level in line with the spine, facing the same way as the body, tail straight "
-                          "back, seen in a three-quarter side view so all four legs, the head and the tail are clearly visible",
+                          "body, head held straight and level in line with the spine, facing the same way as the body, tail straight back",
+                  "cameras": {"three_quarter": "seen in a three-quarter side view so all four legs, the head and the tail are clearly visible",
+                              "front": "seen straight from the front at eye level, head and body square to the camera, perfectly symmetrical",
+                              "side": "seen exactly from the side in profile at eye level, all four legs and the tail visible"},
                   "margin": "the whole animal small enough that its head, all four feet and the tail are fully inside the frame "
                             "with clear empty space around it",
                   "criterion": "One four-legged animal standing on all four legs, all four legs visible; not a humanoid, not standing upright on two legs. "
@@ -149,6 +151,9 @@ CREATURES = {
                                "cocked to one side and not looking at the camera; legs not mid-stride."},
     "other": {"view": "a non-human creature shown full body in a neutral symmetrical rest pose, head held straight and level, "
                       "facing the same way as the body",
+              "cameras": {"three_quarter": "seen in a three-quarter view",
+                          "front": "seen straight from the front at eye level, square to the camera, perfectly symmetrical",
+                          "side": "seen exactly from the side in profile at eye level"},
               "margin": "the whole creature small enough that it is fully inside the frame with clear empty space around it",
               "criterion": "One non-human creature shown full body; not a humanoid with human arms, hands and an upright human body. "
                            "Symmetrical rest pose: the head is straight and level in line with the body, not turned, tilted or "
@@ -256,7 +261,13 @@ def review_step(r):
     if p.get("no_brows"):    # mjukt: Krea ritar ögonbryn ändå (sysslingen), ett hårt krav ger bara omritningar
         criteria.append("No eyebrows and no eyelashes: smooth bare brow ridges and bare eyelids.")
     if CREATURES.get(p.get("creature") or "humanoid"):
-        hard.append(CREATURES[p["creature"]]["criterion"])
+        crit = CREATURES[p["creature"]]["criterion"]
+        if p.get("view") == "front":   # from the front the hind legs hide behind the front legs
+            crit = crit.replace("all four legs visible", "front legs visible, hind legs may be hidden behind them")
+            crit += " The camera looks straight at the front of the animal."
+        elif p.get("view") == "side":
+            crit += " The camera looks exactly at the side of the animal, in profile."
+        hard.append(crit)
     if p.get("normal_head"):
         criteria.append("Head and eyes of normal adult size: the head about one seventh of the body height, not big-headed, chibi or cartoon-like.")
     s = {"key": "rev_1", "label": "Review: reference image", "kind": "review", "images": ["$step:img_1"],
