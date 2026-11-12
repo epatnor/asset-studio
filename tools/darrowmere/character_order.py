@@ -24,7 +24,8 @@ OPTIONS = json.loads((HERE / "character" / "options.json").read_text())
 GRAPHS = HERE / "character" / "graphs"
 ROLES = ("front", "back", "left", "right", "detail")
 # Minuter per steg, medianer ur Darrowmeres beställningar (2026-11-10)
-MINUTES = {"krea": 5, "review": 1, "pixal3d": 11, "tripo": 4, "meshy": 5, "ultratex": 9, "ultratex_ring": 4, "bake": 1, "meshy_tex": 4, "finish": 4}
+MINUTES = {"krea": 5, "review": 1, "pixal3d": 11, "tripo": 4, "meshy": 5, "ultratex": 9, "ultratex_ring": 4, "ultratex_synced": 6, "bake": 1,
+           "meshy_tex": 4, "finish": 4}
 
 
 def graph(name):
@@ -82,6 +83,8 @@ def merged(recipe):
             r["review"]["hard_face"] = False
         if get(recipe, "finish.mirror_face") is None:
             r["finish"]["mirror_face"] = False
+    if r["prompt"].get("creature", "humanoid") != "humanoid" and get(recipe, "texture.ultratex.head_keep") is None:
+        r["texture"]["ultratex"]["head_keep"] = 0.0   # the "head" band (top 20 % of the height) is a human idea
     for kind in ("style", "outfit"):   # äldre recept: egen text utan förval
         if (get(recipe, f"prompt.{kind}") or "").strip() and get(recipe, f"prompt.{kind}_preset") is None:
             r["prompt"][f"{kind}_preset"] = "custom"
@@ -199,6 +202,9 @@ def check(r, refs):
                     errs.append(f"Ring {i + 1} needs exactly four views.")
             if not r["texture"]["ultratex"].get("mixes"):
                 errs.append("Give at least one best-view mix.")
+            if r["texture"]["ultratex"].get("method", "synced") == "synced":
+                if eng != "pixal3d":
+                    warns.append("Synced views start from the model's own colours, which only Pixal3D gives; this order uses the classic method.")
         if r["prompt"].get("pose") == "free" and mode == "prompt" and r["finish"]["mirror_face"]:
             warns.append("Mirroring the face works best in a symmetric pose.")
     if mode == "prompt" and r["prompt"]["pose"] == "t" and image_size(r["prompt"]) == (832, 1216):
@@ -279,6 +285,10 @@ def pixal_step(r, asset, image, scale=1.0):
     return {"key": "mesh", "label": f"3D model (Pixal3D, seed {seed})", "kind": "comfy", "graph": g}, f"{asset}_pixal3d_0*.glb"
 
 
+def lora_label(name):
+    return name.replace("ultratex4b_", "").replace(".safetensors", "").replace("_", " ").replace(" ema", " EMA")
+
+
 def ultratex_step(r, asset, ref, mesh_glob):
     t = r["texture"]["ultratex"]
     g = graph("ultratex")
@@ -309,8 +319,40 @@ def ultratex_step(r, asset, ref, mesh_glob):
             for k in ("prep_2", "albedo_views_2", "views_2_use", "views_2_weight"):
                 b["inputs"].pop(k, None)
         g[str(500 + i)] = b
-    label = f"Texture (UltraTex 4B {t['lora'].split('_')[-1].split('.')[0]}, 6 + {4 * len(rings)} views, {len(t['mixes'])} bake{'s' if len(t['mixes']) > 1 else ''})"
+    label = f"Texture (UltraTex 4B {lora_label(t['lora'])}, 6 + {4 * len(rings)} views, {len(t['mixes'])} bake{'s' if len(t['mixes']) > 1 else ''})"
     return {"key": "texture", "label": label, "kind": "comfy", "graph": g}
+
+
+def ultratex_synced_step(r, asset, ref, mesh_glob):
+    """v6b (docs/ultratex-4b.md, "Synkade vyer"): the views start from the Pixal3D mesh's own colours (denoise < 1, head kept
+    closer to the mesh's paint), are merged on a shared UV latent texture after every denoising step, then tone-matched and
+    flow-aligned to the mesh colours before the bake. Six base views; extra rings are not used here."""
+    t = r["texture"]["ultratex"]
+    g = graph("ultratex_synced")
+    glb = f"$path:mesh/{mesh_glob}"
+    g["22"]["inputs"]["glb_path"] = glb
+    g["300"]["inputs"].update(glb_path=glb, head_keep=float(t["head_keep"]), texture_size=int(t["texture_size"]))
+    g["19"]["inputs"]["image"] = ref
+    g["2"]["inputs"].update(reference_alignment=t["alignment"])
+    g["4"]["inputs"].update(steps=int(t["steps"]), guidance=float(t["guidance"]), seed=int(t["seed"]), denoise=float(t["denoise"]),
+                            sync_power=float(t["sync_power"]))
+    g["7"]["inputs"]["lora_name"] = t["lora"]
+    g["8"]["inputs"]["decoder_name"] = t["decoder"]
+    g["26"]["inputs"]["filename_prefix"] = f"characters/{asset}/{asset}_ut4b_views"
+    bake = g.pop("501")
+    for i, mix in enumerate(t["mixes"]):
+        b = copy.deepcopy(bake)
+        b["inputs"].update(texture_size=int(t["texture_size"]), view_weight_power=float(t["view_weight_power"]), best_view_mix=float(mix),
+                           edge_feather_px=float(t["edge_feather_px"]), filename_prefix=f"characters/{asset}/{asset}_ut4b_mix{round(float(mix) * 100)}")
+        g[str(500 + i)] = b
+    label = (f"Texture (UltraTex 4B {lora_label(t['lora'])}, "
+             f"synced views from the model's colours, {len(t['mixes'])} bake{'s' if len(t['mixes']) > 1 else ''})")
+    return {"key": "texture", "label": label, "kind": "comfy", "graph": g}
+
+
+def synced(r):
+    """The synced method needs a mesh with its own colours, which only Pixal3D gives here."""
+    return r["texture"]["ultratex"].get("method", "synced") == "synced" and r["model"]["engine"] == "pixal3d"
 
 
 def finish_args(r, glb, name, textured):
@@ -399,9 +441,12 @@ def build(recipe, refs=None, now=None):
         tex = r["texture"]["engine"]
         textured = tex != "none"
         if tex == "ultratex":
-            st = ultratex_step(r, asset, front_ref, mesh_glob)
             t = r["texture"]["ultratex"]
-            add(st, lane, MINUTES["ultratex"] + MINUTES["ultratex_ring"] * len(t.get("rigs") or []) + MINUTES["bake"] * len(t["mixes"]))
+            if synced(r):
+                add(ultratex_synced_step(r, asset, front_ref, mesh_glob), lane, MINUTES["ultratex_synced"] + MINUTES["bake"] * len(t["mixes"]))
+            else:
+                st = ultratex_step(r, asset, front_ref, mesh_glob)
+                add(st, lane, MINUTES["ultratex"] + MINUTES["ultratex_ring"] * len(t.get("rigs") or []) + MINUTES["bake"] * len(t["mixes"]))
             finals = [(f"$step:texture/{asset}_ut4b_mix{round(float(x) * 100)}_*.glb", f"{asset}_ut4b_mix{round(float(x) * 100)}") for x in t["mixes"]]
         elif tex == "meshy":
             cost = 15 if r["texture"]["meshy"]["resolution"] == "8k" else 10
@@ -432,7 +477,7 @@ def build(recipe, refs=None, now=None):
     t = r["texture"]["ultratex"]
     plan_out = {"ok": not errs, "errors": errs, "warnings": warns, "id": oid, "title": title, "asset": asset, "prompt": prompt,
                 "steps": plan, "minutes": sum(p["minutes"] for p in plan), "credits": {k: v for k, v in credits.items() if v},
-                "views": views(t) if (not stop and r["texture"]["engine"] == "ultratex") else [],
+                "views": views({**t, "rigs": []} if synced(r) else t) if (not stop and r["texture"]["engine"] == "ultratex") else [],
                 "pose": r["prompt"]["pose"] if mode == "prompt" else "t", "inputs": inputs,
                 "gallery": f"characters/{asset}"}
     return order, plan_out

@@ -388,3 +388,13 @@ fortfarande är oense i fin detalj. v7b har lika små medelhopp som v6b och är 
 samma spöken. **v6b är fortfarande bästa standardvalet.** Kvar att prova: synk i pixelrymden efter avkodningen (vyerna
 bakas ihop och renderas tillbaka före den slutliga bakningen), eller en mjukare bakning (`best_view_mix` lägre) för
 v6a/v7b.
+
+**Inkopplad i figurbeställningen (2026-11-12).** v6b är nu standard för UltraTex när modellen kommer från Pixal3D. Det gäller Order a character och `character_order.py`. Spaken *Method* har två lägen:
+- *synced* (standard): grafen `tools/darrowmere/character/graphs/ultratex_synced.json`, som är samma graf som v6b-körningen `man-v6b-sync-full-r2-1110`.
+- *classic*: den gamla metoden från brus, med extra vyringar.
+
+Det här gäller dessutom:
+- **Standard-LoRA:** run3b 13000 EMA.
+- **Under Avancerat:** *Repaint strength* (`denoise` 0,85), *Keep the head's paint* (`head_keep` 0,6) och *Sync view weight* (`sync_power` 8).
+- **Djur och andra varelser:** de får `head_keep` 0, eftersom huvudbandet (översta 20 % av höjden) bara stämmer för människor.
+- **Tripo och Meshy:** deras modeller saknar Pixal3D:s egna färger och använder alltid den klassiska metoden. Planen varnar för det.
