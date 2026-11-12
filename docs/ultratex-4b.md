@@ -414,3 +414,18 @@ Det här gäller dessutom:
 - `best_view_mix` påverkar inte bakningsläget `two_band` alls.
 - `detail_sharpness` 8 är en aning bättre än 32.
 - Spökena och mjukheten sitter alltså i själva vyerna, inte i bakningen. Nästa försök är en andra omgång i pixelrymden: rendera den bakade texturen tillbaka till vyerna, låt UltraTex måla en gång till med låg styrka och synk, och baka igen.
+
+**Andra omgång från den bakade texturen gav sämre resultat.** Uppställningen är v6b-grafen, där `UltraTex Init From Mesh Colours` läser den bakade v6b-GLB:n (`detail_sharpness` 8) i stället för Pixal3D:s. Synk och tonmatchning är som i v6b, och resultatet bakas igen.
+
+| Variant | Hopp (medel / värsta) | Förskjutning (median / p95 px) | Skärpa |
+|---|---|---|---|
+| v6b, `detail_sharpness` 8 | **0,20 / 0,58** | **0,90 / 6,17** | 19,4 |
+| 4 steg, `denoise` 0,35 eller 0,5 (båda blir 1 steg) | 0,73 / 1,82 | 2,16 / 12,94 | 19,9 |
+| 12 steg, `denoise` 0,35 (2 steg) | 0,81 / 1,95 | 2,06 / 12,66 | 20,0 |
+| 12 steg, `denoise` 0,25 (1 steg) | 0,85 / 2,03 | 2,01 / 13,27 | 20,3 |
+
+Förskjutningen fördubblas oavsett styrka, alltså även när nästan inget målas om. Felet sitter i rundturen bakad GLB → renderade vyer → kodning och avkodning → tonmatchning och flyttning, inte i brusborttagningen. Synk i pixelrymden behöver därför byggas inne i grafen, utan att gå via en GLB. Vyerna läggs ut på texturen och renderas tillbaka i samma UV och med samma kameror som prep.
+
+**Sidofynd:** UltraTex glesa attention går inte på T1000. Kerneln vill ha 96 KB delat minne, kortet har 64 KB, och ComfyUI:s vanliga attention används i stället.
+
+**Nästa spår mot skärpa:** v6b har halva skärpan mot Pixal3D:s egen målning. Huvudet är litet i varje helfigursvy på 1024 px. Extra kameror nära huvudet, som bakas in med högre vikt, kan ge ansiktet mer upplösning.
