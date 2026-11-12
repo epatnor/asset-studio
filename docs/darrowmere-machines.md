@@ -4,16 +4,18 @@ Darrowmere (i7-920, Gigabyte X58, 48 GB, T1000, Linux Mint 22.3) kör beställni
 
 ## Maskinerna (2026-11-12)
 
-| | Darrowmere | Ravenholdt | HP Z4 G4 | Sonens speldator |
-|---|---|---|---|---|
-| Roll | arbetsmaskin i dag | provad, Linux Mint 22.3 | kom hem 2026-11-12, skulle skrotas på jobbet | Windows 10, används av sonen |
-| Processor | i7-920, 4 kärnor och 8 trådar, ingen AVX | Xeon E5-1680 v3, 8 kärnor och 16 trådar, AVX2 | okänd: Xeon W eller Core X (grundmodell 1JP11AV) | i5-9600K, 6 kärnor och 6 trådar, AVX2 |
-| Moderkort | Gigabyte X58 | Dell T5810 | HP Z4 G4 | Gigabyte Z390 Gaming X-CF, BIOS F9 (2019) |
-| Minne | 48 GB DDR3 | 16 GB DDR4 ECC RDIMM, 8 platser | kom utan minne; nu 2 × 8 GB Corsair Vengeance (UDIMM) i plats 1 och 3 | 16 GB: 2 × 8 GB Corsair Vengeance RGB Pro DDR4-3000 (CMW16GX4M2C3000C15), kör i 2133 (XMP av), 4 platser |
-| Minne som passar | DDR3 | DDR4 ECC RDIMM | Xeon W: ECC RDIMM. Core X: vanlig UDIMM | vanlig DDR4 UDIMM, upp till 64 GB |
-| Grafikkort | T1000 (M4000 avstängd 2026-11-12, ska ur) | T1000 | provar med eget kort | GTX 1060 6 GB (Pascal) |
-| PCIe | 2.0 | 3.0, två ×16 | 3.0 | 3.0, en ×16 från processorn (andra långa platsen är ×4 via chipset) |
-| Adress | 192.168.0.33 (wifi), panel :8790 | 192.168.0.35 (kabel), panel :8791 | – | – |
+| | Darrowmere | Ravenholdt | HP Z4 G4 | Sonens speldator | Darkshire |
+|---|---|---|---|---|---|
+| Roll | arbetsmaskin i dag | provad, Linux Mint 22.3 | kom hem 2026-11-12, skulle skrotas på jobbet | Windows 10, används av sonen | Patriks mindre laptop (Lenovo IdeaPad Gaming 3, 82K2), Bazzite (Fedora 44, kärna 6.18) |
+| Processor | i7-920, 4 kärnor och 8 trådar, ingen AVX | Xeon E5-1680 v3, 8 kärnor och 16 trådar, AVX2 | okänd: Xeon W eller Core X (grundmodell 1JP11AV) | i5-9600K, 6 kärnor och 6 trådar, AVX2 | Ryzen 5 5600H, 6 kärnor och 12 trådar, AVX2 |
+| Moderkort | Gigabyte X58 | Dell T5810 | HP Z4 G4 | Gigabyte Z390 Gaming X-CF, BIOS F9 (2019) | Lenovo 82K2 |
+| Minne | 48 GB DDR3 | 16 GB DDR4 ECC RDIMM, 8 platser | kom utan minne; nu 2 × 8 GB Corsair Vengeance (UDIMM) i plats 1 och 3 | 16 GB: 2 × 8 GB Corsair Vengeance RGB Pro DDR4-3000 (CMW16GX4M2C3000C15), kör i 2133 (XMP av), 4 platser | 64 GB (58 GiB synligt), 16 GB zram-swap |
+| Minne som passar | DDR3 | DDR4 ECC RDIMM | Xeon W: ECC RDIMM. Core X: vanlig UDIMM | vanlig DDR4 UDIMM, upp till 64 GB | DDR4 SO-DIMM |
+| Grafikkort | T1000 (M4000 avstängd 2026-11-12, ska ur) | T1000 | provar med eget kort | GTX 1060 6 GB (Pascal) | RTX 3050 Ti Laptop 4 GB (Ampere, bf16), NVIDIA 580.178.04, plus Radeon Vega |
+| PCIe | 2.0 | 3.0, två ×16 | 3.0 | 3.0, en ×16 från processorn (andra långa platsen är ×4 via chipset) | – |
+| Adress | 192.168.0.33 (wifi), panel :8790 | 192.168.0.35 (kabel), panel :8791 | – | – | 192.168.0.100 (wifi), ssh med laptopens nyckel |
+
+**Darkshire:** 4 GB grafikminne räcker inte för Krea-2, Pixal3D eller UltraTex. Men 64 GB RAM och 12 trådar räcker för processorsteg: Blender, efterbehandling, bakning och granskningar. 61 GB disk är ledigt.
 
 **Z4 G4, läget:** med minnena i de vita platserna gav den felkoden 3 röda och 2 vita (minne). I de blå platserna (1 och 3) piper den inte, men gav ännu ingen bild, så grafikkortet byts. När den startar visar BIOS (F10) processorn: Core X betyder att Vengeance-minnet fungerar, Xeon W att den behöver ECC RDIMM som Ravenholdt.
 
