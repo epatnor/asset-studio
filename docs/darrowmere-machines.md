@@ -139,4 +139,29 @@ Tolkning:
 - **T1000-korten** är identiska (samma VBIOS). Bildmodellernas steg begränsas av kortet, och där spelar resten av datorn knappt någon roll.
 - **Ravenholdt var 5–8 % långsammare med Krea-2 och Klein.** Kortet arbetade då på lägre klocka utan att slå i effekttaket. Troligen väntade det på överföringar, eftersom ComfyUI bara kan låsa 11,8 GB RAM för överföringar mot 43 GB på Darrowmere.
 - **I Pixal3D vinner Ravenholdt med 11 %.** Det är processorstegen som är 35 % snabbare. 16 GB räckte för ett flöde i taget, med lite swap.
-- **En hel figurbeställning**, `squiggly-quad-1112-0028`, startade 2026-11-12 00:28 på båda maskinerna. Tiderna per steg finns i `/data/utdata/pipelines/<id>.json` på respektive maskin.
+- **En hel figurbeställning**, `squiggly-quad-1112-0028`, startade 2026-11-12 00:28 på båda maskinerna. Tiderna per steg finns i `/data/utdata/pipelines/<id>.json` på respektive maskin, och fasernas tider i `journalctl -u comfyui`.
+
+### Hela beställningen, natten till 2026-11-12
+
+Ingen av maskinerna kom hela vägen:
+- **Darrowmere** fick slut på grafikminne i Pixal3D, i sista avkodningen (`VaeDecodeTextureTrellis`). Den begärde 1,7 GB när det bara fanns 30 MB kvar.
+- **Ravenholdt** blev klar med modellen men stannade i UltraTex-steget (`XOpenDisplay`). Darrowmeres UltraTex har en lokal ändring som öppnar GL med EGL i stället för X11, och den saknades på Ravenholdt. Den är nu inlagd (`render.py`, originalet i `render.py.orig`).
+
+Krea-2 gav inte samma bild med samma seed på de två maskinerna (filerna skiljer sig åt), så Pixal3D fick inte exakt samma indata.
+
+| Fas | Darrowmere | Ravenholdt |
+|---|---|---|
+| Krea-2-bild | 270 s | 270 s |
+| Haiku-granskning | 7 s | 13 s |
+| Pixal3D: förbehandling (BiRefNet, MoGe, DINO) | 31 s | 30 s |
+| Pixal3D: gles struktur och nästa steg | 282 s | 277 s |
+| Pixal3D: formen (Trellis2) | 854 s | 854 s |
+| Pixal3D: avkodning av formen (`ShapeVae`, RAM-tung) | **37 s** | **151 s** |
+| Pixal3D: texturen (Trellis2) | 445 s | 446 s |
+| Pixal3D: avkodning av texturen och export | slut på grafikminne efter 30 s | 76 s |
+
+Tolkning:
+- **Grafikkortsdelarna tog lika lång tid**, på sekunden. Den äldre processorn, DDR3 och PCIe 2 kostade ingenting här.
+- **16 GB RAM kostade knappt 2 minuter** i avkodningen av formen. Ravenholdt swappade ungefär 5 GB under natten. Hela modellsteget blev 1 850 s.
+- **Grafikminnet i T1000 är den verkliga gränsen** för den här figuren, inte resten av datorn. På Darrowmere har M4000-instansen av ComfyUI en GL-kontext på T1000 (cirka 360 MB, eftersom EGL väljer enhet 0). Huvudinstansen har cirka 540 MB när den står stilla, mot cirka 200 MB på Ravenholdt.
+- **En hårig figur är dyrare än en slät.** `squiggly-1111-0937` tog 892 s i Pixal3D, den här figuren ungefär dubbelt så lång tid.
