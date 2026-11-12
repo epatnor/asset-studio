@@ -205,3 +205,13 @@ Slutsatser:
   - Höj `--reserve-vram` till 3.
   - Låt M4000-instansens EGL välja sitt eget kort, så att dess GL-kontext inte hamnar på T1000.
   - Kör sedan bara modellsteget med samma bild igen.
+
+### Försök att laga Darrowmere, 2026-11-12 kväll
+
+Jag gjorde två ändringar och körde sedan samma bild igen (`squiggly-rv3-1112-1842`, endast Darrowmere):
+- `--reserve-vram 3` i stället för 2.
+- M4000-instansen avstängd (`comfyui-m4000` disabled). UltraTex väljer nu GL-kort med `ULTRATEX_EGL_DEVICE`.
+
+**Resultatet blev samma fel på samma ställe, med samma siffror:** 4,33 GB allokerat, 1,73 GB begärt, 30 MB ledigt. torch 2.11.0+cu128, triton 3.6.0 och ComfyUI b1a247c är identiska på båda maskinerna, och grafikminnet är lika fullt när de står stilla (cirka 600 MB). Varför Ravenholdt klarar avkodningen och inte Darrowmere är fortfarande oförklarat. Kvar att prova är att flytta Darrowmeres T1000 till en annan maskin, eller det omvända, så att det framgår om det är kortet eller datorn.
+
+**Slutsats för valet:** Darrowmere klarar inte hela flödet för en lurvig figur. Ravenholdt och moderna maskiner gör det.
