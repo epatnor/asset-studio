@@ -137,14 +137,22 @@ def compose_prompt(p):
 
 # Creature types other than humanoid: the view and framing Krea-2 is asked for, and what the review checks
 CREATURES = {
-    "quadruped": {"view": "a four-legged animal standing naturally on all four legs, seen in a three-quarter side view so all "
-                          "four legs, the head and the tail are clearly visible",
+    # Rest pose for rigging and mirroring: head in line with the spine (Squiggly 2026-11-12 tilted its head to one side).
+    # Positive wording only in the prompt (Krea has no negative prompt); the "not turned" rule lives in the review criterion.
+    "quadruped": {"view": "a four-legged animal standing in a neutral symmetrical rest pose on all four legs, legs straight under the "
+                          "body, head held straight and level in line with the spine, facing the same way as the body, tail straight "
+                          "back, seen in a three-quarter side view so all four legs, the head and the tail are clearly visible",
                   "margin": "the whole animal small enough that its head, all four feet and the tail are fully inside the frame "
                             "with clear empty space around it",
-                  "criterion": "One four-legged animal standing on all four legs, all four legs visible; not a humanoid, not standing upright on two legs."},
-    "other": {"view": "a non-human creature shown full body in a neutral standing pose",
+                  "criterion": "One four-legged animal standing on all four legs, all four legs visible; not a humanoid, not standing upright on two legs. "
+                               "Symmetrical rest pose: the head is straight and level in line with the body, not turned, tilted or "
+                               "cocked to one side and not looking at the camera; legs not mid-stride."},
+    "other": {"view": "a non-human creature shown full body in a neutral symmetrical rest pose, head held straight and level, "
+                      "facing the same way as the body",
               "margin": "the whole creature small enough that it is fully inside the frame with clear empty space around it",
-              "criterion": "One non-human creature shown full body; not a humanoid with human arms, hands and an upright human body."},
+              "criterion": "One non-human creature shown full body; not a humanoid with human arms, hands and an upright human body. "
+                           "Symmetrical rest pose: the head is straight and level in line with the body, not turned, tilted or "
+                           "cocked to one side."},
 }
 
 
