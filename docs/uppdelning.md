@@ -79,7 +79,7 @@ Flytten görs i en egen session, ett projekt i taget: först Darrowmere, som bå
 
 ## Frågor, en i taget
 
-1. **Namn och mappar:** `character-studio` och `darrowmere`, eller andra?
-2. **GitHub:** i dag är bara Asset Studio publikt. Ska de nya förråden vara privata, bara lokala eller publika?
+1. ~~Namn och mappar~~: **`character-studio` och `darrowmere`** (2026-11-13). Mapparna är skapade, med README, CLAUDE.md och ett första commit; koden är inte flyttad än.
+2. ~~GitHub~~: **bara lokal git än så länge** (Patrik 2026-11-13).
 3. **Fliken The Character Creator:** stannar den i Asset Studios app eller flyttar den ut som en egen app?
 4. **Historiken:** följa med (förslaget) eller börja om?
