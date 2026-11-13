@@ -33,26 +33,6 @@
       "port": 8770
     },
     {
-      "name": "body-editor",
-      "runtimeExecutable": "/home/epatnor/Spelutveckling/azshara-studio/asset-studio/build/body/.venv/bin/python",
-      "runtimeArgs": [
-        "/home/epatnor/Spelutveckling/azshara-studio/asset-studio/tools/character/body/editor/server.py",
-        "8772",
-        "yvonne"
-      ],
-      "port": 8772
-    },
-    {
-      "name": "darrowmere-monitor",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": [
-        "-I",
-        "tools/darrowmere/monitor.py",
-        "8791"
-      ],
-      "port": 8791
-    },
-    {
       "name": "studio-test",
       "runtimeExecutable": "node",
       "runtimeArgs": [

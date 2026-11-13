@@ -440,7 +440,8 @@
   .fxrow .chip img { width: 20px; height: 20px; border-radius: 6px; }
   .fxrow .chip.on { background: var(--accent-soft); border-color: var(--accent); }
   /* Häxkitteln (studio/cauldron.js): samma upplägg som Väderkvarnen, med arenan i stället för gläntan */
-  /* The Character Creator (studio/human.js): figuren i en egen vy, reglagen till höger, mallarna i lådan */
+  /* The Character Creator (../character-studio/studio/human.js): figuren i en egen vy, reglagen till höger, mallarna i lådan.
+     Appen ligger i Character Studio men läser den här stilmallen (tools/studio/creator_server.mjs), så reglerna stannar här. */
   #huview, #huside, #hufoot { display: none; }
   body.human-mode #app, body.human-mode #side, body.human-mode #bottom, body.human-mode .asset-tool { display: none; }
   body.human-mode #huview { display: block; position: fixed; inset: 0; background: var(--viewport); }
@@ -457,7 +458,7 @@
   #huside.hu-locked .card:not(.hu-keep) > .rows { opacity: 0.45; pointer-events: none; }
   .hu-lockmsg { margin: 10px 12px 2px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--ink-2); font-size: 12px; line-height: 1.4; flex: none; }
   .hu-lockmsg[hidden] { display: none; }
-  /* Redigeringsläget (studio/human_edit.js): bara kortet Edit points syns, och en ruta för att välja punkter */
+  /* Redigeringsläget (../character-studio/studio/human_edit.js): bara kortet Edit points syns, och en ruta för att välja punkter */
   #huside.hu-editing > .card:not(.hu-edit), #huside.hu-editing > .hu-lockmsg { display: none; }
   #huside.hu-painting > .card:not(.hu-paint), #huside.hu-painting > .hu-lockmsg { display: none; }
   .hu-pic { position: absolute; z-index: 0; pointer-events: none; transform-origin: 50% 50%; user-select: none; }
@@ -720,10 +721,6 @@
 <div id="tside"></div>
 <div id="tdrawer" class="glass"></div>
 <footer id="tfoot" class="glass"></footer>
-<div id="huview"></div>
-<div id="huside"></div>
-<div id="hudrawer" class="glass"></div>
-<footer id="hufoot" class="glass"></footer>
 <div id="cvview"></div>
 <div id="cvside"></div>
 <div id="cvdrawer" class="glass"></div>

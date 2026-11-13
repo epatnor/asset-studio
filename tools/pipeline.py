@@ -20,7 +20,8 @@ import sys
 import time
 
 def _worker():
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "darrowmere"))
+    # Darrowmere's machine list: the sibling checkout ../darrowmere (a service, only its client is used)
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "darrowmere"))
     import machine
     return machine.ssh_target()
 

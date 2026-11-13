@@ -17,7 +17,7 @@ Beslut på vägen (2026-11-13):
 
 - **Tinkertown** är vårt eget verktyg (världsredigeraren), inte ett spel. Idén lever vidare i Kartrummet (World till Populate, sedan Explore och Life) och följer med när Asset Studio flyttar till Godot. Koden parkeras som arkiv.
 - **Azshara Island** blir inget spel. Det goda tas med (se nedan), sedan skrotas banan.
-- **Asset Studio delas i tre projekt som samverkar:** Asset Studio (världens tillgångar och testön), Figurverkstaden (figurerna; Patrik: "vi har varit så nära en bra lösning", body-gen är bra) och Darrowmere (den delade räknetjänsten). Plan och frågor i [uppdelning.md](uppdelning.md). Figurspåren är alltså inte parkerade: de fortsätter i Figurverkstaden. Kedjan beställning → fit_human → bakning → make_final är det spåret ska göra klart. Lågpolykvinnan skrotas.
+- **Asset Studio delas i tre projekt som samverkar:** Asset Studio (världens tillgångar och testön), Figurverkstaden (figurerna; Patrik: "vi har varit så nära en bra lösning", body-gen är bra) och Darrowmere (den delade räknetjänsten). Plan och frågor i [uppdelning.md](uppdelning.md). Figurspåren är alltså inte parkerade: de fortsätter i Figurverkstaden. Kedjan beställning → fit_human → bakning → make_final är det spåret ska göra klart. Lågpolykvinnan arkiveras. **Uppdelningen är gjord (2026-11-13):** koden och arbetsytorna ligger i `../character-studio` och `../darrowmere` med historiken, och The Character Creator är en egen app (se [uppdelning.md](uppdelning.md#gjort-2026-11-13)).
 
 ## Märkning
 
@@ -43,12 +43,12 @@ Märkningen nedan är ett förslag och har ännu inte gåtts igenom med Patrik.
 | Häxkitteln (effekter) | `tools/vfx` | Färdig | |
 | Skattkammaren | `studio/library.js` | Färdig | |
 | Asset Studio till Godot | – | Parkerad | Planerad från 2026-11-02, inte påbörjad. Testön först |
-| Figurer: Character Creator (MPFB) | `tools/character/human`, `studio/human*.js` | Figurverkstaden | Kedjan till en riggad figur görs klar |
-| Figurer: body-gen | `tools/character/body` | Figurverkstaden | Patrik: "body-gen är bra" |
-| Figurer: beställningar (Pixal3D, Tripo, Meshy) | `tools/darrowmere/character*` | Figurverkstaden | Första länken i kedjan |
-| Figurer: UltraTex-texturforskning | `tools/darrowmere/comfy_nodes`, `docs/ultratex-4b.md` | Figurverkstaden | Nästa steg vore ett mått på likhet med referensbilden |
-| Figurer: lågpolykvinnan | `tools/character/lowpoly` | Skrotas | Patrik: "som lego" |
-| Darrowmere (runner, panel) | `tools/darrowmere` | Eget projekt, delat | Maskinfrågan är avgjord: Darrowmere |
+| Figurer: Character Creator (MPFB) | `../character-studio/tools/character/human`, egen app (`../character-studio/studio/`) | Figurverkstaden | Kedjan till en riggad figur görs klar |
+| Figurer: body-gen | `../character-studio/tools/character/body` | Figurverkstaden | Patrik: "body-gen är bra" |
+| Figurer: beställningar (Pixal3D, Tripo, Meshy) | `../character-studio/tools/character_order/` | Figurverkstaden | Första länken i kedjan |
+| Figurer: UltraTex-texturforskning | `../darrowmere/comfy_nodes`, `../character-studio/docs/ultratex-4b.md` | Figurverkstaden | Nästa steg vore ett mått på likhet med referensbilden |
+| Figurer: lågpolykvinnan | `../character-studio/archive/lowpoly/` | Arkiverad | Patrik: "som lego" |
+| Darrowmere (runner, panel) | `../darrowmere` | Eget projekt, delat | Maskinfrågan är avgjord: Darrowmere |
 | Lånade maskiner (HP Z4, Ravenholdt) | – | Skrotas | Tillbaka till jobbet |
 | Showcase-banorna (Azshara, Skogen, Parken, Byggnader, Vatten) | `showcase/` | Skrotas | Three.js från tiden före Godot |
 | Tinkertown | `../tinkertown` | Parkerad som arkiv | |

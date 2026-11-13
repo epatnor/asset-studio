@@ -11,7 +11,7 @@ Appen är på engelska (planerna och dokumenten på svenska). Namnen i appen st�
 | **Ateljén** (The Atelier) | Texturverkstaden, materiallabbet | Paint materials and textures | Guld | [texture-workshop.md](texture-workshop.md) |
 | **Häxkitteln** (The Cauldron) | Glöd och aura, Markörer, Partiklar, Spår och träffar | Spells and game effects | Lila | [effektlabb.md](effektlabb.md) |
 | **Kartrummet** (The Map Room) | World, Regions, Biomes, Sculpt, Paint och Populate; Explore och Life kommer, i den ordningen | Shape the land | Terrakotta | [terrain.md](terrain.md) |
-| **Figurverkstaden** (The Character Creator) | Body; Face och Hair & clothes kommer | People from sliders | Rosa | [asset-studio.md](asset-studio.md#the-character-creator-byggd-2026-11-10), [character-creator.md](character-creator.md) |
+| **Figurverkstaden** (The Character Creator) | Body; Face och Hair & clothes kommer | People from sliders | Rosa | [asset-studio.md](asset-studio.md#the-character-creator-byggd-2026-11-10), [character-creator.md](../../character-studio/docs/character-creator.md) |
 | **Skattkammaren** (The Vault) | Allt som sparats, alla typer (familjer, fasta modeller, texturer, recept) | Everything you have saved | Neutral (hör till alla) | [asset-studio.md](asset-studio.md) |
 
 Tinkertown är världen där allt används; den är en egen app.

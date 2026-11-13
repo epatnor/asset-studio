@@ -1,7 +1,7 @@
 """Färggradering av bastexturen i en GLB (ny fil, originalet rörs inte), med en rad JSON ut.
 
 UltraTex 4B med bas-VAE:ns dekoder (Apache) ger linjära färger. Patrik valde 2026-11-09 gamma 1,3: lite ljusare än det
-råa, med den fylliga looken kvar. Full sRGB (gamma 0) blev för ljus och blek. Se docs/ultratex-4b.md.
+råa, med den fylliga looken kvar. Full sRGB (gamma 0) blev för ljus och blek. Se ../character-studio/docs/ultratex-4b.md.
 
   python3 -I tools/texture/grade_glb.py in.glb out.glb [gamma]     (standard 1.3; 0 = full sRGB-kurva)
 """

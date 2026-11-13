@@ -3,7 +3,7 @@
 // overlays (edges on top, X-ray). Z opens a pie menu at the pointer (as in Blender), Shift+Z toggles the edges and
 // Alt+Z the X-ray. Only the display changes: the models' own materials are kept in userData.own and come back in
 // Material. The choice is remembered per viewer and view (localStorage). Used by The Character Creator
-// (studio/human.js), the Forge (studio/studio.js) and The Map Room (studio/terrain.js, WebGPU: pass its THREE).
+// (../character-studio/studio/human.js, which loads this file from here), the Forge (studio/studio.js) and The Map Room (studio/terrain.js, WebGPU: pass its THREE).
 import * as THREE_GL from 'three';
 
 const ALL = [
