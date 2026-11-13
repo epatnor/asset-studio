@@ -81,5 +81,5 @@ Flytten görs i en egen session, ett projekt i taget: först Darrowmere, som bå
 
 1. ~~Namn och mappar~~: **`character-studio` och `darrowmere`** (2026-11-13). Mapparna är skapade, med README, CLAUDE.md och ett första commit; koden är inte flyttad än.
 2. ~~GitHub~~: **bara lokal git än så länge** (Patrik 2026-11-13).
-3. **Fliken The Character Creator:** stannar den i Asset Studios app eller flyttar den ut som en egen app?
+3. ~~Fliken The Character Creator~~: **egen app**, som Body Editor (Patrik 2026-11-13). `studio/human*.js` och `tools/studio/human.mjs` flyttar till Figurverkstaden, och Asset Studios app tappar fliken.
 4. **Historiken:** följa med (förslaget) eller börja om?
