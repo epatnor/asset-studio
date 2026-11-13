@@ -1,9 +1,0 @@
-# Miljön för body-verktygen (build/body/.venv): uv venv build/body/.venv --python 3.12 && uv pip install --python build/body/.venv -r tools/character/body/requirements.txt
-# face_points.py behöver också mediapipe; closeups/head_measure/wire_sheet behöver opencv-python-headless.
-numpy==2.5.4
-scipy==1.18.1
-trimesh==5.2.0
-rtree==1.4.1
-networkx==3.7
-open3d==0.20.0
-pillow==13.0.0
