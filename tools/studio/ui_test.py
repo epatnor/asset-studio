@@ -72,14 +72,20 @@ def on_host(cmd):
     return ['host-spawn', *cmd] if Path('/run/.toolboxenv').exists() or Path('/run/.containerenv').exists() else cmd
 
 
-def launch(url, size):
+def launch(url, size, software=False):
     close()  # ett tidigare test som inte hunnit stänga
     time.sleep(1)
     subprocess.run(on_host(['rm', '-rf', str(PROFILE)]), check=False)
-    env = ['env', '__NV_PRIME_RENDER_OFFLOAD=1', '__GLX_VENDOR_LIBRARY_NAME=nvidia']
-    cmd = on_host(['systemd-run', '--user', '--collect', '--unit=asset-studio-ui-test', *env, 'flatpak', 'run', 'com.google.Chrome',
+    # "gpu": "software" in the recipe: WebGL on the CPU (llvmpipe), so a test never touches the RTX card that
+    # Patrik may be gaming on (shared VRAM hung the laptop on 2026-11-14)
+    env = [] if software else ['env', '__NV_PRIME_RENDER_OFFLOAD=1', '__GLX_VENDOR_LIBRARY_NAME=nvidia']
+    # Chrome's flags cannot keep it off the GPU (it picked the RTX with every SwiftShader flag); hiding the devices from
+    # its flatpak sandbox can: WebGL then runs on Mesa's llvmpipe (2026-11-14)
+    gl = ['--enable-unsafe-swiftshader'] if software else ['--enable-features=Vulkan']
+    sandbox = ['--nodevice=all'] if software else []
+    cmd = on_host(['systemd-run', '--user', '--collect', '--unit=asset-studio-ui-test', *env, 'flatpak', 'run', *sandbox, 'com.google.Chrome',
                    '--headless=new', f'--user-data-dir={PROFILE}', f'--remote-debugging-port={PORT}', f'--window-size={size[0]},{size[1]}',
-                   '--enable-features=Vulkan', '--no-first-run', '--no-default-browser-check', url])
+                   *gl, '--no-first-run', '--no-default-browser-check', url])
     subprocess.run(cmd, check=True, capture_output=True)
 
 
@@ -111,7 +117,7 @@ async def run(recipe):
     out_dir.mkdir(parents=True, exist_ok=True)
     url = recipe.get('url', '/studio/')
     url = url if url.startswith('http') else f"http://localhost:8770{url}"
-    launch(url, recipe.get('size', [1600, 1000]))
+    launch(url, recipe.get('size', [1600, 1000]), software=recipe.get('gpu') == 'software')
     result = {'ok': True, 'steps': [], 'console': [], 'shots': []}
     try:
         async with websockets.connect(page_ws(), max_size=64 * 1024 * 1024) as ws:
