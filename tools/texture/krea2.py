@@ -68,7 +68,8 @@ def get(url):
 req = urllib.request.Request(f"{COMFY}/prompt", data=json.dumps({"prompt": g, **job_extra(g, "krea2.py")}).encode(), headers={"Content-Type": "application/json"})
 pid = json.load(urllib.request.urlopen(req, timeout=30))["prompt_id"]
 
-for _ in range(200):
+# KREA_WAIT: seconds to wait for the job (default 400; a T1000 needs about 5 minutes per image, longer behind a queue)
+for _ in range(int(os.environ.get("KREA_WAIT", "400")) // 2):
     hist = get(f"{COMFY}/history/{pid}").get(pid)
     if hist and hist["status"].get("completed") is not None:
         break
