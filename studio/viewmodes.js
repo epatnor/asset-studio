@@ -106,6 +106,15 @@ export function createViewModes({
     edge: edgeMaterial ?? mk(new THREE.MeshBasicMaterial({ color: '#15181c', wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })),
   };
   mine.add(shared.clay); mine.add(shared.edge);
+  // The wireframe's lines follow the theme: light on a dark viewport, dark on a light one (dark on dark could not be seen)
+  function wireForTheme() {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--viewport').trim();
+    let lum = 0.8;
+    try { if (bg) { const c = new THREE.Color().setStyle(bg); lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; } } catch { /* an unknown colour */ }
+    shared.wire.color.set(lum < 0.35 ? '#c9d1da' : '#1f2328');
+  }
+  wireForTheme();
+  addEventListener('studio-theme', () => requestAnimationFrame(wireForTheme));
   if (!edgeMaterial) { shared.edge.onBeforeCompile = nearer; shared.edge.customProgramCacheKey = () => 'vm-nearer'; }
   const xrayOf = new WeakMap();
   function xray(m) {
