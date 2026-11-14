@@ -71,8 +71,14 @@ function drawChecker() {
 // WebGL only: the alpha map is read from the alpha channel (a leaf card's own colour map) instead of green
 function alphaFromA(sh) { sh.fragmentShader = sh.fragmentShader.replace('#include <alphamap_fragment>', '#ifdef USE_ALPHAMAP\n\tdiffuseColor.a *= texture2D( alphaMap, vAlphaMapUv ).a;\n#endif'); }
 // WebGL only: the edges overlay is drawn a hair closer to the camera, so that it wins the depth test against its own
-// surface (polygon offset does not apply to lines). The Map Room passes its own node material for WebGPU
-function nearer(sh) { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\ngl_Position.z -= 0.0006 * gl_Position.w;'); }
+// surface (polygon offset does not apply to lines). The Map Room passes its own node material for WebGPU.
+// The nudge is a real distance towards the camera (1 mm plus 0.02 % of the distance), not a fixed share of the depth
+// buffer: that grew with the distance, so zoomed out the overlay showed the mesh behind the surface (the back of the
+// head, the eyeballs inside the lids; Patrik 2026-11-14)
+function nearer(sh) {
+  sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>',
+    '#include <project_vertex>\nmvPosition.xyz += normalize(-mvPosition.xyz) * (0.001 + 0.0002 * length(mvPosition.xyz));\ngl_Position = projectionMatrix * mvPosition;');
+}
 
 export function createViewModes({
   el, view, roots, three = THREE_GL, only = null, help = {}, keep = () => false, skip = () => false, cls = '',
