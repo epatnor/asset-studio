@@ -7,7 +7,7 @@
 import * as THREE_GL from 'three';
 
 const ALL = [
-  { id: 'wire', label: 'Wireframe', help: 'The mesh\'s edges only' },
+  { id: 'wire', label: 'Wireframe', help: 'The mesh\'s edges only (with X-ray also the hidden ones)' },
   { id: 'clay', label: 'Clay', help: 'One neutral material, lit: the shape only' },
   { id: 'matcap', label: 'Matcap', help: 'A studio sphere around the model: reads the form and its normal map, whatever the light' },
   { id: 'normals', label: 'Normals', help: 'The surface\'s direction as colour (view space), with the normal map' },
@@ -106,12 +106,19 @@ export function createViewModes({
     edge: edgeMaterial ?? mk(new THREE.MeshBasicMaterial({ color: '#15181c', wireframe: true, transparent: true, opacity: 0.16, depthWrite: false })),
   };
   mine.add(shared.clay); mine.add(shared.edge);
+  // Wireframe without X-ray (WebGL): hidden lines left out. The model is filled with the viewport's colour and its
+  // edges drawn over it, a hair nearer the camera, so only the edges that face you show (Patrik 2026-11-15)
+  const hiddenLine = !edgeMaterial;
+  shared.hidden = mk(new THREE.MeshBasicMaterial({ color: '#c8ccd0', toneMapped: false, side: THREE.DoubleSide }));
+  shared.wireOver = mk(new THREE.MeshBasicMaterial({ color: '#1f2328', wireframe: true }));
+  if (hiddenLine) { shared.wireOver.onBeforeCompile = nearer; shared.wireOver.customProgramCacheKey = () => 'vm-nearer'; }
   // The wireframe's lines follow the theme: light on a dark viewport, dark on a light one (dark on dark could not be seen)
   function wireForTheme() {
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--viewport').trim();
     let lum = 0.8;
-    try { if (bg) { const c = new THREE.Color().setStyle(bg); lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; } } catch { /* an unknown colour */ }
+    try { if (bg) { const c = new THREE.Color().setStyle(bg); lum = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; shared.hidden.color.copy(c); } } catch { /* an unknown colour */ }
     shared.wire.color.set(lum < 0.35 ? '#c9d1da' : '#1f2328');
+    shared.wireOver.color.copy(shared.wire.color);
   }
   wireForTheme();
   addEventListener('studio-theme', () => requestAnimationFrame(wireForTheme));
@@ -157,13 +164,13 @@ export function createViewModes({
   }
 
   // The edges overlay: a child sharing the geometry (and the skeleton and shape keys) with the wire material
-  function setEdges(o, on) {
+  function setEdges(o, on, mat = shared.edge) {
     let e = o.userData.vmEdge;
     if (!on) { if (e) { e.removeFromParent(); o.userData.vmEdge = null; } return; }
-    if (e) return;
-    if (o.isInstancedMesh) { e = new THREE.InstancedMesh(o.geometry, shared.edge, o.count); e.instanceMatrix = o.instanceMatrix; }
-    else if (o.isSkinnedMesh) { e = new THREE.SkinnedMesh(o.geometry, shared.edge); e.bind(o.skeleton, o.bindMatrix); e.bindMode = o.bindMode; }
-    else e = new THREE.Mesh(o.geometry, shared.edge);
+    if (e) { e.material = mat; return; }
+    if (o.isInstancedMesh) { e = new THREE.InstancedMesh(o.geometry, mat, o.count); e.instanceMatrix = o.instanceMatrix; }
+    else if (o.isSkinnedMesh) { e = new THREE.SkinnedMesh(o.geometry, mat); e.bind(o.skeleton, o.bindMatrix); e.bindMode = o.bindMode; }
+    else e = new THREE.Mesh(o.geometry, mat);
     if (o.morphTargetInfluences) { e.morphTargetInfluences = o.morphTargetInfluences; e.morphTargetDictionary = o.morphTargetDictionary; }
     e.raycast = () => {};
     e.castShadow = e.receiveShadow = false;
@@ -180,19 +187,21 @@ export function createViewModes({
     const list = root ? [root] : roots().filter(Boolean);
     const mode = S.suspended ? 'material' : S.mode;
     const ghost = S.xray && !S.suspended && mode !== 'wire';
+    const hidden = mode === 'wire' && !S.xray && hiddenLine;   // wireframe with the hidden lines left out
     for (const r of list) {
       const meshes = [];
       r.traverse((o) => { if (o.isMesh && !o.userData.vmOverlay) meshes.push(o); });
       for (const o of meshes) {
         o.userData.own ??= o.material;
         if (skip(o)) continue;
-        let m = materialFor(o, mode);
+        let m = hidden ? shared.hidden : materialFor(o, mode);
         if (ghost) m = Array.isArray(m) ? m.map(xray) : xray(m);
         o.material = m;
         // Wireframe and X-ray cast no shadow; the model's own shadow comes back after
         if (mode === 'wire' || ghost) { o.userData.vmShadow ??= o.castShadow; o.castShadow = false; }
         else if (o.userData.vmShadow !== undefined) { o.castShadow = o.userData.vmShadow; delete o.userData.vmShadow; }
-        setEdges(o, S.edges && !S.suspended && mode !== 'wire');
+        if (hidden) setEdges(o, true, shared.wireOver);
+        else setEdges(o, S.edges && !S.suspended && mode !== 'wire');
       }
     }
   }
@@ -250,7 +259,8 @@ export function createViewModes({
     for (const m of MODES) btns[m.id].classList.toggle('on', S.mode === m.id);
     btns.edges.classList.toggle('on', S.edges);
     btns.xray.classList.toggle('on', S.xray);
-    btns.edges.disabled = btns.xray.disabled = S.mode === 'wire';
+    btns.edges.disabled = S.mode === 'wire';
+    btns.xray.disabled = S.mode === 'wire' && !hiddenLine;   // in wireframe X-ray shows the hidden lines too
     label.textContent = MODES.find((m) => m.id === S.mode).label;
     bar.hidden = S.suspended;
   }
