@@ -151,3 +151,27 @@ En vanlig mur behöver inte varje sten som geometri. Bara det som sticker ut och
 - **Nästa steg:**
   - Korsvirket som platta med bakade bjälkar där de inte sticker ut. Bara syll, hammarband och hörnstolpar blir geometri.
   - Parallax eller förskjutning med höjdkartan i klienten.
+
+## Ruiner (2026-11-16)
+
+Patrik ville ha övergivna ruiner på demo_isle. Byggsatsen har inga egna ruindelar, så stenmuren och hörnet fick ett
+ruinläge (`ruin` i ett husrecept, t.ex. `ruin_tower` och `ruin_hall` i `kit.json`). Ett ruinhus har inget tak, och murarna
+byggs alltid av modellerade stenar:
+
+- **Brottlinjen** (`ruinTop` i `kit/modules.mjs`) är ett brus längs husets omkrets, så att väggar och hörn bryts i samma
+  linje. `top` är det lägsta och högsta (andel av våningen), och `wave` är avståndet mellan brusets knutar.
+- **Stenarna** går genom hela muren och syns från båda sidor. Nära brottet fattas stenar (`loss`). En sten som vilar på mindre än 40 % sten
+  tas också bort, så att inget svävar.
+- **Öppningarna** står tomma, utan dörr, fönster eller trappsteg. Valvet och fönsterbänken står bara kvar där brottlinjen
+  går ovanför dem.
+- **Rasmassorna:** `fallen` stenar ligger vid murens fot.
+
+Kontrollerna är desamma, utom glipor i väggarna (en ruin har dem med flit). Kontrollen av svävande stenar provar nu ett
+rutnät under stenen, eftersom de genomgående stenarna är djupare än de är långa. Ett annat `seed` ger samma ruin med en annan
+brottlinje. Modellerna sparas under `assets/ruins/`:
+
+```bash
+node tools/building/gen_kit.mjs '{"assembly": "ruin_tower", "out": "assets/ruins/ruin_tower/ruin_tower.gltf"}'
+```
+
+På demo_isle står `ruin_tower` vid platån ovanför Sunstrand (make_diorama `plazas`, `place`).

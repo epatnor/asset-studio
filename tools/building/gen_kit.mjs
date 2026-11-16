@@ -5,6 +5,7 @@
 //   node gen_kit.mjs '{"module":"stone_window","ends":["end","end"],"seed":2,"out":"build/kit/x.gltf"}'
 //   node gen_kit.mjs '{"catalog":true,"out_dir":"build/kit/catalog"}'
 //   node gen_kit.mjs '{"assembly":"cottage","out":"build/kit/cottage.gltf"}'
+//   node gen_kit.mjs '{"assembly":"ruin_tower","seed":3,"out":"assets/ruins/ruin_tower_3/ruin_tower_3.gltf"}'   (ruin: inget tak, brottlinje)
 import fs from 'node:fs';
 import path from 'node:path';
 import { Document } from '@gltf-transform/core';
@@ -46,7 +47,7 @@ function buildModule(pl, lod) {
 }
 const countTris = (G) => Object.values(G).reduce((s, g) => s + g.indices.length / 3, 0);
 const cache = new Map();
-const keyOf = (pl) => JSON.stringify([pl.module, pl.ends, pl.seed, pl.run, pl.d0, pl.dir, pl.panel, pl.detail]);
+const keyOf = (pl) => JSON.stringify([pl.module, pl.ends, pl.seed, pl.run, pl.d0, pl.dir, pl.panel, pl.detail, pl.ruin]);
 function moduleCached(pl, lod) {
   const k = keyOf(pl) + lod;
   if (!cache.has(k)) cache.set(k, buildModule(pl, lod));
@@ -72,16 +73,20 @@ function expand(A) {
   ];
   const dirOf = (yaw) => rot(yaw, [1, 0, 0]);
   const P = [];
+  // ruin: the house is a ruin (no roof); each wall and corner gets the break line at its place along the perimeter
+  const starts = sides.map((_, k) => sides.slice(0, k).reduce((sum, sd) => sum + sd.n * W, 0));
   A.storeys.forEach((S, si) => {
     const y = si * H;
     sides.forEach((sd, k) => {
       const d = dirOf(sd.yaw);
-      P.push({ module: `${S.family}_corner`, pos: [sd.start[0], y, sd.start[1]], yaw: sd.yaw, seed: si * 4 + k });
+      const ruin = (s0) => (A.ruin ? { ruin: { ...A.ruin, s0: +s0.toFixed(3) } } : {});
+      P.push({ module: `${S.family}_corner`, pos: [sd.start[0], y, sd.start[1]], yaw: sd.yaw, seed: si * 4 + k, ...ruin(starts[k]) });
       S[sd.name].forEach((mod, i) => P.push({ module: mod, pos: [sd.start[0] + d[0] * W * i, y, sd.start[1] + d[2] * W * i], yaw: sd.yaw,
         ends: [i === 0 ? 'corner' : 'open', i === sd.n - 1 ? 'corner' : 'open'], seed: 1 + ((si * 5 + k * 3 + i) % 3), base: si ? 'storey' : 'ground', side: sd.name,
-        panel: i % 3 })); // panel: murtexturen fortsätter längs väggen
+        panel: i % 3, ...ruin(starts[k] + W * i) })); // panel: murtexturen fortsätter längs väggen
     });
   });
+  if (A.ruin || !A.roof) return P;
   const Y = A.storeys.length * H, run = Dz / 2;
   for (let i = 0; i < nx; i++) {
     const ends = [i === 0 ? 'verge' : 'open', i === nx - 1 ? 'verge' : 'open'];
@@ -226,7 +231,7 @@ function checkAssembly(P) {
   const gapList = [];
   for (const { pl, m } of mods) {
     const kind = m.def.kind;
-    if (kind !== 'wall' && kind !== 'gable') continue;
+    if ((kind !== 'wall' && kind !== 'gable') || pl.ruin) continue; // a ruin's walls have gaps by design
     const op = m.def.opening ? K.openings[m.def.opening] : null;
     const ox0 = op ? K.width / 2 - op.width / 2 : 0, ox1 = op ? K.width / 2 + op.width / 2 : 0;
     const oy0 = m.info.opening?.y0 ?? op?.sill, oy1 = m.info.opening?.y1 ?? op?.top;
@@ -257,15 +262,17 @@ function checkAssembly(P) {
   const stones = boxes.filter((b) => ['stone', 'quoin', 'sill'].includes(b.kind));
   const support = boxes.filter((b) => ['stone', 'quoin', 'sill', 'voussoir', 'masonry'].includes(b.kind));
   let floating = 0;
+  const floatList = [];
   for (const s of stones) {
     if (s.lo[1] < 0.02) continue;
-    const y = s.lo[1] - 0.05, axis = s.hi[0] - s.lo[0] > s.hi[2] - s.lo[2] ? 0 : 2, other = 2 - axis, mid = (s.lo[other] + s.hi[other]) / 2;
+    // a grid under the stone (both ways: a ruin's through-stones are deeper than they are long)
+    const y = s.lo[1] - 0.05;
     let ok = false;
-    for (let f = 0.1; f < 0.95 && !ok; f += 0.2) {
-      const p = [0, y, 0]; p[axis] = s.lo[axis] + (s.hi[axis] - s.lo[axis]) * f; p[other] = mid;
+    for (let f = 0.1; f < 0.95 && !ok; f += 0.2) for (let g = 0.25; g < 0.8 && !ok; g += 0.25) {
+      const p = [s.lo[0] + (s.hi[0] - s.lo[0]) * f, y, s.lo[2] + (s.hi[2] - s.lo[2]) * g];
       ok = support.some((b) => b !== s && p[0] >= b.lo[0] && p[0] <= b.hi[0] && p[1] >= b.lo[1] && p[1] <= b.hi[1] + 0.06 && p[2] >= b.lo[2] && p[2] <= b.hi[2]);
     }
-    if (!ok) floating++;
+    if (!ok) { floating++; if (floatList.length < 6) floatList.push(`${shortId(P[s.i])}/${s.kind}@${s.lo.map((v) => +v.toFixed(2))}`); }
   }
   const C0 = JSON.stringify(courses(K.families.stone, K.storey));
   const coursesMatch = mods.filter(({ m }) => m.info.courses).every(({ m }) => JSON.stringify(m.info.courses) === C0);
@@ -273,7 +280,7 @@ function checkAssembly(P) {
     sockets: S.length, unpaired: unpaired.length, ...(unpaired.length ? { unpaired_list: unpaired.slice(0, 6) } : {}),
     overlaps, ...(overlaps ? { overlap_list: overlapList } : {}),
     wall_gaps: wallGaps, wall_samples: wallSamples, ...(wallGaps ? { gap_list: gapList } : {}),
-    roof_gaps: roofGaps, roof_samples: roofSamples, floating_stones: floating, courses_match: coursesMatch,
+    roof_gaps: roofGaps, roof_samples: roofSamples, floating_stones: floating, ...(floating ? { floating_list: floatList } : {}), courses_match: coursesMatch,
   };
 }
 
@@ -304,6 +311,7 @@ if (recipe.module) {
   const P = A.placements ? A.placements.map((pl) => ({ ...pl })) : expand(A), t0 = Date.now();
   const lods = [0, 1, 2].map((l) => merge(P, l));
   const placements = P.map((pl) => ({ module: pl.module, ends: pl.ends, seed: pl.seed, pos: pl.pos.map((v) => +v.toFixed(3)), yaw: pl.yaw, ...(pl.run ? { run: pl.run } : {}), ...(pl.panel ? { panel: pl.panel } : {}), ...(pl.d0 != null ? { d0: pl.d0, dir: pl.dir } : {}) }));
+  if (recipe.seed != null && A.ruin) for (const pl of P) if (pl.ruin) pl.ruin.seed = recipe.seed; // the same ruin, another break line
   const tris = await write(lods, recipe.out, { name: recipe.name ?? recipe.assembly, generator: 'asset-studio/kit@1', assembly: recipe.assembly, placements });
   const checks = checkAssembly(P);
   const variants = new Set(P.map(keyOf)).size;

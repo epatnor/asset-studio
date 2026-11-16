@@ -159,7 +159,7 @@ for (const L of P.layers) {
 // Utplacerade föremål (placed): träd och buskar med full detalj på alla avstånd; flaggorna går till world.json
 const flags = [];
 for (const o of saved.placed ?? []) {
-  const y = t.heightAt(o.x, o.z);
+  const y = o.y ?? t.heightAt(o.x, o.z); // y: a set height (make_diorama: things on a plaza stand on its top)
   if (o.flag) { flags.push({ ...o.flag, x: o.x, y, z: o.z }); continue; }
   if (!o.model || !existsSync(path.join(ROOT, 'assets', o.model))) continue;
   const key = `placed:${o.model}`, kind = /\/bush/.test(o.model) ? 'bush' : o.model.startsWith('trees/') ? 'tree' : 'prop';

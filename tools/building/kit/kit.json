@@ -137,6 +137,22 @@
       ],
       "roof": { "type": "gable", "ridge": "x" }
     },
+    "ruin_tower": {
+      "label": "Ruined tower, 4 x 4 m: broken stone walls, a doorway, rubble",
+      "footprint": [2, 2],
+      "ruin": { "top": [0.15, 1.0], "wave": 1.3, "loss": 0.22, "fallen": 3, "seed": 1 },
+      "storeys": [
+        { "family": "stone", "front": ["stone_door", "stone_wall"], "right": ["stone_wall", "stone_window"], "back": ["stone_wall", "stone_wall"], "left": ["stone_window", "stone_wall"] }
+      ]
+    },
+    "ruin_hall": {
+      "label": "Ruined hall, 6 x 4 m: low broken walls",
+      "footprint": [3, 2],
+      "ruin": { "top": [0.08, 0.7], "wave": 1.1, "loss": 0.3, "fallen": 4, "seed": 2 },
+      "storeys": [
+        { "family": "stone", "front": ["stone_wall", "stone_door", "stone_wall"], "right": ["stone_wall", "stone_wall"], "back": ["stone_wall", "stone_window", "stone_wall"], "left": ["stone_wall", "stone_wall"] }
+      ]
+    },
     "corner_demo": {
       "label": "Two stone walls meeting at a corner (placed by hand)",
       "placements": [

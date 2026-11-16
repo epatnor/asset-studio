@@ -25,7 +25,10 @@
 // toppens radie, m), lift (m över markens medelhöjd i cirkeln; på en sluttning skärs uppsidan ned och nedsidan fylls),
 // rim (kantens bredd, m, där toppen möter marken), ground (texturen på toppen, t.ex. cobblestone), rimGround och
 // rimPopulate (kanten), ring (växter runt om: {items: [{model, scale}], count, at (m från mitten), open (grader öppna mot
-// havet, för utsikten)}) och spawn (true: spelaren börjar här, vänd mot havet). Startplatsen sparas som spawn {x, z, heading}.
+// havet, för utsikten)}), groundMetres (stenläggningens skala, m per varv), place (föremål på och vid platsen: {model,
+// at: [åt sidan, framåt] i m från mitten, där framåt är mot havet och åt sidan medurs, face (grader: modellens framsida
+// vänd så mycket från havet), pivot: [x, z] (modellens mitt, t.ex. ett hus vars origo är ett hörn), scale}) och spawn
+// (true: spelaren börjar här, vänd mot havet). Startplatsen sparas som spawn {x, z, heading}.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -301,7 +304,7 @@ for (const Pn of penins) {
 }
 // Platsernas stenläggning och kant: målade lager som penseln, med skarp kant runt toppen
 for (const P of plazas) {
-  const top = P.ground ? paintLayers.push({ texture: P.ground, metres: X.groundTextures.find((t) => t.id === P.ground)?.metres ?? 2 }) - 1 : -1;
+  const top = P.ground ? paintLayers.push({ texture: P.ground, metres: P.groundMetres ?? X.groundTextures.find((t) => t.id === P.ground)?.metres ?? 2 }) - 1 : -1;
   const rim = P.rimGround && paintLayers.length < SLOTS ? paintLayers.push({ texture: P.rimGround, metres: X.groundTextures.find((t) => t.id === P.rimGround)?.metres ?? 3, ...(P.rimPopulate ? { populate: P.rimPopulate } : {}) }) - 1 : -1;
   if (paintLayers.length > SLOTS) throw new Error('too many painted ground layers');
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
@@ -330,6 +333,16 @@ for (const P of plazas) {
     const b = open / 2 + (q + 0.5 + 0.3 * noise(q * 3.1, 7.7)) * (2 * Math.PI - open) / count, dir = P.a + b;
     const rr = at + 1.5 * noise(q * 1.7, 2.9), it = items[q % items.length];
     placed.push({ model: it.model, x: +(P.x + Math.sin(dir) * rr).toFixed(2), z: +(P.z - Math.cos(dir) * rr).toFixed(2), rot: Math.round((q * 137.5) % 360), scale: +((it.scale ?? 1) * (1 + 0.12 * noise(q * 5.3, 1.1))).toFixed(2) });
+  }
+  // föremålen i platsens egen ram: framåt mot havet (f), åt sidan medurs (sd); vridningen som i Godot (framsidan +z)
+  const f = [Math.sin(P.a), -Math.cos(P.a)], sd = [Math.cos(P.a), Math.sin(P.a)];
+  for (const o of P.place ?? []) {
+    const [u, v] = o.at ?? [0, 0], th = (180 - (P.angle ?? 0) - (o.face ?? 0)) * Math.PI / 180, [px, pz] = o.pivot ?? [0, 0];
+    const cx = P.x + sd[0] * u + f[0] * v, cz = P.z + sd[1] * u + f[1] * v;
+    const ox = px * Math.cos(th) + pz * Math.sin(th), oz = -px * Math.sin(th) + pz * Math.cos(th);
+    // on the plaza (its centre within the top and the inner rim) it stands at the top's height, also where the rim rises behind
+    const onTop = Math.hypot(u, v) <= P.radius + P.rim * 0.5;
+    placed.push({ model: o.model, x: +(cx - ox).toFixed(2), z: +(cz - oz).toFixed(2), ...(onTop ? { y: +P.top.toFixed(2) } : {}), rot: +((th * 180 / Math.PI + 360) % 360).toFixed(1), scale: o.scale ?? 1 });
   }
   if (P.spawn && !spawn) spawn = { x: +P.x.toFixed(2), z: +P.z.toFixed(2), heading: P.angle ?? 0 };
 }

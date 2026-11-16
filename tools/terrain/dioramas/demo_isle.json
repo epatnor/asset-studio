@@ -209,12 +209,12 @@
   },
   "plazas": [
     {
-      "name": "Sunstrand lookout",
+      "name": "Sunstrand ruins",
       "angle": 172,
       "inland": 24,
-      "radius": 8,
-      "lift": 0.7,
-      "rim": 3.5,
+      "radius": 5,
+      "lift": 0.5,
+      "rim": 2.5,
       "ground": "cobblestone",
       "rimGround": "surface_stone",
       "rimPopulate": {
@@ -224,8 +224,8 @@
         "plant": 0.6
       },
       "ring": {
-        "count": 15,
-        "at": 14.5,
+        "count": 11,
+        "at": 10.5,
         "open": 110,
         "items": [
           {
@@ -258,7 +258,55 @@
           }
         ]
       },
-      "spawn": true
+      "spawn": true,
+      "groundMetres": 5,
+      "place": [
+        {
+          "model": "ruins/ruin_tower",
+          "at": [
+            0.5,
+            -5.2
+          ],
+          "face": 0,
+          "pivot": [
+            2,
+            2
+          ]
+        },
+        {
+          "model": "props/mossy_stone1",
+          "at": [
+            -3.2,
+            1.0
+          ],
+          "scale": 1.0
+        },
+        {
+          "model": "props/stones1",
+          "at": [
+            2.8,
+            2.2
+          ],
+          "scale": 1.0
+        },
+        {
+          "model": "props/slab_lp1",
+          "at": [
+            3.4,
+            -1.6
+          ],
+          "face": 30,
+          "scale": 0.8
+        },
+        {
+          "model": "props/rock_lp_mossy1",
+          "at": [
+            -3.8,
+            -2.4
+          ],
+          "scale": 0.7
+        }
+      ]
     }
   ]
 }

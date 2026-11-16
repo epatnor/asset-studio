@@ -134,6 +134,8 @@ function stoneWallRelief(E, K, spec) {
       stone(E, F, ctx, 'step', { x0: x0 - 0.12, x1: x1 + 0.12, y0: -0.08, y1: 0.08, dressed: true, project: 0.3, t: 0.4, keepBack: true, flush: { 2: true }, kind: 'step' });
     } else windowFrame(E, K, x0, x1, O.y0, O.y1, -0.21, r);
   }
+  return wallInfo();
+  function wallInfo() {
   const sock = (k) => (k === 'open' ? 'stone:open' : k === 'corner' ? null : 'end');
   return {
     sockets: [
@@ -144,12 +146,25 @@ function stoneWallRelief(E, K, spec) {
     ],
     courses: C, opening: O && { x0: O.x0, x1: O.x1, y0: O.y0, y1: O.y1 },
   };
+  }
 }
 
 // Stenmur (även med fönster eller dörr) i en våning. spec: { ends: [l, r], opening, seed, detail }
-// detail: relief (platta med bakad textur, standard) eller modeled (varje sten som geometri, för närbilder)
+// Ruinens brottlinje: höjden (m) där muren tar slut, längs hela husets omkrets s (m), så att väggar och hörn möts i
+// samma linje. ruin: {top: [lägst, högst] som andel av våningen, wave (m mellan brusets knutar), seed}
+export function ruinTop(K, R, s) {
+  const r = makeRand(R.seed ?? 1), w = R.wave ?? 1.3, [lo, hi] = R.top ?? [0.2, 0.9];
+  const i = Math.floor(s / w), f = s / w - i, u = f * f * (3 - 2 * f);
+  const v = (k) => r(`rt${k}`) * 0.8 + r(`rq${Math.floor(k / 3)}`) * 0.2;
+  return K.storey * (lo + (hi - lo) * (v(i) + (v(i + 1) - v(i)) * u));
+}
+
+// detail: relief (platta med bakad textur, standard) eller modeled (varje sten som geometri, för närbilder).
+// ruin: en övergiven mur (alltid modeled): genomgående stenar som syns från båda sidor, inget ovanför brottlinjen
+// (ruinTop, med s0 = modulens läge längs omkretsen), loss = sannolikheten att en sten nära brottet fattas, fallen = antal
+// nedfallna stenar vid foten. En sten som inte vilar på stenar under sig till minst 40 % tas också bort
 export function stoneWall(E, K, spec) {
-  if ((spec.detail ?? K.families.stone.wallMode) === 'relief') return stoneWallRelief(E, K, spec);
+  if ((spec.detail ?? K.families.stone.wallMode) === 'relief' && !spec.ruin) return stoneWallRelief(E, K, spec);
   const F = K.families.stone, W = K.width, H = K.storey, t = F.thickness, T = F.tooth, q = F.quoin;
   const r = makeRand(spec.seed ?? 1), ctx = { r, n: 0, seedN: (spec.seed ?? 1) * 7919 };
   const C = courses(F, H), [le, re] = spec.ends ?? ['open', 'open'];
@@ -168,8 +183,15 @@ export function stoneWall(E, K, spec) {
     return null;
   };
   let joints = [], jumpers = [];
+  const RU = spec.ruin, s0 = RU?.s0 ?? 0;
+  let keptBelow = null; // ruin: the spans of the stones kept in the course below
+  // ruin: the arch and the sill stay only where the break line runs above them (then they carry the stones on top)
+  const lowest = (x0, x1) => (RU ? Math.min(...[0, 0.25, 0.5, 0.75, 1].map((f) => ruinTop(K, RU, s0 + x0 + (x1 - x0) * f))) : Infinity);
+  const archKept = O && lowest(O.x0 - O.e, O.x1 + O.e) >= C[O.kt][1];
+  const sillKept = O && O.ks > 0 && lowest(O.x0 - 0.1, O.x1 + 0.1) >= C[O.ks - 1][1];
   for (let k = 0; k < C.length; k++) {
     const [y0, y1] = C[k], a = L(k), b = R(k);
+    const kept = [];
     // sträckor i skiftet: [a, b] minus öppningen, fönsterbänken, valvet och stenar från skiftet under som går två skift
     let runs = [{ a, b, fa: endReq(le === 'corner' ? 'corner' : le, k), fb: endReq(re === 'corner' ? 'corner' : re, k) }];
     const cut = (x0, x1, kindA, kindB) => {
@@ -202,6 +224,16 @@ export function stoneWall(E, K, spec) {
         if (st.last && s.slantB != null) { c.x1 = s.slantB; c.x1t = s.b; }
         // ibland går en sten över två skift (inte vid ändar, öppningar eller översta skiftet)
         const plain = (kk) => !(O && kk >= (O.ks > 0 ? O.ks - 1 : 0) && kk <= O.kt);
+        if (RU) {
+          const xa = Math.max(c.x0, 0), xb = Math.min(c.x1, W), top = Math.min(...[xa, (xa + xb) / 2, xb].map((x) => ruinTop(K, RU, s0 + x)));
+          const lost = c.y1 > top - 0.45 && r(`lost${k}${si}${ri}`) < (RU.loss ?? 0.25);
+          const under = k === 0 ? 1 : keptBelow.reduce((sum, [p, q]) => sum + Math.max(0, Math.min(q, c.x1) - Math.max(p, c.x0)), 0) / Math.max(1e-6, c.x1 - c.x0);
+          if (c.y1 > top || lost || under < 0.4) continue;
+          c.full = true; c.dressed = false; c.flush = { 0: !!fa?.flush, 1: !!fb?.flush };
+          kept.push([c.x0, c.x1]);
+          stone(E, F, ctx, `s${k}_${ri}_${si}`, c);
+          continue;
+        }
         if (!st.first && !st.last && k + 1 < C.length - 1 && plain(k) && plain(k + 1) && r(`jump${k}${si}${ri}`) < F.jumper
           && st.x0 > Math.max(L(k + 1), 0) + 0.45 && st.x1 < Math.min(R(k + 1), W) - 0.45 && st.x1 - st.x0 < 0.55) {
           c.y1 = C[k + 1][1];
@@ -214,31 +246,53 @@ export function stoneWall(E, K, spec) {
     // skift med stenar som går upp från skiftet under: deras fogar räknas också
     for (const j of jumpers.filter((j) => j.k === k)) newJoints.push(j.x0, j.x1);
     joints = newJoints;
+    if (RU) {
+      if (O && archKept && k === O.kt) kept.push([O.x0 - O.e, O.x1 + O.e]);
+      if (O && sillKept && k === O.ks - 1) kept.push([O.x0 - 0.1, O.x1 + 0.1]);
+      // the mortar only between the stones that are left, set back from both faces
+      for (const [p, q] of kept) E.hexa('mortar', aabbCorners([p - F.mortar, k === 0 ? -0.06 : y0, -t + F.mortarDepth], [q + F.mortar, y1 - F.mortar, -F.mortarDepth]), { bevel: 0, color: lin(F.mortarColor), tile: 1.5, kind: 'core', exact: false });
+      keptBelow = kept;
+      joints = newJoints;
+      continue;
+    }
     // kärnan bakom stenarna (fogbruket som syns i fogarna), tandad som stenarna
     const zc = -F.mortarDepth, coreCol = lin(F.mortarColor);
     const coreRuns = inOpening ? [[a, O.x0], [O.x1, b]] : [[a, b]];
     for (const [ca, cb] of coreRuns) if (cb - ca > 1e-6) E.hexa('mortar', aabbCorners([ca, k === 0 ? -0.06 : y0, -t], [cb, y1, zc]), { bevel: 0, color: coreCol, tile: 1.5, kind: 'core', exact: true });
   }
+  // Nedfallna stenar vid murens fot, på båda sidor, lite snedställda
+  if (RU) for (let i = 0; i < (RU.fallen ?? 3); i++) {
+    const key = `fall${i}`, len = between(r, `${key}l`, F.stoneLen), h = between(r, `${key}h`, F.course), d = between(r, `${key}d`, [0.22, 0.34]);
+    const x0 = between(r, `${key}x`, [-0.2, W - len + 0.2]), out = between(r, `${key}o`, [0.25, 1.3]);
+    const z1 = r(`${key}s`) < 0.5 ? out + d : -t - out, tilt = (r(`${key}t`) - 0.5) * 0.12;
+    const Cc = aabbCorners([x0, -0.05, z1 - d], [x0 + len, h - 0.05, z1]);
+    for (const p of Cc) p[1] += tilt * (p[0] - x0);
+    E.hexa('stone', Cc, { bevel: F.bevel, chip: [5, F.chip[1]], sub: [1, 1, 0], dome: [[2, 1, 0.5 * F.dome]], color: shade(lin(pickC(r, `${key}c`, F.colors)), 0.85 + 0.12 * r(`${key}b`)),
+      jitter: F.jitter * 2, seed: 9000 + i + (spec.seed ?? 1) * 31, tile: F.tile, kind: 'rubble', exact: false, edgeLight: 1.1, grad: 0.12 });
+  }
   // Fönsterbänk, valv och själva fönstret eller dörren
   if (O) {
     const { x0, x1, ks, kt, y0, y1, e } = O;
-    if (ks > 0) {
+    if (ks > 0 && (!RU || sillKept)) {
       const [sy0, sy1] = C[ks - 1];
       stone(E, F, ctx, 'sill', { x0: x0 - 0.1, x1: x1 + 0.1, y0: sy0, y1: sy1, dressed: true, project: 0.07, slopeTop: 0.0, t, keepBack: true, kind: 'sill' });
     }
     // valvet: kilstenar med radiella fogar, slutstenen i mitten sticker ut lite
     const n = 5, [ay0, ay1] = C[kt];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < (RU && !archKept ? 0 : n); i++) {
       const b0 = x0 + ((x1 - x0) * i) / n, b1 = x0 + ((x1 - x0) * (i + 1)) / n;
       const t0 = x0 - e + ((x1 - x0 + 2 * e) * i) / n, t1 = x0 - e + ((x1 - x0 + 2 * e) * (i + 1)) / n;
       const key = i === (n - 1) / 2;
       stone(E, F, ctx, `v${i}`, { x0: b0, x1: b1, x0t: t0, x1t: t1, y0: ay0, y1: ay1 + (key ? 0.0 : 0), dressed: true, project: key ? 0.035 : 0.012, t, full: true, kind: 'voussoir' });
     }
     const zc = -0.21;
+    if (RU) return wallInfo(); // a ruin's openings are empty: no door, window or step
     if (O.kind === 'door') doorLeaf(E, K, x0, x1, y1, zc, r);
     else windowFrame(E, K, x0, x1, y0, y1, zc, r);
     if (O.kind === 'door') stone(E, F, ctx, 'step', { x0: x0 - 0.12, x1: x1 + 0.12, y0: -0.08, y1: 0.08, dressed: true, project: 0.3, t: 0.4, keepBack: true, flush: { 2: true }, kind: 'step' });
   }
+  return wallInfo();
+  function wallInfo() {
   const sock = (k) => (k === 'open' ? 'stone:open' : k === 'corner' ? null : 'end');
   return {
     sockets: [
@@ -249,16 +303,20 @@ export function stoneWall(E, K, spec) {
     ],
     courses: C, opening: O && { x0: O.x0, x1: O.x1, y0: O.y0, y1: O.y1 },
   };
+  }
 }
 
 // Hörnet: en hörnkedja av tuktade stenar, varannan lång åt arm A (+x), varannan åt arm B (−z)
 export function stoneCorner(E, K, spec) {
   const F = K.families.stone, H = K.storey, t = F.thickness, q = F.quoin, m = F.mortar / 2;
   const r = makeRand(spec.seed ?? 1), ctx = { r, n: 0, seedN: 104729 };
-  const C = courses(F, H);
+  const C = courses(F, H), RU = spec.ruin;
+  // ruin: the corner stands as high as the break line where the walls meet it (and the walls are modeled, not relief)
+  const cut = RU ? ruinTop(K, RU, RU.s0 ?? 0) + 0.15 : Infinity, relief = F.wallMode === 'relief' && !RU;
   C.forEach(([y0, y1], k) => {
+    if (y1 > cut) return;
     // mot en platta med bakad relief sticker hörnkedjan ut lite mer, så att den läses som tuktad sten
-    const out = F.wallMode === 'relief' ? F.project : 0.006;
+    const out = relief ? F.project : 0.006;
     const lo = k % 2 ? [-out, k === 0 ? -0.06 : y0 + m, -t] : [-out, k === 0 ? -0.06 : y0 + m, -t - q + m];
     const hi = k % 2 ? [t + q - m, y1 - m, out] : [t, y1 - m, out];
     const Cc = aabbCorners(lo, hi);
@@ -268,7 +326,7 @@ export function stoneCorner(E, K, spec) {
       jitter: F.jitter * 0.4, seed: 5000 + k, tile: F.tile, kind: 'quoin', exact: true, edgeLight: 1.18, grad: 0.1 });
     // fogbruket bakom fogarna, lika långt in från båda ytorna
     const md = F.mortarDepth;
-    const arm = F.wallMode === 'relief' ? 0 : q; // mot en reliefplatta ligger armarna utanpå plattan, fogbruket bara i hörnrutan
+    const arm = relief ? 0 : q; // mot en reliefplatta ligger armarna utanpå plattan, fogbruket bara i hörnrutan
     E.hexa('mortar', aabbCorners([md, k === 0 ? -0.06 : y0, k % 2 ? -t : -t - arm], [k % 2 ? t + arm : t, y1, -md]), { bevel: 0, color: lin(F.mortarColor), tile: 1.5, kind: 'core', exact: true });
   });
   return {
