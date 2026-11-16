@@ -234,6 +234,17 @@ const plazas = (D.plazas ?? []).map((Q) => {
   return P;
 });
 
+// Världens kant: marken sjunker mjukt ned till havsbotten de sista edgeRamp metrarna (standard 24), så att den möter
+// havsbotten utanför utan en vägg som syns genom klart vatten eller från luften
+{
+  const floor = settings.seaFloor ?? -16, ramp = D.edgeRamp ?? 24;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell, e = half - Math.max(Math.abs(x), Math.abs(z)), k = j * n + i;
+    const w = smooth(ramp, 2, e), g = base.heights[k] + delta[k];
+    if (w > 0 && g > floor) delta[k] = mix(g, floor, w) - base.heights[k];
+  }
+}
+
 // Bäckar: från vulkanens fot ut genom sektorn till havet, med en svag sväng
 const channels = [];
 sectors.forEach((s) => {

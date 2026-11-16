@@ -19,8 +19,8 @@
   "sectors": [
     { "angle": 180, "coast": "beach", "detail": 0.8, "region": { "name": "Sunstrand", "theme": "temperate" },
       "paint": [ { "biome": "beach", "from": -16, "to": 6, "strength": 0.9 }, { "biome": "meadow", "from": -80, "to": -16, "strength": 0.6 } ] },
-    { "angle": 90, "coast": "meadow", "detail": 0.8, "region": { "name": "Easthollow", "theme": "temperate" },
-      "paint": [ { "biome": "meadow", "from": -80, "to": 4, "strength": 0.7 } ] },
+    { "angle": 90, "coast": "beach", "detail": 0.8, "region": { "name": "Easthollow", "theme": "temperate" },
+      "paint": [ { "biome": "beach", "from": -15, "to": 6, "strength": 0.9 }, { "biome": "meadow", "from": -80, "to": -15, "strength": 0.7 } ] },
     { "angle": 0, "coast": "beach", "detail": 0.8, "region": { "name": "Northsand", "theme": "temperate" },
       "paint": [ { "biome": "beach", "from": -14, "to": 6, "strength": 0.9 }, { "biome": "meadow", "from": -80, "to": -14, "strength": 0.6 } ] },
     { "angle": 270, "coast": "cliff", "detail": 1.0, "region": { "name": "Westcrag", "theme": "temperate" },
