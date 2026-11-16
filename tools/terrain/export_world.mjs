@@ -17,6 +17,7 @@
 //                 modellerna uppackade (utan meshopt) i models/
 //   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
 //                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
+//   shore.f32, coast.u8   vågornas gångtid från stranden och kustkartan (shared/effects/shore.js), för de brytande vågorna
 //   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar, flaggorna och startplatsen
 //   (models: en mapp med slimmade modeller, t.ex. "build/slim", som används där de finns)
 //   (budget: ett namn ur motorns budgetar, t.ex. "lean"; följer med i world.json)
@@ -32,6 +33,7 @@ import { BIOMES, computeBiomes, mixPaint, decodePaint } from '../../shared/terra
 import { SLOTS, decodeWeights, resampleWeights } from '../../shared/terrain/paint.js';
 import { populate, STRIDE } from '../../shared/terrain/populate.js';
 import { io } from '../tree/gltf_write.mjs';
+import { travelField, COAST_MAX } from '../../shared/effects/shore.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const json = (p) => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -226,6 +228,20 @@ for (let k = 0; k < n * n; k++) {
 planes(kinds, 'grasskind');
 let lo = Infinity, hi = -Infinity;
 for (const h of heights) { lo = Math.min(lo, h); hi = Math.max(hi, h); }
+// The breaking waves' travel time from the shore (shared/effects/shore.js, as the Water tab uses it): per cell τ (s), the
+// direction in towards land and how clean the fronts are, as shore.f32 (RGBA float); and the coast map (distance to
+// land, steepness) as coast.u8 (RGBA), for the foam at cliffs and rocks. The grid is in world.json shore
+let shore = null;
+if (v.sea) {
+  const fieldT = travelField((x, z) => t.heightAt(x, z), v.seaLevel, -half, half, -half, half, 384);
+  if (fieldT && fieldT.coast) {
+    const { h, nx, nz } = fieldT, sh = new Float32Array(nx * nz * 4);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) sh.set(fieldT.at(-half + i * h, -half + j * h), (j * nx + i) * 4);
+    write('shore.f32', sh);
+    write('coast.u8', fieldT.coast.data);
+    shore = { x0: -half, z0: -half, h, nx, nz, coastMax: COAST_MAX, coastNx: fieldT.coast.nx, coastNz: fieldT.coast.nz };
+  }
+}
 const world = {
   name, n, size, cell, half, seaFloor: recipe.seaFloor, sea: !!v.sea, seaLevel: v.seaLevel, cliffAngle: v.cliffAngle, grassTone: v.grassTone,
   low: lo, high: hi, biomes: T.biomes.map((b) => ({ id: b.id, color: b.color })),
@@ -234,11 +250,15 @@ const world = {
   grassKinds, flags, streamChunk: CHUNK, streamChunks,
   // Startplatsen (make_diorama plazas): x, z och heading (kompassriktning, 0 = norr, −z, medurs) som spelaren tittar åt
   ...(saved.spawn ? { spawn: saved.spawn } : {}),
+  ...(shore ? { shore } : {}),
+  // The wind from the Wind tab (tools/wind/wind.json, preset `wind`, default breeze): the trees' rig and the grass's waves
+  // in the engine take the same direction (dir, degrees), gusts (gustScale m, gustSpeed m/s), strength, sway and flutter
+  wind: (() => { const Wd = json('tools/wind/wind.json'); return { ...Object.fromEntries(Wd.params.map((q) => [q.key, q.default])), ...strip(Wd.presets[args.wind ?? 'breeze']) }; })(),
   // Motorns budget (namn i godot-lab/budgets.json): hur fint marken, gräset och naturen ritas och hur stora texturerna är
   budget: args.budget ?? 'full',
   water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets.tropical_lagoon) },
   streamWater: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets[T.channelKinds.stream?.water]) },
-  files: ['heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'grasskind_a.u8', 'grasskind_b.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
+  files: [...(shore ? ['shore.f32', 'coast.u8'] : []), 'heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'grasskind_a.u8', 'grasskind_b.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
 };
 writeFileSync(path.join(out, 'world.json'), JSON.stringify(world, null, 1));
 let grassy = 0;
