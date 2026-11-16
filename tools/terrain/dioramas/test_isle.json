@@ -1,0 +1,312 @@
+{
+  "name": "test_isle",
+  "from": "volcano",
+  "settings": {
+    "worldSize": "256",
+    "seed": 5,
+    "height": 42,
+    "scale": 60,
+    "warp": 10,
+    "talus": 40,
+    "snowline": 500,
+    "treeline": 42,
+    "rainfall": 0.85,
+    "forestCover": 0.8,
+    "marshes": 0.5,
+    "cliffAngle": 42,
+    "sandBand": 1.4,
+    "grassTone": 0.65
+  },
+  "radius": 90,
+  "core": 36,
+  "wobble": 5,
+  "spread": 30,
+  "center": {
+    "name": "Emberpeak",
+    "theme": "ashland"
+  },
+  "sectors": [
+    {
+      "angle": 180,
+      "coast": "beach",
+      "detail": 1.2,
+      "region": {
+        "name": "Sunstrand",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "beach",
+          "from": -16,
+          "to": 6,
+          "strength": 0.9
+        },
+        {
+          "biome": "meadow",
+          "from": -28,
+          "to": -16,
+          "strength": 0.5
+        },
+        {
+          "biome": "forest",
+          "from": -48,
+          "to": -26,
+          "strength": 0.6
+        }
+      ]
+    },
+    {
+      "angle": 270,
+      "coast": "marsh",
+      "detail": 0.8,
+      "region": {
+        "name": "Fenmire",
+        "theme": "wetland"
+      },
+      "paint": [
+        {
+          "biome": "marsh",
+          "from": -36,
+          "to": 2,
+          "strength": 0.85
+        },
+        {
+          "biome": "forest",
+          "from": -56,
+          "to": -36,
+          "strength": 0.5
+        }
+      ]
+    },
+    {
+      "angle": 0,
+      "coast": "cliff",
+      "detail": 2.5,
+      "region": {
+        "name": "Pinecliffs",
+        "theme": "pinewood"
+      },
+      "paint": [
+        {
+          "biome": "rock",
+          "from": -4,
+          "to": 6,
+          "strength": 0.75
+        },
+        {
+          "biome": "pine",
+          "from": -40,
+          "to": -6,
+          "strength": 0.8
+        },
+        {
+          "biome": "rock",
+          "from": 6,
+          "to": 38,
+          "strength": 0.95
+        }
+      ],
+      "coves": [
+        {
+          "angle": 14,
+          "width": 14,
+          "depth": 14
+        }
+      ]
+    },
+    {
+      "angle": 90,
+      "coast": "meadow",
+      "detail": 1.8,
+      "stream": true,
+      "region": {
+        "name": "Bloomfield",
+        "theme": "temperate"
+      },
+      "paint": [
+        {
+          "biome": "meadow",
+          "from": -24,
+          "to": -2,
+          "strength": 0.75
+        },
+        {
+          "biome": "forest",
+          "from": -50,
+          "to": -22,
+          "strength": 0.6
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "beachMaxDepth": 1.2,
+    "cliffMinDepth": 4,
+    "marshMinPonds": 8
+  },
+  "populate": {
+    "seed": 3,
+    "density": 1,
+    "detail": 1.5,
+    "layers": {
+      "broadleaf": {
+        "on": true,
+        "density": 1
+      },
+      "autumn": {
+        "on": true,
+        "density": 0.6
+      },
+      "conifers": {
+        "on": true,
+        "density": 1
+      },
+      "wetland_trees": {
+        "on": true,
+        "density": 0.8
+      },
+      "dead_trees": {
+        "on": true,
+        "density": 0.5
+      },
+      "boulders": {
+        "on": true,
+        "density": 1
+      },
+      "bushes": {
+        "on": true,
+        "density": 1
+      },
+      "forest_floor": {
+        "on": false,
+        "density": 0
+      },
+      "flowers": {
+        "on": true,
+        "density": 1
+      },
+      "grasses": {
+        "on": true,
+        "density": 1
+      },
+      "reeds": {
+        "on": true,
+        "density": 0.6
+      },
+      "shore": {
+        "on": true,
+        "density": 0.8
+      },
+      "lilies": {
+        "on": false,
+        "density": 0
+      },
+      "pondweed": {
+        "on": false,
+        "density": 0
+      }
+    }
+  },
+  "plazas": [
+    {
+      "name": "Sunstrand ruins",
+      "angle": 172,
+      "inland": 24,
+      "radius": 5,
+      "lift": 0.5,
+      "rim": 2.5,
+      "ground": "cobblestone",
+      "rimGround": "surface_stone",
+      "rimPopulate": {
+        "tree": 0,
+        "bush": 0.3,
+        "rock": 0.6,
+        "plant": 0.6
+      },
+      "ring": {
+        "count": 11,
+        "at": 10.5,
+        "open": 110,
+        "items": [
+          {
+            "model": "trees/oak",
+            "scale": 1.1
+          },
+          {
+            "model": "trees/bush_round",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/birch",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_flower",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_wild",
+            "scale": 1.1
+          },
+          {
+            "model": "trees/maple",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_box",
+            "scale": 0.9
+          }
+        ]
+      },
+      "spawn": true,
+      "groundMetres": 5,
+      "place": [
+        {
+          "model": "ruins/ruin_tower",
+          "at": [
+            0.5,
+            -5.2
+          ],
+          "face": 0,
+          "pivot": [
+            2,
+            2
+          ]
+        },
+        {
+          "model": "props/mossy_stone1",
+          "at": [
+            -3.2,
+            1.0
+          ],
+          "scale": 1.0
+        },
+        {
+          "model": "props/stones1",
+          "at": [
+            2.8,
+            2.2
+          ],
+          "scale": 1.0
+        },
+        {
+          "model": "props/slab_lp1",
+          "at": [
+            3.4,
+            -1.6
+          ],
+          "face": 30,
+          "scale": 0.8
+        },
+        {
+          "model": "props/rock_lp_mossy1",
+          "at": [
+            -3.8,
+            -2.4
+          ],
+          "scale": 0.7
+        }
+      ]
+    }
+  ]
+}
