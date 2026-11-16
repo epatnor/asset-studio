@@ -1,6 +1,9 @@
 # Körs i Blender (utan fönster) av tools/mesh/make_low.py: en tung modell (t.ex. Pixal3D, ~700k trianglar) blir en spel­modell.
 # Steg: decimera en kopia till målantalet trianglar, packa upp UV på nytt, baka färg och normalkarta från originalet
 # (Cycles, selected to active), byt materialet och exportera GLB. Skriver en rad "LOW_RESULT {json}".
+# quad: true (QuadriFlow, vägrar ofta AI-näten) eller "instant" (Instant Meshes, jämna fyrhörningar direkt från den tunga
+# modellen). Prov 2026-11-16 på mannekängen: vid samma budget behåller decimeringen plus normalkartan ansiktet bättre än
+# Instant Meshes jämna rutnät (8 000 eller 16 000 quads), som blir kantigt runt näsa och mun.
 import json
 import math
 import os
@@ -67,6 +70,49 @@ if job.get("quad"):
             quads = sum(1 for p in low.data.polygons if len(p.vertices) == 4)
     except Exception as e:
         print("QUADRIFLOW_FAILED", e)
+if job.get("quad") == "instant":
+    # Instant Meshes (pynanoinstantmeshes, in its own Python: nim_python, default /data/venv_nim/bin/python on Darrowmere):
+    # field-aligned quads straight from the heavy model, about tris/2 quads. Edge loops follow the form (round the eyes,
+    # mouth and limbs) instead of the even voxel grid that decimation thins out. 2026-11-16, after QuadriFlow refused
+    # the mannequin's voxel mesh as well
+    import subprocess, tempfile
+    import numpy as np
+    hm = high.data
+    hm.calc_loop_triangles()
+    V = np.array([v.co[:] for v in hm.vertices], dtype=np.float32)
+    F = np.array([t.vertices[:] for t in hm.loop_triangles], dtype=np.uint32)
+    # welded first: glTF splits the vertices along UV seams, and Instant Meshes would treat every seam as an edge
+    key = np.round(V / (max(high.dimensions) * 1e-6)).astype(np.int64)
+    _, first, inv = np.unique(key, axis=0, return_index=True, return_inverse=True)
+    V, F = V[first], inv.reshape(-1)[F].astype(np.uint32)
+    F = F[(F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])]
+    tmp = tempfile.mkdtemp()
+    np.save(os.path.join(tmp, "v.npy"), V); np.save(os.path.join(tmp, "f.npy"), F)
+    code = ("import sys, os, numpy as np, pynanoinstantmeshes as P\n"
+            "d, n, sm = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])\n"
+            "V, F = P.remesh(np.load(os.path.join(d, 'v.npy')), np.load(os.path.join(d, 'f.npy')), n, smooth_iter=sm, deterministic=True)\n"
+            "np.save(os.path.join(d, 'qv.npy'), np.asarray(V)); np.save(os.path.join(d, 'qf.npy'), np.asarray(F))\n")
+    # the vertex count asked for comes back about four times over (8 000 gave 32 318 quads), so tris/8 lands near
+    # tris/2 quads
+    subprocess.run([job.get("nim_python", "/data/venv_nim/bin/python"), "-I", "-c", code, tmp, str(max(50, target // 8)),
+                    str(int(job.get("smooth_iter", 2)))], check=True)
+    QV, QF = np.load(os.path.join(tmp, "qv.npy")), np.load(os.path.join(tmp, "qf.npy"))
+    faces = []
+    for f in QF.tolist():
+        u = [i for k, i in enumerate(f) if i < len(QV) and i not in f[:k]]   # a triangle comes as a quad with a repeated corner
+        if len(u) >= 3:
+            faces.append(u)
+    me = bpy.data.meshes.new("low_quads")
+    me.from_pydata(QV.tolist(), [], faces)
+    me.validate()
+    low.data = me
+    # at a few thousand quads the fingertips are thinner than a quad and come out open: fill those holes
+    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.remove_doubles(threshold=max(low.dimensions) * 1e-5)
+    bpy.ops.mesh.fill_holes(sides=0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    quads = sum(1 for p in me.polygons if len(p.vertices) == 4)
+    print("INSTANT_MESHES", len(V), "->", len(QV), "verts,", len(me.polygons), "faces,", quads, "quads")
 if quads is None:
     for ratio in (math.sqrt(min(1.0, target / cur)),) * 2:
         m = low.modifiers.new("dec", "DECIMATE"); m.decimate_type = "COLLAPSE"; m.ratio = ratio; m.use_collapse_triangulate = True
