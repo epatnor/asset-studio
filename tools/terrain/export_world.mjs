@@ -18,6 +18,7 @@
 //   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
 //                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
 //   shore.f32, coast.u8   vågornas gångtid från stranden och kustkartan (shared/effects/shore.js), för de brytande vågorna
+//   ("water": en havstyp ur tools/water/water.json, standard tropical_lagoon)
 //   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar, flaggorna och startplatsen
 //   (models: en mapp med slimmade modeller, t.ex. "build/slim", som används där de finns)
 //   (budget: ett namn ur motorns budgetar, t.ex. "lean"; följer med i world.json)
@@ -256,7 +257,7 @@ const world = {
   wind: (() => { const Wd = json('tools/wind/wind.json'); return { ...Object.fromEntries(Wd.params.map((q) => [q.key, q.default])), ...strip(Wd.presets[args.wind ?? 'breeze']) }; })(),
   // Motorns budget (namn i godot-lab/budgets.json): hur fint marken, gräset och naturen ritas och hur stora texturerna är
   budget: args.budget ?? 'full',
-  water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets.tropical_lagoon) },
+  water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets[args.water ?? 'tropical_lagoon']) },
   streamWater: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets[T.channelKinds.stream?.water]) },
   files: [...(shore ? ['shore.f32', 'coast.u8'] : []), 'heights.f32', 'biomes_a.u8', 'biomes_b.u8', 'look.u8', 'wet.u8', 'grass.u8', 'grasskind_a.u8', 'grasskind_b.u8', 'streams.f32', 'nature.json', ...(paint ? ['paint_a.u8', 'paint_b.u8'] : [])],
 };
