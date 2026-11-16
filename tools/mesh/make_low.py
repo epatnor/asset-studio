@@ -4,7 +4,7 @@ bakade från originalet i Blender (tools/mesh/bake_low_blender.py). Recept in, G
   python3 -I tools/mesh/make_low.py '{"high": "build/props/glb/chest.glb", "tris": 1500, "tex": 1024, "out": "build/props/low/chest_low.glb"}'
 
 Recept: high (källmodellen), out (GLB; texturerna hamnar bredvid som <namn>_color.png och _normal.png), tris (mål),
-tex (texturstorlek), quad (true: QuadriFlow-fyrhörningar i stället för decimering, sparas även som
+tex (texturstorlek), uv ("smart" som standard, "smart_large" eller "xatlas": färre och större UV-öar, se bake_low_blender.py), quad (true: QuadriFlow-fyrhörningar i stället för decimering, sparas även som
 <namn>_quads.blend), symmetry (spegelsymmetri i QuadriFlow), cage (bakningens avstånd som andel av storleken, 0.02), smooth_angle (grader), roughness.
 Blender körs som Flatpak på värden (som tools/tree/make_tree.py); env BLENDER överstyr.
 """

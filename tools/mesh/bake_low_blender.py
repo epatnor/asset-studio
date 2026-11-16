@@ -81,13 +81,77 @@ except Exception:
     pass
 low_tris = sum(len(p.vertices) - 2 for p in low.data.polygons)
 
-# Ny UV
+# Ny UV. uv: "smart" (standard: Smart UV Project, 66 grader, många små öar), "smart_large" (89 grader och smalare marginal:
+# färre och större öar) eller "xatlas" (xatlas med stora sjok: få öar, tätt packade; xatlas_python är en Python med
+# xatlas och numpy, standard /data/venv/bin/python på Darrowmere). Större öar ger fler pixlar per yta och färre sömmar
 while low.data.uv_layers:
     low.data.uv_layers.remove(low.data.uv_layers[0])
 low.data.uv_layers.new(name="UVMap")
-bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
-bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.01)
-bpy.ops.object.mode_set(mode="OBJECT")
+uv_mode = job.get("uv", "smart")
+if uv_mode == "xatlas":
+    import subprocess, tempfile
+    import numpy as np
+    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.quads_convert_to_tris()
+    bpy.ops.object.mode_set(mode="OBJECT")
+    me = low.data
+    V = np.array([v.co[:] for v in me.vertices], dtype=np.float32)
+    F = np.array([p.vertices[:] for p in me.polygons], dtype=np.uint32)
+    tmp = tempfile.mkdtemp()
+    np.save(os.path.join(tmp, "v.npy"), V); np.save(os.path.join(tmp, "f.npy"), F)
+    code = (
+        "import sys, numpy as np, xatlas\n"
+        "d = sys.argv[1]; V = np.load(d + '/v.npy'); F = np.load(d + '/f.npy')\n"
+        "a = xatlas.Atlas(); a.add_mesh(V, F)\n"
+        "co = xatlas.ChartOptions(); co.max_cost = float(sys.argv[2]); co.normal_deviation_weight = 1.0; co.roundness_weight = 0.02; co.straightness_weight = 4.0\n"
+        "po = xatlas.PackOptions(); po.resolution = int(sys.argv[3]); po.padding = 6; po.bilinear = True; po.blockAlign = True\n"
+        "a.generate(co, po)\n"
+        "vm, idx, uvs = a[0]; np.save(d + '/idx.npy', idx.astype(np.uint32)); np.save(d + '/uv.npy', uvs.astype(np.float32))\n")
+    subprocess.run([job.get("xatlas_python", "/data/venv/bin/python"), "-I", "-c", code, tmp, str(job.get("xatlas_cost", 8.0)), str(tex_size)], check=True)
+    idx, UV = np.load(os.path.join(tmp, "idx.npy")), np.load(os.path.join(tmp, "uv.npy"))
+    uvl = me.uv_layers["UVMap"].data
+    for fi, poly in enumerate(me.polygons):
+        for k, li in enumerate(poly.loop_indices):
+            uvl[li].uv = UV[idx[fi][k]]
+else:
+    bpy.ops.object.mode_set(mode="EDIT"); bpy.ops.mesh.select_all(action="SELECT")
+    if uv_mode == "smart_large":
+        bpy.ops.uv.smart_project(angle_limit=math.radians(89), island_margin=0.004, area_weight=1.0)
+    else:
+        bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.01)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def uv_stats(me):
+    # islands (faces joined by shared UV edges) and how much of the square the islands cover
+    import bmesh
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    lay = bm.loops.layers.uv.active
+    key = lambda l: (round(l[lay].uv.x, 6), round(l[lay].uv.y, 6))
+    seen, isl, area = set(), 0, 0.0
+    for f in bm.faces:
+        a = [l[lay].uv for l in f.loops]
+        for i in range(1, len(a) - 1):
+            area += abs((a[i].x - a[0].x) * (a[i + 1].y - a[0].y) - (a[i + 1].x - a[0].x) * (a[i].y - a[0].y)) / 2
+        if f.index in seen:
+            continue
+        isl += 1
+        stack = [f]; seen.add(f.index)
+        while stack:
+            g = stack.pop()
+            for l in g.loops:
+                e = l.edge
+                for o in e.link_faces:
+                    if o.index in seen:
+                        continue
+                    lo = next((x for x in o.loops if x.edge == e), None)
+                    if lo and {key(l), key(l.link_loop_next)} == {key(lo), key(lo.link_loop_next)}:
+                        seen.add(o.index); stack.append(o)
+    bm.free()
+    return {"islands": isl, "coverage": round(area, 3)}
+
+
+uv_info = {"uv": uv_mode, **uv_stats(low.data)}
 
 # Material med bakmål
 mat = bpy.data.materials.new(stem); mat.use_nodes = True
@@ -172,5 +236,5 @@ bpy.ops.object.select_all(action="DESELECT"); low.select_set(True)
 bpy.ops.export_scene.gltf(filepath=out_glb, export_format="GLB", use_selection=True, export_image_format="AUTO")
 if job.get("quad") and quads is not None:   # fyrhörningarna sparas också som .blend (glTF lagrar bara trianglar)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out_dir, stem + "_quads.blend"))
-print("LOW_RESULT " + json.dumps({"ok": True, "high_tris": high_tris, "tris": low_tris, "quads": quads, "tex": tex_size,
+print("LOW_RESULT " + json.dumps({"ok": True, **uv_info, "high_tris": high_tris, "tris": low_tris, "quads": quads, "tex": tex_size,
                                    "device": scene.cycles.device, "size_m": round(size, 3)}))
