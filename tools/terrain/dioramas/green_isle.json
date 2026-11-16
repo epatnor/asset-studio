@@ -1,0 +1,68 @@
+{
+  "name": "green_isle",
+  "from": "plains",
+  "settings": {
+    "worldSize": "256",
+    "seed": 11,
+    "rainfall": 0.8,
+    "forestCover": 0.08,
+    "marshes": 0.1,
+    "cliffAngle": 42,
+    "sandBand": 1.4,
+    "grassTone": 0.7
+  },
+  "radius": 72,
+  "core": 2,
+  "wobble": 4,
+  "spread": 40,
+  "center": { "name": "Greenhaven", "theme": "temperate" },
+  "sectors": [
+    { "angle": 180, "coast": "beach", "detail": 0.8, "region": { "name": "Sunstrand", "theme": "temperate" },
+      "paint": [ { "biome": "beach", "from": -16, "to": 6, "strength": 0.9 }, { "biome": "meadow", "from": -80, "to": -16, "strength": 0.6 } ] },
+    { "angle": 90, "coast": "meadow", "detail": 0.8, "region": { "name": "Easthollow", "theme": "temperate" },
+      "paint": [ { "biome": "meadow", "from": -80, "to": 4, "strength": 0.7 } ] },
+    { "angle": 0, "coast": "beach", "detail": 0.8, "region": { "name": "Northsand", "theme": "temperate" },
+      "paint": [ { "biome": "beach", "from": -14, "to": 6, "strength": 0.9 }, { "biome": "meadow", "from": -80, "to": -14, "strength": 0.6 } ] },
+    { "angle": 270, "coast": "cliff", "detail": 1.0, "region": { "name": "Westcrag", "theme": "temperate" },
+      "paint": [ { "biome": "heath", "from": -40, "to": -6, "strength": 0.5 }, { "biome": "meadow", "from": -80, "to": -40, "strength": 0.5 } ] }
+  ],
+  "hills": [
+    { "at": [-38, -22], "radius": 30, "height": 20, "shape": "peak", "detail": 1.8 },
+    { "at": [28, -34], "radius": 18, "height": 5 },
+    { "at": [32, 36], "radius": 16, "height": 4 },
+    { "at": [-6, 46], "radius": 14, "height": 3 }
+  ],
+  "plazas": [
+    { "name": "The Green", "at": [0, 4], "angle": 180, "radius": 14, "lift": 0.2, "rim": 6, "ground": "ground_lawn",
+      "groundMetres": 3, "groundPopulate": { "tree": 0, "bush": 0, "rock": 0, "prop": 0, "plant": 0.2 }, "spawn": true }
+  ],
+  "groves": [
+    { "at": [40, 2], "radius": 11, "model": "trees/oak", "count": 9, "scale": [0.9, 1.2],
+      "props": [ { "model": "props/mossy_stump1", "count": 2 }, { "model": "props/mossy_log1", "count": 2 }, { "model": "props/fly_agaric1", "count": 5, "scale": [0.8, 1.3] }, { "model": "props/leafpile1", "count": 3 } ] },
+    { "at": [4, -44], "radius": 10, "model": "trees/birch", "count": 11, "scale": [0.85, 1.15],
+      "props": [ { "model": "props/chanterelle1", "count": 6, "scale": [0.8, 1.3] }, { "model": "props/mossy_stone1", "count": 3 }, { "model": "props/stump1", "count": 1 } ] },
+    { "at": [-42, 24], "radius": 11, "model": "trees/pine", "count": 10, "scale": [0.9, 1.25],
+      "props": [ { "model": "props/mossy_boulder1", "count": 2 }, { "model": "props/porcini1", "count": 5, "scale": [0.8, 1.3] }, { "model": "props/mossy_log1", "count": 1 }, { "model": "props/rock_lp_mossy1", "count": 2 } ] }
+  ],
+  "populate": {
+    "seed": 4,
+    "density": 1,
+    "detail": 1.5,
+    "layers": {
+      "broadleaf": { "on": false, "density": 0 },
+      "autumn": { "on": false, "density": 0 },
+      "conifers": { "on": false, "density": 0 },
+      "wetland_trees": { "on": false, "density": 0 },
+      "dead_trees": { "on": false, "density": 0 },
+      "boulders": { "on": true, "density": 0.5 },
+      "bushes": { "on": true, "density": 0.5 },
+      "forest_floor": { "on": true, "density": 1 },
+      "flowers": { "on": true, "density": 1.6 },
+      "grasses": { "on": true, "density": 1.2 },
+      "reeds": { "on": false, "density": 0 },
+      "shore": { "on": true, "density": 0.6 },
+      "lilies": { "on": false, "density": 0 },
+      "pondweed": { "on": false, "density": 0 }
+    }
+  }
+}

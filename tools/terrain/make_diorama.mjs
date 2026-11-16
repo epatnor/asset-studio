@@ -201,10 +201,24 @@ for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
 }
 function mix(a, b, t) { return a + (b - a) * t; }
 
-// Platserna: en plan, rund topp (medelhöjden i cirkeln + lift) och en kant som möter marken mjukt
+// hills: kullar och berg ovanpå kustformen: {at: [x, z], radius, height, shape: "dome" (mjuk kulle) eller "peak" (ett
+// brantare berg med rundad topp), detail (brusets höjd, m)}
+for (const Hl of D.hills ?? []) {
+  const [hx, hz] = Hl.at ?? [0, 0], R = Hl.radius ?? 20, H = Hl.height ?? 6, peak = Hl.shape === 'peak', det = Hl.detail ?? (peak ? 1.6 : 0.5);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell, dd = Math.hypot(x - hx, z - hz);
+    if (dd >= R) continue;
+    const c = 0.5 * (1 + Math.cos(Math.PI * dd / R)), f = peak ? Math.pow(c, 1.5) : c;
+    delta[j * n + i] += H * f + det * fbm(x * 1.3 + hx, z * 1.3 - hz, 0.05) * f;
+  }
+}
+
+// Platserna: en plan, rund topp (medelhöjden i cirkeln + lift) och en kant som möter marken mjukt. at: [x, z] ställer
+// platsen var som helst (t.ex. mitt på ön) i stället för angle och inland; groundPopulate: hur toppens textur påverkar
+// växtligheten (som rimPopulate)
 const plazas = (D.plazas ?? []).map((Q) => {
   const a = (Q.angle ?? 0) * Math.PI / 180, r = coastR(a) - (Q.inland ?? 20);
-  const P = { ...Q, a, x: Math.sin(a) * r, z: -Math.cos(a) * r, radius: Q.radius ?? 8, rim: Q.rim ?? 3 };
+  const P = { ...Q, a, x: Q.at ? Q.at[0] : Math.sin(a) * r, z: Q.at ? Q.at[1] : -Math.cos(a) * r, radius: Q.radius ?? 8, rim: Q.rim ?? 3 };
   let sum = 0, cnt = 0;
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const x = -half + i * cell, z = -half + j * cell;
@@ -280,6 +294,19 @@ for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
   if (sectors[si]?.region && rs > 0.05 && !(C.own?.region && C.ownW > 0.3)) { const ri = regions.findIndex((g) => g.name === sectors[si].region.name); regionPaint[q] = ri + 1; regionPaint[P * P + q] = Math.round(200 * rs * w[si]); }
 }
 
+// groves: dungar av ett slags träd, {at: [x, z], radius, model, count, scale: [min, max], biome (målas under dungen,
+// standard forest), props: [{model, count, scale: [min, max]}] (inne i dungen, mellan stammarna)}
+const groves = D.groves ?? [];
+for (const Gv of groves) {
+  const [gx, gz] = Gv.at, R = (Gv.radius ?? 12) + 4, id = biomeIds.indexOf(Gv.biome ?? 'forest');
+  if (id < 0) continue;
+  for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
+    const x = -half + (i + 0.5) * cellP, z = -half + (j + 0.5) * cellP, st = 1 - smooth(R - 6, R, Math.hypot(x - gx, z - gz));
+    const q = j * P + i;
+    if (st > 0.03 && st * 255 >= paint[P * P + q] * (paint[q] === id + 1 ? 0 : 0.6)) { paint[q] = id + 1; paint[P * P + q] = Math.round(255 * st); }
+  }
+}
+
 // Halvöarnas målade marklager: fläckar (zone m stora) där en textur i taget tar över, mjukt mot grannarna, och inåt
 // från kusten; lagren blir paintLayers och vikterna groundPaint (som penseln i steget Paint)
 const paintLayers = [], groundW = new Uint8Array(n * n * SLOTS);
@@ -304,7 +331,7 @@ for (const Pn of penins) {
 }
 // Platsernas stenläggning och kant: målade lager som penseln, med skarp kant runt toppen
 for (const P of plazas) {
-  const top = P.ground ? paintLayers.push({ texture: P.ground, metres: P.groundMetres ?? X.groundTextures.find((t) => t.id === P.ground)?.metres ?? 2 }) - 1 : -1;
+  const top = P.ground ? paintLayers.push({ texture: P.ground, metres: P.groundMetres ?? X.groundTextures.find((t) => t.id === P.ground)?.metres ?? 2, ...(P.groundPopulate ? { populate: P.groundPopulate } : {}) }) - 1 : -1;
   const rim = P.rimGround && paintLayers.length < SLOTS ? paintLayers.push({ texture: P.rimGround, metres: X.groundTextures.find((t) => t.id === P.rimGround)?.metres ?? 3, ...(P.rimPopulate ? { populate: P.rimPopulate } : {}) }) - 1 : -1;
   if (paintLayers.length > SLOTS) throw new Error('too many painted ground layers');
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
@@ -346,6 +373,29 @@ for (const P of plazas) {
   }
   if (P.spawn && !spawn) spawn = { x: +P.x.toFixed(2), z: +P.z.toFixed(2), heading: P.angle ?? 0 };
 }
+
+// Dungarnas träd (en gyllene spiral med lite brus, så att de står jämnt men inte i rader) och props mellan stammarna
+const hash = (q, k) => { const v = Math.sin(q * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+groves.forEach((Gv, gi) => {
+  const [gx, gz] = Gv.at, R = Gv.radius ?? 12, cnt = Gv.count ?? 9, [s0, s1] = Gv.scale ?? [0.9, 1.15], trunks = [];
+  for (let q = 0; q < cnt; q++) {
+    const rr = R * Math.sqrt((q + 0.5) / cnt) * (0.85 + 0.3 * hash(q, gi + 1)), an = q * 2.39996 + 0.6 * hash(q, gi + 7);
+    const x = gx + Math.sin(an) * rr, z = gz - Math.cos(an) * rr;
+    trunks.push([x, z]);
+    placed.push({ model: Gv.model, x: +x.toFixed(2), z: +z.toFixed(2), rot: Math.round(hash(q, gi + 3) * 360), scale: +(s0 + (s1 - s0) * hash(q, gi + 5)).toFixed(2) });
+  }
+  (Gv.props ?? []).forEach((Pr, pi) => {
+    const [p0, p1] = Pr.scale ?? [0.8, 1.2];
+    for (let q = 0, tries = 0; q < (Pr.count ?? 4) && tries < 200; tries++) {
+      const rr = R * 0.85 * Math.sqrt(hash(tries, 31 + gi * 7 + pi)), an = hash(tries, 47 + gi * 5 + pi) * 6.2832;
+      const x = gx + Math.sin(an) * rr, z = gz - Math.cos(an) * rr;
+      if (trunks.some(([tx, tz]) => Math.hypot(x - tx, z - tz) < (Pr.clear ?? 1.3))) continue;
+      trunks.push([x, z]);
+      placed.push({ model: Pr.model, x: +x.toFixed(2), z: +z.toFixed(2), rot: Math.round(hash(tries, 61 + pi) * 360), scale: +(p0 + (p1 - p0) * hash(tries, 71 + pi)).toFixed(2) });
+      q++;
+    }
+  });
+});
 
 // Kontroller: hela kedjan som i Kartrummet (det formade, regionerna, biomerna med det målade)
 const recipe = { ...settings, ...G, regions, regionThemes: X.regionThemes, regionColors: X.regionColors, regionPaint, sculpt: delta, sculptN: n, channels, channelKinds: X.channelKinds };
