@@ -20,6 +20,12 @@
 // ändrar hur naturen växer på lagret, t.ex. {"tree": 0}) och place (föremål längs tungan: {model, at: [t, s], rot,
 // scale}, t = 0 vid roten till 1 ytterst, s = −1 till 1 tvärs över; {flag: {texture, pole, length}, at} är en flagga).
 // De målade lagren och föremålen sparas som paintLayers, groundPaint och placed.
+//
+// plazas: runda, stenlagda platåer: angle (kompassriktning från mitten), inland (m innanför kusten), radius (den plana
+// toppens radie, m), lift (m över markens medelhöjd i cirkeln; på en sluttning skärs uppsidan ned och nedsidan fylls),
+// rim (kantens bredd, m, där toppen möter marken), ground (texturen på toppen, t.ex. cobblestone), rimGround och
+// rimPopulate (kanten), ring (växter runt om: {items: [{model, scale}], count, at (m från mitten), open (grader öppna mot
+// havet, för utsikten)}) och spawn (true: spelaren börjar här, vänd mot havet). Startplatsen sparas som spawn {x, z, heading}.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -192,6 +198,25 @@ for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
 }
 function mix(a, b, t) { return a + (b - a) * t; }
 
+// Platserna: en plan, rund topp (medelhöjden i cirkeln + lift) och en kant som möter marken mjukt
+const plazas = (D.plazas ?? []).map((Q) => {
+  const a = (Q.angle ?? 0) * Math.PI / 180, r = coastR(a) - (Q.inland ?? 20);
+  const P = { ...Q, a, x: Math.sin(a) * r, z: -Math.cos(a) * r, radius: Q.radius ?? 8, rim: Q.rim ?? 3 };
+  let sum = 0, cnt = 0;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell;
+    if (Math.hypot(x - P.x, z - P.z) <= P.radius) { sum += base.heights[j * n + i] + delta[j * n + i]; cnt++; }
+  }
+  P.top = (cnt ? sum / cnt : 0) + (Q.lift ?? 0.6);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell, k = j * n + i, dd = Math.hypot(x - P.x, z - P.z);
+    if (dd > P.radius + P.rim) continue;
+    const g = base.heights[k] + delta[k];
+    delta[k] = mix(P.top, g, smooth(P.radius, P.radius + P.rim, dd)) - base.heights[k];
+  }
+  return P;
+});
+
 // Bäckar: från vulkanens fot ut genom sektorn till havet, med en svag sväng
 const channels = [];
 sectors.forEach((s) => {
@@ -274,12 +299,39 @@ for (const Pn of penins) {
     g.forEach((_, q) => { groundW[k + slot0 + q] = Math.round(255 * m * sc[q] / sum); });
   }
 }
+// Platsernas stenläggning och kant: målade lager som penseln, med skarp kant runt toppen
+for (const P of plazas) {
+  const top = P.ground ? paintLayers.push({ texture: P.ground, metres: X.groundTextures.find((t) => t.id === P.ground)?.metres ?? 2 }) - 1 : -1;
+  const rim = P.rimGround && paintLayers.length < SLOTS ? paintLayers.push({ texture: P.rimGround, metres: X.groundTextures.find((t) => t.id === P.rimGround)?.metres ?? 3, ...(P.rimPopulate ? { populate: P.rimPopulate } : {}) }) - 1 : -1;
+  if (paintLayers.length > SLOTS) throw new Error('too many painted ground layers');
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell, dd = Math.hypot(x - P.x, z - P.z);
+    if (dd > P.radius + P.rim + 1) continue;
+    const k = (j * n + i) * SLOTS, wt = 1 - smooth(P.radius - 0.2, P.radius + 0.3, dd);
+    const wr = rim >= 0 ? (1 - wt) * (1 - smooth(P.radius + P.rim * 0.5, P.radius + P.rim + 1, dd + 0.8 * noise(x * 0.7, z * 0.7))) : 0;
+    for (let q = 0; q < SLOTS; q++) groundW[k + q] = Math.round(groundW[k + q] * (1 - wt - wr));
+    if (top >= 0) groundW[k + top] = Math.round(255 * wt);
+    if (rim >= 0) groundW[k + rim] = Math.round(255 * Math.max(0, wr));
+  }
+}
 const groundEffects = paintLayers.map((L) => ({ ...(X.groundTextures.find((t) => t.id === L.texture)?.populate ?? {}), ...(L.populate ?? {}) }));
 // Föremålen på halvöarna (träd, flaggor): världens läge; höjden sätts av den som ritar dem
 const placed = [];
 for (const Pn of penins) for (const o of Pn.place ?? []) {
   const [x, z] = peninsulaPoint(Pn, o.at?.[0] ?? 0.5, o.at?.[1] ?? 0);
   placed.push({ ...(o.flag ? { flag: o.flag } : { model: o.model }), x: +x.toFixed(2), z: +z.toFixed(2), rot: o.rot ?? 0, scale: o.scale ?? 1 });
+}
+// Platsernas ring av träd och buskar, öppen mot havet; startplatsen mitt på, vänd utåt
+let spawn = null;
+for (const P of plazas) {
+  const R = P.ring ?? {}, items = R.items ?? [], count = R.count ?? 0, at = R.at ?? P.radius + P.rim + 2, open = (R.open ?? 100) * Math.PI / 180;
+  for (let q = 0; q < count && items.length; q++) {
+    // vinkeln runt platsen räknas från riktningen ut mot havet; den öppna bågen hoppas över
+    const b = open / 2 + (q + 0.5 + 0.3 * noise(q * 3.1, 7.7)) * (2 * Math.PI - open) / count, dir = P.a + b;
+    const rr = at + 1.5 * noise(q * 1.7, 2.9), it = items[q % items.length];
+    placed.push({ model: it.model, x: +(P.x + Math.sin(dir) * rr).toFixed(2), z: +(P.z - Math.cos(dir) * rr).toFixed(2), rot: Math.round((q * 137.5) % 360), scale: +((it.scale ?? 1) * (1 + 0.12 * noise(q * 5.3, 1.1))).toFixed(2) });
+  }
+  if (P.spawn && !spawn) spawn = { x: +P.x.toFixed(2), z: +P.z.toFixed(2), heading: P.angle ?? 0 };
 }
 
 // Kontroller: hela kedjan som i Kartrummet (det formade, regionerna, biomerna med det målade)
@@ -317,10 +369,19 @@ if (D.populate) {
   const pop = populate(world, X.populate, D.populate);
   nature = { total: pop.total, ...Object.fromEntries(pop.layers.filter((l) => l.count).map((l) => [l.id, l.count])) };
 }
+// Hur plan platsen blev i den färdiga marken (bäckar och allt): största avvikelsen från toppen inom 90 % av radien
+function flatness(P) {
+  let m = 0;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const x = -half + i * cell, z = -half + j * cell;
+    if (Math.hypot(x - P.x, z - P.z) <= P.radius * 0.9) m = Math.max(m, Math.abs(t.heights[j * n + i] - P.top));
+  }
+  return +m.toFixed(2);
+}
 let bad = 0;
 for (let k = 0; k < n * n; k++) if (!Number.isFinite(t.heights[k])) bad++;
 const landPct = Math.round(100 * t.heights.filter((y) => y > 0).length / (n * n));
-const ok = bad === 0 && report.every((p) => Object.keys(p.biomes).length > 0) && (D.checks?.beachMaxDepth == null || report.filter((p) => p.coast === 'beach').every((p) => p.depthAt6m <= D.checks.beachMaxDepth))
+const ok = bad === 0 && plazas.every((P) => flatness(P) < 0.15 && P.top > (settings.seaLevel ?? 0) + 1) && report.every((p) => Object.keys(p.biomes).length > 0) && (D.checks?.beachMaxDepth == null || report.filter((p) => p.coast === 'beach').every((p) => p.depthAt6m <= D.checks.beachMaxDepth))
   && (D.checks?.cliffMinDepth == null || report.filter((p) => p.coast === 'cliff').every((p) => p.depthAt6m >= D.checks.cliffMinDepth))
   && (D.checks?.marshMinPonds == null || report.filter((p) => p.coast === 'marsh').every((p) => p.pondsPct >= D.checks.marshMinPonds));
 
@@ -335,8 +396,8 @@ for (const q of X.params) {
   else clean[q.key] = Math.min(q.max, Math.max(q.min, Number(v ?? q.default)));
 }
 const layers = Object.fromEntries(Object.entries({ biomePaint: encodePaint(paint), regionPaint: encodePaint(regionPaint), sculpt: encodeDelta(delta, n), groundPaint: paintLayers.length ? encodeWeights(groundW, n) : null }).filter(([, v]) => v));
-const entry = { name, settings: clean, regions, ...(channels.length ? { channels } : {}), ...(D.populate ? { populate: D.populate } : {}), ...(paintLayers.length ? { paintLayers } : {}), ...(placed.length ? { placed } : {}), layers, ...(D.from ? { from: D.from } : {}), saved: new Date().toISOString() };
+const entry = { name, settings: clean, regions, ...(channels.length ? { channels } : {}), ...(D.populate ? { populate: D.populate } : {}), ...(paintLayers.length ? { paintLayers } : {}), ...(placed.length ? { placed } : {}), ...(spawn ? { spawn } : {}), layers, ...(D.from ? { from: D.from } : {}), saved: new Date().toISOString() };
 const file = `assets/terrain/${name}.terrain.json`;
 mkdirSync(path.join(ROOT, 'assets/terrain'), { recursive: true });
 writeFileSync(path.join(ROOT, file), JSON.stringify(entry, null, 2) + '\n');
-console.log(JSON.stringify({ ok, file, n, landPct, foot: +foot.toFixed(1), maxDelta: +delta.reduce((m, v) => Math.max(m, Math.abs(v)), 0).toFixed(1), channels: channels.length, regions: regions.length, sectors: report, ...(nature ? { nature } : {}), nan: bad }));
+console.log(JSON.stringify({ ok, file, n, landPct, foot: +foot.toFixed(1), maxDelta: +delta.reduce((m, v) => Math.max(m, Math.abs(v)), 0).toFixed(1), channels: channels.length, regions: regions.length, sectors: report, ...(plazas.length ? { plazas: plazas.map((P) => ({ x: +P.x.toFixed(1), z: +P.z.toFixed(1), top: +P.top.toFixed(2), flat: flatness(P) })) } : {}), ...(spawn ? { spawn } : {}), ...(nature ? { nature } : {}), nan: bad }));

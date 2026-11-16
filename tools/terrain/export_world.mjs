@@ -17,7 +17,7 @@
 //                 modellerna uppackade (utan meshopt) i models/
 //   grasskind_a.u8, grasskind_b.u8   gräsets sort per hörn: vikter för upp till åtta sorter (grassKinds i world.json);
 //                 ett målat lager med en gräspresets egen marktextur (grass.json, ground) ger den sorten, resten är standard
-//   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar och flaggorna
+//   world.json    rutnätet, havet, texturerna per biom och lager, gräsets sorter, vattnets inställningar, flaggorna och startplatsen
 //   (models: en mapp med slimmade modeller, t.ex. "build/slim", som används där de finns)
 //   (budget: ett namn ur motorns budgetar, t.ex. "lean"; följer med i world.json)
 // Föremål som står utplacerade i världen (placed: träd ur make_diorama) följer med i nature.json, flaggorna i world.json.
@@ -232,6 +232,8 @@ const world = {
   paintLayers: paintLayers.map((p) => (p ? { texture: p.texture, metres: p.metres ?? metres(p.texture) } : null)),
   grass: { ...grassDefaults, ...strip(Gr.presets[G.preset]), ...G.settings, field: G.field },
   grassKinds, flags, streamChunk: CHUNK, streamChunks,
+  // Startplatsen (make_diorama plazas): x, z och heading (kompassriktning, 0 = norr, −z, medurs) som spelaren tittar åt
+  ...(saved.spawn ? { spawn: saved.spawn } : {}),
   // Motorns budget (namn i godot-lab/budgets.json): hur fint marken, gräset och naturen ritas och hur stora texturerna är
   budget: args.budget ?? 'full',
   water: { ...Object.fromEntries(Wa.params.map((q) => [q.key, q.default])), ...strip(Wa.presets.tropical_lagoon) },

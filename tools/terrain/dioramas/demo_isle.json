@@ -206,5 +206,59 @@
         "density": 2
       }
     }
-  }
+  },
+  "plazas": [
+    {
+      "name": "Sunstrand lookout",
+      "angle": 172,
+      "inland": 24,
+      "radius": 8,
+      "lift": 0.7,
+      "rim": 3.5,
+      "ground": "cobblestone",
+      "rimGround": "surface_stone",
+      "rimPopulate": {
+        "tree": 0,
+        "bush": 0.3,
+        "rock": 0.6,
+        "plant": 0.6
+      },
+      "ring": {
+        "count": 15,
+        "at": 14.5,
+        "open": 110,
+        "items": [
+          {
+            "model": "trees/oak",
+            "scale": 1.1
+          },
+          {
+            "model": "trees/bush_round",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/birch",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_flower",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_wild",
+            "scale": 1.1
+          },
+          {
+            "model": "trees/maple",
+            "scale": 1.0
+          },
+          {
+            "model": "trees/bush_box",
+            "scale": 0.9
+          }
+        ]
+      },
+      "spawn": true
+    }
+  ]
 }
