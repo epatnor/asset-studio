@@ -71,7 +71,9 @@ let paint = null;
 if (gp && paintLayers.some(Boolean)) paint = gp.n === n ? gp.weights : resampleWeights(gp.weights, gp.n, n);
 
 // Gräsets täthet: biomerna, lutningen, höjden över havet, de målade lagrens grass (eller plant) och fläckarna
-const G = T.populate.grass, grassBiome = BIOMES.map((id) => G.biomes?.[id] ?? 0);
+// grass: one of the Windmill's grass presets (tools/grass/grass.json) for the whole world instead of populate.grass's
+// own (its width and other blade settings are then the preset's; groundScale and groundBright stay)
+const G = args.grass ? { ...T.populate.grass, preset: args.grass, settings: Object.fromEntries(Object.entries(T.populate.grass.settings ?? {}).filter(([k]) => k.startsWith('ground'))) } : T.populate.grass, grassBiome = BIOMES.map((id) => G.biomes?.[id] ?? 0);
 // Ett målat lager kan ha egna regler (populate) ovanpå texturens
 const layerEffects = paintLayers.map((p) => (p ? { ...(T.groundTextures.find((x) => x.id === p.texture)?.populate ?? {}), ...(p.populate ?? {}) } : null));
 const effects = layerEffects.map((e) => (e ? e.grass ?? e.plant ?? 1 : null));
